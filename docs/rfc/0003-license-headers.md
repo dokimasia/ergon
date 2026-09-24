@@ -15,7 +15,7 @@ produces-adr: tbd
 
 ## Summary
 
-`ergon license` adds and updates the copyright and SPDX header of every file that has a comment syntax. `ergon license check` verifies the headers and exits 1 on a missing, outdated or conflicting one. ergon builds the command on apache/skywalking-eyes v0.9.0, whose packages `pkg/header` and `pkg/comments` generate, match and insert headers for 76 comment-bearing languages. ergon supplies the parts the library gets wrong:
+`ergon license fix` adds and updates the copyright and SPDX header of every file that has a comment syntax. `ergon license check` verifies the headers and exits 1 on a missing, outdated or conflicting one. ergon builds the command on apache/skywalking-eyes v0.9.0, whose packages `pkg/header` and `pkg/comments` generate, match and insert headers for 76 comment-bearing languages. ergon supplies the parts the library gets wrong:
 
 - the file set
 - the comment style of the file types the library maps wrongly
@@ -59,11 +59,13 @@ In all five repositories, no file resolved to two different comment styles acros
 
 | Command | Writes | Exit status |
 |---|---|---|
-| `ergon license` | Adds missing headers and rewrites outdated ones | 1 when a file has a conflicting header, 0 otherwise |
+| `ergon license fix` | Adds missing headers and rewrites outdated ones | 1 when a file has a conflicting header, 0 otherwise |
 | `ergon license check` | Nothing | 1 when any file has a missing, outdated or conflicting header |
 | `ergon license check --json` | Nothing | As above, with every finding as JSON on stdout |
 
-Running `ergon license` and then `ergon license check` exits 0, unless a conflict remains.
+`ergon license` without a subcommand prints the subcommands and exits 2. Running `ergon license fix` and then `ergon license check` exits 0, unless a conflict remains.
+
+Files without a comment syntax are skipped. `check` reports how many it skipped, and they never fail the check.
 
 ### Configuration
 
@@ -77,13 +79,13 @@ license:
     - "**/*.gen.go"
     - "testdata/**"
   styles:
-    ".tmpl": none
+    ".sql": none
 ```
 
 - ergon renders the header as `Copyright <owner> <year>` and `SPDX-License-Identifier: <spdx>`, which is the current go-license template.
 - `spdx` is an SPDX license expression on one line.
 - `exclude` takes doublestar globs.
-- `styles` maps an extension or a base name to one of skywalking-eyes' style identifiers, such as `DoubleSlash`, `Hashtag` or `Semicolon`, or to `none`. A mapping replaces the library's lookup for that key.
+- `styles` maps an extension or a base name to one of skywalking-eyes' style identifiers, such as `DoubleSlash`, `Hashtag` or `Semicolon`, or to `none`. A mapping replaces ergon's built-in overrides and the library's lookup for that key.
 
 ### The library's part and ergon's part
 
@@ -96,16 +98,21 @@ license:
 | File set | `header.Check` opens `./` with go-git and walks every file | Lists files with `git ls-files` and calls `CheckFile` per file |
 | Logging | `logger.Log` writes to stdout at debug level | Sets `logger.Log` to discard, and reports findings itself |
 
-ergon's overrides for v0.9.0:
+ergon's built-in overrides for v0.9.0:
 
 | Key | Library's style | ergon's style | Reason |
 |---|---|---|---|
+| `.ts`, `.tsx`, `.mts`, `.cts`, `.js`, `.jsx`, `.mjs`, `.cjs`, `.java`, `.kt`, `.kts`, `.scala` | `SlashAsterisk` | `DoubleSlash` | Every C-family header uses `//`, as Go, Rust and protobuf headers already do in the library |
 | `.mod`, `go.work` | `AngleBracket`, or none | `DoubleSlash` | `go.mod` and `go.work` accept `//` comments. The library's choice breaks the file |
 | `.scm` | none | `Semicolon` | tree-sitter queries use `;` comments |
+| `.mdx` | `AngleBracket` | none | MDX 2 and later reject HTML comments |
+| `.tmpl` | varies | none | Go templates render their header through `{{template "header" .}}` |
 | `gradlew`, `gradlew.bat` | `Hashtag`, `Remark` | none | The Gradle wrapper generates them. A `rem` header above `@rem` also prints on every run |
 | `go.sum`, `go.work.sum`, `*.json`, `*.lock`, `LICENSE*`, `COPYING*` | varies | none | These files have no comment syntax |
 
-Each override corresponds to a defect in the library. An override is deleted when the pinned version fixes that defect.
+The library writes TypeScript, TSX, JavaScript, Java, Kotlin and Scala headers as a `/* */` block, from `SlashAsterisk` in its `assets/languages.yaml`. The assert-java run confirmed it for `.java` and `.kt` files. CSS keeps `SlashAsterisk`, because CSS has no line comment.
+
+The `.mod`, `go.work` and `.scm` overrides correct defects in the library. Each of those overrides is deleted when the pinned version fixes its defect.
 
 ### Calling the library
 
@@ -178,7 +185,7 @@ The overrides change a package-level table in `pkg/comments`, and `logger.Log` i
 ### Years
 
 - `check` accepts one year, a list such as `2024, 2026`, or a range such as `2020-2026`.
-- `ergon license` writes the current year into a new header, and keeps the years of a header it rewrites.
+- `ergon license fix` writes the current year into a new header, and keeps the years of a header it rewrites.
 - Neither command reads git history.
 
 A header written in 2026 passes in 2027. The library's own check compares the year literally, and its maintainers declined to change that. The pattern avoids that check.
@@ -193,7 +200,7 @@ The library's styles keep a shebang in `#` files, a shebang and a PEP 263 line i
 | `#!` in a JavaScript or TypeScript file | A copy of the library's style with `After` set to the shebang line |
 | Dockerfile `# syntax=`, `# escape=` and `# check=` | A copy of `Hashtag` with `After` set to the directive lines |
 
-Two of these cases occur in the repositories today. `treesitter/oracles/csharp/csharp.csproj` starts with a byte-order mark. Eleven JavaScript and TypeScript files start with `#!`: `treesitter/oracles/typescript/oracle.mjs`, and ten scripts under `stealth/tools`. No repository tracks a Dockerfile. Each rule has a fixture that proves the file still parses or runs after `ergon license`.
+Two of these cases occur in the repositories today. `treesitter/oracles/csharp/csharp.csproj` starts with a byte-order mark. Eleven JavaScript and TypeScript files start with `#!`: `treesitter/oracles/typescript/oracle.mjs`, and ten scripts under `stealth/tools`. No repository tracks a Dockerfile. Each rule has a fixture that proves the file still parses or runs after `ergon license fix`.
 
 ### Packages
 
@@ -207,7 +214,7 @@ No language module takes part, and `ergon-lang` gains nothing. The library's tab
 
 1. Move the owner and the SPDX identifier from `.go-license.yml` to the `license` section of `.ergon.yaml`.
 2. Delete `.go-license.yml`, and remove go-license from the bootstrap tool list.
-3. Run `ergon license check`. Against each repository's own template, 1,121 of the 1,183 Go files pass unchanged: all of treesitter's and assert-go's, 319 of techne's 328 and 593 of eidos's 646. The other 62 have their header below a `//go:build` line or have none. Files of other types report `missing` until `ergon license` runs.
+3. Run `ergon license check`. Against each repository's own template, 1,121 of the 1,183 Go files pass unchanged: all of treesitter's and assert-go's, 319 of techne's 328 and 593 of eidos's 646. The other 62 have their header below a `//go:build` line or have none. Files of other types report `missing` until `ergon license fix` runs.
 
 ## Alternatives considered
 
@@ -244,15 +251,9 @@ Go files keep the tool they already pass.
 - Files without a comment syntax, 538 of them JSON, carry no license information.
 - `check` accepts any year, so it does not detect a year that is out of date.
 
-## Open questions
-
-- Should files without a comment syntax be covered through `REUSE.toml` annotations, so that `reuse lint` passes, or skipped and counted as unsupported?
-- The library writes TypeScript and JavaScript headers as a `/* */` block, and Go headers with `//`. Should ergon override `.ts`, `.tsx`, `.js` and `.mjs` to `DoubleSlash`, so that every C-family file uses `//`?
-- MDX files begin with `import` statements, and MDX 2 and later reject HTML comments. Should `.mdx` be `none` until a fixture proves a style against the MDX compiler?
-- Go templates such as `fact.gen.go.tmpl` render their header through `{{template "header" .}}`. Should `.tmpl` be `none` by default, as in the configuration example?
-- Should the check be `ergon license check`, or `ergon lint license` as in the earlier ergon's Makefile targets?
-
 ## Unresolved and future work
+
+- Annotating files without a comment syntax through `REUSE.toml`, so that `reuse lint` passes, is not proposed.
 
 - Fixing the `.mod`, `.scm`, logger and lookup defects in skywalking-eyes itself is not proposed here. Each fix upstream removes one override from ergon.
 - Updating a year from git history is not proposed.
