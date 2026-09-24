@@ -2,13 +2,13 @@
 rfc: 0002
 title: Release
 author: Roy Klopper
-status: Review
+status: Accepted
 created: 2026-09-24
 updated: 2026-09-24
 discussion: none
 supersedes: none
 superseded-by: none
-produces-adr: tbd
+produces-adr: ADR-0003, ADR-0004, ADR-0005, ADR-0006
 ---
 
 # RFC-0002: Release

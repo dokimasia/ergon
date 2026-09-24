@@ -2,13 +2,13 @@
 rfc: 0001
 title: Module boundaries
 author: Roy Klopper
-status: Review
+status: Accepted
 created: 2026-09-24
 updated: 2026-09-24
 discussion: none
 supersedes: none
 superseded-by: none
-produces-adr: tbd
+produces-adr: ADR-0001, ADR-0002
 ---
 
 # RFC-0001: Module boundaries
