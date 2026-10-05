@@ -4,7 +4,7 @@ title: One module per language
 status: Accepted
 date: 2026-09-24
 supersedes: none
-superseded-by: none
+superseded-by: ADR-0008, in part
 rfc: RFC-0001
 ---
 

@@ -4,7 +4,7 @@ title: Release
 author: Roy Klopper
 status: Accepted
 created: 2026-09-24
-updated: 2026-09-24
+updated: 2026-10-05
 discussion: none
 supersedes: none
 superseded-by: none
@@ -97,7 +97,7 @@ Add the Unit type to the vocabulary.
 
 - The front matter has one `name: level` pair per line. The level is `major`, `minor`, `patch` or `none`. The name may be in double quotes, in single quotes, or unquoted. Any other line is an error that gives the file and the line. This is the subset of YAML that changesets writes, and `core/changeset` parses it with the standard library.
 - The front matter may be empty. An empty changeset releases nothing and satisfies `status`.
-- A name that two languages share is written `<language>:<name>`, for example `python:dokimi-assert`.
+- A name that two toolchains share is written `<toolchain>:<name>`, for example `python:dokimi-assert`.
 - The body is the changelog entry for every package the file names.
 - `ergon release add` writes quoted keys, as changesets does. The file name is a slug of the summary and four hex digits.
 
@@ -146,6 +146,10 @@ ergon reads `.changeset/config.json`.
 // The catalog rejects a name that no language registered.
 type Language string
 
+// Toolchain is the registered name of a build toolchain, such as "go",
+// "jvm" or "js". The catalog rejects a name that no toolchain registered.
+type Toolchain string
+
 // Package is one releasable unit: a Go module, a crate, an npm package, a
 // Python distribution, or a Gradle or Maven project.
 type Package struct {
@@ -153,14 +157,14 @@ type Package struct {
 	// npm name, a distribution name or group:artifact.
 	Name string
 
-	// Language is the language that discovered the package.
-	Language Language
+	// Toolchain is the toolchain that discovered the package.
+	Toolchain Toolchain
 
 	// Dir is the package directory, relative to the repository root and
 	// slash-separated. "." is the root.
 	Dir string
 
-	// Version is the version the manifest declares. For a language without
+	// Version is the version the manifest declares. For a toolchain without
 	// a version field it is the newest CHANGELOG.md heading, or the zero
 	// value when the package has never been released.
 	Version version.Version
@@ -186,7 +190,7 @@ type Dependency struct {
 	// Kind is the section of the manifest the requirement is declared in.
 	Kind Kind
 
-	// Req is the requirement as written, in the language's syntax.
+	// Req is the requirement as written, in the toolchain's syntax.
 	Req string
 }
 
@@ -206,9 +210,9 @@ const (
 ```go
 // Package language (core/language), file release.go.
 
-// Versioner is the release role every language implements.
+// Versioner is the release role every toolchain implements.
 type Versioner interface {
-	// Satisfies reports whether req admits v, in the language's requirement
+	// Satisfies reports whether req admits v, in the toolchain's requirement
 	// syntax. For Go, req is a minimum version and every later version
 	// satisfies it.
 	Satisfies(req string, v version.Version) (bool, error)
@@ -227,14 +231,14 @@ type Versioner interface {
 	Tag(p workspace.Package, v version.Version) string
 }
 
-// Packer builds the publishable artifacts of pkgs into dir. JavaScript, JVM
-// and Python implement it.
+// Packer builds the publishable artifacts of pkgs into dir. The js, jvm and
+// python toolchains implement it.
 type Packer interface {
 	Pack(ctx context.Context, root string, pkgs []workspace.Package, dir string) error
 }
 
-// Publisher uploads artifacts to a registry. A language without it
-// publishes by tag, as Go does.
+// Publisher uploads artifacts to a registry. A toolchain without it
+// publishes by tag, as the go toolchain does.
 type Publisher interface {
 	// Published reports whether the registry already has p at its version.
 	Published(ctx context.Context, p workspace.Package) (bool, error)
@@ -278,7 +282,7 @@ A Go requirement is a minimum version, so it satisfies every later version. Unde
 
 - `version` writes `<package dir>/CHANGELOG.md` in the format of `@changesets/cli/changelog` or `@changesets/changelog-github`. A repository that switches from changesets keeps one continuous file.
 - The `github` format adds the pull request, the commit and the author. `service/forge` finds them from the commit that added each changeset file.
-- For a language without a version field, the newest `## X.Y.Z` heading in the package's `CHANGELOG.md` is its planned version. `publish-plan` tags the package when that heading is newer than its newest tag. This works with merge, squash and rebase merges.
+- For a toolchain without a version field, the newest `## X.Y.Z` heading in the package's `CHANGELOG.md` is its planned version. `publish-plan` tags the package when that heading is newer than its newest tag. This works with merge, squash and rebase merges.
 - Each tag annotation and each GitHub Release body is the package's changelog section for that version.
 
 ### Go in one commit
@@ -343,18 +347,18 @@ The publish job reads no stored secret for npm, PyPI or crates.io, and reads fou
 
 ### The publish plan
 
-`publish-plan` writes the same format as changesets v3, with a `language` field on each entry. Each inner array is one dependency-ordered chunk.
+`publish-plan` writes the same format as changesets v3, with a `toolchain` field on each entry. Each inner array is one dependency-ordered chunk.
 
 ```json
 {
   "version": 1,
   "plan": [
     [
-      { "kind": "tag-only", "language": "go", "name": "go.dokimi.dev/techne/core", "version": "1.3.0" },
-      { "kind": "publish", "language": "rust", "name": "dokimi-assert", "version": "0.2.0" }
+      { "kind": "tag-only", "toolchain": "go", "name": "go.dokimi.dev/techne/core", "version": "1.3.0" },
+      { "kind": "publish", "toolchain": "rust", "name": "dokimi-assert", "version": "0.2.0" }
     ],
     [
-      { "kind": "publish", "language": "rust", "name": "dokimi-assert-tokio", "version": "0.2.0" }
+      { "kind": "publish", "toolchain": "rust", "name": "dokimi-assert-tokio", "version": "0.2.0" }
     ]
   ]
 }
