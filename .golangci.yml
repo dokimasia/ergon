@@ -1,0 +1,179 @@
+# golangci-lint configuration for ergon.
+#
+# Reference: https://golangci-lint.run/usage/configuration/
+#
+# Every linter here reports few false positives or modernizes code to the Go of go.mod.
+
+version: "2"
+
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+  allow-parallel-runners: true
+  tests: true
+
+output:
+  show-stats: true
+  sort-order:
+    - linter
+    - severity
+    - file
+
+linters:
+  default: none
+  enable:
+    # Architecture
+    - depguard
+    # Correctness
+    - copyloopvar
+    - errcheck
+    - errorlint
+    - govet
+    - nilerr
+    - staticcheck
+    - unused
+    - wastedassign
+    # Modernization
+    - modernize
+    - unparam
+    # Style
+    - dupword
+    - gocritic
+    - misspell
+    - revive
+    - usestdlibvars
+    # Concurrency
+    - asasalint
+    - contextcheck
+    - errname
+    # Test hygiene
+    - thelper
+    - tparallel
+    - usetesting
+
+  settings:
+    # depguard enforces the boundaries of the modules. Each rule is list-mode strict, so it
+    # refuses an import that its allow list does not name, and a new third-party import is an
+    # edit of this file beside go.mod. $gostd is the standard library without the go/ tree. An
+    # entry that ends with $ matches that path alone, and any other entry matches as a prefix:
+    # go.dokimi.dev/ergon/lang/java without the $ would also allow
+    # go.dokimi.dev/ergon/lang/javascript. The root module has no rule and may import anything.
+    depguard:
+      rules:
+        # core declares the vocabulary and the catalog, and imports nothing else of ergon.
+        core:
+          files: ["**/ergon-core/**"]
+          list-mode: strict
+          allow:
+            - $gostd
+            - go.dokimi.dev/assert
+            - go.dokimi.dev/ergon/core
+
+        # The production files of a language module import core and no other language module.
+        # TypeScript and Kotlin have rules of their own, because each imports the root package of
+        # the module that declares its toolchain.
+        language-module:
+          files:
+            - "**/ergon-lang-*/**"
+            - "!**/ergon-lang-typescript/**"
+            - "!**/ergon-lang-kotlin/**"
+            - "!$test"
+          list-mode: strict
+          allow:
+            - $gostd
+            - go.dokimi.dev/ergon/core
+
+        typescript-module:
+          files: ["**/ergon-lang-typescript/**", "!$test"]
+          list-mode: strict
+          allow:
+            - $gostd
+            - go.dokimi.dev/ergon/core
+            # The js toolchain, which the JavaScript module declares.
+            - go.dokimi.dev/ergon/lang/javascript$
+
+        kotlin-module:
+          files: ["**/ergon-lang-kotlin/**", "!$test"]
+          list-mode: strict
+          allow:
+            - $gostd
+            - go.dokimi.dev/ergon/core
+            # The jvm toolchain, which the Java module declares.
+            - go.dokimi.dev/ergon/lang/java$
+
+        # The tests of a language module import core, their own package and the module of their
+        # toolchain. depguard matches a file against any entry of files, so the globs name the
+        # test files of the language modules.
+        language-module-tests:
+          files: ["**/ergon-lang-*/*_test.go", "**/ergon-lang-*/**/*_test.go"]
+          list-mode: strict
+          allow:
+            - $gostd
+            - go.dokimi.dev/assert
+            - go.dokimi.dev/ergon/core
+            - go.dokimi.dev/ergon/lang
+
+    gocritic:
+      enabled-tags: [diagnostic]
+      disabled-checks:
+        - ifElseChain
+
+    revive:
+      severity: warning
+      rules:
+        - name: context-as-argument
+        - name: var-naming
+        - name: package-comments
+        - name: receiver-naming
+        - name: error-return
+        - name: error-naming
+        - name: error-strings
+        - name: errorf
+        - name: if-return
+        - name: indent-error-flow
+        - name: early-return
+        - name: unused-receiver
+        # Every exported declaration has a comment that starts with its name.
+        - name: exported
+
+    govet:
+      enable-all: true
+
+    # t.Context() is cancelled when the test ends, so a goroutine that a test forgets ends with
+    # the test. A context that a test builds itself outlives it.
+    usetesting:
+      context-background: true
+      context-todo: true
+
+  exclusions:
+    generated: lax
+    presets:
+      - std-error-handling
+      - common-false-positives
+    rules:
+      # fieldalignment matters only for structs on a hot path.
+      - linters: [govet]
+        text: "fieldalignment:"
+
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+    - golines
+
+  settings:
+    golines:
+      max-len: 120
+    gofumpt:
+      extra:
+        group-params: true
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  fix: false
+
+severity:
+  default: error

@@ -1,0 +1,20 @@
+go 1.27.1
+
+// The repository root module (go.dokimi.dev/ergon) contains the binary and the composition root.
+// Every other module is listed here, so builds and tests resolve across the modules without the
+// network.
+use (
+	./
+	./ergon-core
+	./ergon-lang-bash
+	./ergon-lang-csharp
+	./ergon-lang-go
+	./ergon-lang-java
+	./ergon-lang-javascript
+	./ergon-lang-kotlin
+	./ergon-lang-php
+	./ergon-lang-python
+	./ergon-lang-rust
+	./ergon-lang-terraform
+	./ergon-lang-typescript
+)
