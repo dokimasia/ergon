@@ -4,7 +4,7 @@ title: License headers
 author: Roy Klopper
 status: Draft
 created: 2026-09-24
-updated: 2026-09-24
+updated: 2026-10-05
 discussion: none
 supersedes: none
 superseded-by: none
@@ -102,7 +102,10 @@ ergon's built-in overrides for v0.9.0:
 
 | Key | Library's style | ergon's style | Reason |
 |---|---|---|---|
-| `.ts`, `.tsx`, `.mts`, `.cts`, `.js`, `.jsx`, `.mjs`, `.cjs`, `.java`, `.kt`, `.kts`, `.scala` | `SlashAsterisk` | `DoubleSlash` | Every C-family header uses `//`, as Go, Rust and protobuf headers already do in the library |
+| `.ts`, `.tsx`, `.mts`, `.cts`, `.js`, `.jsx`, `.mjs`, `.cjs`, `.java`, `.kt`, `.kts`, `.scala`, `.cs`, `.csx` | `SlashAsterisk` | `DoubleSlash` | Every C-family header uses `//`, as Go, Rust and protobuf headers already do in the library |
+| `.php` | `PhpTag` | `DoubleSlash`, after the `<?php` line | The same rule for PHP. The `<?php` line remains the first line |
+| `.fcgi` | `PhpTag` or `Hashtag`, by map order | none | Two languages claim the extension, and the library picks one at random |
+| `.terraform.lock.hcl` | `Hashtag` | none | `terraform init` writes the dependency lock file |
 | `.mod`, `go.work` | `AngleBracket`, or none | `DoubleSlash` | `go.mod` and `go.work` accept `//` comments. The library's choice breaks the file |
 | `.scm` | none | `Semicolon` | tree-sitter queries use `;` comments |
 | `.mdx` | `AngleBracket` | none | MDX 2 and later reject HTML comments |
@@ -110,7 +113,7 @@ ergon's built-in overrides for v0.9.0:
 | `gradlew`, `gradlew.bat` | `Hashtag`, `Remark` | none | The Gradle wrapper generates them. A `rem` header above `@rem` also prints on every run |
 | `go.sum`, `go.work.sum`, `*.json`, `*.lock`, `LICENSE*`, `COPYING*` | varies | none | These files have no comment syntax |
 
-The library writes TypeScript, TSX, JavaScript, Java, Kotlin and Scala headers as a `/* */` block, from `SlashAsterisk` in its `assets/languages.yaml`. The assert-java run confirmed it for `.java` and `.kt` files. CSS keeps `SlashAsterisk`, because CSS has no line comment.
+The library writes TypeScript, TSX, JavaScript, Java, Kotlin, Scala and C# headers as a `/* */` block, from `SlashAsterisk` in its `assets/languages.yaml`, and PHP headers as a `/* */` block after `<?php`. The assert-java run confirmed it for `.java` and `.kt` files. CSS keeps `SlashAsterisk`, because CSS has no line comment. Terraform (`.tf`, `.tfvars`) and Bash (`.sh`, `.bash`, `.bats`) keep the library's `Hashtag`.
 
 The `.mod`, `go.work` and `.scm` overrides correct defects in the library. Each of those overrides is deleted when the pinned version fixes its defect.
 
@@ -198,6 +201,7 @@ The library's styles keep a shebang in `#` files, a shebang and a PEP 263 line i
 |---|---|
 | A UTF-8 byte-order mark | Removed before `InsertComment` and written back after it |
 | `#!` in a JavaScript or TypeScript file | A copy of the library's style with `After` set to the shebang line |
+| `<?php` in a PHP file with a `//` header | A copy of `DoubleSlash` with `After` set to the `<?php` line |
 | Dockerfile `# syntax=`, `# escape=` and `# check=` | A copy of `Hashtag` with `After` set to the directive lines |
 
 Two of these cases occur in the repositories today. `treesitter/oracles/csharp/csharp.csproj` starts with a byte-order mark. Eleven JavaScript and TypeScript files start with `#!`: `treesitter/oracles/typescript/oracle.mjs`, and ten scripts under `stealth/tools`. No repository tracks a Dockerfile. Each rule has a fixture that proves the file still parses or runs after `ergon license fix`.
