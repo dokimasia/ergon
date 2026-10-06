@@ -8,7 +8,7 @@
 //
 // # Dependency position
 //
-// Imports [go.dokimi.dev/ergon/core/language], [go.dokimi.dev/ergon/core/workspace] and
-// [go.dokimi.dev/ergon/lang/java], for the name of the jvm toolchain. Only the root module of
-// ergon imports it.
+// Imports [go.dokimi.dev/ergon/core/language], [go.dokimi.dev/ergon/core/workspace], its
+// package baseline, and [go.dokimi.dev/ergon/lang/java] for the name of the jvm toolchain. Only
+// the root module of ergon imports it.
 package kotlin

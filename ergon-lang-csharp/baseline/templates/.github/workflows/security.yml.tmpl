@@ -1,0 +1,11 @@
+
+  codeql-csharp:
+    name: CodeQL (C#)
+    uses: ./.github/workflows/codeql.yml
+    permissions:
+      contents: read
+      security-events: write
+    with:
+      language: csharp
+      build-mode: none
+      pin: global.json

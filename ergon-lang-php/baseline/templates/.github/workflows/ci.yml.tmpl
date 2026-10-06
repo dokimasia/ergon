@@ -1,0 +1,25 @@
+
+  # The gate of PHP on Linux, macOS and Windows, which runs once the repository has .php-version.
+  check-php:
+    name: Check (PHP, ${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: {{runners}}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: {{checkout}}
+        with:
+          persist-credentials: false
+      - if: hashFiles('.php-version') != ''
+        uses: ./.github/actions/setup-make
+      - if: hashFiles('.php-version') != ''
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version-file: .php-version
+      - if: hashFiles('.php-version') != ''
+        shell: bash
+        run: make check-php

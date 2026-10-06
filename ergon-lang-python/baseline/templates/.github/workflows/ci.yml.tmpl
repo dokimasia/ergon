@@ -1,0 +1,24 @@
+
+  # The gate of Python on Linux, macOS and Windows, which runs once the repository has
+  # pyproject.toml.
+  check-python:
+    name: Check (Python, ${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: {{runners}}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: {{checkout}}
+        with:
+          persist-credentials: false
+      - if: hashFiles('pyproject.toml') != ''
+        uses: ./.github/actions/setup-make
+      - if: hashFiles('pyproject.toml') != ''
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - if: hashFiles('pyproject.toml') != ''
+        shell: bash
+        run: make check-python

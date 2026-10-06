@@ -1,0 +1,35 @@
+
+# PHP
+
+# The tools of the PHP gate, which Composer installs once into a directory of their own, so the
+# composer.json of the repository stays as it is. The stamp names the releases, so a new release
+# installs again.
+PHP_TOOLS := .ergon/tools/php
+PHP_TOOLS_STAMP := $(PHP_TOOLS)/phpstan-2.2.17-strict-rules-2.0.12-php-cs-fixer-3.95.27.stamp
+
+.PHONY: fmt-php lint-php test-php audit-php check-php
+fmt: fmt-php
+lint: lint-php
+test: test-php
+audit: audit-php
+check: check-php
+
+$(PHP_TOOLS_STAMP):
+	@mkdir -p $(PHP_TOOLS)
+	composer --working-dir=$(PHP_TOOLS) require --no-interaction --no-progress \
+		phpstan/phpstan:2.2.17 phpstan/phpstan-strict-rules:2.0.12 php-cs-fixer/shim:3.95.27
+	@touch $@
+
+fmt-php: $(PHP_TOOLS_STAMP) ## Format the PHP sources with the PER coding style
+	php $(PHP_TOOLS)/vendor/bin/php-cs-fixer fix --rules=@PER-CS --using-cache=no .
+lint-php: $(PHP_TOOLS_STAMP) ## Check the PHP sources with the PER coding style and PHPStan at its strictest level
+	composer validate --strict
+	composer install --no-interaction --no-progress
+	php $(PHP_TOOLS)/vendor/bin/php-cs-fixer check --rules=@PER-CS --using-cache=no --diff .
+	php $(PHP_TOOLS)/vendor/bin/phpstan analyse --configuration=phpstan.dist.neon --no-progress
+test-php: ## Run the PHP tests
+	composer install --no-interaction --no-progress
+	vendor/bin/phpunit
+audit-php: ## Scan composer.lock for known vulnerabilities and abandoned packages
+	composer audit --locked
+check-php: lint-php test-php audit-php ## Run the gate of PHP

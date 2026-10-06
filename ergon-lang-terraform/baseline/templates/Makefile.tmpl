@@ -1,0 +1,22 @@
+
+# Terraform
+
+.PHONY: fmt-terraform lint-terraform test-terraform audit-terraform check-terraform
+fmt: fmt-terraform
+lint: lint-terraform
+test: test-terraform
+audit: audit-terraform
+check: check-terraform
+
+fmt-terraform: ## Format the Terraform sources
+	terraform fmt -recursive
+lint-terraform: ## Check the format of the Terraform sources, and lint every module with .tflint.hcl
+	terraform fmt -check -recursive
+	tflint --recursive --config="$(CURDIR)/.tflint.hcl"
+test-terraform: ## Run the Terraform tests
+	terraform init -backend=false -input=false
+	terraform test
+audit-terraform: ## Scan the Terraform configuration for security misconfigurations
+	CKV_PARSE_ERROR_FAIL=true uvx --python 3.13 --exclude-newer 2026-10-06T00:00:00Z checkov==3.3.23 \
+		--directory . --framework terraform --quiet --compact --skip-download
+check-terraform: lint-terraform test-terraform audit-terraform ## Run the gate of Terraform

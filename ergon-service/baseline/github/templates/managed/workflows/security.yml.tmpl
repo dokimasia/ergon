@@ -1,0 +1,57 @@
+# Managed by ergon init. Add repository settings to .ergon/local/.github/workflows/security.yml and run ergon init sync.
+#
+# The security checks: the review of the dependencies that a pull request changes, the weekly
+# OpenSSF Scorecard, and a CodeQL job for each language that CodeQL analyzes, which calls
+# codeql.yml.
+
+name: Security
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 4 * * 1"
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: {{linux}}
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: {{checkout}}
+        with:
+          persist-credentials: false
+      - uses: {{dependency-review}}
+
+  # Scorecard publishes its results only from a job whose steps are actions of its allow list.
+  scorecard:
+    name: Scorecard
+    if: github.event_name == 'schedule'
+    runs-on: {{linux}}
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+      security-events: write
+    steps:
+      - uses: {{checkout}}
+        with:
+          persist-credentials: false
+      - uses: {{scorecard}}
+        with:
+          results_file: scorecard.sarif
+          results_format: sarif
+          publish_results: true
+      - uses: {{codeql-upload-sarif}}
+        with:
+          sarif_file: scorecard.sarif

@@ -52,6 +52,15 @@ func TestVersion(t *testing.T) {
 		}
 	})
 
+	t.Run("Version", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("returns dev for a build without the flags", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, buildinfo.Version(), "dev", "the release of the test binary")
+		})
+	})
+
 	t.Run("Full", func(t *testing.T) {
 		t.Parallel()
 

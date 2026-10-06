@@ -1,0 +1,29 @@
+
+  # The gate of TypeScript on Linux, macOS and Windows, which runs once the repository has
+  # package.json.
+  check-typescript:
+    name: Check (TypeScript, ${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: {{runners}}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: {{checkout}}
+        with:
+          persist-credentials: false
+      - if: hashFiles('package.json') != ''
+        uses: ./.github/actions/setup-make
+      - if: hashFiles('package.json') != ''
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: package.json
+      - if: hashFiles('package.json') != ''
+        shell: bash
+        run: npm ci
+      - if: hashFiles('package.json') != ''
+        shell: bash
+        run: make check-typescript

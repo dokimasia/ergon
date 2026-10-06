@@ -1,0 +1,11 @@
+
+  codeql-go:
+    name: CodeQL (Go)
+    uses: ./.github/workflows/codeql.yml
+    permissions:
+      contents: read
+      security-events: write
+    with:
+      language: go
+      build-mode: autobuild
+      pin: go.work

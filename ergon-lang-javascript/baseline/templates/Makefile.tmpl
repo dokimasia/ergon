@@ -1,0 +1,12 @@
+
+# JavaScript
+
+.PHONY: lint-javascript test-javascript check-javascript
+lint: lint-javascript
+test: test-javascript
+check: check-javascript
+
+lint-javascript: lint-js ## Check the JavaScript sources with Biome
+test-javascript: ## Run the JavaScript tests
+	npm test
+check-javascript: lint-javascript test-javascript audit-js ## Run the gate of JavaScript

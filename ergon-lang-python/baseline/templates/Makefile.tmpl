@@ -1,0 +1,31 @@
+
+# Python
+
+# The error codes of mypy that neither its defaults nor --strict turn on.
+MYPY_CODES := $(foreach code,redundant-expr possibly-undefined truthy-bool truthy-iterable ignore-without-code \
+	unused-awaitable redundant-self explicit-override mutable-override unimported-reveal exhaustive-match deprecated,\
+	--enable-error-code $(code))
+
+.PHONY: fmt-python lint-python test-python audit-python check-python
+fmt: fmt-python
+lint: lint-python
+test: test-python
+audit: audit-python
+check: check-python
+
+fmt-python: ## Format the Python sources
+	uvx ruff@0.16.10 format .
+lint-python: ## Check the Python sources with ruff.toml and with mypy in its strictest mode
+	uvx ruff@0.16.10 check --no-fix .
+	uvx ruff@0.16.10 format --check .
+	uv run --with mypy==2.4.0 mypy --strict --warn-unreachable --strict-equality-for-none $(MYPY_CODES) \
+		--exclude-gitignore .
+test-python: ## Run the Python tests
+	uv run --with pytest==9.1.1 pytest
+audit-python: ## Scan the packages of uv.lock for known vulnerabilities
+	@dir="$$(mktemp -d)"; \
+	uv export --frozen --all-packages --all-extras --all-groups --no-emit-local --format pylock.toml \
+		--quiet --output-file "$$dir/pylock.toml" \
+		&& uvx pip-audit@2.10.1 --locked --strict "$$dir"; \
+	status=$$?; rm -rf "$$dir"; exit $$status
+check-python: lint-python test-python audit-python ## Run the gate of Python

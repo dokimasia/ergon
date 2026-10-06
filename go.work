@@ -17,4 +17,5 @@ use (
 	./ergon-lang-rust
 	./ergon-lang-terraform
 	./ergon-lang-typescript
+	./ergon-service
 )

@@ -6,6 +6,7 @@ package bash
 import (
 	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/core/workspace"
+	"go.dokimi.dev/ergon/lang/bash/baseline"
 )
 
 // Language is the name of Bash in configuration and in reports.
@@ -21,5 +22,6 @@ func Register(c *language.Catalog) error {
 	if err := language.RegisterToolchain(c, language.Toolchain{Name: Toolchain}); err != nil {
 		return err
 	}
-	return language.Register(c, language.Declaration{Name: Language, Toolchain: Toolchain})
+	return language.Register(c, language.Declaration{Name: Language, Toolchain: Toolchain},
+		baseline.Initializer())
 }

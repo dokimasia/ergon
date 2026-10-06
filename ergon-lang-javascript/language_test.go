@@ -38,6 +38,14 @@ func TestLanguage(t *testing.T) {
 				"the languages of the catalog")
 		})
 
+		t.Run("adds the init role of the js toolchain", func(t *testing.T) {
+			t.Parallel()
+			var c language.Catalog
+			assert.NoError(t, javascript.Register(&c), "Register of JavaScript")
+			_, ok := language.ToolchainRole[language.Initializer](&c, pinnedToolchain)
+			assert.True(t, ok, "the init role of js")
+		})
+
 		t.Run("returns ErrRegistered for a catalog that has the toolchain", func(t *testing.T) {
 			t.Parallel()
 			var c language.Catalog

@@ -1,0 +1,11 @@
+
+# Gradle, which Java and Kotlin share
+
+.PHONY: audit-jvm
+audit: audit-jvm
+
+audit-jvm: ## Scan the Gradle lockfiles for known vulnerabilities
+	@lockfiles="$$(git ls-files --cached --others --exclude-standard -- ':(glob)**/gradle.lockfile' ':(glob)**/buildscript-gradle.lockfile')"; \
+	if [ -z "$$lockfiles" ]; then echo "audit-jvm: no gradle.lockfile, so enable dependency locking in the Gradle build"; exit 1; fi; \
+	set --; for lockfile in $$lockfiles; do set -- "$$@" "--lockfile=$$lockfile"; done; \
+	go run github.com/google/osv-scanner/v2/cmd/osv-scanner@v2.6.0 scan source "$$@"

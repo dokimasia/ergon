@@ -1,0 +1,83 @@
+# Managed by ergon init. Add repository settings to .ergon/local/.github/workflows/ci.yml and run ergon init sync.
+#
+# The gate of the repository: the checks of the documentation and of the commit messages on Linux,
+# the check of the baseline on Linux, macOS and Windows, and a job check-<language> for each
+# language, which runs make check-<language> on Linux, macOS and Windows.
+
+name: CI
+
+on:
+  pull_request:
+  merge_group:
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  docs:
+    name: Docs
+    runs-on: {{linux}}
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: {{checkout}}
+        with:
+          persist-credentials: false
+      - uses: {{markdownlint}}
+        with:
+          globs: |
+            **/*.md
+            #node_modules
+
+  baseline:
+    name: Baseline (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: {{runners}}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: {{checkout}}
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-ergon
+      - run: ergon init check
+
+  # The commits of a pull request, against .commitlint.yaml. Dependabot writes the messages of its
+  # own pull requests, whose bodies exceed the line length.
+  commits:
+    name: Commits
+    if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: {{linux}}
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: {{checkout}}
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: {{setup-go}}
+        with:
+          go-version: "{{go-version}}"
+          cache: false
+      - run: go install {{commitlint}}
+      - name: Check the commit messages
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          status=0
+          for commit in $(git rev-list --no-merges "$BASE..$HEAD"); do
+            git log -1 --format=%B "$commit" | commitlint lint || status=1
+          done
+          exit "$status"

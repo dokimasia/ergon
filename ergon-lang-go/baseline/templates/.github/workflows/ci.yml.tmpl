@@ -1,0 +1,26 @@
+
+  # The gate of Go on Linux, macOS and Windows, which runs once the repository has go.work.
+  check-go:
+    name: Check (Go, ${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: {{runners}}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: {{checkout}}
+        with:
+          persist-credentials: false
+      - if: hashFiles('go.work') != ''
+        uses: ./.github/actions/setup-make
+      - if: hashFiles('go.work') != ''
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.work
+          cache-dependency-path: "**/go.sum"
+      - if: hashFiles('go.work') != ''
+        shell: bash
+        run: make check-go

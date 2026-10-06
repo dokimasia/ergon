@@ -1,0 +1,44 @@
+# Managed by ergon init. Add repository settings to .ergon/local/.pre-commit-config.yaml and run ergon init sync.
+#
+# Install the hooks with: pre-commit install
+
+default_install_hook_types: [pre-commit, commit-msg]
+default_stages: [pre-commit]
+
+repos:
+  # File hygiene, without a language toolchain.
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: '\.md$'
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: check-added-large-files
+        args: ["--maxkb=500"]
+      - id: check-yaml
+        args: ["--allow-multiple-documents"]
+      - id: check-json
+      - id: check-toml
+      - id: check-symlinks
+
+  - repo: local
+    hooks:
+      # The gate of the repository, as CI runs it.
+      - id: check
+        name: make check
+        entry: make check
+        language: system
+        pass_filenames: false
+
+      # The commit message, against .commitlint.yaml. pre-commit builds commitlint with the Go on
+      # the PATH, and downloads Go when there is none.
+      - id: commitlint
+        name: commitlint
+        entry: commitlint lint --message
+        language: golang
+        additional_dependencies: ["{{commitlint}}"]
+        stages: [commit-msg]

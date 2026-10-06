@@ -1,0 +1,11 @@
+
+  codeql-python:
+    name: CodeQL (Python)
+    uses: ./.github/workflows/codeql.yml
+    permissions:
+      contents: read
+      security-events: write
+    with:
+      language: python
+      build-mode: none
+      pin: pyproject.toml

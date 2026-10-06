@@ -6,6 +6,7 @@ package java
 import (
 	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/core/workspace"
+	"go.dokimi.dev/ergon/lang/java/baseline"
 )
 
 // Language is the name of Java in configuration and in reports.
@@ -15,12 +16,14 @@ const Language workspace.Language = "java"
 // name it.
 const Toolchain workspace.Toolchain = "jvm"
 
-// Register adds the jvm toolchain and then Java to c. It returns the first error of
-// [language.RegisterToolchain] and [language.Register], which wraps [language.ErrRegistered] when
-// c already has either name. When only the language fails, c keeps the toolchain.
+// Register adds the jvm toolchain, with the init role of the files that Java and Kotlin share, and
+// then Java to c. It returns the first error of [language.RegisterToolchain] and
+// [language.Register], which wraps [language.ErrRegistered] when c already has either name. When
+// only the language fails, c keeps the toolchain.
 func Register(c *language.Catalog) error {
-	if err := language.RegisterToolchain(c, language.Toolchain{Name: Toolchain}); err != nil {
+	if err := language.RegisterToolchain(c, language.Toolchain{Name: Toolchain}, baseline.Toolchain()); err != nil {
 		return err
 	}
-	return language.Register(c, language.Declaration{Name: Language, Toolchain: Toolchain})
+	return language.Register(c, language.Declaration{Name: Language, Toolchain: Toolchain},
+		baseline.Initializer())
 }

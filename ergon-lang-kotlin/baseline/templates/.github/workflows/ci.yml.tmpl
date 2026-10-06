@@ -1,0 +1,32 @@
+
+  # The gate of Kotlin on Linux, macOS and Windows, which runs once the repository has
+  # .java-version. Go builds osv-scanner, which scans the Gradle lockfiles.
+  check-kotlin:
+    name: Check (Kotlin, ${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: {{runners}}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: {{checkout}}
+        with:
+          persist-credentials: false
+      - if: hashFiles('.java-version') != ''
+        uses: ./.github/actions/setup-make
+      - if: hashFiles('.java-version') != ''
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version-file: .java-version
+      - if: hashFiles('.java-version') != ''
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "{{go-version}}"
+          cache: false
+      - if: hashFiles('.java-version') != ''
+        shell: bash
+        run: make check-kotlin

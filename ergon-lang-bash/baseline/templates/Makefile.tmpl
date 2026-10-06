@@ -1,0 +1,11 @@
+
+# Bash
+
+.PHONY: lint-bash check-bash
+lint: lint-bash
+check: check-bash
+
+lint-bash: ## Check the Bash sources with shellcheck
+	git ls-files -z --cached --others --exclude-standard -- '*.sh' '*.bash' | \
+		xargs -0 -r uvx --from shellcheck-py==0.11.0.1 shellcheck
+check-bash: lint-bash ## Run the gate of Bash

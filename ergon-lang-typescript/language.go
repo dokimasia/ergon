@@ -7,6 +7,7 @@ import (
 	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/core/workspace"
 	"go.dokimi.dev/ergon/lang/javascript"
+	"go.dokimi.dev/ergon/lang/typescript/baseline"
 )
 
 // Language is the name of TypeScript in configuration and in reports.
@@ -16,5 +17,6 @@ const Language workspace.Language = "typescript"
 // [language.Register], which wraps [language.ErrUnknownToolchain] when c does not have the js
 // toolchain, and [language.ErrRegistered] when c already has TypeScript.
 func Register(c *language.Catalog) error {
-	return language.Register(c, language.Declaration{Name: Language, Toolchain: javascript.Toolchain})
+	return language.Register(c, language.Declaration{Name: Language, Toolchain: javascript.Toolchain},
+		baseline.Initializer())
 }

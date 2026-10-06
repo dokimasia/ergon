@@ -7,6 +7,6 @@
 //
 // # Dependency position
 //
-// Imports [go.dokimi.dev/ergon/core/language] and [go.dokimi.dev/ergon/core/workspace]. Only the
-// root module of ergon imports it.
+// Imports [go.dokimi.dev/ergon/core/language], [go.dokimi.dev/ergon/core/workspace] and its
+// package baseline. Only the root module of ergon imports it.
 package csharp

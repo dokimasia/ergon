@@ -1,0 +1,120 @@
+# The settings of ergon's own repository, which ergon init merges into .golangci.yml.
+
+linters:
+  settings:
+    # depguard enforces the boundaries of the modules. Each rule is list-mode strict, so it
+    # refuses an import that its allow list does not name, and a new third-party import is an
+    # edit of this file beside go.mod. $gostd is the standard library without the go/ tree. An
+    # entry that ends with $ matches that path alone, and any other entry matches as a prefix:
+    # go.dokimi.dev/ergon/lang/java without the $ would also allow
+    # go.dokimi.dev/ergon/lang/javascript. The root module has no rule and may import anything.
+    depguard:
+      rules:
+        # core declares the vocabulary and the catalog, and imports nothing else of ergon.
+        core:
+          files: ["**/ergon-core/**"]
+          list-mode: strict
+          allow:
+            - $gostd
+            - go.dokimi.dev/assert
+            - go.dokimi.dev/ergon/core
+
+        # service is the language-neutral side of each command. It imports core, and calls a
+        # language through the roles of the catalog.
+        service:
+          files: ["**/ergon-service/**"]
+          list-mode: strict
+          allow:
+            - $gostd
+            - go.dokimi.dev/assert
+            - go.dokimi.dev/ergon/core
+            - go.dokimi.dev/ergon/service
+            # The YAML of the configured files and of the local files, with its comments.
+            - go.yaml.in/yaml/v3
+
+        # The production files of a language module import core and the module's own packages, and
+        # no other language module. The own packages are allowed as the root package and as the
+        # prefix with a slash, so the Java module's rule does not allow the JavaScript module.
+        csharp-module:
+          files: ["**/ergon-lang-csharp/**", "!$test"]
+          list-mode: strict
+          allow: [$gostd, go.dokimi.dev/ergon/core, go.dokimi.dev/ergon/lang/csharp$, go.dokimi.dev/ergon/lang/csharp/]
+        java-module:
+          files: ["**/ergon-lang-java/**", "!$test"]
+          list-mode: strict
+          allow: [$gostd, go.dokimi.dev/ergon/core, go.dokimi.dev/ergon/lang/java$, go.dokimi.dev/ergon/lang/java/]
+        php-module:
+          files: ["**/ergon-lang-php/**", "!$test"]
+          list-mode: strict
+          allow: [$gostd, go.dokimi.dev/ergon/core, go.dokimi.dev/ergon/lang/php$, go.dokimi.dev/ergon/lang/php/]
+        javascript-module:
+          files: ["**/ergon-lang-javascript/**", "!$test"]
+          list-mode: strict
+          allow:
+            - $gostd
+            - go.dokimi.dev/ergon/core
+            - go.dokimi.dev/ergon/lang/javascript$
+            - go.dokimi.dev/ergon/lang/javascript/
+        go-module:
+          files: ["**/ergon-lang-go/**", "!$test"]
+          list-mode: strict
+          allow: [$gostd, go.dokimi.dev/ergon/core, go.dokimi.dev/ergon/lang/go$, go.dokimi.dev/ergon/lang/go/]
+        python-module:
+          files: ["**/ergon-lang-python/**", "!$test"]
+          list-mode: strict
+          allow: [$gostd, go.dokimi.dev/ergon/core, go.dokimi.dev/ergon/lang/python$, go.dokimi.dev/ergon/lang/python/]
+        rust-module:
+          files: ["**/ergon-lang-rust/**", "!$test"]
+          list-mode: strict
+          allow: [$gostd, go.dokimi.dev/ergon/core, go.dokimi.dev/ergon/lang/rust$, go.dokimi.dev/ergon/lang/rust/]
+        terraform-module:
+          files: ["**/ergon-lang-terraform/**", "!$test"]
+          list-mode: strict
+          allow:
+            - $gostd
+            - go.dokimi.dev/ergon/core
+            - go.dokimi.dev/ergon/lang/terraform$
+            - go.dokimi.dev/ergon/lang/terraform/
+        bash-module:
+          files: ["**/ergon-lang-bash/**", "!$test"]
+          list-mode: strict
+          allow: [$gostd, go.dokimi.dev/ergon/core, go.dokimi.dev/ergon/lang/bash$, go.dokimi.dev/ergon/lang/bash/]
+
+        # TypeScript and Kotlin also import the root package of the module that declares their
+        # toolchain, for the name of the toolchain.
+        typescript-module:
+          files: ["**/ergon-lang-typescript/**", "!$test"]
+          list-mode: strict
+          allow:
+            - $gostd
+            - go.dokimi.dev/ergon/core
+            - go.dokimi.dev/ergon/lang/typescript$
+            - go.dokimi.dev/ergon/lang/typescript/
+            - go.dokimi.dev/ergon/lang/javascript$
+        kotlin-module:
+          files: ["**/ergon-lang-kotlin/**", "!$test"]
+          list-mode: strict
+          allow:
+            - $gostd
+            - go.dokimi.dev/ergon/core
+            - go.dokimi.dev/ergon/lang/kotlin$
+            - go.dokimi.dev/ergon/lang/kotlin/
+            - go.dokimi.dev/ergon/lang/java$
+
+        # The tests of a language module import core, their own package and the module of their
+        # toolchain. depguard matches a file against any entry of files, so the globs name the
+        # test files of the language modules.
+        language-module-tests:
+          files: ["**/ergon-lang-*/*_test.go", "**/ergon-lang-*/**/*_test.go"]
+          list-mode: strict
+          allow:
+            - $gostd
+            - go.dokimi.dev/assert
+            - go.dokimi.dev/ergon/core
+            - go.dokimi.dev/ergon/lang
+
+    # The modules of ergon return each other's errors, which carry the name of their package, as
+    # the errors of one module would.
+    wrapcheck:
+      ignore-package-globs:
+        - go.dokimi.dev/ergon/*

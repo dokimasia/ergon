@@ -1,0 +1,11 @@
+# Managed by ergon init. Add repository settings to .ergon/local/.globalconfig and run ergon init sync.
+#
+# The analyzer configuration of every C# project of the repository. Every analyzer diagnostic is
+# an error, and lint-csharp builds with every rule of the latest analysis level. The options keep
+# the style of the templates of the .NET SDK.
+is_global = true
+
+dotnet_analyzer_diagnostic.severity = error
+
+# The templates of the .NET SDK declare file-scoped namespaces.
+csharp_style_namespace_declarations = file_scoped

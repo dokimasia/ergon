@@ -9,7 +9,9 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -61,99 +63,154 @@ const (
 
 ergon reads its configuration from .ergon.yaml in the working directory, or
 from the file that --config names. The configuration is YAML, whatever the
-extension of its file.
-
-Run 'ergon completion --help' for the completion scripts of bash, fish,
-PowerShell and zsh.`
+extension of its file.`
 )
+
+// Process is what [Run] needs of the process that runs ergon. Every field is required.
+type Process struct {
+	// Getwd returns the absolute path of the working directory, as [os.Getwd] does. Run calls it
+	// once, before the command runs, and the command works on that directory.
+	Getwd func() (string, error)
+
+	// Now returns the current time, for the defaults that depend on it, such as the year of a
+	// copyright notice.
+	Now func() time.Time
+
+	// Stdout receives the output of a command: the help, the version, and the files it wrote.
+	Stdout io.Writer
+
+	// Stderr receives every error, after the name of the program.
+	Stderr io.Writer
+
+	// Args are the arguments that follow the name of the program.
+	Args []string
+}
+
+// Version is the version of the running ergon.
+type Version struct {
+	// Release is the version of the release, such as 1.2.3, and dev for a build without one.
+	// ergon init records it in the lock.
+	Release string
+
+	// Full is what --version writes after the name of the program, such as
+	// "1.2.3 (abc123, built 2026-10-05)".
+	Full string
+}
 
 // usageError is an error of the command line, such as an unknown command or flag. [Run] returns
 // statusUsage for it and points at the help.
 type usageError struct {
-	// err is the error that cobra or the flag parser returned.
+	// err is the error that cobra, the flag parser or a command returned.
 	err error
 }
 
-// Error returns the text of the error that cobra or the flag parser returned.
+// Error returns the text of the error that cobra, the flag parser or a command returned.
 func (e usageError) Error() string {
 	return e.err.Error()
 }
 
-// Unwrap returns the error that cobra or the flag parser returned.
+// Unwrap returns the error that cobra, the flag parser or a command returned.
 func (e usageError) Unwrap() error {
 	return e.err
 }
 
-// Run runs the command line args and returns the exit status. args are the arguments that follow
-// the name of the program. register fills the catalog whose languages the help lists. version is
-// the text that --version writes after the name of the program. Every command receives ctx, and a
-// caller that cancels ctx on a signal stops the running command. Run writes the help and the
-// version to stdout. It writes every error to stderr, after the name of the program.
+// session is the state that the commands of one run of ergon share. The command that runs
+// resolves the working directory into it before its own function runs.
+type session struct {
+	// getwd returns the absolute path of the working directory.
+	getwd func() (string, error)
+
+	// catalog has the languages and their roles.
+	catalog *language.Catalog
+
+	// now returns the current time.
+	now func() time.Time
+
+	// dir is the absolute path of the working directory. It is empty until [session.resolve]
+	// sets it.
+	dir string
+
+	// release is the version of the release of ergon, which the lock of ergon init records.
+	release string
+}
+
+// resolve sets the working directory of s with its getwd function. It returns an error that wraps
+// the error of getwd.
+func (s *session) resolve() error {
+	dir, err := s.getwd()
+	if err != nil {
+		return fmt.Errorf("cli: find the working directory: %w", err)
+	}
+	s.dir = dir
+	return nil
+}
+
+// Run runs the command line of p and returns the exit status. register fills the catalog of the
+// languages, and v is the version of the running ergon. Every command receives ctx. Run writes
+// every error to p.Stderr, after the name of the program.
 //
 // The exit status is:
 //
 //   - 0 when the command succeeds
 //   - 1 when register returns an error, and when the command fails, such as for a configuration
-//     file that does not exist or does not parse
+//     file that does not parse or a managed file that was edited by hand
 //   - 2 for a command line that ergon refuses, such as one with an unknown command or flag, after
-//     which Run points at the help
-func Run(
-	ctx context.Context, args []string, register func(*language.Catalog) error, version string,
-	stdout, stderr io.Writer,
-) int {
-	root, err := command(register, version)
+//     which Run points at the help of the command
+func Run(ctx context.Context, p Process, register func(*language.Catalog) error, v Version) int {
+	root, err := command(p, register, v)
+	ran := root
 	if err == nil {
 		// cobra reads the arguments of the process for nil arguments, so the slice is never nil.
-		root.SetArgs(append([]string{}, args...))
-		root.SetOut(stdout)
-		root.SetErr(stderr)
-		err = root.ExecuteContext(ctx)
+		root.SetArgs(append([]string{}, p.Args...))
+		root.SetOut(p.Stdout)
+		root.SetErr(p.Stderr)
+		ran, err = root.ExecuteContextC(ctx)
 	}
 	if err == nil {
 		return statusOK
 	}
-	fmt.Fprintf(stderr, "%s: %v\n", program, err)
+	fmt.Fprintf(p.Stderr, "%s: %v\n", program, err)
 	if _, ok := errors.AsType[usageError](err); ok {
-		fmt.Fprintf(stderr, "Run '%s --%s' for usage.\n", program, helpFlag)
+		fmt.Fprintf(p.Stderr, "Run '%s --%s' for usage.\n", ran.CommandPath(), helpFlag)
 		return statusUsage
 	}
 	return statusFailure
 }
 
 // command returns the root command of ergon. It registers the languages with register into a
-// catalog, whose languages the help lists, and returns the error of register. version is what
-// --version writes.
+// catalog, which the help lists and the commands use, and returns the error of register. v is the
+// version of the running ergon.
 //
-// Before any command runs, the root command reads the configuration with [load]. Without a
-// subcommand, it writes the help. cobra adds the command completion, which writes the completion
-// script of a shell, when the command line calls it.
-func command(register func(*language.Catalog) error, version string) (*cobra.Command, error) {
-	var catalog language.Catalog
-	if err := register(&catalog); err != nil {
+// Before a command runs, the root command resolves the working directory with p.Getwd and reads
+// the configuration with [load]. ergon init and its subcommands resolve the directory alone,
+// because ergon init writes the configuration and never reads it. Without a subcommand, the root
+// command writes the help. cobra adds the command help, and the command completion, which writes
+// the completion script of a shell.
+func command(p Process, register func(*language.Catalog) error, v Version) (*cobra.Command, error) {
+	s := &session{getwd: p.Getwd, catalog: new(language.Catalog), release: v.Release, now: p.Now}
+	if err := register(s.catalog); err != nil {
 		return nil, err
 	}
 	var names []string
-	for d := range catalog.Languages() {
+	for d := range s.catalog.Languages() {
 		names = append(names, string(d.Name))
 	}
 
 	config := viper.New()
 	var file string
 	root := &cobra.Command{
-		Use:     program,
-		Short:   short,
-		Long:    fmt.Sprintf(long, strings.Join(names, ", ")),
-		Version: version,
-		Args: func(cmd *cobra.Command, args []string) error {
-			if err := cobra.NoArgs(cmd, args); err != nil {
-				return usageError{err: err}
-			}
-			return nil
-		},
+		Use:           program,
+		Short:         short,
+		Long:          fmt.Sprintf(long, strings.Join(names, ", ")),
+		Version:       v.Full,
+		Args:          usage(cobra.NoArgs),
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
-			return load(config, file, cmd.Flags().Changed(configFlag))
+			if err := s.resolve(); err != nil {
+				return err
+			}
+			return load(config, s.dir, file, cmd.Flags().Changed(configFlag))
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cmd.Help()
@@ -168,14 +225,28 @@ func command(register func(*language.Catalog) error, version string) (*cobra.Com
 	flags.StringVar(&file, configFlag, configFile, "read the configuration from `file`")
 	flags.BoolP(helpFlag, "h", false, "show the help of the command")
 	root.Flags().BoolP(versionFlag, "v", false, "show the version of ergon")
+	root.AddCommand(initCommand(s, names))
 	return root, nil
 }
 
-// load reads the configuration file into config as YAML. named reports whether the command line
-// named file. A missing file is no error when the command line names none, because a repository
-// without .ergon.yaml uses the defaults. load returns an error for a named file that does not
-// exist, and for a file that does not parse.
-func load(config *viper.Viper, file string, named bool) error {
+// usage returns the validation of args as a validation whose error is a [usageError].
+func usage(args cobra.PositionalArgs) cobra.PositionalArgs {
+	return func(cmd *cobra.Command, given []string) error {
+		if err := args(cmd, given); err != nil {
+			return usageError{err: err}
+		}
+		return nil
+	}
+}
+
+// load reads the configuration file into config as YAML. A relative file is relative to dir.
+// named reports whether the command line named file. A missing file is no error when the command
+// line names none, because a repository without .ergon.yaml uses the defaults. load returns an
+// error for a named file that does not exist, and for a file that does not parse.
+func load(config *viper.Viper, dir, file string, named bool) error {
+	if !filepath.IsAbs(file) {
+		file = filepath.Join(dir, file)
+	}
 	config.SetConfigFile(file)
 	config.SetConfigType(configType)
 	err := config.ReadInConfig()

@@ -18,6 +18,12 @@ var (
 // development is the version of a build without the flags of the linker.
 const development = "dev"
 
+// Version returns the version of the release of this build, such as 1.2.3, and dev for a build
+// without the flags of the linker.
+func Version() string {
+	return Format(version, "", "")
+}
+
 // Full returns the version of this build, as [Format] writes the variables that the build sets.
 func Full() string {
 	return Format(version, commit, date)

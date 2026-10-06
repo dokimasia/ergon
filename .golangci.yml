@@ -1,65 +1,116 @@
-# golangci-lint configuration for ergon.
+# Managed by ergon init. Add repository settings to .ergon/local/.golangci.yml and run ergon init sync.
 #
-# Reference: https://golangci-lint.run/usage/configuration/
-#
-# Every linter here reports few false positives or modernizes code to the Go of go.mod.
+# The configuration of golangci-lint for every module of the repository. It enables each linter
+# that a Go repository of the baseline enables, with the strictest setting that one of them uses.
+# A repository adds its own settings in its local file, which merges into this one: maps key by
+# key, lists appended. The depguard rules of the repository's module boundaries go there.
 
 version: "2"
-
 run:
   timeout: 5m
   modules-download-mode: readonly
   allow-parallel-runners: true
   tests: true
-
+  relative-path-mode: gomod
 output:
   show-stats: true
   sort-order:
     - linter
     - severity
     - file
-
 linters:
   default: none
   enable:
-    # Architecture
-    - depguard
     # Correctness
     - copyloopvar
+    - durationcheck
     - errcheck
     - errorlint
+    - exhaustive
+    - forcetypeassert
+    - gosec
     - govet
+    - ineffassign
+    - makezero
     - nilerr
+    - nilnil
+    - predeclared
+    - reassign
     - staticcheck
+    - unconvert
     - unused
     - wastedassign
     # Modernization
     - modernize
     - unparam
-    # Style
-    - dupword
+    # Performance
+    - bodyclose
     - gocritic
+    - mirror
+    - noctx
+    - perfsprint
+    - prealloc
+    # Architecture and style
+    - decorder
+    - depguard
+    - dupl
+    - dupword
+    - forbidigo
+    - funcorder
+    - goconst
+    - interfacebloat
     - misspell
+    - musttag
+    - nolintlint
     - revive
+    - sloglint
     - usestdlibvars
+    - whitespace
+    - wrapcheck
     # Concurrency
     - asasalint
+    - containedctx
     - contextcheck
     - errname
+    - fatcontext
+    - spancheck
     # Test hygiene
+    - paralleltest
+    - testifylint
+    - testpackage
     - thelper
     - tparallel
     - usetesting
-
   settings:
-    # depguard enforces the boundaries of the modules. Each rule is list-mode strict, so it
-    # refuses an import that its allow list does not name, and a new third-party import is an
-    # edit of this file beside go.mod. $gostd is the standard library without the go/ tree. An
-    # entry that ends with $ matches that path alone, and any other entry matches as a prefix:
-    # go.dokimi.dev/ergon/lang/java without the $ would also allow
-    # go.dokimi.dev/ergon/lang/javascript. The root module has no rule and may import anything.
+    asasalint:
+      use-builtin-exclusions: true
+    copyloopvar:
+      check-alias: true
+    decorder:
+      disable-dec-order-check: true
+      disable-init-func-first-check: false
+    # depguard allows only the standard library in a module without rules, so this rule denies
+    # the packages that the standard library or a successor replaces, and allows everything else.
+    # A repository adds the rules of its module boundaries in its local file.
     depguard:
       rules:
+        replaced:
+          list-mode: lax
+          files:
+            - $all
+          deny:
+            - pkg: io/ioutil$
+              desc: io/ioutil is deprecated, so use io and os
+            - pkg: github.com/pkg/errors
+              desc: wrap with fmt.Errorf and %w, and match with errors.Is and errors.As
+            - pkg: golang.org/x/exp/slices$
+              desc: use slices of the standard library
+            - pkg: golang.org/x/exp/maps$
+              desc: use maps of the standard library
+            - pkg: golang.org/x/net/context$
+              desc: use context of the standard library
+            - pkg: github.com/golang/protobuf
+              desc: github.com/golang/protobuf is deprecated, so use google.golang.org/protobuf
         # core declares the vocabulary and the catalog, and imports nothing else of ergon.
         core:
           files: ["**/ergon-core/**"]
@@ -68,39 +119,85 @@ linters:
             - $gostd
             - go.dokimi.dev/assert
             - go.dokimi.dev/ergon/core
-
-        # The production files of a language module import core and no other language module.
-        # TypeScript and Kotlin have rules of their own, because each imports the root package of
-        # the module that declares its toolchain.
-        language-module:
-          files:
-            - "**/ergon-lang-*/**"
-            - "!**/ergon-lang-typescript/**"
-            - "!**/ergon-lang-kotlin/**"
-            - "!$test"
+        # service is the language-neutral side of each command. It imports core, and calls a
+        # language through the roles of the catalog.
+        service:
+          files: ["**/ergon-service/**"]
+          list-mode: strict
+          allow:
+            - $gostd
+            - go.dokimi.dev/assert
+            - go.dokimi.dev/ergon/core
+            - go.dokimi.dev/ergon/service
+            # The YAML of the configured files and of the local files, with its comments.
+            - go.yaml.in/yaml/v3
+        # The production files of a language module import core and the module's own packages, and
+        # no other language module. The own packages are allowed as the root package and as the
+        # prefix with a slash, so the Java module's rule does not allow the JavaScript module.
+        csharp-module:
+          files: ["**/ergon-lang-csharp/**", "!$test"]
+          list-mode: strict
+          allow: [$gostd, go.dokimi.dev/ergon/core, go.dokimi.dev/ergon/lang/csharp$, go.dokimi.dev/ergon/lang/csharp/]
+        java-module:
+          files: ["**/ergon-lang-java/**", "!$test"]
+          list-mode: strict
+          allow: [$gostd, go.dokimi.dev/ergon/core, go.dokimi.dev/ergon/lang/java$, go.dokimi.dev/ergon/lang/java/]
+        php-module:
+          files: ["**/ergon-lang-php/**", "!$test"]
+          list-mode: strict
+          allow: [$gostd, go.dokimi.dev/ergon/core, go.dokimi.dev/ergon/lang/php$, go.dokimi.dev/ergon/lang/php/]
+        javascript-module:
+          files: ["**/ergon-lang-javascript/**", "!$test"]
           list-mode: strict
           allow:
             - $gostd
             - go.dokimi.dev/ergon/core
-
+            - go.dokimi.dev/ergon/lang/javascript$
+            - go.dokimi.dev/ergon/lang/javascript/
+        go-module:
+          files: ["**/ergon-lang-go/**", "!$test"]
+          list-mode: strict
+          allow: [$gostd, go.dokimi.dev/ergon/core, go.dokimi.dev/ergon/lang/go$, go.dokimi.dev/ergon/lang/go/]
+        python-module:
+          files: ["**/ergon-lang-python/**", "!$test"]
+          list-mode: strict
+          allow: [$gostd, go.dokimi.dev/ergon/core, go.dokimi.dev/ergon/lang/python$, go.dokimi.dev/ergon/lang/python/]
+        rust-module:
+          files: ["**/ergon-lang-rust/**", "!$test"]
+          list-mode: strict
+          allow: [$gostd, go.dokimi.dev/ergon/core, go.dokimi.dev/ergon/lang/rust$, go.dokimi.dev/ergon/lang/rust/]
+        terraform-module:
+          files: ["**/ergon-lang-terraform/**", "!$test"]
+          list-mode: strict
+          allow:
+            - $gostd
+            - go.dokimi.dev/ergon/core
+            - go.dokimi.dev/ergon/lang/terraform$
+            - go.dokimi.dev/ergon/lang/terraform/
+        bash-module:
+          files: ["**/ergon-lang-bash/**", "!$test"]
+          list-mode: strict
+          allow: [$gostd, go.dokimi.dev/ergon/core, go.dokimi.dev/ergon/lang/bash$, go.dokimi.dev/ergon/lang/bash/]
+        # TypeScript and Kotlin also import the root package of the module that declares their
+        # toolchain, for the name of the toolchain.
         typescript-module:
           files: ["**/ergon-lang-typescript/**", "!$test"]
           list-mode: strict
           allow:
             - $gostd
             - go.dokimi.dev/ergon/core
-            # The js toolchain, which the JavaScript module declares.
+            - go.dokimi.dev/ergon/lang/typescript$
+            - go.dokimi.dev/ergon/lang/typescript/
             - go.dokimi.dev/ergon/lang/javascript$
-
         kotlin-module:
           files: ["**/ergon-lang-kotlin/**", "!$test"]
           list-mode: strict
           allow:
             - $gostd
             - go.dokimi.dev/ergon/core
-            # The jvm toolchain, which the Java module declares.
+            - go.dokimi.dev/ergon/lang/kotlin$
+            - go.dokimi.dev/ergon/lang/kotlin/
             - go.dokimi.dev/ergon/lang/java$
-
         # The tests of a language module import core, their own package and the module of their
         # toolchain. depguard matches a file against any entry of files, so the globs name the
         # test files of the language modules.
@@ -112,49 +209,135 @@ linters:
             - go.dokimi.dev/assert
             - go.dokimi.dev/ergon/core
             - go.dokimi.dev/ergon/lang
-
+    exhaustive:
+      default-signifies-exhaustive: true
+      check:
+        - switch
+    forbidigo:
+      analyze-types: true
+      forbid:
+        - pattern: ^panic$
+          msg: return an error instead of a panic
+        - pattern: ^(fmt\.(Print|Printf|Println)|print|println)$
+          msg: write to an io.Writer that the caller passes, or log through log/slog
+    funcorder:
+      constructor: true
+      struct-method: true
     gocritic:
-      enabled-tags: [diagnostic]
+      enabled-tags:
+        - diagnostic
+        - performance
       disabled-checks:
         - ifElseChain
-
-    revive:
-      severity: warning
-      rules:
-        - name: context-as-argument
-        - name: var-naming
-        - name: package-comments
-        - name: receiver-naming
-        - name: error-return
-        - name: error-naming
-        - name: error-strings
-        - name: errorf
-        - name: if-return
-        - name: indent-error-flow
-        - name: early-return
-        - name: unused-receiver
-        # Every exported declaration has a comment that starts with its name.
-        - name: exported
-
     govet:
       enable-all: true
-
-    # t.Context() is cancelled when the test ends, so a goroutine that a test forgets ends with
-    # the test. A context that a test builds itself outlives it.
+    interfacebloat:
+      max: 10
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+      allow-unused: false
+    revive:
+      severity: error
+      confidence: 0.1
+      rules:
+        - name: blank-imports
+        # thelper requires the test first in a helper, so a helper takes its context second.
+        - name: context-as-argument
+          arguments:
+            - allowTypesBefore: "*testing.T"
+        - name: early-return
+        - name: empty-block
+        - name: error-naming
+        - name: error-return
+        - name: error-strings
+        - name: errorf
+        - name: exported
+        - name: if-return
+        - name: indent-error-flow
+        - name: modifies-value-receiver
+        - name: package-comments
+        - name: range
+        - name: receiver-naming
+        - name: redundant-import-alias
+        - name: time-naming
+        - name: unexported-return
+        - name: unnecessary-stmt
+        - name: unused-receiver
+        - name: var-naming
+    # revive checks the package comments and the names, so staticcheck runs every other check.
+    staticcheck:
+      checks:
+        - all
+        - -ST1000
+        - -ST1003
+    # Every test file declares the package x_test, so a test calls only what its package exports.
+    # The pattern matches no file name, and an empty pattern would match every one.
+    testpackage:
+      skip-regexp: "^$"
     usetesting:
       context-background: true
       context-todo: true
-
+      os-setenv: true
+      os-mkdir-temp: true
+      os-temp-dir: true
+    whitespace:
+      multi-if: true
+      multi-func: false
+    # An error that the constructor of an error, a wrap, a join or a context returns already
+    # carries its cause, and a walk of a file tree returns the error of the caller's own function,
+    # so neither needs a second wrap.
+    wrapcheck:
+      ignore-sig-regexps:
+        - \.New.*Error\(
+        - \.(Wrap|Wrapf)\(
+        - errors\.(Join|Unwrap)\(
+        - \.Err\(
+        - context\.Cause\(
+        - (fs|filepath)\.WalkDir\(
+        - filepath\.Walk\(
+      ignore-package-globs:
+        - go.dokimi.dev/ergon/*
   exclusions:
     generated: lax
     presets:
       - std-error-handling
       - common-false-positives
+    paths:
+      - (^|/)testdata($|/)
     rules:
-      # fieldalignment matters only for structs on a hot path.
-      - linters: [govet]
+      # A table or a fixture of a test exists once per test, so its layout and its size do not
+      # matter.
+      - path: _test\.go$
+        linters: [govet]
         text: "fieldalignment:"
-
+      - path: _test\.go$
+        linters: [gocritic]
+        text: "(hugeParam|rangeValCopy):"
+      # A test states its values inline, because the value is the assertion.
+      - path: _test\.go$
+        linters: [goconst, gosec]
+      # A failed type assertion or an unused parameter in a test fails the test, which is the
+      # signal these linters exist for.
+      - path: _test\.go$
+        linters: [forcetypeassert, unparam]
+      # A test file puts its fakes and helpers below the tests that use them, in reading order.
+      - path: _test\.go$
+        linters: [funcorder]
+      # A fake of a test returns a nil value with a nil error on purpose, to prove the guard
+      # against a broken value-or-error contract.
+      - path: _test\.go$
+        linters: [nilnil]
+      # A spec mirrors its source file, so the specs of two similar files repeat each other.
+      - path: _test\.go$
+        linters: [dupl]
+      # A test of an allocation ceiling, of an environment variable or of the test binary as a
+      # process runs serially, and its name ends in Allocs, Env or Process.
+      # testing.AllocsPerRun and t.Setenv panic in a parallel test, and two processes that exit
+      # in the same nanosecond write one coverage file.
+      - path: _test\.go$
+        linters: [paralleltest, tparallel]
+        text: 'Test\w*(Allocs|Env|Process)\b'
 formatters:
   enable:
     - gci
@@ -162,18 +345,19 @@ formatters:
     - gofumpt
     - goimports
     - golines
-
+  # gci groups the standard library apart from every other import. A repository puts its own
+  # modules in a group of their own by adding gci's sections in its local file, such as standard,
+  # default and the prefix of its module paths.
   settings:
-    golines:
-      max-len: 120
     gofumpt:
       extra:
         group-params: true
-
+    golines:
+      max-len: 120
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
+  uniq-by-line: false
   fix: false
-
 severity:
   default: error

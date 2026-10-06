@@ -1,0 +1,15 @@
+
+# TypeScript
+
+.PHONY: lint-typescript test-typescript check-typescript
+lint: lint-typescript
+test: test-typescript
+check: check-typescript
+
+lint-typescript: lint-js ## Check the TypeScript sources with Biome, and with tsc in its strictest mode
+	npx --yes -p typescript@7.0.2 tsc --noEmit --strict --noUncheckedIndexedAccess --noImplicitOverride \
+		--noImplicitReturns --noFallthroughCasesInSwitch --noPropertyAccessFromIndexSignature \
+		--exactOptionalPropertyTypes
+test-typescript: ## Run the TypeScript tests
+	npm test
+check-typescript: lint-typescript test-typescript audit-js ## Run the gate of TypeScript

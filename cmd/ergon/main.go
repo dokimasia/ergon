@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"go.dokimi.dev/ergon/internal/app"
 	"go.dokimi.dev/ergon/internal/buildinfo"
@@ -24,5 +25,6 @@ func main() {
 func run() int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	return cli.Run(ctx, os.Args[1:], app.Register, buildinfo.Full(), os.Stdout, os.Stderr)
+	p := cli.Process{Args: os.Args[1:], Getwd: os.Getwd, Now: time.Now, Stdout: os.Stdout, Stderr: os.Stderr}
+	return cli.Run(ctx, p, app.Register, cli.Version{Release: buildinfo.Version(), Full: buildinfo.Full()})
 }

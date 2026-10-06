@@ -1,0 +1,24 @@
+
+# Rust
+
+.PHONY: fmt-rust lint-rust test-rust audit-rust check-rust
+fmt: fmt-rust
+lint: lint-rust
+test: test-rust
+audit: audit-rust
+check: check-rust
+
+fmt-rust: ## Format the Rust sources
+	cargo fmt --all
+lint-rust: ## Check the Rust sources with clippy.toml, the pedantic lints and the documentation lints as errors
+	cargo fmt --all -- --check
+	cargo clippy --workspace --all-targets --all-features -- -D warnings -D clippy::pedantic -D missing_docs \
+		-D missing_debug_implementations -D unsafe_code -D unused_qualifications
+	RUSTDOCFLAGS="-D warnings -D rustdoc::private_doc_tests -D rustdoc::unescaped_backticks" \
+		cargo doc --workspace --all-features --no-deps
+test-rust: ## Run the Rust tests
+	cargo test --all-targets
+audit-rust: ## Scan Cargo.lock for known vulnerabilities
+	cargo install --locked cargo-audit --version 0.22.2
+	cargo audit
+check-rust: lint-rust test-rust audit-rust ## Run the gate of Rust

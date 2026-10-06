@@ -1,0 +1,11 @@
+
+  codeql-javascript-typescript:
+    name: CodeQL (JavaScript and TypeScript)
+    uses: ./.github/workflows/codeql.yml
+    permissions:
+      contents: read
+      security-events: write
+    with:
+      language: javascript-typescript
+      build-mode: none
+      pin: package.json
