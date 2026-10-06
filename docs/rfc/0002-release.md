@@ -395,6 +395,7 @@ Four composite actions at `dokimasia/ergon/action/{select-mode,version,pack,publ
 | 10,000,000 bytes | 13,333,336 bytes | 7.0 s | yes | 5.2 s | no, `unsigned` |
 
 674,822 bytes is the size of `dokimasia/stealth/bun.lock`, the largest lockfile in these repositories.
+
 - `pack` has no write permission and no OIDC token, so the repository's build scripts cannot publish or push.
 - A push or a tag made with `GITHUB_TOKEN` does not start another workflow, and a pull request it opens runs workflows only after approval. Work that follows a release, such as goreleaser, runs as a later job in the release workflow and reads `released`.
 - The version job needs the lockfile tool of every language in the repository. `status --verbose` lists them.
