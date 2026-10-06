@@ -5,7 +5,7 @@ go 1.27.1
 require (
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
-	go.dokimi.dev/assert v0.0.0-20261005091421-c73aed48ae5c
+	go.dokimi.dev/assert v0.0.0-20261006203413-f36a960fd058
 )
 
 require (
