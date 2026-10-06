@@ -1,0 +1,122 @@
+{
+  "ergon": "dev",
+  "answers": {
+    "name": "ergon",
+    "owner": "Dokimasia B.V.",
+    "license": "MIT",
+    "repository": "dokimasia/ergon",
+    "security-contact": "security@dokimi.dev",
+    "languages": [
+      "go"
+    ],
+    "year": 2026
+  },
+  "files": [
+    {
+      "path": ".commitlint.yaml",
+      "producer": "common",
+      "sha256": "1ac3f2b4022a18a91051f0bd8e10cfce4ed0cdff237f1c50454aeaa388c41a75"
+    },
+    {
+      "path": ".editorconfig",
+      "producer": "common",
+      "sha256": "93a89e8baecb905d0f747ee7a40918bd5ed90617dd5cf4fe147895d671411fd2"
+    },
+    {
+      "path": ".gitattributes",
+      "producer": "common",
+      "sha256": "197fef5b1d1a448d89160780d36f1f9cb206ccdc440d85b6c7be7a2a921a9f93"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/bug.yml",
+      "producer": "github",
+      "sha256": "784aebe15b8c161a37907f5a840406ebd9c0a5dd0429f4ea4dbf5cbe444ea0ab"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/config.yml",
+      "producer": "github",
+      "sha256": "a389152a07d55b39fcfd2489c60b531714cbb3f4254372baba9ea4782fad690d"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/feature.yml",
+      "producer": "github",
+      "sha256": "d4bef615f7432456c4aee578bfb274eb8aedf92728ae497f6856c3ede4bab3ca"
+    },
+    {
+      "path": ".github/PULL_REQUEST_TEMPLATE.md",
+      "producer": "github",
+      "sha256": "847a27513a667c4b096a937d209b6403718968d300cd7353a38091dd403ffb94"
+    },
+    {
+      "path": ".github/actions/setup-ergon/action.yml",
+      "producer": "github",
+      "sha256": "171580df4891a2627ce86604a01a83967239fe85a3f74f0a948fe94ef93ca54e"
+    },
+    {
+      "path": ".github/actions/setup-make/action.yml",
+      "producer": "github",
+      "sha256": "8d52179e020afea1bb88a4f2c3557bc0ebb61b598ba2124d7e37bdcbfc130a09"
+    },
+    {
+      "path": ".github/dependabot.yml",
+      "producer": "github",
+      "sha256": "1d69183e820559a98e5fc4660e8b2315f0225b6de4f1827f7d7712c9ebe5e90e"
+    },
+    {
+      "path": ".github/workflows/baseline.yml",
+      "producer": "github",
+      "sha256": "639ab634b7c254507f1b403f2cd594ae64200abf59f14aaced8e9d56b9ffb406"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "producer": "github",
+      "sha256": "8a62c611049b3a4918a727890d20ddb631465d84927d83ee3c651d136b7760b6"
+    },
+    {
+      "path": ".github/workflows/codeql.yml",
+      "producer": "github",
+      "sha256": "fe9331a203b16a6ef5c9e1fae05895bdf49014d21da63302b9bfb34d62b95b43"
+    },
+    {
+      "path": ".github/workflows/security.yml",
+      "producer": "github",
+      "sha256": "055549d7ecda8050d76c7143153dbfe2c9c90c626eae1ce39b23350c62b6c040"
+    },
+    {
+      "path": ".gitignore",
+      "producer": "common",
+      "sha256": "7df10096b659ba51a05461d5cda6030e4aabd50297e6c7a1ed52d0902f8db10f"
+    },
+    {
+      "path": ".golangci.yml",
+      "producer": "go",
+      "local": "ceae9664ca306650448cc6fc9bcc23b15aebaa14283d02549f77b2e8db4d6c29",
+      "sha256": "781cdb62de84526945a1014b1d7d1eb5b8807f3ea33176a8ed51f9ac373b51a5"
+    },
+    {
+      "path": ".markdownlint.yml",
+      "producer": "common",
+      "sha256": "cf54e52b8bdd1fcfcc74679b59f5dc6494e168e7f01de2504fcbfd54cc0f0845"
+    },
+    {
+      "path": ".pre-commit-config.yaml",
+      "producer": "common",
+      "sha256": "b977d82b5c0d793f957bed81fdf4d0ccb580e46c54a1107a621d171825b9d1da"
+    },
+    {
+      "path": "CODE_OF_CONDUCT.md",
+      "producer": "common",
+      "sha256": "47f8e8865bf40186d03de135629c43934f73bb1bcc0c137187dcdb69ecc6d699"
+    },
+    {
+      "path": "LICENSE",
+      "producer": "common",
+      "sha256": "540b73560bd7b122c9ed368fed23e0e79a91b9327207c4516caf8dce46d70b15"
+    },
+    {
+      "path": "Makefile",
+      "producer": "common",
+      "sha256": "f5b1e3e83fbbbffa9633eb144176f217eba4002316229d95cb0c81aca1ed8ea6"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+# Managed by ergon init. Add repository settings to .ergon/local/.github/dependabot.yml and run ergon init sync.
+#
+# Weekly updates of the actions, and of the package manager of each language. An update of a pin
+# in a managed file makes the file edited until a release of ergon contains the same pin.
+
+version: 2
+
+updates:
+  - package-ecosystem: github-actions
+    directories:
+      - /
+      - /.github/actions/*
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+
+  - package-ecosystem: gomod
+    directories:
+      - /
+      - /**/*
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build
