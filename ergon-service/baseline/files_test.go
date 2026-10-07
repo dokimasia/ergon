@@ -11,6 +11,7 @@ import (
 	"path"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"go.dokimi.dev/assert"
 	"go.dokimi.dev/ergon/core/language"
@@ -30,6 +31,9 @@ const (
 	opRemove = "remove"
 	opOpen   = "open"
 )
+
+// localDir is the directory of the local files of a repository.
+const localDir = ".ergon/local/"
 
 // faulty is the os.Root of a directory that fails one operation on one path. A failed write is
 // the write of the temporary file of the path, and a failed read is a read after the first reads
@@ -167,6 +171,15 @@ func TestFiles(t *testing.T) {
 				assert.HasError(t, err, "New")
 			})
 
+			t.Run("returns an error for a .ergon.yaml that does not read", func(t *testing.T) {
+				t.Parallel()
+				root := directory(t)
+				assert.NoError(t, root.MkdirAll(config, 0o755), "MkdirAll of .ergon.yaml")
+				_, err := repository(t, root).New(answers(), baseline.Options{})
+				assert.HasError(t, err, "New")
+				assert.Contains(t, err.Error(), "baseline: read .ergon.yaml", "the error")
+			})
+
 			t.Run("returns an error when a directory cannot be created", func(t *testing.T) {
 				t.Parallel()
 				_, err := repository(t, fault(t, opMkdir, "alpha")).New(answers(), baseline.Options{})
@@ -177,7 +190,7 @@ func TestFiles(t *testing.T) {
 				t.Parallel()
 				changes, err := repository(t, fault(t, opWrite, license)).New(answers(), baseline.Options{})
 				assert.ErrorIs(t, err, errFault, "New")
-				assert.Equal(t, paths(changes), []string{config, workflow, ignore}, "the files that New wrote first")
+				assert.Equal(t, paths(changes), []string{config, ci, ignore}, "the files that New wrote first")
 			})
 
 			t.Run("removes the temporary file when a rename fails", func(t *testing.T) {
@@ -198,7 +211,7 @@ func TestFiles(t *testing.T) {
 				assert.ErrorIs(t, err, errFault, "New")
 			})
 
-			t.Run("appends a local file to a managed file that is not YAML", func(t *testing.T) {
+			t.Run("appends a local file to a managed file", func(t *testing.T) {
 				t.Parallel()
 				root := directory(t)
 				put(t, root, localDir+ignore, "local/\n")
@@ -208,30 +221,15 @@ func TestFiles(t *testing.T) {
 				assert.Contains(t, content(t, root, lockPath), `"local": "`+sum("local/\n")+`"`, "the lock")
 			})
 
-			t.Run("adds a newline before a local file when the rendering lacks one", func(t *testing.T) {
+			t.Run("merges a local YAML file into a managed YAML file", func(t *testing.T) {
 				t.Parallel()
 				root := directory(t)
-				put(t, root, localDir+"notes.txt", "second\n")
-				r, err := baseline.Open(root, catalog(t), version, common, renders(
-					language.File{Path: "notes.txt", Class: language.Managed, Content: []byte("first")},
-				))
-				assert.NoError(t, err, "Open")
-				_, err = r.New(answers(), baseline.Options{})
+				put(t, root, localDir+ci, "jobs:\n  common:\n    steps:\n      - run: lint\n")
+				_, err := repository(t, root).New(answers(), baseline.Options{})
 				assert.NoError(t, err, "New")
-				assert.Equal(t, content(t, root, "notes.txt"), "first\nsecond\n", "the extended notes.txt")
-			})
-
-			t.Run("appends a local file to an empty rendering", func(t *testing.T) {
-				t.Parallel()
-				root := directory(t)
-				put(t, root, localDir+"notes.txt", "only\n")
-				r, err := baseline.Open(root, catalog(t), version, common, renders(
-					language.File{Path: "notes.txt", Class: language.Managed, Content: []byte{}},
-				))
-				assert.NoError(t, err, "Open")
-				_, err = r.New(answers(), baseline.Options{})
-				assert.NoError(t, err, "New")
-				assert.Equal(t, content(t, root, "notes.txt"), "only\n", "the extended notes.txt")
+				assert.Equal(t, content(t, root, ci),
+					"# managed\nname: ci\njobs:\n  common:\n    steps:\n      - run: make\n      - run: lint\n",
+					"the merged workflow")
 			})
 
 			tests := []struct {
@@ -269,12 +267,13 @@ func TestFiles(t *testing.T) {
 				assert.ErrorIs(t, err, errFault, "New")
 			})
 
-			t.Run("returns an error for a local file that does not read", func(t *testing.T) {
+			t.Run("returns an error for a local YAML file that does not parse", func(t *testing.T) {
 				t.Parallel()
-				fsys := fault(t, opOpen, localDir+ignore)
-				put(t, fsys.Root, localDir+ignore, "local/\n")
-				_, err := repository(t, fsys).New(answers(), baseline.Options{})
-				assert.ErrorIs(t, err, errFault, "New")
+				root := directory(t)
+				put(t, root, localDir+ci, "jobs: [\n")
+				_, err := repository(t, root).New(answers(), baseline.Options{})
+				assert.HasError(t, err, "New")
+				assert.Contains(t, err.Error(), "overlay: merge "+localDir+ci, "the error")
 			})
 		})
 
@@ -367,7 +366,7 @@ func TestFiles(t *testing.T) {
 				_, root := initialized(t)
 				assert.NoError(t, root.Remove(license), "Remove of the LICENSE")
 				assert.NoError(t, root.Mkdir(license, 0o755), "Mkdir of LICENSE")
-				r, err := baseline.Open(root, catalog(t), version)
+				r, err := baseline.Open(root, catalog(t), version, templated("other", fstest.MapFS{}))
 				assert.NoError(t, err, "Open without common")
 				_, err = r.Check()
 				assert.HasError(t, err, "Check")

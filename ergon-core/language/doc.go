@@ -1,8 +1,8 @@
 // Copyright Dokimasia B.V. 2026
 // SPDX-License-Identifier: MIT
 
-// Package language declares the toolchains and the languages of ergon, and the catalog that
-// registers them.
+// Package language declares the toolchains and the languages of ergon, the catalog that registers
+// them, and the roles that they implement.
 //
 // A [Toolchain] builds packages, such as the go command or Gradle. A [Declaration] states a
 // language and the toolchain that builds it: Java and Kotlin name the toolchain jvm, and Go names
@@ -11,15 +11,32 @@
 //
 // # Roles
 //
-// A language registers its roles with Register, and a command selects one with [Role].
-// [Initializer] is the role of ergon init. It renders the files of a language and the language's
-// fragments of the shared files, such as [GitIgnore] and [CI].
+// A toolchain and a language register their roles, and a command selects one with [Role] or
+// [ToolchainRole]. The roles of ergon init divide the files of a repository by concern:
+//
+//   - A [Producer] returns the templates of its concern.
+//   - A [Calculator] computes values that its templates read, from the answers, its options and the
+//     contributions.
+//   - A [Configurable] producer returns its [Options]: a struct of its own, which composes the
+//     types of go.dokimi.dev/ergon/core/option and states its section of .ergon.yaml, [Config].
+//   - A [Contributor] returns its part of the workflows as a
+//     [go.dokimi.dev/ergon/core/workflow.Contribution], which the producer of the GitHub files
+//     renders.
+//
+// A producer configures its own concern alone: a section names the tools, the actions and the
+// runtime versions of its own producer, and never those of another ecosystem.
+//
+// # Answers
+//
+// [Answers] are the answers of ergon init, which every producer reads. [Answers.Validate] checks
+// them once, before a producer renders, so no producer checks an answer again.
 //
 // # Errors
 //
 // RegisterToolchain and Register leave the catalog unchanged when they return an error. Each
-// error wraps one of [ErrInvalidName], [ErrRegistered] and [ErrUnknownToolchain], and quotes the
-// name that caused it.
+// error wraps one of [ErrInvalidName], [ErrRegistered], [ErrUnknownToolchain] and [ErrUnknownRole],
+// and quotes the name that caused it. Answers.Validate returns an error that wraps
+// [ErrInvalidAnswer].
 //
 // # Concurrency
 //
@@ -28,6 +45,6 @@
 //
 // # Dependency position
 //
-// Position 1 of ergon-core. Imports the standard library and
-// [go.dokimi.dev/ergon/core/workspace].
+// Position 1 of ergon-core. Imports the standard library, [go.dokimi.dev/ergon/core/spdx],
+// [go.dokimi.dev/ergon/core/workflow] and [go.dokimi.dev/ergon/core/workspace].
 package language

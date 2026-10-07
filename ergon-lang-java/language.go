@@ -16,14 +16,13 @@ const Language workspace.Language = "java"
 // name it.
 const Toolchain workspace.Toolchain = "jvm"
 
-// Register adds the jvm toolchain, with the init role of the files that Java and Kotlin share, and
+// Register adds the jvm toolchain, with the producer of the files that Java and Kotlin share, and
 // then Java to c. It returns the first error of [language.RegisterToolchain] and
 // [language.Register], which wraps [language.ErrRegistered] when c already has either name. When
 // only the language fails, c keeps the toolchain.
 func Register(c *language.Catalog) error {
-	if err := language.RegisterToolchain(c, language.Toolchain{Name: Toolchain}, baseline.Toolchain()); err != nil {
+	if err := language.RegisterToolchain(c, language.Toolchain{Name: Toolchain}, baseline.Toolchain{}); err != nil {
 		return err
 	}
-	return language.Register(c, language.Declaration{Name: Language, Toolchain: Toolchain},
-		baseline.Initializer())
+	return language.Register(c, language.Declaration{Name: Language, Toolchain: Toolchain}, baseline.Producer{})
 }

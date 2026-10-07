@@ -17,6 +17,5 @@ const Language workspace.Language = "kotlin"
 // which wraps [language.ErrUnknownToolchain] when c does not have the jvm toolchain, and
 // [language.ErrRegistered] when c already has Kotlin.
 func Register(c *language.Catalog) error {
-	return language.Register(c, language.Declaration{Name: Language, Toolchain: java.Toolchain},
-		baseline.Initializer())
+	return language.Register(c, language.Declaration{Name: Language, Toolchain: java.Toolchain}, baseline.Producer{})
 }

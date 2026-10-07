@@ -4,7 +4,6 @@
 package baseline
 
 import (
-	"bytes"
 	"crypto/rand"
 	"errors"
 	"fmt"
@@ -12,18 +11,15 @@ import (
 	"os"
 	"path"
 	"slices"
-	"strings"
 
-	"go.dokimi.dev/ergon/core/language"
+	"go.dokimi.dev/ergon/service/baseline/lock"
+	"go.dokimi.dev/ergon/service/baseline/overlay"
+	"go.dokimi.dev/ergon/service/baseline/render"
 )
 
 // ErrUnmanagedLocal is the error for a local file whose path is not a managed file of the
 // rendering.
 var ErrUnmanagedLocal = errors.New("baseline: local file of a path that is not managed")
-
-// localDir is the directory of the local files: .ergon/local/<path> extends the managed file at
-// <path>.
-const localDir = ".ergon/local"
 
 // The modes of the files and the directories that a command creates, before the umask.
 const (
@@ -94,78 +90,26 @@ func (r *Repository) remove(name string) error {
 	return nil
 }
 
-// applyLocal merges each local file into the managed target of its path, and records the digest
-// of the local file. It returns an error that wraps [ErrUnmanagedLocal] for a local file whose
-// path is not a managed target, and the error of a local file that does not read or merge.
+// applyLocal merges each local file into the managed target of its path, as [overlay.Apply]
+// states, and records the digest of the local file. It returns an error that wraps
+// [ErrUnmanagedLocal] for a local file whose path is not a managed target, and the error of a
+// local file that does not read or merge.
 func (r *Repository) applyLocal(targets []target) error {
-	err := fs.WalkDir(r.fsys.FS(), localDir, func(name string, d fs.DirEntry, err error) error {
-		if name == localDir && errors.Is(err, fs.ErrNotExist) {
-			return fs.SkipAll
-		}
-		if err != nil {
-			return fmt.Errorf("baseline: read %s: %w", name, err)
-		}
-		if d.IsDir() {
-			return nil
-		}
-		managed := strings.TrimPrefix(name, localDir+"/")
-		i := slices.IndexFunc(targets, func(t target) bool {
-			return t.path == managed && t.class == language.Managed
-		})
+	locals, err := overlay.Read(r.fsys.FS())
+	if err != nil {
+		return err
+	}
+	for _, l := range locals {
+		i := slices.IndexFunc(targets, func(t target) bool { return t.Path == l.Path && t.Class == render.Managed })
 		if i < 0 {
-			return fmt.Errorf("%w: %s", ErrUnmanagedLocal, name)
+			return fmt.Errorf("%w: %s/%s", ErrUnmanagedLocal, overlay.Dir, l.Path)
 		}
-		local, err := fs.ReadFile(r.fsys.FS(), name)
+		content, err := overlay.Apply(l.Path, targets[i].Content, l.Content)
 		if err != nil {
-			return fmt.Errorf("baseline: read %s: %w", name, err)
+			return err
 		}
-		content, err := extend(&targets[i], local)
-		if err != nil {
-			return fmt.Errorf("baseline: merge %s: %w", name, err)
-		}
-		targets[i].content = content
-		targets[i].local = digest(local)
-		return nil
-	})
-	return err
-}
-
-// extend returns the content of t with local merged into it: as YAML for a YAML file, with the
-// lists of both appended, and appended line by line for any other file.
-func extend(t *target, local []byte) ([]byte, error) {
-	if isYAML(t.path) {
-		return mergeYAML(t.content, local, appendLists)
+		targets[i].Content = content
+		targets[i].local = lock.Digest(l.Content)
 	}
-	content := slices.Clone(t.content)
-	if len(content) > 0 && !bytes.HasSuffix(content, []byte("\n")) {
-		content = append(content, '\n')
-	}
-	return append(content, local...), nil
-}
-
-// configure returns the configured file of t: existing with the keys of t's rendering written
-// into it, or the rendering when the file does not exist, as ok reports. It reports whether the
-// result differs from existing in its keys and values. Maps are merged key by key, and every
-// other value of the rendering replaces the existing one.
-func configure(t *target, existing []byte, ok bool) ([]byte, bool, error) {
-	if !ok {
-		return t.content, true, nil
-	}
-	// The existing file merged into itself is the file as an encode writes it, so a comparison
-	// with the merged file finds a change in keys or values and ignores one of layout.
-	normalized, err := mergeYAML(existing, existing, replaceLists)
-	if err != nil {
-		return nil, false, fmt.Errorf("baseline: configure %s: %w", t.path, err)
-	}
-	merged, err := mergeYAML(existing, t.content, replaceLists)
-	if err != nil {
-		return nil, false, fmt.Errorf("baseline: configure %s: rendering: %w", t.path, err)
-	}
-	return merged, !bytes.Equal(merged, normalized), nil
-}
-
-// isYAML reports whether name is a YAML file, by its extension.
-func isYAML(name string) bool {
-	ext := path.Ext(name)
-	return ext == ".yml" || ext == ".yaml"
+	return nil
 }

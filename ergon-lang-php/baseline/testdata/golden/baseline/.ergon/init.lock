@@ -1,0 +1,62 @@
+{
+  "ergon": "1.0.0",
+  "files": [
+    {
+      "path": ".editorconfig",
+      "producer": "php",
+      "sha256": "398f1a3d9adb954057b9d21c41de673b6676a00657e7429e1e5224bd10a61210"
+    },
+    {
+      "path": ".gitattributes",
+      "producer": "php",
+      "sha256": "a2c3897efe960ca55058f89a0948aea56a8a853f89b1c738f851103e76e8505c"
+    },
+    {
+      "path": ".gitignore",
+      "producer": "php",
+      "sha256": "bae2797ad9ac716a0de2b35e9fb5fcd2f24db8ebc8281a70fba9eff334a6f5f6"
+    },
+    {
+      "path": "Makefile",
+      "producer": "php",
+      "sha256": "6880f59f82086fd3474bdd3c31fd9ad4761ad00de253063950f7df68301a8b85"
+    },
+    {
+      "path": "phpstan.dist.neon",
+      "producer": "php",
+      "sha256": "65fcf15408d0b85229bb3cd18bc28547587882f66e61af9374af95c2ae9d1546"
+    }
+  ],
+  "settings": {
+    "php.check": [
+      "lint",
+      "test",
+      "audit"
+    ],
+    "php.ci.actions.setup-php.commit": "f3e473d116dcccaddc5834248c87452386958240",
+    "php.ci.actions.setup-php.release": "2.37.2",
+    "php.ci.actions.setup-php.uses": "shivammathur/setup-php",
+    "php.ci.runners": [],
+    "php.ci.timeout": 30,
+    "php.ci.versions": [],
+    "php.paths": [
+      "."
+    ],
+    "php.test.args": [],
+    "php.tools.php-cs-fixer": "php-cs-fixer/shim@3.95.27",
+    "php.tools.phpstan": "phpstan/phpstan@2.2.17",
+    "php.tools.phpstan-extension-installer": "phpstan/extension-installer@1.4.3",
+    "php.tools.phpstan-strict-rules": "phpstan/phpstan-strict-rules@2.0.12"
+  },
+  "answers": {
+    "name": "demo",
+    "owner": "Dokimasia B.V.",
+    "license": "MIT",
+    "repository": "dokimasia/demo",
+    "security-contact": "security@example.com",
+    "languages": [
+      "php"
+    ],
+    "year": 2026
+  }
+}

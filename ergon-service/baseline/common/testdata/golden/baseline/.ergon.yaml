@@ -1,0 +1,25 @@
+common:
+  # The tools of the common files.
+  tools:
+    # The release of commitlint, which checks each commit message in the commit-msg hook of
+    # .pre-commit-config.yaml and in the job commits of ci.yml.
+    commitlint:
+      sha256:
+        darwin/arm64: 35f25a55947031db016177ac0211d479c1fca21ccb87b368b6a429629524436c
+        linux/amd64: bf9666441262bf8d31345a6d29d6f788d0dadea7d47e5b91890c3a651999c118
+        windows/amd64: e8f90d08616ab8cd987b2dbef7ae0ee7fd1cb43c97f5a1ad171e8a56d1bd2f3d
+      version: 0.12.0
+  # The release of github.com/pre-commit/pre-commit-hooks, whose hooks check the hygiene of the
+  # files before each commit.
+  pre-commit-hooks: v6.0.0
+  # The pins of the actions of the jobs docs and commits of ci.yml, and the limit of each job in
+  # minutes.
+  ci:
+    actions:
+      # The action that lints the Markdown files in the job docs, with the rules of
+      # .markdownlint.yml.
+      markdownlint:
+        uses: DavidAnson/markdownlint-cli2-action
+        commit: 21c1be1b93ad9ed58fa840aacc3f279cde2a72ff
+        release: v24.2.0
+    timeout: 10

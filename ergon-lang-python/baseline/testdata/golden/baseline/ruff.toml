@@ -1,0 +1,30 @@
+# Managed by ergon init. Add repository settings to .ergon/local/ruff.toml and run ergon init sync.
+#
+# The configuration of ruff for every package of the repository: every stable rule, with the
+# rules that conflict with ruff's formatter left out. ruff reads this file in place of the table
+# [tool.ruff] of pyproject.toml. The local file of a repository follows this file, so its lines
+# add entries to the table [lint.per-file-ignores], which ends this file, or add tables of their
+# own.
+
+[lint]
+select = ["ALL"]
+# The formatter of ruff writes the trailing commas that COM812 asks for.
+ignore = ["COM812"]
+
+[lint.pydocstyle]
+convention = "google"
+
+# CPY001 requires a copyright notice in each file. The license header of ergon names the owner
+# before the year, as in "Copyright Dokimasia B.V. 2026", which the default pattern of ruff does
+# not accept.
+[lint.flake8-copyright]
+notice-rgx = '(?i)Copyright\s+(.+?\s+)?\d{4}'
+
+# A test of pytest checks with the statement assert, which S101 reports, states its values inline,
+# because the value is the assertion, which PLR2004 reports, and lives in a directory that pytest
+# imports without an __init__.py, which INP001 reports.
+[lint.per-file-ignores]
+"**/tests/**" = ["S101", "PLR2004", "INP001"]
+"**/test_*.py" = ["S101", "PLR2004", "INP001"]
+"**/*_test.py" = ["S101", "PLR2004", "INP001"]
+"**/conftest.py" = ["S101", "PLR2004", "INP001"]

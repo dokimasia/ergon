@@ -1,0 +1,20 @@
+bash:
+  # The tools of the targets of Bash.
+  tools:
+    # The release of shellcheck, the linter of lint-bash, with the checks of .shellcheckrc.
+    shellcheck:
+      sha256:
+        darwin/arm64: 339b930feb1ea764467013cc1f72d09cd6b869ebf1013296ba9055ab2ffbd26f
+        linux/amd64: b7af85e41cc99489dcc21d66c6d5f3685138f06d34651e6d34b42ec6d54fe6f6
+        windows/amd64: 8a4e35ab0b331c85d73567b12f2a444df187f483e5079ceffa6bda1faa2e740e
+      version: 0.11.0
+  # The pathspecs of git of the scripts that lint-bash checks.
+  paths: ['*.sh', '*.bash']
+  # The steps that check-bash runs: lint.
+  check: [lint]
+  # The runners of the job check-bash, and its limit in minutes. Bash needs no setup, so the job
+  # runs no action of its own. Empty runners select every runner of the section github.
+  ci:
+    actions: {}
+    runners: []
+    timeout: 30

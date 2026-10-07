@@ -1,33 +1,32 @@
 // Copyright Dokimasia B.V. 2026
 // SPDX-License-Identifier: MIT
 
-// Package common renders the common files of ergon init: the files of a repository that do not
-// depend on its languages or its forge.
+// Package common is the producer of the common files of ergon init: the files of a repository that
+// do not depend on its languages or its forge.
 //
-// [Initializer] renders them from the templates under templates/, whose tree mirrors the paths in
-// the repository: templates/managed/ for the managed files, templates/seeded/ for the seeded
-// files, and templates/licenses/ for the license texts. Each template ends in .tmpl, so neither
-// git nor an editor takes a template such as .gitignore for its own configuration.
+// [Producer] renders them from the templates under templates/, whose tree mirrors the paths in the
+// repository: templates/managed/ for the managed files, templates/seeded/ for the seeded files,
+// and templates/shared/ for the first fragments of .editorconfig, .gitattributes, .gitignore and
+// the Makefile, to which each language appends its own. Each template ends in .tmpl, so neither git
+// nor an editor takes a template such as .gitignore for its own configuration.
 //
-// # Shared files
+// # Options
 //
-// .editorconfig, .gitattributes, .gitignore and the Makefile are shared: Initializer renders
-// their first fragment, and each language appends its own.
+// The section common of .ergon.yaml, [Options], names the release of commitlint, the release of
+// pre-commit-hooks, the pin of the action of markdownlint, and the limit of the jobs of the common
+// files. commitlint is a release binary: ergon tool run installs it and checks its archive against
+// the digest of the platform.
 //
-// # Answers
+// # Workflows
 //
-// A template names an answer as {{name}}, {{owner}}, {{license}}, {{year}}, {{repository}} or
-// {{security-contact}}, and the release of commitlint as {{commitlint}}. [Initializer.Files]
-// returns an error that wraps [ErrInvalidAnswer] for an answer that a file cannot render.
-//
-// # Commit messages
-//
-// .commitlint.yaml configures [Commitlint], which the commit-msg hook of .pre-commit-config.yaml
-// runs on each commit message. The workflow of the gate runs the same release on the commits of a
-// pull request.
+// [Producer.Contribution] returns the jobs docs and commits of ci.yml. Both check text, so they run
+// on the Linux runner of the section github. commits checks the commit messages of a pull request
+// with the commitlint of the section, the release that the commit-msg hook of
+// .pre-commit-config.yaml runs.
 //
 // # Dependency position
 //
-// Imports the standard library and [go.dokimi.dev/ergon/core/language]. internal/cli of the root
-// module imports it.
+// Imports the standard library, [go.dokimi.dev/ergon/core/language],
+// [go.dokimi.dev/ergon/core/option] and [go.dokimi.dev/ergon/core/workflow]. internal/cli of the
+// root module imports it.
 package common

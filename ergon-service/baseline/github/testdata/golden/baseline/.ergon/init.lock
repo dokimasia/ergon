@@ -1,0 +1,86 @@
+{
+  "ergon": "1.0.0",
+  "files": [
+    {
+      "path": ".github/ISSUE_TEMPLATE/bug.yml",
+      "producer": "github",
+      "sha256": "784aebe15b8c161a37907f5a840406ebd9c0a5dd0429f4ea4dbf5cbe444ea0ab"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/config.yml",
+      "producer": "github",
+      "sha256": "aacea1ef677b743b5e61457979c86fb02dcf10357e597f73d1e33c7892b2d0c2"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/feature.yml",
+      "producer": "github",
+      "sha256": "d4bef615f7432456c4aee578bfb274eb8aedf92728ae497f6856c3ede4bab3ca"
+    },
+    {
+      "path": ".github/PULL_REQUEST_TEMPLATE.md",
+      "producer": "github",
+      "sha256": "847a27513a667c4b096a937d209b6403718968d300cd7353a38091dd403ffb94"
+    },
+    {
+      "path": ".github/actions/setup-ergon/action.yml",
+      "producer": "github",
+      "sha256": "171580df4891a2627ce86604a01a83967239fe85a3f74f0a948fe94ef93ca54e"
+    },
+    {
+      "path": ".github/actions/setup-make/action.yml",
+      "producer": "github",
+      "sha256": "0adbd275abc6c40082dc58e402c8164c41050e44c46417e9f36890eae1822155"
+    },
+    {
+      "path": ".github/workflows/baseline.yml",
+      "producer": "github",
+      "sha256": "03cfe431365251a53283a5694113ded894713715ad77e563bb86502044fdb926"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "producer": "github",
+      "sha256": "99422674471a0b516919283848d1615e3fb8fd97712d81bd3637a69c97ad1304"
+    },
+    {
+      "path": ".github/workflows/codeql.yml",
+      "producer": "github",
+      "sha256": "73258c4feacff149ac50c7cfb695871a474076c17835059e1a6d70200cfdbcec"
+    },
+    {
+      "path": ".github/workflows/security.yml",
+      "producer": "github",
+      "sha256": "e794ecc6517c54d93cbbe9a759a52256fef5f6d5fed40c8e1a40846ef64eeb19"
+    }
+  ],
+  "settings": {
+    "github.ci.actions.checkout.commit": "3d3c42e5aac5ba805825da76410c181273ba90b1",
+    "github.ci.actions.checkout.release": "v7.0.1",
+    "github.ci.actions.checkout.uses": "actions/checkout",
+    "github.ci.actions.codeql.commit": "2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2",
+    "github.ci.actions.codeql.release": "v4.38.2",
+    "github.ci.actions.codeql.uses": "github/codeql-action",
+    "github.ci.actions.dependency-review.commit": "a1d282b36b6f3519aa1f3fc636f609c47dddb294",
+    "github.ci.actions.dependency-review.release": "v5.0.0",
+    "github.ci.actions.dependency-review.uses": "actions/dependency-review-action",
+    "github.ci.actions.scorecard.commit": "2d1146689b8cda280b9bc96326124645441f03bc",
+    "github.ci.actions.scorecard.release": "v2.4.4",
+    "github.ci.actions.scorecard.uses": "ossf/scorecard-action",
+    "github.ci.timeout": 15,
+    "github.linux": "ubuntu-26.04",
+    "github.make": "4.4.1",
+    "github.runners": [
+      "ubuntu-26.04",
+      "macos-26",
+      "windows-2025"
+    ]
+  },
+  "answers": {
+    "name": "demo",
+    "owner": "Dokimasia B.V.",
+    "license": "MIT",
+    "repository": "dokimasia/demo",
+    "security-contact": "security@example.com",
+    "languages": [],
+    "year": 2026
+  }
+}

@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"go.dokimi.dev/ergon/core/language"
+	"go.dokimi.dev/ergon/service/baseline/lock"
+	"go.dokimi.dev/ergon/service/baseline/render"
 )
 
 // Problem is what [Repository.Check] finds wrong with a managed file.
@@ -23,7 +25,8 @@ const (
 	Edited Problem = "edited"
 
 	// Outdated is a managed file that is unedited since the lock, while the rendering differs from
-	// the lock: the baseline, the answers or the local file changed. [Repository.Sync] rewrites it.
+	// the lock: the baseline, the answers, an option or the local file changed. [Repository.Sync]
+	// rewrites it.
 	Outdated Problem = "outdated"
 )
 
@@ -46,7 +49,7 @@ type write struct {
 }
 
 // plan is the change of a command: the files to write and to remove, the managed files that it
-// leaves because they conflict, and the file entries of the lock that follows the change.
+// leaves because they conflict, and the entries of files of the lock that follows the change.
 type plan struct {
 	// writes are the files to write, sorted by path.
 	writes []write
@@ -58,59 +61,54 @@ type plan struct {
 	// hand or exist with other content, sorted by path.
 	conflicts []string
 
-	// files are the file entries of the lock after the change, sorted by path.
-	files []lockFile
+	// files are the entries of files of the lock after the change, sorted by path.
+	files []lock.File
 }
 
-// reconcile returns the plan that brings the repository to the targets of a rendering. recorded
-// are the file entries of the previous lock, and nil for a repository without one.
+// reconcile returns the plan that brings the repository to rend. recorded are the entries of files
+// of the previous lock, and nil for a repository without one.
 //
 // A managed file is written when it is missing, and when the rendering differs from a file that
 // is unedited since the lock. A file that equals the rendering is kept. A file that differs from the
 // rendering and from the lock conflicts, unless opts.Force overwrites it. A file that the lock
 // records and the rendering no longer has is removed when it is unedited, and conflicts otherwise
-// unless opts.Force removes it. A seeded file is written when it is missing. A configured file
-// receives the keys of its rendering. A conflicting file keeps its entry in the lock.
-func (r *Repository) reconcile(recorded []lockFile, targets []target, opts Options) (plan, error) {
+// unless opts.Force removes it. A seeded file is written when it is missing. .ergon.yaml is
+// written when its sections change a key or a value. A conflicting file keeps its entry in the
+// lock.
+func (r *Repository) reconcile(recorded []lock.File, rend *rendering, opts Options) (plan, error) {
 	var p plan
-	for _, t := range targets {
-		existing, ok, err := r.read(t.path)
+	previous := lock.Lock{Files: recorded}
+	for _, t := range rend.files {
+		existing, ok, err := r.read(t.Path)
 		if err != nil {
 			return plan{}, err
 		}
-		if t.class == language.Seeded {
+		if t.Class == render.Seeded {
 			if !ok {
-				p.writes = append(p.writes, write{path: t.path, content: t.content})
+				p.writes = append(p.writes, write{path: t.Path, content: t.Content})
 			}
 			continue
 		}
-		if t.class == language.Configured {
-			content, changed, err := configure(&t, existing, ok)
-			if err != nil {
-				return plan{}, err
-			}
-			if changed {
-				p.writes = append(p.writes, write{path: t.path, content: content})
-			}
-			continue
-		}
-		entry, known := find(recorded, t.path)
-		current := lockFile{Path: t.path, Producer: t.producer, Local: t.local, SHA256: digest(t.content)}
-		if ok && bytes.Equal(existing, t.content) {
+		entry, known := previous.File(t.Path)
+		current := lock.File{Path: t.Path, Producer: t.Producer, Local: t.local, SHA256: lock.Digest(t.Content)}
+		if ok && bytes.Equal(existing, t.Content) {
 			p.files = append(p.files, current)
-		} else if !ok || (known && digest(existing) == entry.SHA256) || opts.Force {
-			p.writes = append(p.writes, write{path: t.path, content: t.content})
+		} else if !ok || (known && lock.Digest(existing) == entry.SHA256) || opts.Force {
+			p.writes = append(p.writes, write{path: t.Path, content: t.Content})
 			p.files = append(p.files, current)
 		} else {
-			p.conflicts = append(p.conflicts, t.path)
+			p.conflicts = append(p.conflicts, t.Path)
 			if known {
 				p.files = append(p.files, entry)
 			}
 		}
 	}
+	if rend.configured {
+		p.writes = append(p.writes, write{path: language.Config, content: rend.config})
+	}
 	for _, entry := range recorded {
-		rendered := func(t target) bool { return t.path == entry.Path && t.class == language.Managed }
-		if slices.ContainsFunc(targets, rendered) {
+		rendered := func(t target) bool { return t.Path == entry.Path && t.Class == render.Managed }
+		if slices.ContainsFunc(rend.files, rendered) {
 			continue
 		}
 		existing, ok, err := r.read(entry.Path)
@@ -120,45 +118,47 @@ func (r *Repository) reconcile(recorded []lockFile, targets []target, opts Optio
 		if !ok {
 			continue
 		}
-		if digest(existing) == entry.SHA256 || opts.Force {
+		if lock.Digest(existing) == entry.SHA256 || opts.Force {
 			p.removals = append(p.removals, entry.Path)
 			continue
 		}
 		p.conflicts = append(p.conflicts, entry.Path)
 		p.files = append(p.files, entry)
 	}
-	slices.SortFunc(p.files, func(a, b lockFile) int { return strings.Compare(a.Path, b.Path) })
+	slices.SortFunc(p.writes, func(a, b write) int { return strings.Compare(a.path, b.path) })
+	slices.SortFunc(p.files, func(a, b lock.File) int { return strings.Compare(a.Path, b.Path) })
 	slices.Sort(p.conflicts)
 	return p, nil
 }
 
 // inspect returns the findings of the managed files: the targets of a rendering, compared with
 // the repository and with the entries recorded in the lock, sorted by path.
-func (r *Repository) inspect(recorded []lockFile, targets []target) ([]Finding, error) {
+func (r *Repository) inspect(recorded []lock.File, targets []target) ([]Finding, error) {
 	var findings []Finding
+	previous := lock.Lock{Files: recorded}
 	for _, t := range targets {
-		if t.class != language.Managed {
+		if t.Class != render.Managed {
 			continue
 		}
-		existing, ok, err := r.read(t.path)
+		existing, ok, err := r.read(t.Path)
 		if err != nil {
 			return nil, err
 		}
-		entry, known := find(recorded, t.path)
+		entry, known := previous.File(t.Path)
 		if !ok {
-			findings = append(findings, Finding{Path: t.path, Problem: Missing})
-		} else if bytes.Equal(existing, t.content) {
-			if !known || entry.SHA256 != digest(t.content) {
-				findings = append(findings, Finding{Path: t.path, Problem: Outdated})
+			findings = append(findings, Finding{Path: t.Path, Problem: Missing})
+		} else if bytes.Equal(existing, t.Content) {
+			if !known || entry.SHA256 != lock.Digest(t.Content) {
+				findings = append(findings, Finding{Path: t.Path, Problem: Outdated})
 			}
-		} else if known && digest(existing) == entry.SHA256 {
-			findings = append(findings, Finding{Path: t.path, Problem: Outdated})
+		} else if known && lock.Digest(existing) == entry.SHA256 {
+			findings = append(findings, Finding{Path: t.Path, Problem: Outdated})
 		} else {
-			findings = append(findings, Finding{Path: t.path, Problem: Edited})
+			findings = append(findings, Finding{Path: t.Path, Problem: Edited})
 		}
 	}
 	for _, entry := range recorded {
-		rendered := func(t target) bool { return t.path == entry.Path && t.class == language.Managed }
+		rendered := func(t target) bool { return t.Path == entry.Path && t.Class == render.Managed }
 		if slices.ContainsFunc(targets, rendered) {
 			continue
 		}
@@ -167,20 +167,11 @@ func (r *Repository) inspect(recorded []lockFile, targets []target) ([]Finding, 
 			return nil, err
 		}
 		problem := Outdated
-		if ok && digest(existing) != entry.SHA256 {
+		if ok && lock.Digest(existing) != entry.SHA256 {
 			problem = Edited
 		}
 		findings = append(findings, Finding{Path: entry.Path, Problem: problem})
 	}
 	slices.SortFunc(findings, func(a, b Finding) int { return strings.Compare(a.Path, b.Path) })
 	return findings, nil
-}
-
-// find returns the entry of path in files, and reports whether files has one.
-func find(files []lockFile, path string) (lockFile, bool) {
-	i := slices.IndexFunc(files, func(f lockFile) bool { return f.Path == path })
-	if i < 0 {
-		return lockFile{}, false
-	}
-	return files[i], true
 }

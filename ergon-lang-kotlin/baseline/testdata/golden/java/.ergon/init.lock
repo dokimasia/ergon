@@ -1,0 +1,70 @@
+{
+  "ergon": "1.0.0",
+  "files": [
+    {
+      "path": ".editorconfig",
+      "producer": "java",
+      "sha256": "e12568f6ef2cf895e6b817d0d3ccb04b89184083e0cb10d88cab932278215cd9"
+    },
+    {
+      "path": ".gitattributes",
+      "producer": "java",
+      "sha256": "9fd9b101dd638a9ccfee27134a690b12a41690d011425cb18f1dea0983d22f2e"
+    },
+    {
+      "path": ".gitignore",
+      "producer": "jvm",
+      "sha256": "5a55ed0a7d51c4ba0a5657e690db3829395f2080f08f0aa5e655ba5072ef10bc"
+    },
+    {
+      "path": "Makefile",
+      "producer": "jvm",
+      "sha256": "992d5fa7c3f338b0156c2d683dc163f2a725692035b801c159c4f29a9010753e"
+    },
+    {
+      "path": "gradle/ergon-java.init.gradle.kts",
+      "producer": "java",
+      "sha256": "7593a61cd2624d680236daad119a035f035ad5b0584e814f5ee65e6ca6725027"
+    }
+  ],
+  "settings": {
+    "java.check": [
+      "lint",
+      "test",
+      "audit"
+    ],
+    "java.test.args": [],
+    "java.tools.pmd": "net.sourceforge.pmd:pmd-java@7.28.0",
+    "jvm.ci.actions.setup-java.commit": "de7274f081f381c8f8158605e0321c36c376e2e6",
+    "jvm.ci.actions.setup-java.release": "v6.0.1",
+    "jvm.ci.actions.setup-java.uses": "actions/setup-java",
+    "jvm.ci.runners": [],
+    "jvm.ci.timeout": 30,
+    "jvm.ci.versions": [],
+    "jvm.tools.osv-scanner.sha256": {
+      "darwin/arm64": "98c460dcd37de25819babd757d04542045b6243113e209edcd4d89fedb0256b4",
+      "linux/amd64": "ca69b3d3cd08f889a49dc0a383122f71cc528b83803671df5fd874d97485b108",
+      "windows/amd64": "e0ed7644118b717b028c249ee9d3515024e55e8510747ca08906eb96765354d6"
+    },
+    "jvm.tools.osv-scanner.version": "2.6.0",
+    "kotlin.check": [
+      "lint",
+      "test",
+      "audit"
+    ],
+    "kotlin.test.args": [],
+    "kotlin.tools.ktlint": "com.pinterest.ktlint:ktlint-cli@1.8.0"
+  },
+  "answers": {
+    "name": "demo",
+    "owner": "Dokimasia B.V.",
+    "license": "MIT",
+    "repository": "dokimasia/demo",
+    "security-contact": "security@example.com",
+    "languages": [
+      "java",
+      "kotlin"
+    ],
+    "year": 2026
+  }
+}

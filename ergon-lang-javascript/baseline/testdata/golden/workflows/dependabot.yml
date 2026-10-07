@@ -1,0 +1,14 @@
+# Managed by ergon init. Add repository settings to .ergon/local/.github/dependabot.yml and run ergon init sync.
+#
+# Weekly updates of the package manager of each language. The pins of the actions are options of
+# .ergon.yaml, which Dependabot does not update.
+
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directories: [/]
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build

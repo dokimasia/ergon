@@ -4,52 +4,91 @@
 package baseline
 
 import (
-	_ "embed"
+	"embed"
+	"io/fs"
 
 	"go.dokimi.dev/ergon/core/language"
+	"go.dokimi.dev/ergon/core/option"
+	"go.dokimi.dev/ergon/core/workflow"
 )
 
-// TFLint is the path of the configuration of tflint, which Terraform renders as a managed file of
-// its own.
-const TFLint = ".tflint.hcl"
+// Name is the name of the producer of Terraform in the lock, and of its section of .ergon.yaml,
+// which is the name of the language.
+const Name = "terraform"
 
-// The template of the configuration of tflint.
+// templates are the templates of Terraform: the configuration of tflint under managed/, and the
+// fragments of the shared files under shared/.
 //
-//go:embed templates/.tflint.hcl.tmpl
-var tflint string
+//go:embed all:templates
+var templates embed.FS
 
-// The templates of the fragments, which mirror the paths of the shared files.
+// Producer renders the files of Terraform: the configuration of tflint, and the fragments of
+// .editorconfig, .gitattributes, .gitignore and the Makefile. Its zero value is ready to use, and
+// it is safe for concurrent use.
+type Producer struct{}
+
 var (
-	//go:embed templates/.editorconfig.tmpl
-	editorconfig string
-
-	//go:embed templates/.gitattributes.tmpl
-	gitattributes string
-
-	//go:embed templates/.gitignore.tmpl
-	gitignore string
-
-	//go:embed templates/Makefile.tmpl
-	makefile string
-
-	//go:embed templates/.github/workflows/ci.yml.tmpl
-	ci string
-
-	//go:embed templates/.github/dependabot.yml.tmpl
-	dependabot string
+	_ language.Producer     = Producer{}
+	_ language.Configurable = Producer{}
+	_ language.Contributor  = Producer{}
 )
 
-// Initializer returns the init role of Terraform: the configuration of tflint, and the fragments
-// that Terraform contributes to the shared files of a repository. They do not depend on the
-// answers. CodeQL does not analyze Terraform.
-func Initializer() language.Initializer {
-	return language.Fixed{
-		{Path: TFLint, Class: language.Managed, Content: []byte(tflint)},
-		{Path: language.EditorConfig, Class: language.Managed, Fragment: []byte(editorconfig)},
-		{Path: language.GitAttributes, Class: language.Managed, Fragment: []byte(gitattributes)},
-		{Path: language.GitIgnore, Class: language.Managed, Fragment: []byte(gitignore)},
-		{Path: language.Makefile, Class: language.Managed, Fragment: []byte(makefile)},
-		{Path: language.CI, Class: language.Managed, Fragment: []byte(language.Job(ci))},
-		{Path: language.Dependabot, Class: language.Managed, Fragment: []byte(dependabot)},
+// Templates returns the templates of Terraform: .tflint.hcl under managed/, and the fragments of
+// the shared files under shared/.
+func (Producer) Templates() fs.FS {
+	// templates has the directory templates, so Sub returns no error.
+	sub, _ := fs.Sub(templates, "templates")
+	return sub
+}
+
+// Options returns the section terraform at the baseline: tflint v0.64.0 and uv 0.12.23 with the
+// digests that their releases state, checkov 3.3.23, the root of the repository, the gate of lint,
+// test and audit, setup-terraform v4.0.1, and a limit of 30 minutes for the job check-terraform on
+// every runner and the version of .terraform-version.
+func (Producer) Options() language.Options {
+	return &Options{
+		Tools: Tools{
+			TFLint: TFLint{Binary: option.Binary{
+				SHA256: map[option.Platform]string{
+					option.LinuxAMD64:   "cca9d13e2e1d7a2c627af60ff899a3c9b74212899416aeb96ec764d2ef954537",
+					option.DarwinARM64:  "2496e9cb3d24992d553b45e7c87a0fdc9449ca975233876247a9bfeda857e6c0",
+					option.WindowsAMD64: "fb42fb859d844b156a8ea9d3363078c4d8b85ca78782e60876b08c9b8e59f303",
+				},
+				Version: "0.64.0",
+			}},
+			UV: option.UV{Binary: option.Binary{
+				SHA256: map[option.Platform]string{
+					option.LinuxAMD64:   "9167d72b3319674b6303c4cbe071854bba13ebdf3d76b1a7cbdc175471fb66d6",
+					option.DarwinARM64:  "50487ae565ccd96e499056b4674d438f4c53170202617b4c759defe0c6a1b544",
+					option.WindowsAMD64: "75d05de6762778c31ee183398de7dd15093fad0ed90b1f236d8205ea5ec00c90",
+				},
+				Version: "0.12.23",
+			}},
+			Checkov: "checkov@3.3.23",
+		},
+		Paths: option.Paths{"."},
+		Check: option.Check{option.StepLint, option.StepTest, option.StepAudit},
+		Test:  option.Run{Args: []string{}},
+		Audit: option.Audit{Ignore: []string{}},
+		CI: option.MatrixCI[Actions]{
+			Actions: Actions{SetupTerraform: workflow.Action{
+				Uses:    "hashicorp/setup-terraform",
+				Commit:  "dfe3c3f87815947d99a8997f908cb6525fc44e9e",
+				Release: "v4.0.1",
+			}},
+			Runners:  option.Runners{},
+			Versions: []string{},
+			Timeout:  30,
+		},
 	}
+}
+
+// Contribution returns the part of Terraform of the workflows for o, as [Options.Contribution]
+// states it, and for the options at the baseline when o is not the section terraform.
+func (p Producer) Contribution(o language.Options) workflow.Contribution {
+	opts, ok := o.(*Options)
+	if !ok {
+		opts, _ = p.Options().(*Options)
+	}
+	return opts.Contribution()
 }

@@ -1,0 +1,57 @@
+{
+  "ergon": "1.0.0",
+  "files": [
+    {
+      "path": ".editorconfig",
+      "producer": "kotlin",
+      "sha256": "2787e653267e78ff8d58a20628d8ba52df87b8cf1930d9c4425c903f75a45336"
+    },
+    {
+      "path": ".gitattributes",
+      "producer": "kotlin",
+      "sha256": "d5a73e1e4f5e689ea284cf9ba00cd57406554516de9503403ace713410595dd6"
+    },
+    {
+      "path": ".gitignore",
+      "producer": "jvm",
+      "sha256": "f5e98f47988c7d54e28f47faeae185d3bc96a403a0c7e66ec18030b0cb266aec"
+    },
+    {
+      "path": "Makefile",
+      "producer": "jvm",
+      "sha256": "972a24bb4d05c4f64bc85f277978b1de584b0cdc906def9cffb3732728782e93"
+    }
+  ],
+  "settings": {
+    "jvm.ci.actions.setup-java.commit": "de7274f081f381c8f8158605e0321c36c376e2e6",
+    "jvm.ci.actions.setup-java.release": "v6.0.1",
+    "jvm.ci.actions.setup-java.uses": "actions/setup-java",
+    "jvm.ci.runners": [],
+    "jvm.ci.timeout": 30,
+    "jvm.ci.versions": [],
+    "jvm.tools.osv-scanner.sha256": {
+      "darwin/arm64": "98c460dcd37de25819babd757d04542045b6243113e209edcd4d89fedb0256b4",
+      "linux/amd64": "ca69b3d3cd08f889a49dc0a383122f71cc528b83803671df5fd874d97485b108",
+      "windows/amd64": "e0ed7644118b717b028c249ee9d3515024e55e8510747ca08906eb96765354d6"
+    },
+    "jvm.tools.osv-scanner.version": "2.6.0",
+    "kotlin.check": [
+      "lint",
+      "test",
+      "audit"
+    ],
+    "kotlin.test.args": [],
+    "kotlin.tools.ktlint": "com.pinterest.ktlint:ktlint-cli@1.8.0"
+  },
+  "answers": {
+    "name": "demo",
+    "owner": "Dokimasia B.V.",
+    "license": "MIT",
+    "repository": "dokimasia/demo",
+    "security-contact": "security@example.com",
+    "languages": [
+      "kotlin"
+    ],
+    "year": 2026
+  }
+}

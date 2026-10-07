@@ -2,7 +2,7 @@
   "$schema": "https://unpkg.com/@changesets/config@4/schema.json",
   "access": "public",
   "baseBranch": "main",
-  "changelog": ["@changesets/changelog-github", { "repo": "{{repository}}" }],
+  "changelog": ["@changesets/changelog-github", { "repo": "{{% .Answers.Repository %}}" }],
   "commit": false,
   "fixed": [],
   "ignore": [],

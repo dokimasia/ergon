@@ -4,136 +4,132 @@
 package baseline_test
 
 import (
-	"strings"
+	"os"
+	"path"
+	"slices"
 	"testing"
 
 	"go.dokimi.dev/assert"
+	"go.dokimi.dev/assert/golden"
 	"go.dokimi.dev/ergon/core/language"
+	"go.dokimi.dev/ergon/core/option"
+	"go.dokimi.dev/ergon/core/workflow"
+	"go.dokimi.dev/ergon/lang/csharp"
 	"go.dokimi.dev/ergon/lang/csharp/baseline"
+	service "go.dokimi.dev/ergon/service/baseline"
+	"go.dokimi.dev/ergon/service/baseline/baselinetest"
+	"go.dokimi.dev/ergon/service/baseline/github"
+	"go.dokimi.dev/ergon/service/baseline/render"
 )
+
+// name pins the name of the producer of C#, which is the name of its section.
+const name = "csharp"
+
+// workflows are the files of the GitHub files that the contribution of C# changes.
+var workflows = []string{".github/workflows/ci.yml", ".github/workflows/security.yml", ".github/dependabot.yml"}
 
 func TestBaseline(t *testing.T) {
 	t.Parallel()
 
-	t.Run("Initializer", func(t *testing.T) {
+	t.Run("Name", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("returns the analyzer configuration and the fragments of C#", func(t *testing.T) {
+		t.Run("is csharp", func(t *testing.T) {
 			t.Parallel()
-			assert.Equal(t, paths(t, baseline.Initializer()), []string{
-				baseline.GlobalConfig, language.EditorConfig, language.GitAttributes, language.GitIgnore,
-				language.Makefile, language.CI, language.Security, language.Dependabot,
-			}, "the paths of the files")
+			assert.Equal(t, baseline.Name, name, "Name")
+		})
+	})
+
+	t.Run("Producer", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Templates", func(t *testing.T) {
+			t.Parallel()
+
+			t.Run("renders the files of C# at the baseline", func(t *testing.T) {
+				t.Parallel()
+				dir := baselinetest.New(t, catalog(t), baselinetest.Answers(csharp.Language))
+				baselinetest.Hygiene(t, dir)
+				golden.MatchTree(t, "baseline", os.DirFS(dir), golden.ShouldUpdate())
+			})
+
+			t.Run("renders the job, the analysis and the updates of C# into the GitHub files", func(t *testing.T) {
+				t.Parallel()
+				dir := baselinetest.New(t, catalog(t), baselinetest.Answers(csharp.Language),
+					service.Producer{Name: github.Name, Producer: github.Producer{}})
+				baselinetest.Hygiene(t, dir)
+				for _, file := range workflows {
+					got, err := os.ReadFile(path.Join(dir, file))
+					assert.NoError(t, err, "ReadFile of "+file)
+					golden.Match(t, path.Join("workflows", path.Base(file)), got, golden.ShouldUpdate())
+				}
+			})
+
+			t.Run("runs the steps that check of the section csharp names", func(t *testing.T) {
+				t.Parallel()
+				o, _ := baseline.Producer{}.Options().(*baseline.Options)
+				o.Check = option.Check{option.StepAudit}
+				makefile := rendered(t, o, "Makefile")
+				assert.Contains(t, makefile, "\ncheck-csharp: audit-csharp ## Run the gate of C#\n", "the Makefile")
+			})
+
+			t.Run("runs dotnet test with the arguments of the section csharp", func(t *testing.T) {
+				t.Parallel()
+				o, _ := baseline.Producer{}.Options().(*baseline.Options)
+				o.Test.Args = []string{"--no-build", "--logger", "trx"}
+				makefile := rendered(t, o, "Makefile")
+				assert.Contains(t, makefile, "\nCSHARP_TEST_ARGS ?= --no-build --logger trx\n", "the Makefile")
+			})
 		})
 
-		t.Run("renders the analyzer configuration as a managed file", func(t *testing.T) {
+		t.Run("Options", func(t *testing.T) {
 			t.Parallel()
-			config := content(t, baseline.Initializer(), baseline.GlobalConfig)
-			first, _, _ := strings.Cut(config, "\n")
-			assert.Equal(t, first, "# Managed by ergon init. Add repository settings to .ergon/local/"+
-				baseline.GlobalConfig+" and run ergon init sync.", "the first line of the configuration")
-			assert.Contains(t, config, "\nis_global = true\n", "the global configuration")
+
+			t.Run("returns a new value on each call", func(t *testing.T) {
+				t.Parallel()
+				first, _ := baseline.Producer{}.Options().(*baseline.Options)
+				second, _ := baseline.Producer{}.Options().(*baseline.Options)
+				first.Check[0] = option.StepAudit
+				assert.Equal(t, second.Check, option.Check{option.StepLint, option.StepTest, option.StepAudit},
+					"the steps of the second value")
+			})
 		})
 
-		t.Run("raises every analyzer diagnostic to an error", func(t *testing.T) {
+		t.Run("Contribution", func(t *testing.T) {
 			t.Parallel()
-			config := content(t, baseline.Initializer(), baseline.GlobalConfig)
-			assert.Contains(t, config, "\ndotnet_analyzer_diagnostic.severity = error\n", "the severity")
-		})
 
-		t.Run("lints with every rule of the latest analysis level as an error", func(t *testing.T) {
-			t.Parallel()
-			makefile := fragment(t, baseline.Initializer(), language.Makefile)
-			assert.Contains(t, makefile, "\tdotnet format --verify-no-changes --severity info\n", "the format check")
-			build := "\tdotnet build --no-incremental -warnaserror -p:TreatWarningsAsErrors=true " +
-				"-p:AnalysisLevel=latest-all"
-			assert.Contains(t, makefile, build, "the build of lint-csharp")
-			assert.Contains(t, makefile, "-p:GenerateDocumentationFile=true -p:WarningLevel=9999\n",
-				"the documentation and the warning level of the build")
-		})
+			t.Run("returns the contribution of the options", func(t *testing.T) {
+				t.Parallel()
+				o, _ := baseline.Producer{}.Options().(*baseline.Options)
+				o.CI.Timeout = 45
+				assert.Equal(t, baseline.Producer{}.Contribution(o), o.Contribution(), "the contribution")
+			})
 
-		t.Run("adds the gate of C# to the gate of the repository", func(t *testing.T) {
-			t.Parallel()
-			makefile := fragment(t, baseline.Initializer(), language.Makefile)
-			assert.Contains(t, makefile, "check: check-csharp\n", "the Makefile fragment")
-			assert.Contains(t, makefile, "check-csharp: lint-csharp test-csharp audit-csharp ##",
-				"the Makefile fragment")
-		})
-
-		t.Run("adds the NuGet audit of a forced restore to the vulnerability scans", func(t *testing.T) {
-			t.Parallel()
-			makefile := fragment(t, baseline.Initializer(), language.Makefile)
-			assert.Contains(t, makefile, "audit: audit-csharp\n", "the Makefile fragment")
-			assert.Contains(t, makefile, "dotnet restore --force -p:NuGetAudit=true -p:NuGetAuditMode=all",
-				"the restore of audit-csharp")
-			assert.Contains(t, makefile, "-p:WarningsAsErrors=NU1900%3BNU1901%3BNU1902%3BNU1903%3BNU1904\n",
-				"the audit warnings that fail the restore")
-		})
-
-		t.Run("adds the job check-csharp to the workflow of the gate", func(t *testing.T) {
-			t.Parallel()
-			ci := fragment(t, baseline.Initializer(), language.CI)
-			assert.Contains(t, ci, "\n  check-csharp:\n", "the job of the fragment")
-			assert.Contains(t, ci, "- uses: "+language.Checkout+"\n", "the checkout of the job")
-			assert.Contains(t, ci, "run: make check-csharp\n", "the gate of the job")
-		})
-
-		t.Run("adds the CodeQL analysis of C# to the security checks", func(t *testing.T) {
-			t.Parallel()
-			security := fragment(t, baseline.Initializer(), language.Security)
-			assert.Contains(t, security, "\n  codeql-csharp:\n", "the job of the fragment")
-			assert.Contains(t, security, "language: csharp\n", "the CodeQL language")
-		})
-
-		t.Run("adds nuget to the updates of Dependabot", func(t *testing.T) {
-			t.Parallel()
-			dependabot := fragment(t, baseline.Initializer(), language.Dependabot)
-			assert.Contains(t, dependabot, "package-ecosystem: nuget\n", "the ecosystem of the fragment")
+			t.Run("returns the contribution of the baseline for options of another type", func(t *testing.T) {
+				t.Parallel()
+				o, _ := baseline.Producer{}.Options().(*baseline.Options)
+				assert.Equal(t, baseline.Producer{}.Contribution(nil), o.Contribution(), "the contribution")
+			})
 		})
 	})
 }
 
-// paths returns the paths of the files of initializer in their order. It fails the test for a
-// file that is not managed, or that has both or neither of a content and a fragment.
-func paths(t *testing.T, initializer language.Initializer) []string {
+// catalog returns a catalog with C#.
+func catalog(t *testing.T) *language.Catalog {
 	t.Helper()
-	files, err := initializer.Files(&language.Answers{})
-	assert.NoError(t, err, "Files")
-	out := make([]string, 0, len(files))
-	for _, f := range files {
-		assert.True(t, f.Class == language.Managed && (f.Content == nil) != (f.Fragment == nil),
-			"the class and the text of "+f.Path)
-		out = append(out, f.Path)
-	}
-	return out
+	c := new(language.Catalog)
+	assert.NoError(t, csharp.Register(c), "Register of C#")
+	return c
 }
 
-// content returns the content of the file of initializer at path, and fails the test when
-// initializer has none.
-func content(t *testing.T, initializer language.Initializer, path string) string {
+// rendered returns the file name that the producer of C# renders for the options o and the answers
+// of the cases, and stops the test when it renders none.
+func rendered(t *testing.T, o language.Options, name string) string {
 	t.Helper()
-	files, err := initializer.Files(&language.Answers{})
-	assert.NoError(t, err, "Files")
-	for _, f := range files {
-		if f.Path == path && f.Content != nil {
-			return string(f.Content)
-		}
-	}
-	t.Fatalf("no file %s", path)
-	return ""
-}
-
-// fragment returns the fragment of initializer for the shared file path, and fails the test when
-// initializer has none.
-func fragment(t *testing.T, initializer language.Initializer, path string) string {
-	t.Helper()
-	files, err := initializer.Files(&language.Answers{})
-	assert.NoError(t, err, "Files")
-	for _, f := range files {
-		if f.Path == path && f.Fragment != nil {
-			return string(f.Fragment)
-		}
-	}
-	t.Fatalf("no fragment of %s", path)
-	return ""
+	files, err := render.Render([]render.Unit{{Name: baseline.Name, Producer: baseline.Producer{}, Options: o}},
+		baselinetest.Answers(csharp.Language), &workflow.Contribution{})
+	assert.NoError(t, err, "Render")
+	i := slices.IndexFunc(files, func(f render.File) bool { return f.Path == name })
+	assert.True(t, i >= 0, "C# renders "+name)
+	return string(files[i].Content)
 }

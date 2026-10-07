@@ -1,0 +1,59 @@
+{
+  "ergon": "1.0.0",
+  "files": [
+    {
+      "path": ".editorconfig",
+      "producer": "rust",
+      "sha256": "b3d1480127673ba141a094f93df12ab0f2a298c320b12a4fd73832557678052a"
+    },
+    {
+      "path": ".gitattributes",
+      "producer": "rust",
+      "sha256": "1883ee9b9d7fb068721efb94e9f36f93622409ededc5a3584a900efeb4f8aa72"
+    },
+    {
+      "path": ".gitignore",
+      "producer": "rust",
+      "sha256": "c7d765fbc749b198323cf219238de5311108ca42c26a8889b198fccc90685273"
+    },
+    {
+      "path": "Makefile",
+      "producer": "rust",
+      "sha256": "9ec2d29377abffc507f968b57105ea436b2e7027c05be64c8b2001a088346652"
+    },
+    {
+      "path": "clippy.toml",
+      "producer": "rust",
+      "sha256": "7fb35dc3fe41f9260322fa0a6786ba966086bf82a0255e02a4369823c7bfc1cd"
+    }
+  ],
+  "settings": {
+    "rust.audit.ignore": [],
+    "rust.check": [
+      "lint",
+      "test",
+      "audit"
+    ],
+    "rust.ci.actions.setup-rust-toolchain.commit": "ecabd13d1c56bd1345c230e542e9144811ad706f",
+    "rust.ci.actions.setup-rust-toolchain.release": "v2.0.0",
+    "rust.ci.actions.setup-rust-toolchain.uses": "actions-rust-lang/setup-rust-toolchain",
+    "rust.ci.runners": [],
+    "rust.ci.timeout": 30,
+    "rust.ci.versions": [],
+    "rust.test.args": [
+      "--all-targets"
+    ],
+    "rust.tools.cargo-audit": "cargo-audit@0.22.2"
+  },
+  "answers": {
+    "name": "demo",
+    "owner": "Dokimasia B.V.",
+    "license": "MIT",
+    "repository": "dokimasia/demo",
+    "security-contact": "security@example.com",
+    "languages": [
+      "rust"
+    ],
+    "year": 2026
+  }
+}

@@ -4,141 +4,128 @@
 package baseline_test
 
 import (
-	"strings"
+	"os"
+	"path"
+	"slices"
 	"testing"
 
 	"go.dokimi.dev/assert"
+	"go.dokimi.dev/assert/golden"
 	"go.dokimi.dev/ergon/core/language"
+	"go.dokimi.dev/ergon/core/option"
+	"go.dokimi.dev/ergon/core/workflow"
+	"go.dokimi.dev/ergon/lang/python"
 	"go.dokimi.dev/ergon/lang/python/baseline"
+	service "go.dokimi.dev/ergon/service/baseline"
+	"go.dokimi.dev/ergon/service/baseline/baselinetest"
+	"go.dokimi.dev/ergon/service/baseline/github"
+	"go.dokimi.dev/ergon/service/baseline/render"
 )
+
+// name pins the name of the producer of Python, which is the name of its section.
+const name = "python"
+
+// workflows are the files of the GitHub files that the contribution of Python changes.
+var workflows = []string{".github/workflows/ci.yml", ".github/workflows/security.yml", ".github/dependabot.yml"}
 
 func TestBaseline(t *testing.T) {
 	t.Parallel()
 
-	t.Run("Initializer", func(t *testing.T) {
+	t.Run("Name", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("returns the configuration of ruff and the fragments of Python", func(t *testing.T) {
+		t.Run("is python", func(t *testing.T) {
 			t.Parallel()
-			assert.Equal(t, paths(t, baseline.Initializer()), []string{
-				baseline.Ruff, language.EditorConfig, language.GitAttributes, language.GitIgnore,
-				language.Makefile, language.CI, language.Security, language.Dependabot,
-			}, "the paths of the files")
+			assert.Equal(t, baseline.Name, name, "Name")
+		})
+	})
+
+	t.Run("Producer", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Templates", func(t *testing.T) {
+			t.Parallel()
+
+			t.Run("renders the files of Python at the baseline", func(t *testing.T) {
+				t.Parallel()
+				dir := baselinetest.New(t, catalog(t), baselinetest.Answers(python.Language))
+				baselinetest.Hygiene(t, dir)
+				golden.MatchTree(t, "baseline", os.DirFS(dir), golden.ShouldUpdate())
+			})
+
+			t.Run("renders the job, the analysis and the updates of Python into the GitHub files", func(t *testing.T) {
+				t.Parallel()
+				dir := baselinetest.New(t, catalog(t), baselinetest.Answers(python.Language),
+					service.Producer{Name: github.Name, Producer: github.Producer{}})
+				baselinetest.Hygiene(t, dir)
+				for _, file := range workflows {
+					got, err := os.ReadFile(path.Join(dir, file))
+					assert.NoError(t, err, "ReadFile of "+file)
+					golden.Match(t, path.Join("workflows", path.Base(file)), got, golden.ShouldUpdate())
+				}
+			})
+
+			t.Run("runs the steps that check of the section python names", func(t *testing.T) {
+				t.Parallel()
+				o, _ := baseline.Producer{}.Options().(*baseline.Options)
+				o.Check = option.Check{option.StepTest}
+				makefile := rendered(t, o, "Makefile")
+				assert.Contains(t, makefile, "\ncheck-python: test-python ## Run the gate of Python\n", "the Makefile")
+			})
 		})
 
-		t.Run("renders the configuration of ruff as a managed file", func(t *testing.T) {
+		t.Run("Options", func(t *testing.T) {
 			t.Parallel()
-			config := content(t, baseline.Initializer(), baseline.Ruff)
-			first, _, _ := strings.Cut(config, "\n")
-			assert.Equal(t, first, "# Managed by ergon init. Add repository settings to .ergon/local/"+
-				baseline.Ruff+" and run ergon init sync.", "the first line of the configuration")
+
+			t.Run("returns a new value on each call", func(t *testing.T) {
+				t.Parallel()
+				first, _ := baseline.Producer{}.Options().(*baseline.Options)
+				second, _ := baseline.Producer{}.Options().(*baseline.Options)
+				first.Tools.UV.SHA256[option.LinuxAMD64] = "changed"
+				assert.NotEqual(
+					t,
+					second.Tools.UV.SHA256[option.LinuxAMD64],
+					"changed",
+					"the digest of the second value",
+				)
+			})
 		})
 
-		t.Run("selects every stable rule but the one that conflicts with the formatter", func(t *testing.T) {
+		t.Run("Contribution", func(t *testing.T) {
 			t.Parallel()
-			config := content(t, baseline.Initializer(), baseline.Ruff)
-			assert.Contains(t, config, "\n[lint]\nselect = [\"ALL\"]\n", "the rules")
-			assert.Contains(t, config, "\nignore = [\"COM812\"]\n", "the rule that the formatter conflicts with")
-		})
 
-		t.Run("ends with the table of the ignores of a file", func(t *testing.T) {
-			t.Parallel()
-			config := content(t, baseline.Initializer(), baseline.Ruff)
-			_, last, found := strings.Cut(config, "\n[lint.per-file-ignores]\n")
-			assert.True(t, found, "the table [lint.per-file-ignores]")
-			assert.NotContains(t, last, "\n[", "a table after [lint.per-file-ignores]")
-		})
+			t.Run("returns the contribution of the options", func(t *testing.T) {
+				t.Parallel()
+				o, _ := baseline.Producer{}.Options().(*baseline.Options)
+				o.CI.Timeout = 45
+				assert.Equal(t, baseline.Producer{}.Contribution(o), o.Contribution(), "the contribution")
+			})
 
-		t.Run("lints with ruff and with mypy in its strictest mode", func(t *testing.T) {
-			t.Parallel()
-			makefile := fragment(t, baseline.Initializer(), language.Makefile)
-			assert.Contains(t, makefile, "\tuvx ruff@0.16.10 check --no-fix .\n", "the lint of ruff")
-			assert.Contains(t, makefile, "\tuvx ruff@0.16.10 format --check .\n", "the format check of ruff")
-			assert.Contains(t, makefile,
-				"\tuv run --with mypy==2.4.0 mypy --strict --warn-unreachable --strict-equality-for-none $(MYPY_CODES)",
-				"the type check of mypy")
-		})
-
-		t.Run("adds the gate of Python to the gate of the repository", func(t *testing.T) {
-			t.Parallel()
-			makefile := fragment(t, baseline.Initializer(), language.Makefile)
-			assert.Contains(t, makefile, "check: check-python\n", "the Makefile fragment")
-			assert.Contains(t, makefile, "check-python: lint-python test-python audit-python ##",
-				"the Makefile fragment")
-		})
-
-		t.Run("adds pip-audit over the packages of uv.lock to the vulnerability scans", func(t *testing.T) {
-			t.Parallel()
-			makefile := fragment(t, baseline.Initializer(), language.Makefile)
-			assert.Contains(t, makefile, "audit: audit-python\n", "the Makefile fragment")
-			assert.Contains(t, makefile, "uv export --frozen --all-packages", "the export of uv.lock")
-			assert.Contains(t, makefile, "uvx pip-audit@2.10.1 --locked --strict", "the scan of the export")
-		})
-
-		t.Run("adds the job check-python to the workflow of the gate", func(t *testing.T) {
-			t.Parallel()
-			ci := fragment(t, baseline.Initializer(), language.CI)
-			assert.Contains(t, ci, "\n  check-python:\n", "the job of the fragment")
-			assert.Contains(t, ci, "- uses: "+language.Checkout+"\n", "the checkout of the job")
-			assert.Contains(t, ci, "run: make check-python\n", "the gate of the job")
-		})
-
-		t.Run("adds the CodeQL analysis of Python to the security checks", func(t *testing.T) {
-			t.Parallel()
-			security := fragment(t, baseline.Initializer(), language.Security)
-			assert.Contains(t, security, "\n  codeql-python:\n", "the job of the fragment")
-			assert.Contains(t, security, "language: python\n", "the CodeQL language")
-		})
-
-		t.Run("adds uv to the updates of Dependabot", func(t *testing.T) {
-			t.Parallel()
-			dependabot := fragment(t, baseline.Initializer(), language.Dependabot)
-			assert.Contains(t, dependabot, "package-ecosystem: uv\n", "the ecosystem of the fragment")
+			t.Run("returns the contribution of the baseline for options of another type", func(t *testing.T) {
+				t.Parallel()
+				o, _ := baseline.Producer{}.Options().(*baseline.Options)
+				assert.Equal(t, baseline.Producer{}.Contribution(nil), o.Contribution(), "the contribution")
+			})
 		})
 	})
 }
 
-// paths returns the paths of the files of initializer in their order. It fails the test for a
-// file that is not managed, or that has both or neither of a content and a fragment.
-func paths(t *testing.T, initializer language.Initializer) []string {
+// catalog returns a catalog with Python.
+func catalog(t *testing.T) *language.Catalog {
 	t.Helper()
-	files, err := initializer.Files(&language.Answers{})
-	assert.NoError(t, err, "Files")
-	out := make([]string, 0, len(files))
-	for _, f := range files {
-		assert.True(t, f.Class == language.Managed && (f.Content == nil) != (f.Fragment == nil),
-			"the class and the text of "+f.Path)
-		out = append(out, f.Path)
-	}
-	return out
+	c := new(language.Catalog)
+	assert.NoError(t, python.Register(c), "Register of Python")
+	return c
 }
 
-// content returns the content of the file of initializer at path, and fails the test when
-// initializer has none.
-func content(t *testing.T, initializer language.Initializer, path string) string {
+// rendered returns the file name that the producer of Python renders for the options o and the
+// answers of the cases, and stops the test when it renders none.
+func rendered(t *testing.T, o language.Options, name string) string {
 	t.Helper()
-	files, err := initializer.Files(&language.Answers{})
-	assert.NoError(t, err, "Files")
-	for _, f := range files {
-		if f.Path == path && f.Content != nil {
-			return string(f.Content)
-		}
-	}
-	t.Fatalf("no file %s", path)
-	return ""
-}
-
-// fragment returns the fragment of initializer for the shared file path, and fails the test when
-// initializer has none.
-func fragment(t *testing.T, initializer language.Initializer, path string) string {
-	t.Helper()
-	files, err := initializer.Files(&language.Answers{})
-	assert.NoError(t, err, "Files")
-	for _, f := range files {
-		if f.Path == path && f.Fragment != nil {
-			return string(f.Fragment)
-		}
-	}
-	t.Fatalf("no fragment of %s", path)
-	return ""
+	files, err := render.Render([]render.Unit{{Name: baseline.Name, Producer: baseline.Producer{}, Options: o}},
+		baselinetest.Answers(python.Language), &workflow.Contribution{})
+	assert.NoError(t, err, "Render")
+	i := slices.IndexFunc(files, func(f render.File) bool { return f.Path == name })
+	assert.True(t, i >= 0, "Python renders "+name)
+	return string(files[i].Content)
 }

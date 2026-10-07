@@ -1,19 +1,33 @@
 // Copyright Dokimasia B.V. 2026
 // SPDX-License-Identifier: MIT
 
-// Package baseline renders what JavaScript and the js toolchain contribute to a repository that
-// ergon init sets up: their fragments of the shared files.
+// Package baseline is the producer of JavaScript of ergon init, and the producer of the js
+// toolchain, which renders what JavaScript shares with TypeScript.
 //
-// [Initializer] renders the fragments of JavaScript, among them its job check-javascript of the
-// workflow of the gate. [Toolchain] renders the files that JavaScript and TypeScript share, once
-// for a repository with either or both: the configuration of Biome, [Biome], the targets fmt-js,
-// lint-js and audit-js of the Makefile, the CodeQL analysis of javascript-typescript and the npm
-// updates of Dependabot.
+// [Producer] renders the fragments of JavaScript of .editorconfig and the Makefile from
+// templates/javascript/. [Toolchain] renders biome.json as a managed file, and its fragments of
+// .gitattributes, .gitignore and the Makefile, from templates/js/, once for a repository with
+// JavaScript, TypeScript or both. biome.json is JSON, so it opens with no managed comment.
 //
-// The templates under templates/ mirror the paths of the shared files, and end in .tmpl. The
-// templates of the toolchain are under templates/toolchain/.
+// # Makefile
+//
+// The fragment of the js toolchain runs fmt-js and lint-js with Biome through ergon tool run, and
+// audit-js with npm audit. The fragment of JavaScript runs test-javascript with npm test, and
+// check-javascript, which requires the targets of the steps that the key check of the section
+// names. lint-javascript and audit-javascript require lint-js and audit-js.
+//
+// # Options
+//
+// [ToolchainOptions] is the section js: the version of Biome, the paths that it checks, the lowest
+// severity that fails npm audit, and the key ci of the setup of Node.js.
+// [ToolchainOptions.Contribution] returns that setup, the CodeQL analysis of javascript-typescript
+// and the updates of the npm packages. [Options] is the section javascript: the steps of the gate
+// and the options of test-javascript. [Options.Contribution] returns the job check-javascript,
+// which runs the setup of the js toolchain.
 //
 // # Dependency position
 //
-// Imports [go.dokimi.dev/ergon/core/language]. The root package of the module imports it.
+// Imports the standard library, [go.dokimi.dev/ergon/core/language],
+// [go.dokimi.dev/ergon/core/option] and [go.dokimi.dev/ergon/core/workflow]. The root package of the
+// module imports it.
 package baseline

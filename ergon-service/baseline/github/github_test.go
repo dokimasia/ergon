@@ -4,295 +4,290 @@
 package github_test
 
 import (
-	"regexp"
-	"strings"
+	"io/fs"
+	"os"
+	"path"
 	"testing"
+	"testing/fstest"
 
 	"go.dokimi.dev/assert"
+	"go.dokimi.dev/assert/golden"
 	"go.dokimi.dev/ergon/core/language"
-	"go.dokimi.dev/ergon/core/workspace"
+	"go.dokimi.dev/ergon/core/option"
+	"go.dokimi.dev/ergon/core/workflow"
+	"go.dokimi.dev/ergon/service/baseline"
+	"go.dokimi.dev/ergon/service/baseline/baselinetest"
 	"go.dokimi.dev/ergon/service/baseline/github"
-	"go.yaml.in/yaml/v3"
 )
 
-// managed is the comment that opens a managed file.
-const managed = "Managed by ergon init. Add repository settings to .ergon/local/"
+// name pins the name of the producer of the GitHub files.
+const name = "github"
 
-// The rules of every workflow, as the cases check them.
+// The workflows and the configuration of Dependabot that the contributions of the cases change.
 const (
-	// group is the concurrency group of a workflow that an event triggers: the workflow and the ref.
-	group = "${{ github.workflow }}-${{ github.ref }}"
-
-	// cancel cancels a superseded run on a pull request only.
-	cancel = "${{ github.event_name == 'pull_request' }}"
+	ciPath         = ".github/workflows/ci.yml"
+	securityPath   = ".github/workflows/security.yml"
+	dependabotPath = ".github/dependabot.yml"
 )
 
-// workflows are the paths of the workflows of the GitHub files.
-var workflows = []string{
-	".github/workflows/baseline.yml",
-	language.CI,
-	".github/workflows/codeql.yml",
-	language.Security,
+// setupAlpha is the action that sets up the toolchain of the cases.
+var setupAlpha = workflow.Action{
+	Uses:    "alpha-lang/setup-alpha",
+	Commit:  "0123456789abcdef0123456789abcdef01234567",
+	Release: "v1.2.3",
 }
 
-// uses matches a line that runs an action, and captures the reference of the action with its
-// comment.
-var uses = regexp.MustCompile(`(?m)^\s*(?:- )?uses: (.+)$`)
+// read is the permission of a job to read the contents of the repository.
+var read = map[string]string{"contents": "read"}
 
-// pinned matches the reference of an action pinned to the commit of a release, with the release
-// in a comment, and a reference to an action or a workflow of the repository.
-var pinned = regexp.MustCompile(`^(?:[A-Za-z0-9-]+/[A-Za-z0-9._/-]+@[0-9a-f]{40} # v\d+\.\d+\.\d+|\./\.github/\S+)$`)
-
-// workflow is the part of a workflow that the cases check.
-type workflow struct {
-	// On are the events that trigger the workflow.
-	On map[string]any `yaml:"on"`
-
-	// Permissions are the permissions at the top level of the workflow.
-	Permissions map[string]string `yaml:"permissions"`
-
-	// Concurrency is the concurrency of the workflow.
-	Concurrency struct {
-		// Group is the concurrency group.
-		Group string `yaml:"group"`
-
-		// CancelInProgress is the expression that cancels a superseded run.
-		CancelInProgress string `yaml:"cancel-in-progress"`
-	} `yaml:"concurrency"`
-
-	// Jobs are the jobs of the workflow, by their identifier.
-	Jobs map[string]struct {
-		// RunsOn is the runner of the job.
-		RunsOn string `yaml:"runs-on"`
-
-		// Strategy is the strategy of the job, with the systems of its matrix.
-		Strategy struct {
-			// Matrix is the matrix of the job.
-			Matrix struct {
-				// OS are the runners of the matrix.
-				OS []string `yaml:"os"`
-			} `yaml:"matrix"`
-		} `yaml:"strategy"`
-
-		// TimeoutMinutes is the timeout of the job.
-		TimeoutMinutes int `yaml:"timeout-minutes"`
-
-		// Permissions are the permissions of the job.
-		Permissions map[string]string `yaml:"permissions"`
-
-		// Steps are the steps of the job.
-		Steps []struct {
-			// Uses is the action of the step.
-			Uses string `yaml:"uses"`
-
-			// With are the inputs of the action.
-			With map[string]any `yaml:"with"`
-		} `yaml:"steps"`
-	} `yaml:"jobs"`
+// part is a producer of the cases without templates, with a part of the workflows.
+type part struct {
+	// contribution is the part that Contribution returns.
+	contribution workflow.Contribution
 }
 
-func TestGitHub(t *testing.T) {
+// Templates returns no template.
+func (part) Templates() fs.FS {
+	return fstest.MapFS{}
+}
+
+// Contribution returns p.contribution, whatever the options.
+func (p part) Contribution(language.Options) workflow.Contribution {
+	return p.contribution
+}
+
+func TestGithub(t *testing.T) {
 	t.Parallel()
 
-	t.Run("Initializer", func(t *testing.T) {
+	t.Run("Name", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("Files", func(t *testing.T) {
+		t.Run("is github", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, github.Name, name, "Name")
+		})
+	})
+
+	t.Run("Producer", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Templates", func(t *testing.T) {
 			t.Parallel()
 
-			t.Run("renders the managed and seeded GitHub files", func(t *testing.T) {
+			t.Run("renders the GitHub files at the baseline", func(t *testing.T) {
 				t.Parallel()
-				classes := map[string]language.Class{}
-				for path, f := range render(t) {
-					classes[path] = f.Class
-				}
-				assert.Equal(t, classes, map[string]language.Class{
-					".github/ISSUE_TEMPLATE/bug.yml":         language.Managed,
-					".github/ISSUE_TEMPLATE/config.yml":      language.Managed,
-					".github/ISSUE_TEMPLATE/feature.yml":     language.Managed,
-					".github/PULL_REQUEST_TEMPLATE.md":       language.Managed,
-					".github/actions/setup-ergon/action.yml": language.Managed,
-					".github/actions/setup-make/action.yml":  language.Managed,
-					".github/dependabot.yml":                 language.Managed,
-					".github/workflows/baseline.yml":         language.Managed,
-					".github/workflows/ci.yml":               language.Managed,
-					".github/workflows/codeql.yml":           language.Managed,
-					".github/workflows/security.yml":         language.Managed,
-					".github/CODEOWNERS":                     language.Seeded,
-				}, "the classes of the GitHub files")
+				dir := baselinetest.New(t, new(language.Catalog), baselinetest.Answers(), producer())
+				baselinetest.Hygiene(t, dir)
+				golden.MatchTree(t, "baseline", os.DirFS(dir), golden.ShouldUpdate())
 			})
 
-			t.Run("renders the shared files as fragments", func(t *testing.T) {
+			t.Run("renders the jobs, the analyses and the updates of every producer", func(t *testing.T) {
 				t.Parallel()
-				files := render(t)
-				for _, path := range []string{language.CI, language.Security, language.Dependabot} {
-					assert.True(t, files[path].Content == nil && files[path].Fragment != nil, "the fragment of "+path)
-				}
-				assert.True(t, files[".github/CODEOWNERS"].Fragment == nil, "the fragment of CODEOWNERS")
-			})
-
-			t.Run("opens each managed file with the managed comment", func(t *testing.T) {
-				t.Parallel()
-				for path, f := range render(t) {
-					if f.Class != language.Managed {
-						continue
-					}
-					first, _, _ := strings.Cut(text(f), "\n")
-					assert.Contains(t, first, managed+path+" and run ergon init sync.", "the first line of "+path)
+				dir := baselinetest.New(t, new(language.Catalog), baselinetest.Answers(), producer(),
+					baseline.Producer{Name: "tool", Producer: part{contribution: toolchain()}},
+					baseline.Producer{Name: "alpha", Producer: part{contribution: languages()}},
+				)
+				baselinetest.Hygiene(t, dir)
+				for _, file := range []string{ciPath, securityPath, dependabotPath} {
+					got, err := os.ReadFile(path.Join(dir, file))
+					assert.NoError(t, err, "ReadFile of "+file)
+					golden.Match(t, path.Join("contributions", path.Base(file)), got, golden.ShouldUpdate())
 				}
 			})
 
-			t.Run("fills the repository into the link of a vulnerability report", func(t *testing.T) {
+			t.Run("renders no configuration of Dependabot without an update", func(t *testing.T) {
 				t.Parallel()
-				config := text(render(t)[".github/ISSUE_TEMPLATE/config.yml"])
-				assert.Contains(t, config, "url: https://github.com/dokimasia/demo/security/advisories/new\n",
-					"the config.yml of the issue forms")
+				dir := baselinetest.New(t, new(language.Catalog), baselinetest.Answers(), producer())
+				_, err := os.Stat(path.Join(dir, dependabotPath))
+				assert.ErrorIs(t, err, fs.ErrNotExist, "Stat of "+dependabotPath)
+			})
+		})
+
+		t.Run("Options", func(t *testing.T) {
+			t.Parallel()
+
+			t.Run("returns a new value on each call", func(t *testing.T) {
+				t.Parallel()
+				first, _ := github.Producer{}.Options().(*github.Options)
+				second, _ := github.Producer{}.Options().(*github.Options)
+				first.Runners[0] = "changed"
+				assert.Equal(t, second.Runners[0], "ubuntu-26.04", "the first runner of the second value")
+			})
+		})
+
+		t.Run("Data", func(t *testing.T) {
+			t.Parallel()
+
+			t.Run("returns the jobs of the contributions for the options", func(t *testing.T) {
+				t.Parallel()
+				o, _ := github.Producer{}.Options().(*github.Options)
+				o.Runners = option.Runners{"ubuntu-26.04", "windows-2025"}
+				c := languages()
+				want, err := o.Jobs(&c)
+				assert.NoError(t, err, "Jobs")
+				got, err := github.Producer{}.Data(baselinetest.Answers(), o, &c)
+				assert.NoError(t, err, "Data")
+				assert.Equal(t, got, any(want), "the data")
 			})
 
-			t.Run("leaves no placeholder in a file", func(t *testing.T) {
+			t.Run("returns the jobs for the options at the baseline for options of another type", func(t *testing.T) {
 				t.Parallel()
-				for path, f := range render(t) {
-					assert.NotContains(t, strings.ReplaceAll(text(f), "${{", ""), "{{", "the placeholders of "+path)
-				}
+				c := languages()
+				o, _ := github.Producer{}.Options().(*github.Options)
+				want, err := o.Jobs(&c)
+				assert.NoError(t, err, "Jobs")
+				got, err := github.Producer{}.Data(baselinetest.Answers(), nil, &c)
+				assert.NoError(t, err, "Data")
+				assert.Equal(t, got, any(want), "the data")
 			})
 
-			t.Run("renders each YAML file as one document", func(t *testing.T) {
+			t.Run("returns ErrInvalid for a job on a runner that the section does not list", func(t *testing.T) {
 				t.Parallel()
-				for path, f := range render(t) {
-					if !strings.HasSuffix(path, ".yml") {
-						continue
-					}
-					var document map[string]any
-					assert.NoError(t, yaml.Unmarshal([]byte(text(f)), &document), "Unmarshal of "+path)
-					assert.NotEmpty(t, document, "the document of "+path)
-				}
+				c := workflow.Contribution{Jobs: []workflow.Job{{
+					ID:    "check-alpha",
+					Name:  "Alpha",
+					Setup: &workflow.Setup{Runners: []string{"ubuntu-24.04"}, Timeout: 5},
+					Steps: []workflow.Step{{Run: []string{"make check-alpha"}}},
+				}}}
+				_, err := github.Producer{}.Data(baselinetest.Answers(), nil, &c)
+				assert.ErrorIs(t, err, option.ErrInvalid, "Data")
 			})
 
-			t.Run("pins every action to the commit of a release", func(t *testing.T) {
+			t.Run(
+				"returns ErrInvalid from New for a job on a runner that the section does not list",
+				func(t *testing.T) {
+					t.Parallel()
+					root, err := os.OpenRoot(t.TempDir())
+					assert.NoError(t, err, "OpenRoot")
+					t.Cleanup(func() { _ = root.Close() })
+					c := workflow.Contribution{Setup: &workflow.Setup{Runners: []string{"ubuntu-24.04"}, Timeout: 5}}
+					r, err := baseline.Open(root, new(language.Catalog), baselinetest.Version, producer(),
+						baseline.Producer{Name: "tool", Producer: part{contribution: c}},
+						baseline.Producer{Name: "alpha", Producer: part{contribution: languages()}},
+					)
+					assert.NoError(t, err, "Open")
+					_, err = r.New(baselinetest.Answers(), baseline.Options{})
+					assert.ErrorIs(t, err, option.ErrInvalid, "New")
+				},
+			)
+		})
+
+		t.Run("Contribution", func(t *testing.T) {
+			t.Parallel()
+
+			t.Run("returns the job baseline, which runs ergon init check", func(t *testing.T) {
 				t.Parallel()
-				var references []string
-				for _, f := range render(t) {
-					for _, match := range uses.FindAllStringSubmatch(text(f), -1) {
-						references = append(references, match[1])
-					}
-				}
-				assert.Contains(t, references, language.Checkout, "the references of the actions")
-				for _, reference := range references {
-					assert.True(t, pinned.MatchString(reference), "the pin of "+reference)
-				}
+				got := github.Producer{}.Contribution(github.Producer{}.Options())
+				assert.Equal(t, got, workflow.Contribution{Jobs: []workflow.Job{{
+					ID:          "baseline",
+					Name:        "Baseline",
+					Timeout:     15,
+					Permissions: read,
+					Ergon:       true,
+					Steps:       []workflow.Step{{Name: "Check the managed files", Run: []string{"ergon init check"}}},
+				}}}, "the contribution")
 			})
 
-			t.Run("grants no permission at the top level of a workflow", func(t *testing.T) {
+			t.Run("returns a valid contribution", func(t *testing.T) {
 				t.Parallel()
-				for path, w := range parse(t) {
-					assert.True(t, w.Permissions != nil && len(w.Permissions) == 0, "the permissions of "+path)
-				}
+				got := github.Producer{}.Contribution(github.Producer{}.Options())
+				assert.NoError(t, got.Validate(), "Validate of the contribution")
 			})
 
-			t.Run("gives every job a timeout and its own permissions", func(t *testing.T) {
+			t.Run("returns the contribution of the baseline for options of another type", func(t *testing.T) {
 				t.Parallel()
-				for path, w := range parse(t) {
-					for id, job := range w.Jobs {
-						assert.True(t, job.TimeoutMinutes > 0, "the timeout of "+path+" "+id)
-						assert.NotEmpty(t, job.Permissions, "the permissions of "+path+" "+id)
-					}
-				}
+				want := github.Producer{}.Contribution(github.Producer{}.Options())
+				assert.Equal(t, github.Producer{}.Contribution(nil), want, "the contribution for nil options")
 			})
 
-			t.Run("runs the baseline on Linux, macOS and Windows", func(t *testing.T) {
+			t.Run("returns the job with the timeout of the options", func(t *testing.T) {
 				t.Parallel()
-				job := parse(t)[language.CI].Jobs["baseline"]
-				assert.Equal(t, job.RunsOn, "${{ matrix.os }}", "the runner of the baseline")
-				assert.Equal(t, job.Strategy.Matrix.OS, []string{language.Linux, language.MacOS, language.Windows},
-					"the systems of the baseline")
-			})
-
-			t.Run("runs every other job on Linux", func(t *testing.T) {
-				t.Parallel()
-				for path, w := range parse(t) {
-					for id, job := range w.Jobs {
-						if path == language.CI && id == "baseline" {
-							continue
-						}
-						assert.Equal(t, job.RunsOn, language.Linux, "the runner of "+path+" "+id)
-					}
-				}
-			})
-
-			t.Run("checks out without persisting the credentials", func(t *testing.T) {
-				t.Parallel()
-				for path, w := range parse(t) {
-					for id, job := range w.Jobs {
-						assert.True(t, strings.HasPrefix(job.Steps[0].Uses, "actions/checkout@"),
-							"the first step of "+path+" "+id)
-						assert.Equal(t, job.Steps[0].With["persist-credentials"], any(false),
-							"persist-credentials of "+path+" "+id)
-					}
-				}
-			})
-
-			t.Run("groups the runs of a workflow that an event triggers by workflow and ref", func(t *testing.T) {
-				t.Parallel()
-				for path, w := range parse(t) {
-					if _, called := w.On["workflow_call"]; called {
-						continue
-					}
-					assert.Equal(t, w.Concurrency.Group, group, "the concurrency group of "+path)
-					assert.Equal(t, w.Concurrency.CancelInProgress, cancel, "cancel-in-progress of "+path)
-					assert.False(t, w.On["pull_request_target"] != nil, "pull_request_target in "+path)
-				}
-			})
-
-			t.Run("returns ErrInvalidAnswer for a repository that is not owner/name", func(t *testing.T) {
-				t.Parallel()
-				a := answers()
-				a.Repository = "demo"
-				_, err := github.Initializer{}.Files(a)
-				assert.ErrorIs(t, err, github.ErrInvalidAnswer, "Files")
+				o, _ := github.Producer{}.Options().(*github.Options)
+				o.CI.Timeout = 25
+				got := github.Producer{}.Contribution(o)
+				assert.Equal(t, got.Jobs[0].Timeout, 25, "the timeout of baseline")
 			})
 		})
 	})
 }
 
-// answers returns new answers of the cases, which a case may change.
-func answers() *language.Answers {
-	return &language.Answers{
-		Name:            "demo",
-		Languages:       []workspace.Language{"go"},
-		Owner:           "Dokimasia B.V.",
-		License:         "MIT",
-		Year:            2026,
-		Repository:      "dokimasia/demo",
-		SecurityContact: "security@example.com",
+// producer returns the producer of the GitHub files as a base producer.
+func producer() baseline.Producer {
+	return baseline.Producer{Name: github.Name, Producer: github.Producer{}}
+}
+
+// toolchain returns the contribution of the toolchain tool of the cases: the setup of alpha on
+// every runner and two versions, its analysis of CodeQL, and its updates.
+func toolchain() workflow.Contribution {
+	return workflow.Contribution{
+		Setup: &workflow.Setup{
+			Files:    "alpha.lock",
+			Versions: []string{"1.0", "2.0"},
+			Env:      map[string]string{"ALPHA_HOME": "/opt/alpha"},
+			Steps: []workflow.Step{{
+				Name: "Set up alpha",
+				Uses: setupAlpha,
+				With: map[string]string{"version": "${{ matrix.version }}", "cache": "false"},
+			}},
+			Timeout: 20,
+		},
+		CodeQL: []workflow.CodeQL{
+			{Language: "alpha", Name: "Alpha", BuildMode: "none", Files: "alpha.lock", Timeout: 20},
+		},
+		Updates: []workflow.Update{{Ecosystem: "alpha", Directories: []string{"/", "/**/*"}}},
 	}
 }
 
-// render returns the GitHub files for the answers of the cases, by path.
-func render(t *testing.T) map[string]language.File {
-	t.Helper()
-	files, err := github.Initializer{}.Files(answers())
-	assert.NoError(t, err, "Files")
-	byPath := make(map[string]language.File, len(files))
-	for _, f := range files {
-		byPath[f.Path] = f
-	}
-	return byPath
-}
-
-// parse returns the workflows of the GitHub files, by path.
-func parse(t *testing.T) map[string]workflow {
-	t.Helper()
-	files := render(t)
-	parsed := make(map[string]workflow, len(workflows))
-	for _, path := range workflows {
-		var w workflow
-		assert.NoError(t, yaml.Unmarshal([]byte(text(files[path])), &w), "Unmarshal of "+path)
-		parsed[path] = w
-	}
-	return parsed
-}
-
-// text returns the content or the fragment of f.
-func text(f language.File) string {
-	return string(f.Content) + string(f.Fragment)
+// languages returns the contribution of the language alpha of the cases: a check on the setup of
+// the toolchain tool, a check on a setup of its own, a check of text, and a job without a setup
+// whose steps have each key of a step.
+func languages() workflow.Contribution {
+	return workflow.Contribution{Jobs: []workflow.Job{
+		{
+			ID:          "check-alpha",
+			Name:        "Alpha",
+			Toolchain:   "tool",
+			Permissions: read,
+			Steps: []workflow.Step{{
+				Name: "Check alpha",
+				If:   "github.event_name != 'schedule'",
+				Run:  []string{"make check-alpha"},
+			}},
+		},
+		{
+			ID:          "check-beta",
+			Name:        "Beta",
+			Setup:       &workflow.Setup{Runners: []string{"ubuntu-26.04", "windows-2025"}, Timeout: 5},
+			Permissions: read,
+			Steps:       []workflow.Step{{Run: []string{"make check-beta"}}},
+		},
+		{
+			ID:      "lint-text",
+			Name:    "Text",
+			If:      "github.event_name == 'pull_request'",
+			Text:    true,
+			Timeout: 3,
+			History: true,
+			Ergon:   true,
+			Steps: []workflow.Step{
+				{Env: map[string]string{"BASE": "main"}, Run: []string{"ergon tool run tool.lint"}},
+			},
+		},
+		{
+			ID:          "steps",
+			Name:        "Steps",
+			Timeout:     4,
+			Permissions: map[string]string{"contents": "read", "pull-requests": "write"},
+			Steps: []workflow.Step{
+				{ID: "pin", Run: []string{"echo version=1 >> \"$GITHUB_OUTPUT\""}},
+				{If: "steps.pin.outputs.version == '1'", Uses: setupAlpha},
+				{Uses: setupAlpha, With: map[string]string{"globs": "**/*.md\n#node_modules"}},
+				{
+					Name: "Report",
+					Env:  map[string]string{"VERSION": "${{ steps.pin.outputs.version }}"},
+					Run:  []string{"if [ -n \"$VERSION\" ]; then", "  echo \"$VERSION\"", "fi"},
+				},
+			},
+		},
+	}}
 }

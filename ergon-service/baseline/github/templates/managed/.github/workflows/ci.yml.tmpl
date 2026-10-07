@@ -1,0 +1,116 @@
+# Managed by ergon init. Add repository settings to .ergon/local/.github/workflows/ci.yml and run ergon init sync.
+#
+# The gate of the repository, with the jobs that each producer of ergon init contributes. A check
+# of text runs on the Linux runner of the section github of .ergon.yaml, and every other job on a
+# matrix of runners. A job that sets up a toolchain runs its steps once the repository has the
+# files of the toolchain.
+
+name: CI
+
+on:
+  pull_request:
+  merge_group:
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Every command runs in bash, which is Git Bash on Windows.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+{{%- range $i, $job := .Data %}}
+{{%- if $i %}}
+{{% end %}}
+  {{% .ID %}}:
+    name: {{% yaml .Name %}}
+{{%- if .If %}}
+    if: {{% yaml .If %}}
+{{%- end %}}
+{{%- if .Runners %}}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: {{% yaml .Runners %}}
+{{%- if .Versions %}}
+        version: {{% yaml .Versions %}}
+{{%- end %}}
+    runs-on: ${{ matrix.os }}
+{{%- else %}}
+    runs-on: {{% yaml $.Options.Linux %}}
+{{%- end %}}
+    timeout-minutes: {{% .Timeout %}}
+{{%- if .Permissions %}}
+    permissions:
+{{%- range $scope, $access := .Permissions %}}
+      {{% $scope %}}: {{% $access %}}
+{{%- end %}}
+{{%- else %}}
+    permissions: {}
+{{%- end %}}
+{{%- if .Env %}}
+    env:
+{{%- range $name, $value := .Env %}}
+      {{% $name %}}: {{% yaml $value %}}
+{{%- end %}}
+{{%- end %}}
+    steps:
+      - uses: {{% $.Options.CI.Actions.Checkout %}}
+        with:
+{{%- if .History %}}
+          fetch-depth: 0
+{{%- end %}}
+          persist-credentials: false
+{{%- if .Make %}}
+      - {{% if .Guard %}}if: {{% yaml .Guard %}}
+        {{% end %}}uses: ./.github/actions/setup-make
+{{%- end %}}
+{{%- if .Ergon %}}
+      - {{% if .Guard %}}if: {{% yaml .Guard %}}
+        {{% end %}}uses: ./.github/actions/setup-ergon
+{{%- end %}}
+{{%- range .Steps %}}
+{{%- $lead := "- " %}}
+{{%- if .Name %}}
+      {{% $lead %}}name: {{% yaml .Name %}}
+{{%- $lead = "  " %}}
+{{%- end %}}
+{{%- if .ID %}}
+      {{% $lead %}}id: {{% .ID %}}
+{{%- $lead = "  " %}}
+{{%- end %}}
+{{%- if .If %}}
+      {{% $lead %}}if: {{% yaml .If %}}
+{{%- $lead = "  " %}}
+{{%- end %}}
+{{%- if not .Run %}}
+      {{% $lead %}}uses: {{% .Uses %}}
+{{%- $lead = "  " %}}
+{{%- end %}}
+{{%- if .With %}}
+        with:
+{{%- range $name, $value := .With %}}
+          {{% $name %}}: {{% yaml $value %}}
+{{%- end %}}
+{{%- end %}}
+{{%- if .Env %}}
+      {{% $lead %}}env:
+{{%- range $name, $value := .Env %}}
+          {{% $name %}}: {{% yaml $value %}}
+{{%- end %}}
+{{%- $lead = "  " %}}
+{{%- end %}}
+{{%- if .Run %}}
+      {{% $lead %}}run: |
+{{%- range .Run %}}
+          {{% . %}}
+{{%- end %}}
+{{%- end %}}
+{{%- end %}}
+{{%- end %}}

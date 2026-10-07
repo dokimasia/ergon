@@ -6,16 +6,22 @@ package cli_test
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"go.dokimi.dev/assert"
 	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/core/workspace"
 	"go.dokimi.dev/ergon/internal/cli"
+	"go.dokimi.dev/ergon/service/vcs/vcstest"
 )
 
 // The exit statuses that Run returns, pinned because scripts and CI read them.
@@ -52,6 +58,8 @@ Available Commands:
   completion  Generate the autocompletion script for the specified shell
   help        Help about any command
   init        Set up a repository with the baseline of ergon
+  license     Add and check the license header of every file
+  tool        Run the tools that the sections of .ergon.yaml name
 
 Flags:
       --config file   read the configuration from file (default ".ergon.yaml")
@@ -75,6 +83,43 @@ var errRegister = errors.New("register: failed")
 
 // errGetwd is the error of a working directory that no longer exists.
 var errGetwd = errors.New("getwd: no such file or directory")
+
+// fixed is a producer of the cases, whose templates are the files of the map.
+type fixed fstest.MapFS
+
+// Templates returns the templates of f.
+func (f fixed) Templates() fs.FS {
+	return fstest.MapFS(f)
+}
+
+// TestMain acts as a fake program when fakeEnv is set, as [fake] states. Otherwise it isolates git
+// from the configuration of the user, puts the fake npx first on the PATH of the process, from
+// which exec resolves a program, and runs the tests.
+func TestMain(m *testing.M) {
+	if os.Getenv(fakeEnv) != "" {
+		os.Exit(fake(os.Args, os.Stdin, os.Stdout))
+	}
+	vcstest.Isolate()
+	self, err := os.Executable()
+	var content []byte
+	if err == nil {
+		content, err = os.ReadFile(self)
+	}
+	dir, err2 := os.MkdirTemp("", "ergon-cli-fakes-")
+	npx := filepath.Join(dir, "npx")
+	if runtime.GOOS == "windows" {
+		npx += ".exe"
+	}
+	err3 := os.WriteFile(npx, content, 0o755)
+	if joined := errors.Join(err, err2, err3); joined != nil {
+		fmt.Fprintln(os.Stderr, "cli_test: the fake npx does not install:", joined)
+		os.Exit(2)
+	}
+	_ = os.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	code := m.Run()
+	_ = os.RemoveAll(dir)
+	os.Exit(code)
+}
 
 func TestCommand(t *testing.T) {
 	t.Parallel()
@@ -185,6 +230,27 @@ func TestCommand(t *testing.T) {
 			assert.Equal(t, status, statusFailure, "the exit status")
 			assert.HasPrefix(t, stderr, "ergon: cli: read "+path+": ", "the standard error")
 		})
+
+		t.Run("writes the languages of the help in lines of at most 80 columns", func(t *testing.T) {
+			t.Parallel()
+			ten := func(c *language.Catalog) error {
+				if err := language.RegisterToolchain(c, language.Toolchain{Name: tool}); err != nil {
+					return err
+				}
+				for letter := range strings.SplitSeq("abcdefghij", "") {
+					d := language.Declaration{Name: workspace.Language("language" + letter), Toolchain: tool}
+					if err := language.Register(c, d); err != nil {
+						return err
+					}
+				}
+				return nil
+			}
+			status, stdout, stderr := runWith(t, ten, t.TempDir(), "--help")
+			assert.Equal(t, status, statusOK, "the exit status: "+stderr)
+			assert.HasPrefix(t, stdout, "ergon works on repositories with code in one or more of these languages:\n\n"+
+				"  languagea, languageb, languagec, languaged, languagee, languagef, languageg,\n"+
+				"  languageh, languagei, languagej\n\n", "the help")
+		})
 	})
 }
 
@@ -207,14 +273,18 @@ func runWith(
 }
 
 // process returns the process of a case: the command line args, the working directory dir, the
-// time now, and the writers stdout and stderr.
-func process(dir string, stdout, stderr io.Writer, args ...string) cli.Process {
-	return cli.Process{
-		Args:   args,
-		Getwd:  func() (string, error) { return dir, nil },
-		Now:    func() time.Time { return now },
-		Stdout: stdout,
-		Stderr: stderr,
+// time now, the temporary directory of the system as the cache directory, no standard input, the
+// environment of the test with fakeEnv set, and the writers stdout and stderr.
+func process(dir string, stdout, stderr io.Writer, args ...string) *cli.Process {
+	return &cli.Process{
+		Getwd:    func() (string, error) { return dir, nil },
+		Now:      func() time.Time { return now },
+		CacheDir: func() (string, error) { return os.TempDir(), nil },
+		Stdin:    strings.NewReader(""),
+		Stdout:   stdout,
+		Stderr:   stderr,
+		Args:     args,
+		Env:      append(os.Environ(), fakeEnv+"=1"),
 	}
 }
 
@@ -224,19 +294,19 @@ func register(c *language.Catalog) error {
 	if err := language.RegisterToolchain(c, language.Toolchain{Name: tool}); err != nil {
 		return err
 	}
-	err := language.Register(c, language.Declaration{Name: alpha, Toolchain: tool}, initializer(alpha, alphaFile))
+	err := language.Register(c, language.Declaration{Name: alpha, Toolchain: tool}, producer(alpha, alphaFile))
 	if err != nil {
 		return err
 	}
-	return language.Register(c, language.Declaration{Name: beta, Toolchain: tool}, initializer(beta, betaFile))
+	return language.Register(c, language.Declaration{Name: beta, Toolchain: tool}, producer(beta, betaFile))
 }
 
-// initializer returns the initializer of the language name: the managed file path, whose content
-// is the name, and the fragment name/ of .gitignore.
-func initializer(name workspace.Language, path string) language.Fixed {
-	return language.Fixed{
-		{Path: language.GitIgnore, Class: language.Managed, Fragment: []byte(string(name) + "/\n")},
-		{Path: path, Class: language.Managed, Content: []byte(string(name) + "\n")},
+// producer returns the producer of the language name: the managed file path, whose content is the
+// name, and the fragment name/ of .gitignore.
+func producer(name workspace.Language, path string) fixed {
+	return fixed{
+		"shared/.gitignore.tmpl":    {Data: []byte(string(name) + "/\n")},
+		"managed/" + path + ".tmpl": {Data: []byte(string(name) + "\n")},
 	}
 }
 

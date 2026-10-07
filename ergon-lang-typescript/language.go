@@ -18,5 +18,5 @@ const Language workspace.Language = "typescript"
 // toolchain, and [language.ErrRegistered] when c already has TypeScript.
 func Register(c *language.Catalog) error {
 	return language.Register(c, language.Declaration{Name: Language, Toolchain: javascript.Toolchain},
-		baseline.Initializer())
+		baseline.Producer{})
 }

@@ -1,0 +1,53 @@
+{
+  "ergon": "1.0.0",
+  "files": [
+    {
+      "path": ".editorconfig",
+      "producer": "bash",
+      "sha256": "916e8e394c2bef6727b8c408c9c924a46fb0e53acc0a21eaa6176f8524a76419"
+    },
+    {
+      "path": ".gitattributes",
+      "producer": "bash",
+      "sha256": "728398e9248e1c2e5e66e4e54b74a20fa3e3dbde374d0c718e89de7c0e7166ca"
+    },
+    {
+      "path": ".shellcheckrc",
+      "producer": "bash",
+      "sha256": "86dbed1f5bdefe72bed127f11584c96e89bfcb5eec1adf65cc9eaa4639683a83"
+    },
+    {
+      "path": "Makefile",
+      "producer": "bash",
+      "sha256": "fdfda9f14f8cc9dcc8dfb26aedcd9b56cec5b7a2372df9b2382b595e40c8592b"
+    }
+  ],
+  "settings": {
+    "bash.check": [
+      "lint"
+    ],
+    "bash.ci.runners": [],
+    "bash.ci.timeout": 30,
+    "bash.paths": [
+      "*.sh",
+      "*.bash"
+    ],
+    "bash.tools.shellcheck.sha256": {
+      "darwin/arm64": "339b930feb1ea764467013cc1f72d09cd6b869ebf1013296ba9055ab2ffbd26f",
+      "linux/amd64": "b7af85e41cc99489dcc21d66c6d5f3685138f06d34651e6d34b42ec6d54fe6f6",
+      "windows/amd64": "8a4e35ab0b331c85d73567b12f2a444df187f483e5079ceffa6bda1faa2e740e"
+    },
+    "bash.tools.shellcheck.version": "0.11.0"
+  },
+  "answers": {
+    "name": "demo",
+    "owner": "Dokimasia B.V.",
+    "license": "MIT",
+    "repository": "dokimasia/demo",
+    "security-contact": "security@example.com",
+    "languages": [
+      "bash"
+    ],
+    "year": 2026
+  }
+}

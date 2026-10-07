@@ -4,53 +4,82 @@
 package baseline
 
 import (
-	_ "embed"
+	"embed"
+	"io/fs"
 
 	"go.dokimi.dev/ergon/core/language"
+	"go.dokimi.dev/ergon/core/option"
+	"go.dokimi.dev/ergon/core/workflow"
 )
 
-// PHPStan is the path of the configuration of PHPStan, which PHP renders as a managed file of its
-// own. lint-php passes it to PHPStan with --configuration, so a phpstan.neon of the repository
-// does not replace it.
-const PHPStan = "phpstan.dist.neon"
+// Name is the name of the producer of PHP in the lock, and of its section of .ergon.yaml, which is
+// the name of the language.
+const Name = "php"
 
-// The template of the configuration of PHPStan.
+// templates are the templates of PHP: the configuration of PHPStan under managed/, and the
+// fragments of the shared files under shared/.
 //
-//go:embed templates/phpstan.dist.neon.tmpl
-var phpstan string
+//go:embed all:templates
+var templates embed.FS
 
-// The templates of the fragments, which mirror the paths of the shared files.
+// tools are the tools of the section php at the baseline: PHPStan 2.2.17 with phpstan-strict-rules
+// 2.0.12 and the extension installer 1.4.3, and PHP-CS-Fixer 3.95.27 from its package without
+// dependencies. [Tools.Validate] requires the package of each.
+var tools = Tools{
+	PHPStan:            "phpstan/phpstan@2.2.17",
+	StrictRules:        "phpstan/phpstan-strict-rules@2.0.12",
+	ExtensionInstaller: "phpstan/extension-installer@1.4.3",
+	PHPCSFixer:         "php-cs-fixer/shim@3.95.27",
+}
+
+// Producer renders the files of PHP: the configuration of PHPStan, and the fragments of
+// .editorconfig, .gitattributes, .gitignore and the Makefile. Its zero value is ready to use, and
+// it is safe for concurrent use.
+type Producer struct{}
+
 var (
-	//go:embed templates/.editorconfig.tmpl
-	editorconfig string
-
-	//go:embed templates/.gitattributes.tmpl
-	gitattributes string
-
-	//go:embed templates/.gitignore.tmpl
-	gitignore string
-
-	//go:embed templates/Makefile.tmpl
-	makefile string
-
-	//go:embed templates/.github/workflows/ci.yml.tmpl
-	ci string
-
-	//go:embed templates/.github/dependabot.yml.tmpl
-	dependabot string
+	_ language.Producer     = Producer{}
+	_ language.Configurable = Producer{}
+	_ language.Contributor  = Producer{}
 )
 
-// Initializer returns the init role of PHP: the configuration of PHPStan, and the fragments that
-// PHP contributes to the shared files of a repository. They do not depend on the answers. CodeQL
-// does not analyze PHP.
-func Initializer() language.Initializer {
-	return language.Fixed{
-		{Path: PHPStan, Class: language.Managed, Content: []byte(phpstan)},
-		{Path: language.EditorConfig, Class: language.Managed, Fragment: []byte(editorconfig)},
-		{Path: language.GitAttributes, Class: language.Managed, Fragment: []byte(gitattributes)},
-		{Path: language.GitIgnore, Class: language.Managed, Fragment: []byte(gitignore)},
-		{Path: language.Makefile, Class: language.Managed, Fragment: []byte(makefile)},
-		{Path: language.CI, Class: language.Managed, Fragment: []byte(language.Job(ci))},
-		{Path: language.Dependabot, Class: language.Managed, Fragment: []byte(dependabot)},
+// Templates returns the templates of PHP: phpstan.dist.neon under managed/, and the fragments of
+// the shared files under shared/.
+func (Producer) Templates() fs.FS {
+	// templates has the directory templates, so Sub returns no error.
+	sub, _ := fs.Sub(templates, "templates")
+	return sub
+}
+
+// Options returns the section php at the baseline: PHPStan 2.2.17 with phpstan-strict-rules 2.0.12
+// and the extension installer 1.4.3, PHP-CS-Fixer 3.95.27, the root of the repository, the gate of
+// lint, test and audit, setup-php 2.37.2, and a limit of 30 minutes for the job check-php on every
+// runner and the PHP of .php-version.
+func (Producer) Options() language.Options {
+	return &Options{
+		Tools: tools,
+		Paths: option.Paths{"."},
+		Check: option.Check{option.StepLint, option.StepTest, option.StepAudit},
+		Test:  option.Run{Args: []string{}},
+		CI: option.MatrixCI[Actions]{
+			Actions: Actions{SetupPHP: workflow.Action{
+				Uses:    "shivammathur/setup-php",
+				Commit:  "f3e473d116dcccaddc5834248c87452386958240",
+				Release: "2.37.2",
+			}},
+			Runners:  option.Runners{},
+			Versions: []string{},
+			Timeout:  30,
+		},
 	}
+}
+
+// Contribution returns the part of PHP of the workflows for o, as [Options.Contribution] states it,
+// and for the options at the baseline when o is not the section php.
+func (p Producer) Contribution(o language.Options) workflow.Contribution {
+	opts, ok := o.(*Options)
+	if !ok {
+		opts, _ = p.Options().(*Options)
+	}
+	return opts.Contribution()
 }

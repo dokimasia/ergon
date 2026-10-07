@@ -1,0 +1,36 @@
+github:
+  # The runner images of the jobs that run on every runner, each pinned to a version of its system.
+  # The key ci.runners of a section lists a part of them.
+  runners: [ubuntu-26.04, macos-26, windows-2025]
+  # The runner image of the jobs that check text and of the analyses of CodeQL, one of runners.
+  linux: ubuntu-26.04
+  # The release of GNU make that the action setup-make installs from Chocolatey on a Windows runner,
+  # whose image has no make.
+  make: 4.4.1
+  # The pins of the actions of the workflows, and the limit in minutes of each job of the GitHub
+  # files.
+  ci:
+    actions:
+      # The action that checks out the repository in every job of every workflow.
+      checkout:
+        uses: actions/checkout
+        commit: 3d3c42e5aac5ba805825da76410c181273ba90b1
+        release: v7.0.1
+      # The actions of CodeQL. init and analyze run the analysis of each language in codeql.yml, and
+      # upload-sarif uploads the results of the Scorecard.
+      codeql:
+        uses: github/codeql-action
+        commit: 2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2
+        release: v4.38.2
+      # The action that reviews the dependencies that a pull request changes, in the job
+      # dependency-review of security.yml.
+      dependency-review:
+        uses: actions/dependency-review-action
+        commit: a1d282b36b6f3519aa1f3fc636f609c47dddb294
+        release: v5.0.0
+      # The action of the OpenSSF Scorecard, in the weekly job scorecard of security.yml.
+      scorecard:
+        uses: ossf/scorecard-action
+        commit: 2d1146689b8cda280b9bc96326124645441f03bc
+        release: v2.4.4
+    timeout: 15

@@ -1,0 +1,21 @@
+
+# Java
+#
+# The section java of .ergon.yaml sets the tools and the options of the Java targets, and the steps
+# of check-java. One run overrides an option on the command line, such as
+# make test-java JAVA_TEST_ARGS=--info.
+
+# The options of the section java.
+JAVA_TEST_ARGS ?={{% with words .Options.Test.Args %}} {{% . %}}{{% end %}}
+
+.PHONY: lint-java test-java audit-java check-java
+lint: lint-java
+test: test-java
+check: check-java
+
+lint-java: ## Check the Java sources with PMD, and with javac and javadoc warnings as errors
+	./gradlew --init-script gradle/ergon-java.init.gradle.kts check javadoc -x test
+test-java: ## Run the Java tests
+	./gradlew test $(JAVA_TEST_ARGS)
+audit-java: audit-jvm ## Scan the Gradle lockfiles of Java for known vulnerabilities
+check-java:{{% range .Options.Check %}} {{% . %}}-java{{% end %}} ## Run the gate of Java

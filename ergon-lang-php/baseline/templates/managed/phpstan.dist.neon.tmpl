@@ -1,0 +1,28 @@
+# Managed by ergon init. Add repository settings to .ergon/local/phpstan.dist.neon and run ergon init sync.
+#
+# The configuration of PHPStan for the repository: its strictest level, the rules of
+# phpstan-strict-rules, and every check that the level leaves off. ergon tool run installs PHPStan,
+# phpstan-strict-rules and the extension installer of PHPStan into one Composer project, and the
+# extension installer loads the rules of phpstan-strict-rules. PHPStan skips the directories whose
+# name starts with a dot.
+
+parameters:
+	level: max
+	paths:
+		- .
+	excludePaths:
+		analyse:
+			- vendor (?)
+	checkUninitializedProperties: true
+	checkBenevolentUnionTypes: true
+	checkMissingCallableSignature: true
+	checkMissingOverrideMethodAttribute: true
+	checkTooWideReturnTypesInProtectedAndPublicMethods: true
+	checkTooWideParameterOutInProtectedAndPublicMethods: true
+	checkTooWideThrowTypesInProtectedAndPublicMethods: true
+	rememberPossiblyImpureFunctionValues: false
+	reportPossiblyNonexistentGeneralArrayOffset: true
+	reportPossiblyNonexistentConstantArrayOffset: true
+	reportAlwaysTrueInLastCondition: true
+	reportAnyTypeWideningInVarTag: true
+	reportIgnoresWithoutComments: true

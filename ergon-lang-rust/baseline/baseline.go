@@ -4,55 +4,71 @@
 package baseline
 
 import (
-	_ "embed"
+	"embed"
+	"io/fs"
 
 	"go.dokimi.dev/ergon/core/language"
+	"go.dokimi.dev/ergon/core/option"
+	"go.dokimi.dev/ergon/core/workflow"
 )
 
-// Clippy is the path of the configuration of clippy, which Rust renders as a managed file of its
-// own.
-const Clippy = "clippy.toml"
+// Name is the name of the producer of Rust in the lock, and of its section of .ergon.yaml, which is
+// the name of the language.
+const Name = "rust"
 
-// The template of the configuration of clippy.
+// templates are the templates of Rust: the configuration of clippy under managed/, and the
+// fragments of the shared files under shared/.
 //
-//go:embed templates/clippy.toml.tmpl
-var clippy string
+//go:embed all:templates
+var templates embed.FS
 
-// The templates of the fragments, which mirror the paths of the shared files.
+// Producer renders the files of Rust: the configuration of clippy, and the fragments of
+// .editorconfig, .gitattributes, .gitignore and the Makefile. Its zero value is ready to use, and
+// it is safe for concurrent use.
+type Producer struct{}
+
 var (
-	//go:embed templates/.editorconfig.tmpl
-	editorconfig string
-
-	//go:embed templates/.gitattributes.tmpl
-	gitattributes string
-
-	//go:embed templates/.gitignore.tmpl
-	gitignore string
-
-	//go:embed templates/Makefile.tmpl
-	makefile string
-
-	//go:embed templates/.github/workflows/ci.yml.tmpl
-	ci string
-
-	//go:embed templates/.github/workflows/security.yml.tmpl
-	security string
-
-	//go:embed templates/.github/dependabot.yml.tmpl
-	dependabot string
+	_ language.Producer     = Producer{}
+	_ language.Configurable = Producer{}
+	_ language.Contributor  = Producer{}
 )
 
-// Initializer returns the init role of Rust: the configuration of clippy, and the fragments that
-// Rust contributes to the shared files of a repository. They do not depend on the answers.
-func Initializer() language.Initializer {
-	return language.Fixed{
-		{Path: Clippy, Class: language.Managed, Content: []byte(clippy)},
-		{Path: language.EditorConfig, Class: language.Managed, Fragment: []byte(editorconfig)},
-		{Path: language.GitAttributes, Class: language.Managed, Fragment: []byte(gitattributes)},
-		{Path: language.GitIgnore, Class: language.Managed, Fragment: []byte(gitignore)},
-		{Path: language.Makefile, Class: language.Managed, Fragment: []byte(makefile)},
-		{Path: language.CI, Class: language.Managed, Fragment: []byte(language.Job(ci))},
-		{Path: language.Security, Class: language.Managed, Fragment: []byte(security)},
-		{Path: language.Dependabot, Class: language.Managed, Fragment: []byte(dependabot)},
+// Templates returns the templates of Rust: clippy.toml under managed/, and the fragments of the
+// shared files under shared/.
+func (Producer) Templates() fs.FS {
+	// templates has the directory templates, so Sub returns no error.
+	sub, _ := fs.Sub(templates, "templates")
+	return sub
+}
+
+// Options returns the section rust at the baseline: cargo-audit 0.22.2, the gate of lint, test and
+// audit, the tests of every target, setup-rust-toolchain v2.0.0, and a limit of 30 minutes for the
+// job check-rust on every runner and the toolchain of rust-toolchain.toml.
+func (Producer) Options() language.Options {
+	return &Options{
+		Tools: Tools{CargoAudit: "cargo-audit@0.22.2"},
+		Check: option.Check{option.StepLint, option.StepTest, option.StepAudit},
+		Test:  option.Run{Args: []string{"--all-targets"}},
+		Audit: option.Audit{Ignore: []string{}},
+		CI: option.MatrixCI[Actions]{
+			Actions: Actions{SetupRustToolchain: workflow.Action{
+				Uses:    "actions-rust-lang/setup-rust-toolchain",
+				Commit:  "ecabd13d1c56bd1345c230e542e9144811ad706f",
+				Release: "v2.0.0",
+			}},
+			Runners:  option.Runners{},
+			Versions: []string{},
+			Timeout:  30,
+		},
 	}
+}
+
+// Contribution returns the part of Rust of the workflows for o, as [Options.Contribution] states
+// it, and for the options at the baseline when o is not the section rust.
+func (p Producer) Contribution(o language.Options) workflow.Contribution {
+	opts, ok := o.(*Options)
+	if !ok {
+		opts, _ = p.Options().(*Options)
+	}
+	return opts.Contribution()
 }

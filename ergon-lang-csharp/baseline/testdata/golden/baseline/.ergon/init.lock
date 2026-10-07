@@ -1,0 +1,56 @@
+{
+  "ergon": "1.0.0",
+  "files": [
+    {
+      "path": ".editorconfig",
+      "producer": "csharp",
+      "sha256": "38bc52bc898fe691c30248bc4271ddc2729b6e847c217451c7a6701551e397c6"
+    },
+    {
+      "path": ".gitattributes",
+      "producer": "csharp",
+      "sha256": "8577326f49026e432b0ffa2a8d27035a05dbb9113cd3453c276a199856c83335"
+    },
+    {
+      "path": ".gitignore",
+      "producer": "csharp",
+      "sha256": "470337e5f99f15cbee9d44568a5ff712dfcffeba421aa74632d706ca1e7527e5"
+    },
+    {
+      "path": ".globalconfig",
+      "producer": "csharp",
+      "sha256": "91095d47d714976184f3c56bfe92595419cf62f3760a7c5e72bed1eec046ef0b"
+    },
+    {
+      "path": "Makefile",
+      "producer": "csharp",
+      "sha256": "aafe5ddf10454c6e81e0358cf62bed85799f3c83c6724fb69496849f0fcfc3ec"
+    }
+  ],
+  "settings": {
+    "csharp.audit.severity": "low",
+    "csharp.check": [
+      "lint",
+      "test",
+      "audit"
+    ],
+    "csharp.ci.actions.setup-dotnet.commit": "a98b56852c35b8e3190ac28c8c2271da59106c68",
+    "csharp.ci.actions.setup-dotnet.release": "v6.0.0",
+    "csharp.ci.actions.setup-dotnet.uses": "actions/setup-dotnet",
+    "csharp.ci.runners": [],
+    "csharp.ci.timeout": 30,
+    "csharp.ci.versions": [],
+    "csharp.test.args": []
+  },
+  "answers": {
+    "name": "demo",
+    "owner": "Dokimasia B.V.",
+    "license": "MIT",
+    "repository": "dokimasia/demo",
+    "security-contact": "security@example.com",
+    "languages": [
+      "csharp"
+    ],
+    "year": 2026
+  }
+}

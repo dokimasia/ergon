@@ -1,0 +1,51 @@
+# Managed by ergon init. Add repository settings to .ergon/local/.github/workflows/codeql.yml and run ergon init sync.
+#
+# The CodeQL analysis of one language, which security.yml calls for each analysis that a producer
+# of ergon init contributes. The analysis runs once the repository has a file of the pattern
+# files, which pins the toolchain of the language.
+
+name: CodeQL
+
+on:
+  workflow_call:
+    inputs:
+      language:
+        description: The language of CodeQL to analyze, such as go or javascript-typescript.
+        required: true
+        type: string
+      build-mode:
+        description: How CodeQL extracts the language, none or autobuild.
+        required: true
+        type: string
+      files:
+        description: The pattern of hashFiles whose files run the analysis, such as go.work.
+        required: true
+        type: string
+      timeout:
+        description: The limit of the analysis in minutes.
+        required: true
+        type: number
+
+permissions: {}
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: {{% yaml .Options.Linux %}}
+    timeout-minutes: ${{ inputs.timeout }}
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: {{% .Options.CI.Actions.Checkout %}}
+        with:
+          persist-credentials: false
+      - if: hashFiles(inputs.files) != ''
+        uses: {{% .Options.CI.Actions.CodeQL.Path "init" %}}
+        with:
+          languages: ${{ inputs.language }}
+          build-mode: ${{ inputs.build-mode }}
+      - if: hashFiles(inputs.files) != ''
+        uses: {{% .Options.CI.Actions.CodeQL.Path "analyze" %}}
+        with:
+          category: /language:${{ inputs.language }}

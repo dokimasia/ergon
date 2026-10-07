@@ -25,6 +25,15 @@ func main() {
 func run() int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	p := cli.Process{Args: os.Args[1:], Getwd: os.Getwd, Now: time.Now, Stdout: os.Stdout, Stderr: os.Stderr}
-	return cli.Run(ctx, p, app.Register, cli.Version{Release: buildinfo.Version(), Full: buildinfo.Full()})
+	p := cli.Process{
+		Getwd:    os.Getwd,
+		Now:      time.Now,
+		CacheDir: os.UserCacheDir,
+		Stdin:    os.Stdin,
+		Stdout:   os.Stdout,
+		Stderr:   os.Stderr,
+		Args:     os.Args[1:],
+		Env:      os.Environ(),
+	}
+	return cli.Run(ctx, &p, app.Register, cli.Version{Release: buildinfo.Version(), Full: buildinfo.Full()})
 }

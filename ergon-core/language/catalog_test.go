@@ -4,8 +4,10 @@
 package language_test
 
 import (
+	"io/fs"
 	"slices"
 	"testing"
+	"testing/fstest"
 
 	"go.dokimi.dev/assert"
 	"go.dokimi.dev/ergon/core/language"
@@ -21,15 +23,15 @@ const (
 	gamma workspace.Language  = "gamma"
 )
 
-// initializer is an Initializer of the cases, told apart by its name.
-type initializer struct {
-	// name tells two initializers of a case apart.
+// producer is a Producer of the cases, told apart by its name.
+type producer struct {
+	// name tells two producers of a case apart.
 	name string
 }
 
-// Files returns no file.
-func (initializer) Files(*language.Answers) ([]language.File, error) {
-	return nil, nil
+// Templates returns no template.
+func (producer) Templates() fs.FS {
+	return fstest.MapFS{}
 }
 
 func TestCatalog(t *testing.T) {
@@ -185,21 +187,21 @@ func TestCatalog(t *testing.T) {
 			t.Parallel()
 			c := registered(t)
 			assert.NoError(t, language.Register(c, language.Declaration{Name: gamma, Toolchain: tool},
-				initializer{name: "first"}, initializer{name: "second"}), "Register of gamma with two roles")
-			role, ok := language.Role[language.Initializer](c, gamma)
+				producer{name: "first"}, producer{name: "second"}), "Register of gamma with two roles")
+			role, ok := language.Role[language.Producer](c, gamma)
 			assert.True(t, ok, "Role of gamma")
-			assert.Equal(t, role, language.Initializer(initializer{name: "first"}), "the role of gamma")
+			assert.Equal(t, role, language.Producer(producer{name: "first"}), "the role of gamma")
 		})
 
 		t.Run("reports false for a language without such a role", func(t *testing.T) {
 			t.Parallel()
-			_, ok := language.Role[language.Initializer](registered(t), alpha)
+			_, ok := language.Role[language.Producer](registered(t), alpha)
 			assert.False(t, ok, "Role of alpha")
 		})
 
 		t.Run("reports false for a language that the catalog does not have", func(t *testing.T) {
 			t.Parallel()
-			_, ok := language.Role[language.Initializer](registered(t), gamma)
+			_, ok := language.Role[language.Producer](registered(t), gamma)
 			assert.False(t, ok, "Role of gamma")
 		})
 	})
@@ -211,21 +213,21 @@ func TestCatalog(t *testing.T) {
 			t.Parallel()
 			c := registered(t)
 			assert.NoError(t, language.RegisterToolchain(c, language.Toolchain{Name: "shared"},
-				initializer{name: "first"}, initializer{name: "second"}), "RegisterToolchain of shared with two roles")
-			role, ok := language.ToolchainRole[language.Initializer](c, "shared")
+				producer{name: "first"}, producer{name: "second"}), "RegisterToolchain of shared with two roles")
+			role, ok := language.ToolchainRole[language.Producer](c, "shared")
 			assert.True(t, ok, "ToolchainRole of shared")
-			assert.Equal(t, role, language.Initializer(initializer{name: "first"}), "the role of shared")
+			assert.Equal(t, role, language.Producer(producer{name: "first"}), "the role of shared")
 		})
 
 		t.Run("reports false for a toolchain without such a role", func(t *testing.T) {
 			t.Parallel()
-			_, ok := language.ToolchainRole[language.Initializer](registered(t), tool)
+			_, ok := language.ToolchainRole[language.Producer](registered(t), tool)
 			assert.False(t, ok, "ToolchainRole of tool")
 		})
 
 		t.Run("reports false for a toolchain that the catalog does not have", func(t *testing.T) {
 			t.Parallel()
-			_, ok := language.ToolchainRole[language.Initializer](registered(t), "other")
+			_, ok := language.ToolchainRole[language.Producer](registered(t), "other")
 			assert.False(t, ok, "ToolchainRole of other")
 		})
 	})

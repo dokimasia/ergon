@@ -1,0 +1,64 @@
+# Managed by ergon init. Add repository settings to .ergon/local/.github/workflows/baseline.yml and run ergon init sync.
+#
+# A weekly check of the managed files against the newest release of ergon. The job opens an issue
+# when the baseline is outdated and no such issue is open.
+
+name: Baseline
+
+on:
+  schedule:
+    - cron: "23 5 * * 1"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  baseline:
+    name: Baseline of the newest ergon
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-ergon
+        with:
+          version: latest
+      - name: Check the baseline
+        id: check
+        shell: bash
+        run: |
+          if ergon init check > "$RUNNER_TEMP/findings" 2>&1; then
+            echo "outdated=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "outdated=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Open an issue
+        if: steps.check.outputs.outdated == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TITLE: The baseline of ergon init is outdated
+        run: |
+          open="$(gh issue list --state open --search "in:title \"$TITLE\"" --json number --jq length)"
+          if [ "$open" -gt 0 ]; then
+            exit 0
+          fi
+          {
+            echo "ergon init check of the newest release of ergon reports these files:"
+            echo
+            echo '```'
+            cat "$RUNNER_TEMP/findings"
+            echo '```'
+            echo
+            echo "Run ergon init sync with the newest release, and commit the files and .ergon/init.lock."
+          } > "$RUNNER_TEMP/issue.md"
+          gh issue create --title "$TITLE" --body-file "$RUNNER_TEMP/issue.md"

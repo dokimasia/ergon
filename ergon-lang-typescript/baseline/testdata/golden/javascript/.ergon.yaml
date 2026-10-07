@@ -1,0 +1,44 @@
+js:
+  # The tools of the targets that JavaScript and TypeScript share, as <package>@<version> of npm,
+  # which ergon tool run runs with npx.
+  tools:
+    # The linter and the formatter of lint-js and fmt-js, with the rules of biome.json.
+    biome: '@biomejs/biome@2.5.15'
+  # The paths that Biome formats and checks.
+  paths: [.]
+  # audit-js fails on a known vulnerability of a package of package-lock.json of severity or above:
+  # low, moderate, high or critical.
+  audit:
+    severity: low
+  # The pin of setup-node, the runners and the versions of Node.js of the jobs check-javascript and
+  # check-typescript, and their limit in minutes. Empty runners select every runner of the section
+  # github, and empty versions the Node.js of package.json.
+  ci:
+    actions:
+      # The action that installs the Node.js of package.json or of the matrix, with npm.
+      setup-node:
+        uses: actions/setup-node
+        commit: 820762786026740c76f36085b0efc47a31fe5020
+        release: v7.0.0
+    runners: []
+    versions: []
+    timeout: 30
+javascript:
+  # The steps that check-javascript runs, in order: lint, test or audit. lint runs lint-js of the
+  # section js, and audit runs audit-js.
+  check: [lint, test, audit]
+  # test-javascript runs npm test with args.
+  test:
+    args: []
+typescript:
+  # The tools of the targets of TypeScript, as <package>@<version> of npm, which ergon tool run runs
+  # with npx.
+  tools:
+    # The type checker of lint-typescript, tsc, with its type-safety options.
+    typescript: typescript@7.0.2
+  # The steps that check-typescript runs, in order: lint, test or audit. lint runs lint-js of the
+  # section js before tsc, and audit runs audit-js.
+  check: [lint, test, audit]
+  # test-typescript runs npm test with args.
+  test:
+    args: []

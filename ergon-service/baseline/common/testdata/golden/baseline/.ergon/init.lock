@@ -1,0 +1,67 @@
+{
+  "ergon": "1.0.0",
+  "files": [
+    {
+      "path": ".commitlint.yaml",
+      "producer": "common",
+      "sha256": "1ac3f2b4022a18a91051f0bd8e10cfce4ed0cdff237f1c50454aeaa388c41a75"
+    },
+    {
+      "path": ".editorconfig",
+      "producer": "common",
+      "sha256": "1fe419abddaebe598181332a1dfbeccc0de045a887bcce3c531ec4079f45082c"
+    },
+    {
+      "path": ".gitattributes",
+      "producer": "common",
+      "sha256": "b9ed4760ba27df5f725321eee5ea667232598784b09d8b008e18270c24c37ae9"
+    },
+    {
+      "path": ".gitignore",
+      "producer": "common",
+      "sha256": "f928048441c14c68cccd38032596fe73f566579350ef3de897b9fd1859d1219c"
+    },
+    {
+      "path": ".markdownlint.yml",
+      "producer": "common",
+      "sha256": "cf54e52b8bdd1fcfcc74679b59f5dc6494e168e7f01de2504fcbfd54cc0f0845"
+    },
+    {
+      "path": ".pre-commit-config.yaml",
+      "producer": "common",
+      "sha256": "c8bf69a0af4d6336be2eb6865a8e8cab50787c05115f1f9dd1ebf87aadd4e3e8"
+    },
+    {
+      "path": "CODE_OF_CONDUCT.md",
+      "producer": "common",
+      "sha256": "21873fd790375900fef943ac3bccb5e63a340a7a839fade241f4a1a4edbc1e90"
+    },
+    {
+      "path": "Makefile",
+      "producer": "common",
+      "sha256": "7bf7f136a6b1c0b30a5e375e4c454dc8b54416f5000c1eb24637b5beb4c54e9c"
+    }
+  ],
+  "settings": {
+    "common.ci.actions.markdownlint.commit": "21c1be1b93ad9ed58fa840aacc3f279cde2a72ff",
+    "common.ci.actions.markdownlint.release": "v24.2.0",
+    "common.ci.actions.markdownlint.uses": "DavidAnson/markdownlint-cli2-action",
+    "common.ci.timeout": 10,
+    "common.pre-commit-hooks": "v6.0.0",
+    "common.tools.commitlint.sha256": {
+      "darwin/arm64": "35f25a55947031db016177ac0211d479c1fca21ccb87b368b6a429629524436c",
+      "linux/amd64": "bf9666441262bf8d31345a6d29d6f788d0dadea7d47e5b91890c3a651999c118",
+      "windows/amd64": "e8f90d08616ab8cd987b2dbef7ae0ee7fd1cb43c97f5a1ad171e8a56d1bd2f3d"
+    },
+    "common.tools.commitlint.version": "0.12.0"
+  },
+  "answers": {
+    "name": "demo",
+    "owner": "Dokimasia B.V.",
+    "license": "MIT",
+    "repository": "dokimasia/demo",
+    "security-contact": "security@example.com",
+    "languages": [],
+    "year": 2026
+  }
+}

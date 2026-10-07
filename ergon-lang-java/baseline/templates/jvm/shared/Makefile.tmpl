@@ -1,0 +1,16 @@
+
+# Java and Kotlin
+#
+# The section jvm of .ergon.yaml sets the tools of the targets that Java and Kotlin share.
+
+# The tools of the shared targets, which ergon runs at the versions of the section jvm.
+OSV_SCANNER := $(ERGON) tool run jvm.osv-scanner --
+
+.PHONY: audit-jvm
+audit: audit-jvm
+
+audit-jvm: ## Scan the Gradle lockfiles for known vulnerabilities
+	@lockfiles="$$(git ls-files --cached --others --exclude-standard -- ':(glob)**/gradle.lockfile' ':(glob)**/buildscript-gradle.lockfile')"; \
+	if [ -z "$$lockfiles" ]; then echo "audit-jvm: no gradle.lockfile, so enable dependency locking in the Gradle build"; exit 1; fi; \
+	set --; for lockfile in $$lockfiles; do set -- "$$@" "--lockfile=$$lockfile"; done; \
+	$(OSV_SCANNER) scan source "$$@"

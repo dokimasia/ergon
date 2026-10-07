@@ -1,47 +1,55 @@
 // Copyright Dokimasia B.V. 2026
 // SPDX-License-Identifier: MIT
 
-// Package github renders the GitHub files of ergon init: the workflows, the actions that install
-// ergon and GNU make, the configuration of Dependabot, the issue forms, the template of a pull
-// request, and CODEOWNERS.
+// Package github is the producer of the GitHub files of ergon init: the workflows, the actions
+// that install ergon and GNU make, the configuration of Dependabot, the issue forms, the template
+// of a pull request, and CODEOWNERS.
 //
-// [Initializer] renders them from the templates under templates/, whose tree mirrors the paths
-// under .github in the repository: templates/managed/ for the managed files and templates/seeded/
-// for CODEOWNERS. Each template ends in .tmpl, so GitHub does not take a template for a workflow.
+// [Producer] renders them from the templates under templates/, whose tree mirrors the paths in the
+// repository: templates/managed/.github/ for the managed files and templates/seeded/.github/ for
+// CODEOWNERS. Each template ends in .tmpl, so GitHub takes no template for a workflow.
 //
 // # Workflows
 //
-//   - ci.yml is the gate on every pull request, on the merge queue and on main: Markdown lint, the
-//     commit messages of a pull request, ergon init check, and the job check-<language> of each
-//     language.
+// The GitHub files render the contributions of every producer, so no toolchain appears in them:
+//
+//   - ci.yml is the gate on every pull request, on the merge queue and on main. It renders each
+//     job of the contributions from one skeleton: the checkout, the installation of GNU make and of
+//     ergon, the setup steps, and the steps of the job, as [Options.Jobs] states.
 //   - security.yml runs the dependency review on a pull request, the OpenSSF Scorecard weekly, and
-//     the CodeQL job of each language that CodeQL analyzes, which calls codeql.yml.
+//     a job codeql-<language> for each CodeQL analysis of the contributions, which calls
+//     codeql.yml.
 //   - baseline.yml checks the managed files against the newest release of ergon weekly, and opens
 //     an issue when they are outdated.
-//
-// A job that builds, tests or runs ergon runs on the matrix [language.Runners] of Linux, macOS and
-// Windows. A job that checks text or analyzes the sources runs on [language.Linux]. Each runner
-// is pinned to a version of its system. The action setup-make installs GNU make on Windows, whose
-// image has none, so a job runs make in bash on every system.
+//   - dependabot.yml updates the package manager of each update of the contributions weekly. A
+//     repository without one has no dependabot.yml.
 //
 // Every workflow grants no permission at its top level, and each job grants only the scopes that
 // it needs. Every action is pinned to the commit of a release, with the release in a comment.
-// actions/checkout runs with persist-credentials set to false. A workflow that an event triggers
-// groups its runs by workflow and ref, and cancels a superseded run on a pull request only.
+// actions/checkout runs with persist-credentials set to false. A workflow that a push or a pull
+// request triggers groups its runs by workflow and ref, and cancels a superseded run on a pull
+// request only.
 //
-// # Shared files
+// # Options
 //
-// ci.yml, security.yml and dependabot.yml are shared: Initializer renders their first fragment,
-// and each language appends its jobs or its package manager.
+// The section github of .ergon.yaml, [Options], names the runners of the jobs, the Linux runner of
+// the checks of text and of CodeQL, the release of GNU make for Windows, the pins of the actions of
+// the GitHub files, and the limit of their jobs. It configures the platform alone: the section of
+// each toolchain configures the setup of its jobs.
+//
+// # Contribution
+//
+// [Producer.Contribution] returns the job baseline of ci.yml, which runs ergon init check on every
+// runner, so a managed file that differs from its rendering fails the gate.
 //
 // # Errors
 //
-// [Initializer.Files] returns an error that wraps [ErrInvalidAnswer] for a repository that is not
-// owner/name.
+// [Producer.Data] returns an error that wraps [go.dokimi.dev/ergon/core/option.ErrInvalid] for a
+// job whose runners the section github does not list, which names the job and the runner.
 //
 // # Dependency position
 //
-// Imports the standard library, [go.dokimi.dev/ergon/core/language] and
-// [go.dokimi.dev/ergon/service/baseline/common], for the release of commitlint. internal/cli of
-// the root module imports it.
+// Imports the standard library, [go.dokimi.dev/ergon/core/language],
+// [go.dokimi.dev/ergon/core/option] and [go.dokimi.dev/ergon/core/workflow]. internal/cli of the
+// root module imports it.
 package github

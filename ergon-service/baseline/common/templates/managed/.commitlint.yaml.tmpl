@@ -6,7 +6,7 @@
 #
 # The rules: https://github.com/conventionalcommit/commitlint#available-rules
 
-min-version: v0.12.0
+min-version: {{% yaml (print "v" .Options.Tools.Commitlint.Version) %}}
 formatter: default
 rules:
   - type-enum

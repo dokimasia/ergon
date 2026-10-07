@@ -1,0 +1,44 @@
+terraform:
+  # The tools of the targets of Terraform: the release binaries of tflint and uv, and checkov, a
+  # package of PyPI that ergon tool run runs through uv.
+  tools:
+    # The release of tflint, the linter of lint-terraform, with the rules of .tflint.hcl.
+    tflint:
+      sha256:
+        darwin/arm64: 2496e9cb3d24992d553b45e7c87a0fdc9449ca975233876247a9bfeda857e6c0
+        linux/amd64: cca9d13e2e1d7a2c627af60ff899a3c9b74212899416aeb96ec764d2ef954537
+        windows/amd64: fb42fb859d844b156a8ea9d3363078c4d8b85ca78782e60876b08c9b8e59f303
+      version: 0.64.0
+    # The release of uv, which runs checkov on Python 3.13.
+    uv:
+      sha256:
+        darwin/arm64: 50487ae565ccd96e499056b4674d438f4c53170202617b4c759defe0c6a1b544
+        linux/amd64: 9167d72b3319674b6303c4cbe071854bba13ebdf3d76b1a7cbdc175471fb66d6
+        windows/amd64: 75d05de6762778c31ee183398de7dd15093fad0ed90b1f236d8205ea5ec00c90
+      version: 0.12.23
+    # The scan of audit-terraform, over the configuration.
+    checkov: checkov@3.3.23
+  # The directories that the targets format, lint and scan, each with its subdirectories.
+  paths: [.]
+  # The steps that check-terraform runs, in order: lint, test or audit.
+  check: [lint, test, audit]
+  # test-terraform runs terraform test with args.
+  test:
+    args: []
+  # audit-terraform scans the configuration with checkov, and accepts each check of ignore, by its
+  # identifier, such as CKV_AWS_20.
+  audit:
+    ignore: []
+  # The pin of setup-terraform, the runners and the versions of Terraform of the job
+  # check-terraform, and its limit in minutes. Empty runners select every runner of the section
+  # github, and empty versions the version of .terraform-version.
+  ci:
+    actions:
+      # The action that installs Terraform, at the version of .terraform-version or of the matrix.
+      setup-terraform:
+        uses: hashicorp/setup-terraform
+        commit: dfe3c3f87815947d99a8997f908cb6525fc44e9e
+        release: v4.0.1
+    runners: []
+    versions: []
+    timeout: 30

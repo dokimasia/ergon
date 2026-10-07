@@ -1,0 +1,39 @@
+python:
+  # The tools of the targets of Python: the release binary of uv, and the packages of PyPI that
+  # ergon tool run runs through it, as <package>@<version>.
+  tools:
+    # The release of uv, which installs Python and the environment of the project, and runs the
+    # packages of PyPI of the section.
+    uv:
+      sha256:
+        darwin/arm64: 50487ae565ccd96e499056b4674d438f4c53170202617b4c759defe0c6a1b544
+        linux/amd64: 9167d72b3319674b6303c4cbe071854bba13ebdf3d76b1a7cbdc175471fb66d6
+        windows/amd64: 75d05de6762778c31ee183398de7dd15093fad0ed90b1f236d8205ea5ec00c90
+      version: 0.12.23
+    # The linter and the formatter of lint-python and fmt-python, with the rules of ruff.toml.
+    ruff: ruff@0.16.10
+    # The type checker of lint-python, in its strictest mode, in the environment of the project.
+    mypy: mypy@2.4.0
+    # The test runner of test-python, in the environment of the project.
+    pytest: pytest@9.1.1
+    # The vulnerability scan of audit-python, over the packages of uv.lock.
+    pip-audit: pip-audit@2.10.1
+  # The paths that ruff and mypy check.
+  paths: [.]
+  # The steps that check-python runs, in order: lint, test or audit.
+  check: [lint, test, audit]
+  # test-python runs pytest with args.
+  test:
+    args: []
+  # audit-python scans the packages of uv.lock with pip-audit, and accepts each advisory of ignore,
+  # by its identifier, such as PYSEC-2024-1.
+  audit:
+    ignore: []
+  # The runners and the versions of Python of the job check-python, and its limit in minutes. uv
+  # installs Python, so the job runs no action of its own. Empty runners select every runner of the
+  # section github, and empty versions the version of pyproject.toml.
+  ci:
+    actions: {}
+    runners: []
+    versions: []
+    timeout: 30

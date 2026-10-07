@@ -1,0 +1,144 @@
+# Managed by ergon init. Add repository settings to .ergon/local/.github/workflows/ci.yml and run ergon init sync.
+#
+# The gate of the repository, with the jobs that each producer of ergon init contributes. A check
+# of text runs on the Linux runner of the section github of .ergon.yaml, and every other job on a
+# matrix of runners. A job that sets up a toolchain runs its steps once the repository has the
+# files of the toolchain.
+
+name: CI
+
+on:
+  pull_request:
+  merge_group:
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Every command runs in bash, which is Git Bash on Windows.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  baseline:
+    name: "Baseline (${{ matrix.os }})"
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-26.04, macos-26, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-ergon
+      - name: Check the managed files
+        run: |
+          ergon init check
+
+  check-alpha:
+    name: "Alpha (${{ matrix.os }}, ${{ matrix.version }})"
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-26.04, macos-26, windows-2025]
+        version: ["1.0", "2.0"]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      ALPHA_HOME: /opt/alpha
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - if: "hashFiles('alpha.lock') != ''"
+        uses: ./.github/actions/setup-make
+      - if: "hashFiles('alpha.lock') != ''"
+        uses: ./.github/actions/setup-ergon
+      - name: Set up alpha
+        if: "hashFiles('alpha.lock') != ''"
+        uses: alpha-lang/setup-alpha@0123456789abcdef0123456789abcdef01234567 # v1.2.3
+        with:
+          cache: "false"
+          version: "${{ matrix.version }}"
+      - name: Check alpha
+        if: "hashFiles('alpha.lock') != '' && (github.event_name != 'schedule')"
+        run: |
+          make check-alpha
+
+  check-beta:
+    name: "Beta (${{ matrix.os }})"
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-26.04, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-make
+      - uses: ./.github/actions/setup-ergon
+      - run: |
+          make check-beta
+
+  lint-text:
+    name: Text
+    if: "github.event_name == 'pull_request'"
+    runs-on: ubuntu-26.04
+    timeout-minutes: 3
+    permissions: {}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/setup-ergon
+      - env:
+          BASE: main
+        run: |
+          ergon tool run tool.lint
+
+  steps:
+    name: "Steps (${{ matrix.os }})"
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-26.04, macos-26, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 4
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: pin
+        run: |
+          echo version=1 >> "$GITHUB_OUTPUT"
+      - if: "steps.pin.outputs.version == '1'"
+        uses: alpha-lang/setup-alpha@0123456789abcdef0123456789abcdef01234567 # v1.2.3
+      - uses: alpha-lang/setup-alpha@0123456789abcdef0123456789abcdef01234567 # v1.2.3
+        with:
+          globs: "**/*.md\n#node_modules"
+      - name: Report
+        env:
+          VERSION: "${{ steps.pin.outputs.version }}"
+        run: |
+          if [ -n "$VERSION" ]; then
+            echo "$VERSION"
+          fi

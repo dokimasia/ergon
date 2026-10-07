@@ -1,0 +1,23 @@
+csharp:
+  # The steps that check-csharp runs, in order: lint, test or audit.
+  check: [lint, test, audit]
+  # test-csharp runs dotnet test with args.
+  test:
+    args: []
+  # audit-csharp fails on a known vulnerability of a NuGet package of severity or above: low,
+  # moderate, high or critical.
+  audit:
+    severity: low
+  # The pin of setup-dotnet, the runners and the versions of the .NET SDK of the job check-csharp,
+  # and its limit in minutes. Empty runners select every runner of the section github, and empty
+  # versions the SDK of global.json.
+  ci:
+    actions:
+      # The action that installs the .NET SDK of global.json or of the matrix.
+      setup-dotnet:
+        uses: actions/setup-dotnet
+        commit: a98b56852c35b8e3190ac28c8c2271da59106c68
+        release: v6.0.0
+    runners: []
+    versions: []
+    timeout: 30

@@ -8,56 +8,22 @@ import (
 
 	"go.dokimi.dev/assert"
 	"go.dokimi.dev/ergon/core/language"
+	"go.dokimi.dev/ergon/core/spdx"
+	"go.dokimi.dev/ergon/core/workspace"
 )
+
+// config pins the path of .ergon.yaml.
+const config = ".ergon.yaml"
 
 func TestInit(t *testing.T) {
 	t.Parallel()
 
-	t.Run("Job", func(t *testing.T) {
+	t.Run("Config", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("replaces each placeholder of the checkout with the pinned action", func(t *testing.T) {
+		t.Run("is .ergon.yaml at the root of the repository", func(t *testing.T) {
 			t.Parallel()
-			got := language.Job("- uses: {{checkout}}\n- uses: {{checkout}}\n")
-			assert.Equal(t, got, "- uses: "+language.Checkout+"\n- uses: "+language.Checkout+"\n", "the job")
-		})
-
-		t.Run("replaces the placeholder of the runners with the three systems", func(t *testing.T) {
-			t.Parallel()
-			got := language.Job("os: {{runners}}\n")
-			assert.Equal(t, got, "os: [ubuntu-26.04, macos-26, windows-2025]\n", "the matrix of the job")
-		})
-
-		t.Run("replaces the placeholder of the Go release with Go", func(t *testing.T) {
-			t.Parallel()
-			got := language.Job("go-version: \"{{go-version}}\"\n")
-			assert.Equal(t, got, "go-version: \"1.27.1\"\n", "the Go release of the job")
-		})
-	})
-
-	t.Run("Class", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("Valid", func(t *testing.T) {
-			t.Parallel()
-
-			tests := []struct {
-				name string
-				give language.Class
-				want bool
-			}{
-				{name: "reports false for the zero value", give: 0, want: false},
-				{name: "reports true for Managed", give: language.Managed, want: true},
-				{name: "reports true for Configured", give: language.Configured, want: true},
-				{name: "reports true for Seeded", give: language.Seeded, want: true},
-				{name: "reports false for the value after Seeded", give: language.Seeded + 1, want: false},
-			}
-			for _, tt := range tests {
-				t.Run(tt.name, func(t *testing.T) {
-					t.Parallel()
-					assert.Equal(t, tt.give.Valid(), tt.want, "Valid")
-				})
-			}
+			assert.Equal(t, language.Config, config, "Config")
 		})
 	})
 
@@ -93,28 +59,86 @@ func TestInit(t *testing.T) {
 		})
 	})
 
-	t.Run("Fixed", func(t *testing.T) {
+	t.Run("Answers", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("Files", func(t *testing.T) {
+		t.Run("Validate", func(t *testing.T) {
 			t.Parallel()
 
-			t.Run("returns its files for any answers", func(t *testing.T) {
-				t.Parallel()
-				fixed := language.Fixed{{Path: language.GitIgnore, Class: language.Managed, Fragment: []byte("bin/\n")}}
-				files, err := fixed.Files(&language.Answers{Name: "any"})
-				assert.NoError(t, err, "Files")
-				assert.Equal(t, files, []language.File(fixed), "the files")
-			})
+			valid := []struct {
+				name string
+				give func(*language.Answers)
+			}{
+				{name: "returns nil for the answers of a repository", give: func(*language.Answers) {}},
+				{
+					name: "returns nil for the license with parameters",
+					give: func(a *language.Answers) { a.License = spdx.BUSL11 },
+				},
+				{name: "returns nil for the first year", give: func(a *language.Answers) { a.Year = 1 }},
+				{name: "returns nil for the last year", give: func(a *language.Answers) { a.Year = 9999 }},
+				{name: "returns nil for no language", give: func(a *language.Answers) { a.Languages = nil }},
+			}
+			for _, tt := range valid {
+				t.Run(tt.name, func(t *testing.T) {
+					t.Parallel()
+					a := answers()
+					tt.give(&a)
+					assert.NoError(t, a.Validate(), "Validate")
+				})
+			}
 
-			t.Run("returns a copy of the list", func(t *testing.T) {
-				t.Parallel()
-				fixed := language.Fixed{{Path: language.GitIgnore, Class: language.Managed, Fragment: []byte("bin/\n")}}
-				files, err := fixed.Files(nil)
-				assert.NoError(t, err, "Files")
-				files[0].Path = language.Makefile
-				assert.Equal(t, fixed[0].Path, language.GitIgnore, "the path of the fixed file")
-			})
+			invalid := []struct {
+				name string
+				give func(*language.Answers)
+			}{
+				{name: "returns ErrInvalidAnswer for an empty name", give: func(a *language.Answers) { a.Name = "" }},
+				{
+					name: "returns ErrInvalidAnswer for a name of spaces",
+					give: func(a *language.Answers) { a.Name = "  " },
+				},
+				{
+					name: "returns ErrInvalidAnswer for an owner that spans lines",
+					give: func(a *language.Answers) { a.Owner = "A\nB" },
+				},
+				{
+					name: "returns ErrInvalidAnswer for a security contact that spans lines",
+					give: func(a *language.Answers) { a.SecurityContact = "a@b.c\r" },
+				},
+				{
+					name: "returns ErrInvalidAnswer for a license that ergon does not support",
+					give: func(a *language.Answers) { a.License = "AMD-newlib" },
+				},
+				{name: "returns ErrInvalidAnswer for the year 0", give: func(a *language.Answers) { a.Year = 0 }},
+				{
+					name: "returns ErrInvalidAnswer for the year 10000",
+					give: func(a *language.Answers) { a.Year = 10000 },
+				},
+				{
+					name: "returns ErrInvalidAnswer for a repository without an owner",
+					give: func(a *language.Answers) { a.Repository = "ergon" },
+				},
+			}
+			for _, tt := range invalid {
+				t.Run(tt.name, func(t *testing.T) {
+					t.Parallel()
+					a := answers()
+					tt.give(&a)
+					assert.ErrorIs(t, a.Validate(), language.ErrInvalidAnswer, "Validate")
+				})
+			}
 		})
 	})
+}
+
+// answers returns new valid answers of the cases: a repository of Go under MIT.
+func answers() language.Answers {
+	return language.Answers{
+		Name:            "ergon",
+		Owner:           "Dokimasia B.V.",
+		License:         spdx.MIT,
+		Repository:      "dokimasia/ergon",
+		SecurityContact: "security@dokimi.dev",
+		Languages:       []workspace.Language{"go"},
+		Year:            2026,
+	}
 }

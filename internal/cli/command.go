@@ -18,11 +18,8 @@ import (
 	"go.dokimi.dev/ergon/core/language"
 )
 
-// The exit statuses of [Run].
+// The exit statuses of [Run] other than 0, the status of a command that succeeds.
 const (
-	// statusOK is the status of a command that succeeds.
-	statusOK = 0
-
 	// statusFailure is the status of a command that fails, and of a registration of the languages
 	// that fails.
 	statusFailure = 1
@@ -53,13 +50,16 @@ const (
 	// versionTemplate makes --version write the name of the program and its version.
 	versionTemplate = "{{.Name}} {{.Version}}\n"
 
+	// helpWidth is the number of columns of a line of a list in a help text.
+	helpWidth = 80
+
 	// short is the description of ergon in a list of commands.
 	short = "Tooling for repositories in one or more languages"
 
 	// long is the description of ergon in its help, with a verb for its languages.
 	long = `ergon works on repositories with code in one or more of these languages:
 
-  %s
+%s
 
 ergon reads its configuration from .ergon.yaml in the working directory, or
 from the file that --config names. The configuration is YAML, whatever the
@@ -76,6 +76,13 @@ type Process struct {
 	// copyright notice.
 	Now func() time.Time
 
+	// CacheDir returns the cache directory of the user, as [os.UserCacheDir] does. ergon tool run
+	// installs the tools under ergon/tools in it.
+	CacheDir func() (string, error)
+
+	// Stdin is the standard input of a tool that ergon tool run runs.
+	Stdin io.Reader
+
 	// Stdout receives the output of a command: the help, the version, and the files it wrote.
 	Stdout io.Writer
 
@@ -84,6 +91,10 @@ type Process struct {
 
 	// Args are the arguments that follow the name of the program.
 	Args []string
+
+	// Env is the environment of the process, as [os.Environ] returns it, which ergon tool run passes
+	// to a tool and to the toolchain that installs it.
+	Env []string
 }
 
 // Version is the version of the running ergon.
@@ -126,12 +137,22 @@ type session struct {
 	// now returns the current time.
 	now func() time.Time
 
+	// cacheDir returns the cache directory of the user.
+	cacheDir func() (string, error)
+
 	// dir is the absolute path of the working directory. It is empty until [session.resolve]
 	// sets it.
 	dir string
 
 	// release is the version of the release of ergon, which the lock of ergon init records.
 	release string
+
+	// env is the environment of the process.
+	env []string
+
+	// status is the exit status of the tool that ergon tool run ran, which [Run] returns when the
+	// command returns no error, and 0 for every other command.
+	status int
 }
 
 // resolve sets the working directory of s with its getwd function. It returns an error that wraps
@@ -146,7 +167,7 @@ func (s *session) resolve() error {
 }
 
 // Run runs the command line of p and returns the exit status. register fills the catalog of the
-// languages, and v is the version of the running ergon. Every command receives ctx. Run writes
+// languages, and v is the version of the running ergon. Every command runs under ctx. Run writes
 // every error to p.Stderr, after the name of the program.
 //
 // The exit status is:
@@ -156,18 +177,20 @@ func (s *session) resolve() error {
 //     file that does not parse or a managed file that was edited by hand
 //   - 2 for a command line that ergon refuses, such as one with an unknown command or flag, after
 //     which Run points at the help of the command
-func Run(ctx context.Context, p Process, register func(*language.Catalog) error, v Version) int {
-	root, err := command(p, register, v)
+//   - the exit status of the tool that ergon tool run ran, without an error of ergon
+func Run(ctx context.Context, p *Process, register func(*language.Catalog) error, v Version) int {
+	root, s, err := command(ctx, p, register, v)
 	ran := root
 	if err == nil {
 		// cobra reads the arguments of the process for nil arguments, so the slice is never nil.
 		root.SetArgs(append([]string{}, p.Args...))
+		root.SetIn(p.Stdin)
 		root.SetOut(p.Stdout)
 		root.SetErr(p.Stderr)
 		ran, err = root.ExecuteContextC(ctx)
 	}
 	if err == nil {
-		return statusOK
+		return s.status
 	}
 	fmt.Fprintf(p.Stderr, "%s: %v\n", program, err)
 	if _, ok := errors.AsType[usageError](err); ok {
@@ -177,19 +200,29 @@ func Run(ctx context.Context, p Process, register func(*language.Catalog) error,
 	return statusFailure
 }
 
-// command returns the root command of ergon. It registers the languages with register into a
-// catalog, which the help lists and the commands use, and returns the error of register. v is the
-// version of the running ergon.
+// command returns the root command of ergon and the session that its commands share. It registers
+// the languages with register into a catalog, which the help lists and the commands use, and
+// returns the error of register. v is the version of the running ergon, and the commands run under
+// ctx.
 //
 // Before a command runs, the root command resolves the working directory with p.Getwd and reads
-// the configuration with [load]. ergon init and its subcommands resolve the directory alone,
-// because ergon init writes the configuration and never reads it. Without a subcommand, the root
-// command writes the help. cobra adds the command help, and the command completion, which writes
-// the completion script of a shell.
-func command(p Process, register func(*language.Catalog) error, v Version) (*cobra.Command, error) {
-	s := &session{getwd: p.Getwd, catalog: new(language.Catalog), release: v.Release, now: p.Now}
+// the configuration with [load]. ergon init, ergon license and ergon tool resolve the directory
+// alone, because they read the options of .ergon.yaml through the baseline of ergon init. Without a
+// subcommand, the root command writes the help. cobra adds the command help, and the command
+// completion, which writes the completion script of a shell.
+func command(ctx context.Context, p *Process, register func(*language.Catalog) error, v Version) (
+	*cobra.Command, *session, error,
+) {
+	s := &session{
+		getwd:    p.Getwd,
+		catalog:  new(language.Catalog),
+		now:      p.Now,
+		cacheDir: p.CacheDir,
+		release:  v.Release,
+		env:      p.Env,
+	}
 	if err := register(s.catalog); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	var names []string
 	for d := range s.catalog.Languages() {
@@ -201,7 +234,7 @@ func command(p Process, register func(*language.Catalog) error, v Version) (*cob
 	root := &cobra.Command{
 		Use:           program,
 		Short:         short,
-		Long:          fmt.Sprintf(long, strings.Join(names, ", ")),
+		Long:          fmt.Sprintf(long, list(names)),
 		Version:       v.Full,
 		Args:          usage(cobra.NoArgs),
 		SilenceErrors: true,
@@ -225,8 +258,57 @@ func command(p Process, register func(*language.Catalog) error, v Version) (*cob
 	flags.StringVar(&file, configFlag, configFile, "read the configuration from `file`")
 	flags.BoolP(helpFlag, "h", false, "show the help of the command")
 	root.Flags().BoolP(versionFlag, "v", false, "show the version of ergon")
-	root.AddCommand(initCommand(s, names))
-	return root, nil
+	root.AddCommand(initCommand(s, names), licenseCommand(ctx, s), toolCommand(ctx, s))
+	return root, s, nil
+}
+
+// group returns a command that groups subcommands, such as ergon init, which resolves the working
+// directory of s before a subcommand runs and reads no configuration through viper. Without a
+// subcommand, it returns a [usageError] that lists its subcommands.
+func group(s *session, use, short, long string, subcommands ...*cobra.Command) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   use,
+		Short: short,
+		Long:  long,
+		Args:  usage(cobra.NoArgs),
+		PersistentPreRunE: func(*cobra.Command, []string) error {
+			return s.resolve()
+		},
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			names := make([]string, 0, len(subcommands))
+			for _, sub := range cmd.Commands() {
+				names = append(names, sub.Name())
+			}
+			err := fmt.Errorf("cli: %s needs a subcommand: %s", cmd.Name(), strings.Join(names, ", "))
+			return usageError{err: err}
+		},
+	}
+	cmd.AddCommand(subcommands...)
+	return cmd
+}
+
+// list returns words as a list of a help text: the words separated by commas, in lines of at most
+// helpWidth columns that start with two spaces. A word longer than a line has a line of its own.
+func list(words []string) string {
+	const indent = "  "
+	var b strings.Builder
+	line := indent
+	for i, w := range words {
+		if i < len(words)-1 {
+			w += ","
+		}
+		switch {
+		case line == indent:
+			line += w
+		case len(line)+1+len(w) > helpWidth:
+			b.WriteString(line + "\n")
+			line = indent + w
+		default:
+			line += " " + w
+		}
+	}
+	b.WriteString(line)
+	return b.String()
 }
 
 // usage returns the validation of args as a validation whose error is a [usageError].

@@ -1,0 +1,34 @@
+
+# Rust
+#
+# The section rust of .ergon.yaml sets the tools and the options of the Rust targets, and the steps
+# of check-rust. One run overrides an option on the command line, such as
+# make test-rust RUST_TEST_ARGS=--lib.
+
+# The tools of the Rust targets, which ergon installs at the versions of the section rust.
+CARGO_AUDIT := $(ERGON) tool run rust.cargo-audit --
+
+# The options of the section rust.
+RUST_TEST_ARGS ?={{% with words .Options.Test.Args %}} {{% . %}}{{% end %}}
+RUST_AUDIT_IGNORE ?={{% with words .Options.Audit.Ignore %}} {{% . %}}{{% end %}}
+
+.PHONY: fmt-rust lint-rust test-rust audit-rust check-rust
+fmt: fmt-rust
+lint: lint-rust
+test: test-rust
+audit: audit-rust
+check: check-rust
+
+fmt-rust: ## Format the Rust sources
+	cargo fmt --all
+lint-rust: ## Check the Rust sources with clippy.toml, the pedantic lints and the documentation lints as errors
+	cargo fmt --all -- --check
+	cargo clippy --workspace --all-targets --all-features -- -D warnings -D clippy::pedantic -D missing_docs \
+		-D missing_debug_implementations -D unsafe_code -D unused_qualifications
+	RUSTDOCFLAGS="-D warnings -D rustdoc::private_doc_tests -D rustdoc::unescaped_backticks" \
+		cargo doc --workspace --all-features --no-deps
+test-rust: ## Run the Rust tests
+	cargo test $(RUST_TEST_ARGS)
+audit-rust: ## Scan Cargo.lock for known vulnerabilities
+	$(CARGO_AUDIT) audit $(foreach id,$(RUST_AUDIT_IGNORE),--ignore $(id))
+check-rust:{{% range .Options.Check %}} {{% . %}}-rust{{% end %}} ## Run the gate of Rust

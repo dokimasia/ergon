@@ -1,0 +1,6 @@
+
+[*.{js,mjs,cjs,jsx}]
+indent_size = 2
+
+[*.{ts,mts,cts,tsx}]
+indent_size = 2

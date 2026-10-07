@@ -1,0 +1,66 @@
+{
+  "ergon": "1.0.0",
+  "files": [
+    {
+      "path": ".editorconfig",
+      "producer": "python",
+      "sha256": "515f5e355ed1adb615b58dbd95b713cf0e1b4fe48525cea6f255e82b5cfbe128"
+    },
+    {
+      "path": ".gitattributes",
+      "producer": "python",
+      "sha256": "5a7699e66f232076918877fd8a4a83a5e40473243a497629c0490920c08f4114"
+    },
+    {
+      "path": ".gitignore",
+      "producer": "python",
+      "sha256": "a06526f1376db5f70150d9be3d754bb2e5374b65b7d1222b3e2551e79211233c"
+    },
+    {
+      "path": "Makefile",
+      "producer": "python",
+      "sha256": "c68267d44a0c42ac960dca9ad26400a98273f696b2e44806a5e7612b8a6e4883"
+    },
+    {
+      "path": "ruff.toml",
+      "producer": "python",
+      "sha256": "919807ba7d2b292daf6ac587a56a0708d3882503109d06fd2e8ccd970558cdbc"
+    }
+  ],
+  "settings": {
+    "python.audit.ignore": [],
+    "python.check": [
+      "lint",
+      "test",
+      "audit"
+    ],
+    "python.ci.runners": [],
+    "python.ci.timeout": 30,
+    "python.ci.versions": [],
+    "python.paths": [
+      "."
+    ],
+    "python.test.args": [],
+    "python.tools.mypy": "mypy@2.4.0",
+    "python.tools.pip-audit": "pip-audit@2.10.1",
+    "python.tools.pytest": "pytest@9.1.1",
+    "python.tools.ruff": "ruff@0.16.10",
+    "python.tools.uv.sha256": {
+      "darwin/arm64": "50487ae565ccd96e499056b4674d438f4c53170202617b4c759defe0c6a1b544",
+      "linux/amd64": "9167d72b3319674b6303c4cbe071854bba13ebdf3d76b1a7cbdc175471fb66d6",
+      "windows/amd64": "75d05de6762778c31ee183398de7dd15093fad0ed90b1f236d8205ea5ec00c90"
+    },
+    "python.tools.uv.version": "0.12.23"
+  },
+  "answers": {
+    "name": "demo",
+    "owner": "Dokimasia B.V.",
+    "license": "MIT",
+    "repository": "dokimasia/demo",
+    "security-contact": "security@example.com",
+    "languages": [
+      "python"
+    ],
+    "year": 2026
+  }
+}

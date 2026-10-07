@@ -11,6 +11,7 @@ import (
 	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/core/workspace"
 	golang "go.dokimi.dev/ergon/lang/go"
+	"go.dokimi.dev/ergon/lang/go/baseline"
 )
 
 // The spellings of Go and of its toolchain in configuration. A repository names them, so the test
@@ -36,6 +37,16 @@ func TestLanguage(t *testing.T) {
 			assert.Equal(t, slices.Collect(c.Languages()),
 				[]language.Declaration{{Name: pinnedLanguage, Toolchain: pinnedToolchain}},
 				"the languages of the catalog")
+		})
+
+		t.Run("adds the producer of Go, whose section is named after the language", func(t *testing.T) {
+			t.Parallel()
+			var c language.Catalog
+			assert.NoError(t, golang.Register(&c), "Register of Go")
+			producer, ok := language.Role[language.Producer](&c, pinnedLanguage)
+			assert.True(t, ok, "the producer of Go")
+			assert.Equal(t, producer, language.Producer(baseline.Producer{}), "the producer")
+			assert.Equal(t, baseline.Name, string(pinnedLanguage), "the name of the section")
 		})
 
 		t.Run("returns ErrRegistered for a catalog that has the toolchain", func(t *testing.T) {

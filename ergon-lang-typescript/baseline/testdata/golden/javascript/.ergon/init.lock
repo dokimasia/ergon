@@ -1,0 +1,68 @@
+{
+  "ergon": "1.0.0",
+  "files": [
+    {
+      "path": ".editorconfig",
+      "producer": "javascript",
+      "sha256": "ac4d75f7052796c6c15f74111029391b481b1aa46afdcfe7380fefe1831cce7e"
+    },
+    {
+      "path": ".gitattributes",
+      "producer": "js",
+      "sha256": "d7d2e1720caa70fe17b2094cba00406863da607cb76f48a683edf6af244f7730"
+    },
+    {
+      "path": ".gitignore",
+      "producer": "js",
+      "sha256": "09789a11281e10d352046fbeaa0c328dbb2e7087579c686ccf84cbed6ba1b0cc"
+    },
+    {
+      "path": "Makefile",
+      "producer": "js",
+      "sha256": "d2ae88d2a9a9a4c1c6b13799cd0e7ce4ecd3883694e751d0ec31b63972346cff"
+    },
+    {
+      "path": "biome.json",
+      "producer": "js",
+      "sha256": "7f7f7d5278736969aee1fcd835eb6896f102561474e7501143634c7e221f8e97"
+    }
+  ],
+  "settings": {
+    "javascript.check": [
+      "lint",
+      "test",
+      "audit"
+    ],
+    "javascript.test.args": [],
+    "js.audit.severity": "low",
+    "js.ci.actions.setup-node.commit": "820762786026740c76f36085b0efc47a31fe5020",
+    "js.ci.actions.setup-node.release": "v7.0.0",
+    "js.ci.actions.setup-node.uses": "actions/setup-node",
+    "js.ci.runners": [],
+    "js.ci.timeout": 30,
+    "js.ci.versions": [],
+    "js.paths": [
+      "."
+    ],
+    "js.tools.biome": "@biomejs/biome@2.5.15",
+    "typescript.check": [
+      "lint",
+      "test",
+      "audit"
+    ],
+    "typescript.test.args": [],
+    "typescript.tools.typescript": "typescript@7.0.2"
+  },
+  "answers": {
+    "name": "demo",
+    "owner": "Dokimasia B.V.",
+    "license": "MIT",
+    "repository": "dokimasia/demo",
+    "security-contact": "security@example.com",
+    "languages": [
+      "javascript",
+      "typescript"
+    ],
+    "year": 2026
+  }
+}

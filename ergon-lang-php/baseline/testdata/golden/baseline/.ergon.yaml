@@ -1,0 +1,33 @@
+php:
+  # The tools of the targets of PHP, as <vendor>/<package>@<version> of Packagist, which ergon tool
+  # run installs together into one Composer project of its own. Each tool accepts another version of
+  # its package and no other package.
+  tools:
+    # The static analyzer of lint-php, at its strictest level, with the rules of phpstan.dist.neon.
+    phpstan: phpstan/phpstan@2.2.17
+    # The strict rules of PHPStan, which the extension installer loads.
+    phpstan-strict-rules: phpstan/phpstan-strict-rules@2.0.12
+    # The plugin of Composer that loads the extensions of PHPStan, such as phpstan-strict-rules.
+    phpstan-extension-installer: phpstan/extension-installer@1.4.3
+    # The formatter of fmt-php and lint-php, with the PER coding style.
+    php-cs-fixer: php-cs-fixer/shim@3.95.27
+  # The paths that PHP-CS-Fixer and PHPStan check.
+  paths: [.]
+  # The steps that check-php runs, in order: lint, test or audit.
+  check: [lint, test, audit]
+  # test-php runs PHPUnit with args.
+  test:
+    args: []
+  # The pin of setup-php, the runners and the versions of PHP of the job check-php, and its limit in
+  # minutes. Empty runners select every runner of the section github, and empty versions the PHP of
+  # .php-version.
+  ci:
+    actions:
+      # The action that installs Composer and the PHP of .php-version or of the matrix.
+      setup-php:
+        uses: shivammathur/setup-php
+        commit: f3e473d116dcccaddc5834248c87452386958240
+        release: 2.37.2
+    runners: []
+    versions: []
+    timeout: 30

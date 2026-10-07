@@ -1,0 +1,33 @@
+{
+  "ergon": "1.0.0",
+  "files": [
+    {
+      "path": "LICENSE",
+      "producer": "license",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    },
+    {
+      "path": "NOTICE",
+      "producer": "license",
+      "sha256": "0da5f4d9a8642113d32e7e319b658966f8d9d2bab2fa671104059c05b0b33726"
+    }
+  ],
+  "settings": {
+    "license.ci.timeout": 10,
+    "license.exclude": [],
+    "license.parameters.additional-use-grant": "",
+    "license.parameters.change-date": "",
+    "license.parameters.change-license": "",
+    "license.parameters.licensed-work": "",
+    "license.styles": {}
+  },
+  "answers": {
+    "name": "demo",
+    "owner": "Dokimasia B.V.",
+    "license": "Apache-2.0",
+    "repository": "dokimasia/demo",
+    "security-contact": "security@example.com",
+    "languages": [],
+    "year": 2026
+  }
+}

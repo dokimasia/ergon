@@ -22,6 +22,5 @@ func Register(c *language.Catalog) error {
 	if err := language.RegisterToolchain(c, language.Toolchain{Name: Toolchain}); err != nil {
 		return err
 	}
-	return language.Register(c, language.Declaration{Name: Language, Toolchain: Toolchain},
-		baseline.Initializer())
+	return language.Register(c, language.Declaration{Name: Language, Toolchain: Toolchain}, baseline.Producer{})
 }

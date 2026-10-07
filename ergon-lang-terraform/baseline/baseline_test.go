@@ -4,140 +4,124 @@
 package baseline_test
 
 import (
-	"strings"
+	"os"
+	"path"
+	"slices"
 	"testing"
 
 	"go.dokimi.dev/assert"
+	"go.dokimi.dev/assert/golden"
 	"go.dokimi.dev/ergon/core/language"
+	"go.dokimi.dev/ergon/core/option"
+	"go.dokimi.dev/ergon/core/workflow"
+	"go.dokimi.dev/ergon/lang/terraform"
 	"go.dokimi.dev/ergon/lang/terraform/baseline"
+	service "go.dokimi.dev/ergon/service/baseline"
+	"go.dokimi.dev/ergon/service/baseline/baselinetest"
+	"go.dokimi.dev/ergon/service/baseline/github"
+	"go.dokimi.dev/ergon/service/baseline/render"
 )
+
+// name pins the name of the producer of Terraform, which is the name of its section.
+const name = "terraform"
+
+// workflows are the files of the GitHub files that the contribution of Terraform changes.
+var workflows = []string{".github/workflows/ci.yml", ".github/workflows/security.yml", ".github/dependabot.yml"}
 
 func TestBaseline(t *testing.T) {
 	t.Parallel()
 
-	t.Run("Initializer", func(t *testing.T) {
+	t.Run("Name", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("returns the configuration of tflint and the fragments of Terraform", func(t *testing.T) {
+		t.Run("is terraform", func(t *testing.T) {
 			t.Parallel()
-			assert.Equal(t, paths(t, baseline.Initializer()), []string{
-				baseline.TFLint, language.EditorConfig, language.GitAttributes, language.GitIgnore,
-				language.Makefile, language.CI, language.Dependabot,
-			}, "the paths of the files")
+			assert.Equal(t, baseline.Name, name, "Name")
+		})
+	})
+
+	t.Run("Producer", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Templates", func(t *testing.T) {
+			t.Parallel()
+
+			t.Run("renders the files of Terraform at the baseline", func(t *testing.T) {
+				t.Parallel()
+				dir := baselinetest.New(t, catalog(t), baselinetest.Answers(terraform.Language))
+				baselinetest.Hygiene(t, dir)
+				golden.MatchTree(t, "baseline", os.DirFS(dir), golden.ShouldUpdate())
+			})
+
+			t.Run("renders the job and the updates of Terraform into the GitHub files", func(t *testing.T) {
+				t.Parallel()
+				dir := baselinetest.New(t, catalog(t), baselinetest.Answers(terraform.Language),
+					service.Producer{Name: github.Name, Producer: github.Producer{}})
+				baselinetest.Hygiene(t, dir)
+				for _, file := range workflows {
+					got, err := os.ReadFile(path.Join(dir, file))
+					assert.NoError(t, err, "ReadFile of "+file)
+					golden.Match(t, path.Join("workflows", path.Base(file)), got, golden.ShouldUpdate())
+				}
+			})
+
+			t.Run("runs the steps that check of the section terraform names", func(t *testing.T) {
+				t.Parallel()
+				o, _ := baseline.Producer{}.Options().(*baseline.Options)
+				o.Check = option.Check{option.StepAudit}
+				makefile := rendered(t, o, "Makefile")
+				assert.Contains(t, makefile, "\ncheck-terraform: audit-terraform ## Run the gate of Terraform\n",
+					"the Makefile")
+			})
 		})
 
-		t.Run("renders the configuration of tflint as a managed file", func(t *testing.T) {
+		t.Run("Options", func(t *testing.T) {
 			t.Parallel()
-			config := content(t, baseline.Initializer(), baseline.TFLint)
-			first, _, _ := strings.Cut(config, "\n")
-			assert.Equal(t, first, "# Managed by ergon init. Add repository settings to .ergon/local/"+
-				baseline.TFLint+" and run ergon init sync.", "the first line of the configuration")
+
+			t.Run("returns a new value on each call", func(t *testing.T) {
+				t.Parallel()
+				first, _ := baseline.Producer{}.Options().(*baseline.Options)
+				second, _ := baseline.Producer{}.Options().(*baseline.Options)
+				first.Paths[0] = "modules"
+				assert.Equal(t, second.Paths, option.Paths{"."}, "the paths of the second value")
+			})
 		})
 
-		t.Run("enables every rule of the bundled terraform ruleset", func(t *testing.T) {
+		t.Run("Contribution", func(t *testing.T) {
 			t.Parallel()
-			config := content(t, baseline.Initializer(), baseline.TFLint)
-			assert.Contains(t, config, "plugin \"terraform\" {\n  enabled = true\n  preset  = \"all\"\n}\n",
-				"the terraform ruleset")
-		})
 
-		t.Run("requires the release of tflint that the job installs", func(t *testing.T) {
-			t.Parallel()
-			config := content(t, baseline.Initializer(), baseline.TFLint)
-			ci := fragment(t, baseline.Initializer(), language.CI)
-			_, required, found := strings.Cut(config, "required_version = \"")
-			assert.True(t, found, "the required version of tflint")
-			release, _, _ := strings.Cut(required, "\"")
-			assert.Contains(t, ci, "\n          tflint_version: v"+release+"\n", "the release that the job installs")
-		})
+			t.Run("returns the contribution of the options", func(t *testing.T) {
+				t.Parallel()
+				o, _ := baseline.Producer{}.Options().(*baseline.Options)
+				o.CI.Timeout = 45
+				assert.Equal(t, baseline.Producer{}.Contribution(o), o.Contribution(), "the contribution")
+			})
 
-		t.Run("lints every module with the configuration of the repository root", func(t *testing.T) {
-			t.Parallel()
-			makefile := fragment(t, baseline.Initializer(), language.Makefile)
-			assert.Contains(t, makefile, "\ttflint --recursive --config=\"$(CURDIR)/"+baseline.TFLint+"\"\n",
-				"the lint of lint-terraform")
-		})
-
-		t.Run("adds the gate of Terraform to the gate of the repository", func(t *testing.T) {
-			t.Parallel()
-			makefile := fragment(t, baseline.Initializer(), language.Makefile)
-			assert.Contains(t, makefile, "check: check-terraform\n", "the Makefile fragment")
-			assert.Contains(t, makefile, "check-terraform: lint-terraform test-terraform audit-terraform ##",
-				"the Makefile fragment")
-		})
-
-		t.Run("adds checkov over the configuration to the vulnerability scans", func(t *testing.T) {
-			t.Parallel()
-			makefile := fragment(t, baseline.Initializer(), language.Makefile)
-			assert.Contains(t, makefile, "audit: audit-terraform\n", "the Makefile fragment")
-			assert.Contains(t, makefile,
-				"CKV_PARSE_ERROR_FAIL=true uvx --python 3.13 --exclude-newer 2026-10-06T00:00:00Z checkov==3.3.23",
-				"the scan of audit-terraform")
-		})
-
-		t.Run("installs uv, which runs checkov, in the job check-terraform", func(t *testing.T) {
-			t.Parallel()
-			ci := fragment(t, baseline.Initializer(), language.CI)
-			assert.Contains(t, ci, "uses: astral-sh/setup-uv@", "the setup of uv in the job")
-		})
-
-		t.Run("adds the job check-terraform to the workflow of the gate", func(t *testing.T) {
-			t.Parallel()
-			ci := fragment(t, baseline.Initializer(), language.CI)
-			assert.Contains(t, ci, "\n  check-terraform:\n", "the job of the fragment")
-			assert.Contains(t, ci, "- uses: "+language.Checkout+"\n", "the checkout of the job")
-			assert.Contains(t, ci, "run: make check-terraform\n", "the gate of the job")
-		})
-
-		t.Run("adds terraform to the updates of Dependabot", func(t *testing.T) {
-			t.Parallel()
-			dependabot := fragment(t, baseline.Initializer(), language.Dependabot)
-			assert.Contains(t, dependabot, "package-ecosystem: terraform\n", "the ecosystem of the fragment")
+			t.Run("returns the contribution of the baseline for options of another type", func(t *testing.T) {
+				t.Parallel()
+				o, _ := baseline.Producer{}.Options().(*baseline.Options)
+				assert.Equal(t, baseline.Producer{}.Contribution(nil), o.Contribution(), "the contribution")
+			})
 		})
 	})
 }
 
-// paths returns the paths of the files of initializer in their order. It fails the test for a
-// file that is not managed, or that has both or neither of a content and a fragment.
-func paths(t *testing.T, initializer language.Initializer) []string {
+// catalog returns a catalog with Terraform.
+func catalog(t *testing.T) *language.Catalog {
 	t.Helper()
-	files, err := initializer.Files(&language.Answers{})
-	assert.NoError(t, err, "Files")
-	out := make([]string, 0, len(files))
-	for _, f := range files {
-		assert.True(t, f.Class == language.Managed && (f.Content == nil) != (f.Fragment == nil),
-			"the class and the text of "+f.Path)
-		out = append(out, f.Path)
-	}
-	return out
+	c := new(language.Catalog)
+	assert.NoError(t, terraform.Register(c), "Register of Terraform")
+	return c
 }
 
-// content returns the content of the file of initializer at path, and fails the test when
-// initializer has none.
-func content(t *testing.T, initializer language.Initializer, path string) string {
+// rendered returns the file name that the producer of Terraform renders for the options o and the
+// answers of the cases, and stops the test when it renders none.
+func rendered(t *testing.T, o language.Options, name string) string {
 	t.Helper()
-	files, err := initializer.Files(&language.Answers{})
-	assert.NoError(t, err, "Files")
-	for _, f := range files {
-		if f.Path == path && f.Content != nil {
-			return string(f.Content)
-		}
-	}
-	t.Fatalf("no file %s", path)
-	return ""
-}
-
-// fragment returns the fragment of initializer for the shared file path, and fails the test when
-// initializer has none.
-func fragment(t *testing.T, initializer language.Initializer, path string) string {
-	t.Helper()
-	files, err := initializer.Files(&language.Answers{})
-	assert.NoError(t, err, "Files")
-	for _, f := range files {
-		if f.Path == path && f.Fragment != nil {
-			return string(f.Fragment)
-		}
-	}
-	t.Fatalf("no fragment of %s", path)
-	return ""
+	files, err := render.Render([]render.Unit{{Name: baseline.Name, Producer: baseline.Producer{}, Options: o}},
+		baselinetest.Answers(terraform.Language), &workflow.Contribution{})
+	assert.NoError(t, err, "Render")
+	i := slices.IndexFunc(files, func(f render.File) bool { return f.Path == name })
+	assert.True(t, i >= 0, "Terraform renders "+name)
+	return string(files[i].Content)
 }

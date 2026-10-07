@@ -1,0 +1,3 @@
+*.java diff=java
+*.kt diff=kotlin
+*.kts diff=kotlin

@@ -4,149 +4,137 @@
 package baseline_test
 
 import (
-	"strings"
+	"os"
+	"path"
+	"slices"
 	"testing"
 
 	"go.dokimi.dev/assert"
+	"go.dokimi.dev/assert/golden"
 	"go.dokimi.dev/ergon/core/language"
+	"go.dokimi.dev/ergon/core/option"
+	"go.dokimi.dev/ergon/core/workflow"
+	"go.dokimi.dev/ergon/lang/java"
 	"go.dokimi.dev/ergon/lang/java/baseline"
+	service "go.dokimi.dev/ergon/service/baseline"
+	"go.dokimi.dev/ergon/service/baseline/baselinetest"
+	"go.dokimi.dev/ergon/service/baseline/github"
+	"go.dokimi.dev/ergon/service/baseline/render"
 )
+
+// name pins the name of the producer of Java, which is the name of its section.
+const name = "java"
+
+// workflows are the files of the GitHub files that the contributions of Java and the jvm toolchain
+// change.
+var workflows = []string{".github/workflows/ci.yml", ".github/workflows/security.yml", ".github/dependabot.yml"}
 
 func TestBaseline(t *testing.T) {
 	t.Parallel()
 
-	t.Run("Initializer", func(t *testing.T) {
+	t.Run("Name", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("returns the init script and the fragments of Java", func(t *testing.T) {
+		t.Run("is java", func(t *testing.T) {
 			t.Parallel()
-			assert.Equal(t, paths(t, baseline.Initializer()), []string{
-				baseline.InitScript, language.EditorConfig, language.GitAttributes, language.GitIgnore,
-				language.Makefile, language.CI,
-			}, "the paths of the files")
-		})
-
-		t.Run("renders the init script as a managed file", func(t *testing.T) {
-			t.Parallel()
-			script := content(t, baseline.Initializer(), baseline.InitScript)
-			first, _, _ := strings.Cut(script, "\n")
-			assert.Equal(t, first, "// Managed by ergon init. Add repository settings to .ergon/local/"+
-				baseline.InitScript+" and run ergon init sync.", "the first line of the init script")
-		})
-
-		t.Run("applies PMD with its base ruleset and the warnings of javac as errors", func(t *testing.T) {
-			t.Parallel()
-			script := content(t, baseline.Initializer(), baseline.InitScript)
-			assert.Contains(t, script, "\n            toolVersion = \"7.28.0\"\n", "the release of PMD")
-			assert.Contains(t, script, "ruleSets = listOf(\"rulesets/java/quickstart.xml\")", "the ruleset of PMD")
-			assert.Contains(t, script, "options.compilerArgs.addAll(listOf(\"-Xlint:all\", \"-Werror\"))",
-				"the warnings of javac")
-		})
-
-		t.Run("lints with the init script", func(t *testing.T) {
-			t.Parallel()
-			makefile := fragment(t, baseline.Initializer(), language.Makefile)
-			assert.Contains(t, makefile, "\t./gradlew --init-script "+baseline.InitScript+" check javadoc -x test\n",
-				"the lint of lint-java")
-		})
-
-		t.Run("adds the gate of Java to the gate of the repository", func(t *testing.T) {
-			t.Parallel()
-			makefile := fragment(t, baseline.Initializer(), language.Makefile)
-			assert.Contains(t, makefile, "check: check-java\n", "the Makefile fragment")
-			assert.Contains(t, makefile, "check-java: lint-java test-java audit-jvm ##", "the Makefile fragment")
-		})
-
-		t.Run("adds the job check-java to the workflow of the gate", func(t *testing.T) {
-			t.Parallel()
-			ci := fragment(t, baseline.Initializer(), language.CI)
-			assert.Contains(t, ci, "\n  check-java:\n", "the job of the fragment")
-			assert.Contains(t, ci, "- uses: "+language.Checkout+"\n", "the checkout of the job")
-			assert.Contains(t, ci, "run: make check-java\n", "the gate of the job")
-		})
-
-		t.Run("installs the Go release that builds osv-scanner in the job check-java", func(t *testing.T) {
-			t.Parallel()
-			ci := fragment(t, baseline.Initializer(), language.CI)
-			assert.Contains(t, ci, "go-version: \""+language.Go+"\"\n", "the Go release of the job")
+			assert.Equal(t, baseline.Name, name, "Name")
 		})
 	})
 
-	t.Run("Toolchain", func(t *testing.T) {
+	t.Run("Producer", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("returns the fragments of the jvm toolchain for the shared files", func(t *testing.T) {
+		t.Run("Templates", func(t *testing.T) {
 			t.Parallel()
-			assert.Equal(t, paths(t, baseline.Toolchain()),
-				[]string{language.Makefile, language.Security, language.Dependabot}, "the paths of the fragments")
+
+			t.Run("renders the files of Java and the jvm toolchain at the baseline", func(t *testing.T) {
+				t.Parallel()
+				dir := baselinetest.New(t, catalog(t), baselinetest.Answers(java.Language))
+				baselinetest.Hygiene(t, dir)
+				golden.MatchTree(t, "baseline", os.DirFS(dir), golden.ShouldUpdate())
+			})
+
+			t.Run("renders the jobs, the analysis and the updates of Java into the GitHub files", func(t *testing.T) {
+				t.Parallel()
+				dir := baselinetest.New(t, catalog(t), baselinetest.Answers(java.Language),
+					service.Producer{Name: github.Name, Producer: github.Producer{}})
+				baselinetest.Hygiene(t, dir)
+				for _, file := range workflows {
+					got, err := os.ReadFile(path.Join(dir, file))
+					assert.NoError(t, err, "ReadFile of "+file)
+					golden.Match(t, path.Join("workflows", path.Base(file)), got, golden.ShouldUpdate())
+				}
+			})
+
+			t.Run("runs the steps that check of the section java names", func(t *testing.T) {
+				t.Parallel()
+				o := javaOptions()
+				o.Check = option.Check{option.StepAudit}
+				makefile := rendered(t, o, "Makefile")
+				assert.Contains(t, makefile, "\ncheck-java: audit-java ## Run the gate of Java\n", "the Makefile")
+			})
+
+			t.Run("runs the PMD of the section java", func(t *testing.T) {
+				t.Parallel()
+				o := javaOptions()
+				o.Tools.PMD = "net.sourceforge.pmd:pmd-java@7.29.0"
+				script := rendered(t, o, "gradle/ergon-java.init.gradle.kts")
+				assert.Contains(t, script, "\n            toolVersion = \"7.29.0\"\n", "the init script")
+			})
 		})
 
-		t.Run("adds osv-scanner over the Gradle lockfiles to the vulnerability scans", func(t *testing.T) {
+		t.Run("Options", func(t *testing.T) {
 			t.Parallel()
-			makefile := fragment(t, baseline.Toolchain(), language.Makefile)
-			assert.Contains(t, makefile, "audit: audit-jvm\n", "the Makefile fragment")
-			assert.Contains(t, makefile, "':(glob)**/gradle.lockfile' ':(glob)**/buildscript-gradle.lockfile'",
-				"the lockfiles of audit-jvm")
-			assert.Contains(t, makefile, "go run github.com/google/osv-scanner/v2/cmd/osv-scanner@v2.6.0 scan source",
-				"the scan of audit-jvm")
+
+			t.Run("returns a new value on each call", func(t *testing.T) {
+				t.Parallel()
+				first := javaOptions()
+				second := javaOptions()
+				first.Check[0] = option.StepAudit
+				assert.Equal(t, second.Check, option.Check{option.StepLint, option.StepTest, option.StepAudit},
+					"the steps of the second value")
+			})
 		})
 
-		t.Run("adds the CodeQL analysis of java-kotlin to the security checks", func(t *testing.T) {
+		t.Run("Contribution", func(t *testing.T) {
 			t.Parallel()
-			security := fragment(t, baseline.Toolchain(), language.Security)
-			assert.Contains(t, security, "\n  codeql-java-kotlin:\n", "the job of the fragment")
-			assert.Contains(t, security, "language: java-kotlin\n", "the CodeQL language")
-		})
 
-		t.Run("adds gradle to the updates of Dependabot", func(t *testing.T) {
-			t.Parallel()
-			dependabot := fragment(t, baseline.Toolchain(), language.Dependabot)
-			assert.Contains(t, dependabot, "package-ecosystem: gradle\n", "the ecosystem of the fragment")
+			t.Run("returns the contribution of the options", func(t *testing.T) {
+				t.Parallel()
+				o := javaOptions()
+				assert.Equal(t, baseline.Producer{}.Contribution(o), o.Contribution(), "the contribution")
+			})
+
+			t.Run("returns the contribution of the baseline for options of another type", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, baseline.Producer{}.Contribution(nil), javaOptions().Contribution(), "the contribution")
+			})
 		})
 	})
 }
 
-// paths returns the paths of the files of initializer in their order. It fails the test for a
-// file that is not managed, or that has both or neither of a content and a fragment.
-func paths(t *testing.T, initializer language.Initializer) []string {
+// catalog returns a catalog with the jvm toolchain and Java.
+func catalog(t *testing.T) *language.Catalog {
 	t.Helper()
-	files, err := initializer.Files(&language.Answers{})
-	assert.NoError(t, err, "Files")
-	out := make([]string, 0, len(files))
-	for _, f := range files {
-		assert.True(t, f.Class == language.Managed && (f.Content == nil) != (f.Fragment == nil),
-			"the class and the text of "+f.Path)
-		out = append(out, f.Path)
-	}
-	return out
+	c := new(language.Catalog)
+	assert.NoError(t, java.Register(c), "Register of Java")
+	return c
 }
 
-// content returns the content of the file of initializer at path, and fails the test when
-// initializer has none.
-func content(t *testing.T, initializer language.Initializer, path string) string {
+// rendered returns the file name that the producer of Java renders for the options o and the
+// answers of the cases, and stops the test when it renders none.
+func rendered(t *testing.T, o language.Options, name string) string {
 	t.Helper()
-	files, err := initializer.Files(&language.Answers{})
-	assert.NoError(t, err, "Files")
-	for _, f := range files {
-		if f.Path == path && f.Content != nil {
-			return string(f.Content)
-		}
-	}
-	t.Fatalf("no file %s", path)
-	return ""
+	files, err := render.Render([]render.Unit{{Name: baseline.Name, Producer: baseline.Producer{}, Options: o}},
+		baselinetest.Answers(java.Language), &workflow.Contribution{})
+	assert.NoError(t, err, "Render")
+	i := slices.IndexFunc(files, func(f render.File) bool { return f.Path == name })
+	assert.True(t, i >= 0, "Java renders "+name)
+	return string(files[i].Content)
 }
 
-// fragment returns the fragment of initializer for the shared file path, and fails the test when
-// initializer has none.
-func fragment(t *testing.T, initializer language.Initializer, path string) string {
-	t.Helper()
-	files, err := initializer.Files(&language.Answers{})
-	assert.NoError(t, err, "Files")
-	for _, f := range files {
-		if f.Path == path && f.Fragment != nil {
-			return string(f.Fragment)
-		}
-	}
-	t.Fatalf("no fragment of %s", path)
-	return ""
+// javaOptions returns new options of the section java at the baseline.
+func javaOptions() *baseline.Options {
+	o, _ := baseline.Producer{}.Options().(*baseline.Options)
+	return o
 }

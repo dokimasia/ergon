@@ -4,205 +4,115 @@
 package common
 
 import (
-	_ "embed"
-	"errors"
-	"fmt"
-	"strconv"
-	"strings"
+	"embed"
+	"io/fs"
 
 	"go.dokimi.dev/ergon/core/language"
+	"go.dokimi.dev/ergon/core/option"
+	"go.dokimi.dev/ergon/core/workflow"
 )
 
-// Name is the name of the producer of the common files in the lock.
+// Name is the name of the producer of the common files in the lock, and of its section of
+// .ergon.yaml.
 const Name = "common"
 
-// The licenses that the common files render, by their SPDX identifier.
-const (
-	// MIT is the MIT license, whose text names the owner and the year.
-	MIT = "MIT"
+// templates are the templates of the common files, under managed/, seeded/ and shared/.
+//
+//go:embed all:templates
+var templates embed.FS
 
-	// Apache is the Apache License 2.0, whose NOTICE names the owner and the year.
-	Apache = "Apache-2.0"
-)
+// read is the permission of a job to read the contents of the repository.
+var read = map[string]string{"contents": "read"}
 
-// Commitlint is the module and the release of commitlint, which checks each commit message against
-// .commitlint.yaml: in the commit-msg hook of .pre-commit-config.yaml, and in the job commits of
-// the workflow of the gate.
-const Commitlint = "github.com/conventionalcommit/commitlint@v0.12.0"
+// Producer renders the common files of a repository: the files that do not depend on its languages
+// or its forge. Its zero value is ready to use, and it is safe for concurrent use.
+type Producer struct{}
 
-// The paths of the common files that [Initializer] renders apart from its table of templates.
-const (
-	license = "LICENSE"
-	notice  = "NOTICE"
-	config  = ".ergon.yaml"
-)
-
-// ErrInvalidAnswer is the error for an answer that the common files cannot render: a name, an
-// owner or a security contact that is empty or longer than one line, a license other than MIT and
-// Apache-2.0, a year outside 1 to 9999, or a repository that is not owner/name on GitHub.
-var ErrInvalidAnswer = errors.New("common: invalid answer")
-
-// The templates of the common files, which mirror their paths in the repository.
 var (
-	//go:embed templates/managed/.commitlint.yaml.tmpl
-	commitlint []byte
-
-	//go:embed templates/managed/.editorconfig.tmpl
-	editorconfig []byte
-
-	//go:embed templates/managed/.gitattributes.tmpl
-	gitattributes []byte
-
-	//go:embed templates/managed/.gitignore.tmpl
-	gitignore []byte
-
-	//go:embed templates/managed/.markdownlint.yml.tmpl
-	markdownlint []byte
-
-	//go:embed templates/managed/.pre-commit-config.yaml.tmpl
-	precommit []byte
-
-	//go:embed templates/managed/Makefile.tmpl
-	makefile []byte
-
-	//go:embed templates/managed/CODE_OF_CONDUCT.md.tmpl
-	conduct []byte
-
-	//go:embed templates/seeded/.changeset/config.json.tmpl
-	changesetConfig []byte
-
-	//go:embed templates/seeded/.changeset/README.md.tmpl
-	changesetReadme []byte
-
-	//go:embed templates/seeded/README.md.tmpl
-	readme []byte
-
-	//go:embed templates/seeded/CONTRIBUTING.md.tmpl
-	contributing []byte
-
-	//go:embed templates/seeded/SECURITY.md.tmpl
-	security []byte
-
-	//go:embed templates/seeded/docs/README.md.tmpl
-	docs []byte
-
-	//go:embed templates/seeded/docs/adr/README.md.tmpl
-	adr []byte
-
-	//go:embed templates/seeded/docs/architecture/README.md.tmpl
-	architecture []byte
-
-	//go:embed templates/seeded/docs/rfc/README.md.tmpl
-	rfc []byte
-
-	//go:embed templates/seeded/docs/roadmap/README.md.tmpl
-	roadmap []byte
-
-	//go:embed templates/licenses/MIT.tmpl
-	mit []byte
-
-	//go:embed templates/licenses/Apache-2.0.tmpl
-	apache []byte
-
-	//go:embed templates/licenses/NOTICE.tmpl
-	noticeText []byte
+	_ language.Producer     = Producer{}
+	_ language.Configurable = Producer{}
+	_ language.Contributor  = Producer{}
 )
 
-// templates are the common files that every repository has, in the order of their paths in
-// templates/. The template of a file is its Content, and the template of the first fragment of a
-// shared file is its Fragment.
-var templates = []language.File{
-	{Path: ".commitlint.yaml", Class: language.Managed, Content: commitlint},
-	{Path: language.EditorConfig, Class: language.Managed, Fragment: editorconfig},
-	{Path: language.GitAttributes, Class: language.Managed, Fragment: gitattributes},
-	{Path: language.GitIgnore, Class: language.Managed, Fragment: gitignore},
-	{Path: ".markdownlint.yml", Class: language.Managed, Content: markdownlint},
-	{Path: ".pre-commit-config.yaml", Class: language.Managed, Content: precommit},
-	{Path: language.Makefile, Class: language.Managed, Fragment: makefile},
-	{Path: "CODE_OF_CONDUCT.md", Class: language.Managed, Content: conduct},
-	{Path: ".changeset/config.json", Class: language.Seeded, Content: changesetConfig},
-	{Path: ".changeset/README.md", Class: language.Seeded, Content: changesetReadme},
-	{Path: "README.md", Class: language.Seeded, Content: readme},
-	{Path: "CONTRIBUTING.md", Class: language.Seeded, Content: contributing},
-	{Path: "SECURITY.md", Class: language.Seeded, Content: security},
-	{Path: "docs/README.md", Class: language.Seeded, Content: docs},
-	{Path: "docs/adr/README.md", Class: language.Seeded, Content: adr},
-	{Path: "docs/architecture/README.md", Class: language.Seeded, Content: architecture},
-	{Path: "docs/rfc/README.md", Class: language.Seeded, Content: rfc},
-	{Path: "docs/roadmap/README.md", Class: language.Seeded, Content: roadmap},
+// Templates returns the templates of the common files: the managed files under managed/, the
+// seeded files under seeded/, and the first fragments of the shared files under shared/.
+func (Producer) Templates() fs.FS {
+	// templates has the directory templates, so Sub returns no error.
+	sub, _ := fs.Sub(templates, "templates")
+	return sub
 }
 
-// Initializer renders the common files of a repository. Its zero value is ready to use, and it is
-// safe for concurrent use.
-type Initializer struct{}
-
-var _ language.Initializer = Initializer{}
-
-// Files returns the common files for a: the files of the templates, the LICENSE of a.License,
-// the NOTICE of the Apache License 2.0, and the name and the license of .ergon.yaml. It returns an
-// error that wraps [ErrInvalidAnswer] for an answer that the files cannot render.
-func (Initializer) Files(a *language.Answers) ([]language.File, error) {
-	if err := validate(a); err != nil {
-		return nil, err
+// Options returns the options of the common files at the baseline: commitlint 0.12.0 with the
+// digests that its release states, pre-commit-hooks v6.0.0, markdownlint-cli2-action v24.2.0, and
+// a limit of 10 minutes for each job.
+func (Producer) Options() language.Options {
+	return &Options{
+		Tools: Tools{Commitlint: Commitlint{Binary: option.Binary{
+			SHA256: map[option.Platform]string{
+				option.LinuxAMD64:   "bf9666441262bf8d31345a6d29d6f788d0dadea7d47e5b91890c3a651999c118",
+				option.DarwinARM64:  "35f25a55947031db016177ac0211d479c1fca21ccb87b368b6a429629524436c",
+				option.WindowsAMD64: "e8f90d08616ab8cd987b2dbef7ae0ee7fd1cb43c97f5a1ad171e8a56d1bd2f3d",
+			},
+			Version: "0.12.0",
+		}}},
+		PreCommitHooks: "v6.0.0",
+		CI: option.CI[Actions]{
+			Actions: Actions{Markdownlint: workflow.Action{
+				Uses:    "DavidAnson/markdownlint-cli2-action",
+				Commit:  "21c1be1b93ad9ed58fa840aacc3f279cde2a72ff",
+				Release: "v24.2.0",
+			}},
+			Timeout: 10,
+		},
 	}
-	replacer := strings.NewReplacer(
-		"{{name}}", a.Name,
-		"{{owner}}", a.Owner,
-		"{{license}}", a.License,
-		"{{year}}", strconv.Itoa(a.Year),
-		"{{repository}}", string(a.Repository),
-		"{{security-contact}}", a.SecurityContact,
-		"{{commitlint}}", Commitlint,
-	)
-	// fill returns the template text with the answers in place, and nil for no template.
-	fill := func(text []byte) []byte {
-		if text == nil {
-			return nil
-		}
-		return []byte(replacer.Replace(string(text)))
-	}
-	files := make([]language.File, 0, len(templates)+3)
-	for _, t := range templates {
-		t.Content, t.Fragment = fill(t.Content), fill(t.Fragment)
-		files = append(files, t)
-	}
-	text := mit
-	if a.License == Apache {
-		text = apache
-		files = append(files, language.File{Path: notice, Class: language.Managed, Content: fill(noticeText)})
-	}
-	files = append(files,
-		language.File{Path: license, Class: language.Managed, Content: fill(text)},
-		language.File{Path: config, Class: language.Configured, Content: []byte(
-			"name: " + strconv.Quote(a.Name) + "\nlicense:\n" +
-				"  owner: " + strconv.Quote(a.Owner) + "\n" +
-				"  spdx: " + strconv.Quote(a.License) + "\n",
-		)},
-	)
-	return files, nil
 }
 
-// validate returns an error that wraps [ErrInvalidAnswer] for the first answer of a that the
-// common files cannot render, and nil when they render every answer.
-func validate(a *language.Answers) error {
-	lines := []struct{ name, value string }{
-		{name: "name", value: a.Name},
-		{name: "owner", value: a.Owner},
-		{name: "security contact", value: a.SecurityContact},
+// Contribution returns the jobs of the common files in ci.yml for o, and for the options at the
+// baseline when o is not the options of the common files. Both jobs check text, so they run on the
+// Linux runner of the section github:
+//
+//   - docs lints the Markdown files with the markdownlint of o.
+//   - commits checks each commit message of a pull request with the commitlint of o, through ergon
+//     tool run. It skips the pull requests of Dependabot, whose bodies exceed the length of a line.
+func (p Producer) Contribution(o language.Options) workflow.Contribution {
+	opts, ok := o.(*Options)
+	if !ok {
+		opts, _ = p.Options().(*Options)
 	}
-	for _, l := range lines {
-		if strings.TrimSpace(l.value) == "" || strings.ContainsAny(l.value, "\r\n") {
-			return fmt.Errorf("%w: the %s must be one line of text", ErrInvalidAnswer, l.name)
-		}
+	docs := workflow.Job{
+		ID:          "docs",
+		Name:        "Docs",
+		Text:        true,
+		Timeout:     opts.CI.Timeout,
+		Permissions: read,
+		Steps: []workflow.Step{{
+			Uses: opts.CI.Actions.Markdownlint,
+			With: map[string]string{"globs": "**/*.md\n#node_modules"},
+		}},
 	}
-	if a.License != MIT && a.License != Apache {
-		return fmt.Errorf("%w: license %q, which is neither %s nor %s", ErrInvalidAnswer, a.License, MIT, Apache)
+	commits := workflow.Job{
+		ID:          "commits",
+		Name:        "Commits",
+		If:          "github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'",
+		Text:        true,
+		Timeout:     opts.CI.Timeout,
+		Permissions: read,
+		History:     true,
+		Ergon:       true,
+		Steps: []workflow.Step{{
+			Name: "Check the commit messages",
+			Env: map[string]string{
+				"BASE": "${{ github.event.pull_request.base.sha }}",
+				"HEAD": "${{ github.event.pull_request.head.sha }}",
+			},
+			Run: []string{
+				"status=0",
+				`for commit in $(git rev-list --no-merges "$BASE..$HEAD"); do`,
+				`  git log -1 --format=%B "$commit" | ergon tool run ` + Name + `.commitlint -- lint || status=1`,
+				"done",
+				`exit "$status"`,
+			},
+		}},
 	}
-	if a.Year < 1 || a.Year > 9999 {
-		return fmt.Errorf("%w: year %d, which is not between 1 and 9999", ErrInvalidAnswer, a.Year)
-	}
-	if !a.Repository.Valid() {
-		return fmt.Errorf("%w: repository %q, which is not owner/name", ErrInvalidAnswer, a.Repository)
-	}
-	return nil
+	return workflow.Contribution{Jobs: []workflow.Job{docs, commits}}
 }

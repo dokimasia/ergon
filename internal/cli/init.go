@@ -8,16 +8,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"go.dokimi.dev/ergon/core/language"
+	"go.dokimi.dev/ergon/core/spdx"
 	"go.dokimi.dev/ergon/core/workspace"
 	"go.dokimi.dev/ergon/service/baseline"
-	"go.dokimi.dev/ergon/service/baseline/common"
-	"go.dokimi.dev/ergon/service/baseline/github"
 )
 
 // The flags of the init commands.
@@ -37,10 +34,10 @@ const (
 const (
 	initShort = "Set up a repository with the baseline of ergon"
 	initLong  = `ergon init sets up a repository with the baseline of ergon. The baseline
-consists of the common files and the GitHub files of every repository, and the
-files of each language of the repository. ergon init records its answers and
-the digest of each managed file in .ergon/init.lock. Commit the lock with the
-files.
+consists of the common files, the GitHub files and the license files of every
+repository, and the files of each language of the repository. ergon init
+records its answers, the baseline value of each option and the digest of each
+managed file in .ergon/init.lock. Commit the lock with the files.
 
 ergon init treats a file by its class:
 
@@ -50,13 +47,18 @@ ergon init treats a file by its class:
     path under .ergon/local. ergon merges that local file into the rendering.
   - A seeded file, such as README.md, is written when it is absent. The
     repository maintains it from then on.
-  - ergon init writes the keys of its answers into .ergon.yaml and keeps every
-    other key.`
+  - ergon init writes the keys of its answers into .ergon.yaml, and a section
+    for each language with options, such as the versions of its tools. The
+    repository changes an option there, and ergon init renders the managed
+    files from it. The flags of ergon init sync change the key of an answer,
+    such as license.spdx, and every command fails while such a key differs
+    from the lock. ergon init keeps every other key.`
 
 	newShort = "Write the baseline into a repository without a lock"
 	newLong  = `ergon init new writes the baseline into a repository that has no lock: the
-managed files, the seeded files that are absent, the keys of .ergon.yaml, and
-.ergon/init.lock. It prints the path of each file that it writes.
+managed files, the seeded files that are absent, the keys and the options of
+.ergon.yaml, and .ergon/init.lock. It prints the path of each file that it
+writes.
 
 When a managed file exists with other content, the command fails and does not
 write a file. With --force, it overwrites such a file.
@@ -64,14 +66,14 @@ write a file. With --force, it overwrites such a file.
 --name defaults to the name of the working directory, and --year to the
 current year. The languages are:
 
-  %s`
+%s`
 	newExample = `  ergon init new --language go --owner "Example B.V." --license MIT \
     --repository example/demo --security-contact security@example.com`
 
 	addShort = "Add languages to the repository"
 	addLong  = `ergon init add adds languages to the answers of .ergon/init.lock. It writes
-the files of each language and its fragments of the shared files. It prints
-the path of each file that it writes.
+the files of each language, its fragments of the shared files and its section
+of .ergon.yaml. It prints the path of each file that it writes.
 
 When a file that the command changes was edited by hand, the command fails and
 does not write a file. With --force, it overwrites such a file.`
@@ -79,8 +81,9 @@ does not write a file. With --force, it overwrites such a file.`
 
 	removeShort = "Remove languages from the repository"
 	removeLong  = `ergon init remove removes languages from the answers of .ergon/init.lock. It
-removes the files of each language and rewrites the shared files. It prints
-the path of each file that it writes or removes.
+removes the files of each language and its section of .ergon.yaml, and
+rewrites the shared files. It prints the path of each file that it writes or
+removes.
 
 When a file that the command changes or removes was edited by hand, the
 command fails and does not change a file. Move the edit into the local file of
@@ -89,9 +92,10 @@ the path, and run ergon init sync --force first.`
 
 	checkShort = "Report the managed files that differ from the baseline"
 	checkLong  = `ergon init check compares the managed files with the rendering of this ergon
-for the answers of .ergon/init.lock. It does not write a file. It prints the
-problem and the path of each managed file that is missing, edited by hand or
-outdated. The exit status is 1 when it prints a file.`
+for the answers of .ergon/init.lock and the options of .ergon.yaml. It does
+not write a file. It prints the problem and the path of each managed file that
+is missing, edited by hand or outdated. The exit status is 1 when it prints a
+file, and when .ergon.yaml has an option that its section does not accept.`
 	checkExample = "  ergon init check --json"
 
 	syncShort = "Bring the managed files to the baseline of this ergon"
@@ -101,7 +105,9 @@ file that the rendering no longer contains. It prints the path of each file
 that it writes or removes.
 
 A flag of ergon init sync changes its answer in the lock. An answer without a
-flag keeps its value.
+flag keeps its value. An option of .ergon.yaml that still has the baseline
+value of the lock moves to the baseline value of this ergon, and an option
+that the repository changed keeps its value.
 
 The command does not change a file that was edited by hand. It writes every
 other file, and then exits with the status 1. With --force, it overwrites such
@@ -126,7 +132,7 @@ func (a *answers) define(cmd *cobra.Command, year int) {
 	flags.StringVar(&a.name, nameFlag, "", "the `name` of the repository")
 	flags.StringVar(&a.owner, ownerFlag, "", "the copyright `holder`, such as \"Example B.V.\"")
 	flags.StringVar(&a.license, licenseFlag, "",
-		"the license, as the SPDX `identifier` "+common.MIT+" or "+common.Apache)
+		"the license, as an SPDX `identifier` that ergon license --help lists")
 	flags.IntVar(&a.year, yearFlag, year, "the `year` of the copyright notice")
 	flags.StringVar(&a.repository, repositoryFlag, "", "the repository on GitHub, as `owner/name`")
 	flags.StringVar(&a.contact, contactFlag, "", "the `address` that receives reports of vulnerabilities")
@@ -143,7 +149,7 @@ func (a *answers) apply(cmd *cobra.Command, to *language.Answers) {
 		to.Owner = a.owner
 	}
 	if flags.Changed(licenseFlag) {
-		to.License = a.license
+		to.License = spdx.ID(a.license)
 	}
 	if flags.Changed(yearFlag) {
 		to.Year = a.year
@@ -159,31 +165,13 @@ func (a *answers) apply(cmd *cobra.Command, to *language.Answers) {
 // initCommand returns ergon init with its subcommands, which work on the repository in the working
 // directory of s. names are the names of the languages of the catalog of s.
 //
-// ergon init and its subcommands resolve the working directory and read no configuration, because
-// they write .ergon.yaml. In a repository whose .ergon.yaml does not parse, check runs as usual,
-// and every command that writes returns the parse error of the file. ergon init without a
-// subcommand returns a [usageError] that lists the subcommands.
+// ergon init and its subcommands resolve the working directory and read no configuration through
+// viper. Each subcommand reads the options of .ergon.yaml through [baseline.Repository], so in a
+// repository whose .ergon.yaml does not parse every subcommand returns the parse error of the
+// file. ergon init without a subcommand returns a [usageError] that lists the subcommands.
 func initCommand(s *session, names []string) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "init",
-		Short: initShort,
-		Long:  initLong,
-		Args:  usage(cobra.NoArgs),
-		PersistentPreRunE: func(*cobra.Command, []string) error {
-			return s.resolve()
-		},
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			commands := cmd.Commands()
-			subcommands := make([]string, 0, len(commands))
-			for _, sub := range commands {
-				subcommands = append(subcommands, sub.Name())
-			}
-			err := fmt.Errorf("cli: %s needs a subcommand: %s", cmd.Name(), strings.Join(subcommands, ", "))
-			return usageError{err: err}
-		},
-	}
-	cmd.AddCommand(newCommand(s, names), addCommand(s), removeCommand(s), checkCommand(s), syncCommand(s))
-	return cmd
+	return group(s, "init", initShort, initLong,
+		newCommand(s, names), addCommand(s), removeCommand(s), checkCommand(s), syncCommand(s))
 }
 
 // newCommand returns ergon init new, which writes the baseline into the repository of s with
@@ -199,7 +187,7 @@ func newCommand(s *session, names []string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "new",
 		Short:   newShort,
-		Long:    fmt.Sprintf(newLong, strings.Join(names, ", ")),
+		Long:    fmt.Sprintf(newLong, list(names)),
 		Example: newExample,
 		Args:    usage(cobra.NoArgs),
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -260,9 +248,9 @@ func removeCommand(s *session) *cobra.Command {
 }
 
 // checkCommand returns ergon init check, which writes the findings of [baseline.Repository.Check]
-// for the repository of s: a line of the problem and the path for each, or a JSON array with
-// --json. It returns an error when it finds a managed file that differs from the baseline, and
-// when the JSON array cannot be written.
+// for the repository of s. It writes a line of the problem and the path of each finding, or a JSON
+// array with --json. It returns an error when it finds a managed file that differs from the
+// baseline, and when the JSON array cannot be written.
 func checkCommand(s *session) *cobra.Command {
 	var asJSON bool
 	cmd := &cobra.Command{
@@ -272,7 +260,7 @@ func checkCommand(s *session) *cobra.Command {
 		Example: checkExample,
 		Args:    usage(cobra.NoArgs),
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return s.open(func(r *baseline.Repository) error {
+			return s.open(s.dir, func(r *baseline.Repository) error {
 				findings, err := r.Check()
 				if err != nil {
 					return err
@@ -330,28 +318,11 @@ func asLanguages(names []string) []workspace.Language {
 	return languages
 }
 
-// open opens the repository in the working directory of s, with the common files and the GitHub
-// files before the languages of the catalog of s, runs run on it, and closes it. It returns the
-// errors of the open, of run and of the close, joined.
-func (s *session) open(run func(*baseline.Repository) error) error {
-	root, err := os.OpenRoot(s.dir)
-	if err != nil {
-		return fmt.Errorf("cli: open the repository: %w", err)
-	}
-	r, err := baseline.Open(root, s.catalog, s.release,
-		baseline.Producer{Name: common.Name, Initializer: common.Initializer{}},
-		baseline.Producer{Name: github.Name, Initializer: github.Initializer{}})
-	if err == nil {
-		err = run(r)
-	}
-	return errors.Join(err, root.Close())
-}
-
-// change opens the repository of s, runs apply on it, and writes a line to w for each file that
-// apply wrote or removed: the action and the path. It writes the lines of the files that apply
-// changed before it failed too, and returns the error of apply.
+// change opens the repository in the working directory of s, runs apply on it, and writes a line to
+// w for each file that apply wrote or removed: the action and the path. It writes the lines of the
+// files that apply changed before it failed too, and returns the error of apply.
 func (s *session) change(w io.Writer, apply func(*baseline.Repository) ([]baseline.Change, error)) error {
-	return s.open(func(r *baseline.Repository) error {
+	return s.open(s.dir, func(r *baseline.Repository) error {
 		changes, err := apply(r)
 		for _, c := range changes {
 			fmt.Fprintf(w, "%s %s\n", c.Action, c.Path)

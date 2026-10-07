@@ -1,0 +1,87 @@
+{
+  "ergon": "1.0.0",
+  "files": [
+    {
+      "path": ".editorconfig",
+      "producer": "go",
+      "sha256": "b762b4f89e9c778f3731ec3cca543a2738466d3d3ef921f1be67aed505204e8b"
+    },
+    {
+      "path": ".gitattributes",
+      "producer": "go",
+      "sha256": "1809214ef901ef048d812966861310302f38732b24d57212e281837da8452085"
+    },
+    {
+      "path": ".gitignore",
+      "producer": "go",
+      "sha256": "7f0908048c5b65f24e787ffc53cdbb818eff1cf11ce82e3a4891ea5507ca7f49"
+    },
+    {
+      "path": ".golangci.yml",
+      "producer": "go",
+      "sha256": "464d314b392b0cc4496d96f1e9f254a824de8c9307906b8a27992ed96aaa438a"
+    },
+    {
+      "path": "Makefile",
+      "producer": "go",
+      "sha256": "0788be96f7b362ec14284dc03f4f48e605c74e09288bf1bc0b6bd89fe006cef0"
+    }
+  ],
+  "settings": {
+    "go.audit.args": [],
+    "go.bench.args": [
+      "-benchmem"
+    ],
+    "go.bench.count": 6,
+    "go.bench.match": ".",
+    "go.bench.time": "1s",
+    "go.check": [
+      "lint",
+      "test",
+      "race",
+      "audit"
+    ],
+    "go.ci.actions.setup-go.commit": "b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
+    "go.ci.actions.setup-go.release": "v7.0.0",
+    "go.ci.actions.setup-go.uses": "actions/setup-go",
+    "go.ci.runners": [],
+    "go.ci.timeout": 30,
+    "go.ci.versions": [],
+    "go.fuzz.args": [
+      "-fuzzminimizetime=5s"
+    ],
+    "go.fuzz.match": ".",
+    "go.fuzz.time": "30s",
+    "go.generate.args": [],
+    "go.lint.exclude": [],
+    "go.mutate.args": [],
+    "go.mutate.timeout": "0s",
+    "go.mutate.workers": 1,
+    "go.paths": [
+      "./..."
+    ],
+    "go.race.args": [
+      "-count=1",
+      "-p=1"
+    ],
+    "go.test.args": [
+      "-count=1"
+    ],
+    "go.tools.benchstat": "golang.org/x/perf/cmd/benchstat@v0.0.0-20260929162123-406019bb8b68",
+    "go.tools.dokimi-mutate-go": "go.dokimi.dev/mutate/cmd/dokimi-mutate-go@v0.0.0-20261006212535-719083ce3457",
+    "go.tools.ergon-go-vet": "go.dokimi.dev/ergon/lang/go/cmd/ergon-go-vet@v0.1.0",
+    "go.tools.golangci-lint": "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0",
+    "go.tools.govulncheck": "golang.org/x/vuln/cmd/govulncheck@v1.8.0"
+  },
+  "answers": {
+    "name": "demo",
+    "owner": "Dokimasia B.V.",
+    "license": "MIT",
+    "repository": "dokimasia/demo",
+    "security-contact": "security@example.com",
+    "languages": [
+      "go"
+    ],
+    "year": 2026
+  }
+}

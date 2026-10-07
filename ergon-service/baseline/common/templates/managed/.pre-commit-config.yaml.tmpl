@@ -6,9 +6,10 @@ default_install_hook_types: [pre-commit, commit-msg]
 default_stages: [pre-commit]
 
 repos:
-  # File hygiene, without a language toolchain.
+  # File hygiene, without a language toolchain, at the release of the section common of
+  # .ergon.yaml.
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v6.0.0
+    rev: {{% yaml .Options.PreCommitHooks %}}
     hooks:
       - id: trailing-whitespace
         exclude: '\.md$'
@@ -34,11 +35,10 @@ repos:
         language: system
         pass_filenames: false
 
-      # The commit message, against .commitlint.yaml. pre-commit builds commitlint with the Go on
-      # the PATH, and downloads Go when there is none.
+      # The commit message, against .commitlint.yaml. ergon installs the commitlint of the section
+      # common of .ergon.yaml, and checks its archive against the digest of the section.
       - id: commitlint
         name: commitlint
-        entry: commitlint lint --message
-        language: golang
-        additional_dependencies: ["{{commitlint}}"]
+        entry: ergon tool run common.commitlint -- lint --message
+        language: system
         stages: [commit-msg]

@@ -12,6 +12,7 @@ import (
 	"go.dokimi.dev/ergon/core/workspace"
 	"go.dokimi.dev/ergon/lang/javascript"
 	"go.dokimi.dev/ergon/lang/typescript"
+	"go.dokimi.dev/ergon/lang/typescript/baseline"
 )
 
 // The spellings of TypeScript and of the js toolchain in configuration. A repository names them,
@@ -36,6 +37,17 @@ func TestLanguage(t *testing.T) {
 				{Name: javascript.Language, Toolchain: pinnedToolchain},
 				{Name: pinnedLanguage, Toolchain: pinnedToolchain},
 			}, "the languages of the catalog")
+		})
+
+		t.Run("adds the producer of TypeScript, whose section is named after the language", func(t *testing.T) {
+			t.Parallel()
+			var c language.Catalog
+			assert.NoError(t, javascript.Register(&c), "Register of JavaScript")
+			assert.NoError(t, typescript.Register(&c), "Register of TypeScript")
+			producer, ok := language.Role[language.Producer](&c, pinnedLanguage)
+			assert.True(t, ok, "the producer of TypeScript")
+			assert.Equal(t, producer, language.Producer(baseline.Producer{}), "the producer")
+			assert.Equal(t, baseline.Name, string(pinnedLanguage), "the name of the section")
 		})
 
 		t.Run("returns ErrUnknownToolchain for a catalog without the js toolchain", func(t *testing.T) {

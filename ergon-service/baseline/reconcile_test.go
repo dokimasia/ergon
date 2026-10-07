@@ -5,9 +5,9 @@ package baseline_test
 
 import (
 	"testing"
+	"testing/fstest"
 
 	"go.dokimi.dev/assert"
-	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/service/baseline"
 )
 
@@ -29,8 +29,12 @@ func TestReconcile(t *testing.T) {
 				assert.NoError(t, root.Remove(license), "Remove of the LICENSE")
 				findings, err := r.Check()
 				assert.NoError(t, err, "Check")
-				want := []baseline.Finding{{Path: license, Problem: baseline.Missing}}
-				assert.Equal(t, findings, want, "the findings")
+				assert.Equal(
+					t,
+					findings,
+					[]baseline.Finding{{Path: license, Problem: baseline.Missing}},
+					"the findings",
+				)
 			})
 
 			t.Run("returns Edited for a managed file that differs from the lock and the rendering", func(t *testing.T) {
@@ -39,8 +43,7 @@ func TestReconcile(t *testing.T) {
 				put(t, root, license, "Copyright someone else\n")
 				findings, err := r.Check()
 				assert.NoError(t, err, "Check")
-				want := []baseline.Finding{{Path: license, Problem: baseline.Edited}}
-				assert.Equal(t, findings, want, "the findings")
+				assert.Equal(t, findings, []baseline.Finding{{Path: license, Problem: baseline.Edited}}, "the findings")
 			})
 
 			t.Run("returns Outdated for an unedited file whose local file changed", func(t *testing.T) {
@@ -49,8 +52,26 @@ func TestReconcile(t *testing.T) {
 				put(t, root, localDir+ignore, "local/\n")
 				findings, err := r.Check()
 				assert.NoError(t, err, "Check")
-				want := []baseline.Finding{{Path: ignore, Problem: baseline.Outdated}}
-				assert.Equal(t, findings, want, "the findings")
+				assert.Equal(
+					t,
+					findings,
+					[]baseline.Finding{{Path: ignore, Problem: baseline.Outdated}},
+					"the findings",
+				)
+			})
+
+			t.Run("returns Outdated for an unedited file whose option changed", func(t *testing.T) {
+				t.Parallel()
+				r, root := initialized(t)
+				put(t, root, config, "common:\n  greeting: hey\nalpha:\n  greeting: hi\n")
+				findings, err := r.Check()
+				assert.NoError(t, err, "Check")
+				assert.Equal(
+					t,
+					findings,
+					[]baseline.Finding{{Path: greeting, Problem: baseline.Outdated}},
+					"the findings",
+				)
 			})
 
 			t.Run("returns Outdated for a file at the rendering that the lock records otherwise", func(t *testing.T) {
@@ -60,8 +81,12 @@ func TestReconcile(t *testing.T) {
 				put(t, root, ignore, "# common\nalpha/\nlocal/\n")
 				findings, err := r.Check()
 				assert.NoError(t, err, "Check")
-				want := []baseline.Finding{{Path: ignore, Problem: baseline.Outdated}}
-				assert.Equal(t, findings, want, "the findings")
+				assert.Equal(
+					t,
+					findings,
+					[]baseline.Finding{{Path: ignore, Problem: baseline.Outdated}},
+					"the findings",
+				)
 			})
 
 			t.Run("returns Missing for a file of a later baseline that the repository lacks", func(t *testing.T) {
@@ -69,8 +94,12 @@ func TestReconcile(t *testing.T) {
 				_, root := initialized(t)
 				findings, err := later(t, root).Check()
 				assert.NoError(t, err, "Check")
-				want := []baseline.Finding{{Path: newFile, Problem: baseline.Missing}}
-				assert.Equal(t, findings, want, "the findings")
+				assert.Equal(
+					t,
+					findings,
+					[]baseline.Finding{{Path: newFile, Problem: baseline.Missing}},
+					"the findings",
+				)
 			})
 
 			t.Run("returns Outdated for a file of a later baseline that the lock does not record", func(t *testing.T) {
@@ -79,8 +108,12 @@ func TestReconcile(t *testing.T) {
 				put(t, root, newFile, "new\n")
 				findings, err := later(t, root).Check()
 				assert.NoError(t, err, "Check")
-				want := []baseline.Finding{{Path: newFile, Problem: baseline.Outdated}}
-				assert.Equal(t, findings, want, "the findings")
+				assert.Equal(
+					t,
+					findings,
+					[]baseline.Finding{{Path: newFile, Problem: baseline.Outdated}},
+					"the findings",
+				)
 			})
 
 			t.Run("returns Edited for a file of a later baseline that exists with other content", func(t *testing.T) {
@@ -89,21 +122,21 @@ func TestReconcile(t *testing.T) {
 				put(t, root, newFile, "ours\n")
 				findings, err := later(t, root).Check()
 				assert.NoError(t, err, "Check")
-				want := []baseline.Finding{{Path: newFile, Problem: baseline.Edited}}
-				assert.Equal(t, findings, want, "the findings")
+				assert.Equal(t, findings, []baseline.Finding{{Path: newFile, Problem: baseline.Edited}}, "the findings")
 			})
 
 			t.Run("returns the recorded files that the rendering no longer has", func(t *testing.T) {
 				t.Parallel()
 				_, root := initialized(t)
-				assert.NoError(t, root.Remove(workflow), "Remove of the workflow")
+				assert.NoError(t, root.Remove(ci), "Remove of the workflow")
 				put(t, root, license, "Copyright someone else\n")
 				findings, err := withoutCommon(t, root).Check()
 				assert.NoError(t, err, "Check")
 				assert.Equal(t, findings, []baseline.Finding{
-					{Path: workflow, Problem: baseline.Outdated},
+					{Path: ci, Problem: baseline.Outdated},
 					{Path: ignore, Problem: baseline.Outdated},
 					{Path: license, Problem: baseline.Edited},
+					{Path: greeting, Problem: baseline.Outdated},
 				}, "the findings")
 			})
 		})
@@ -147,8 +180,7 @@ func TestReconcile(t *testing.T) {
 				t.Parallel()
 				_, root := initialized(t)
 				assert.NoError(t, root.Remove(license), "Remove of the LICENSE")
-				r := withoutCommon(t, root)
-				_, err := r.Sync(nil, baseline.Options{})
+				_, err := withoutCommon(t, root).Sync(nil, baseline.Options{})
 				assert.NoError(t, err, "Sync")
 				assert.NotContains(t, content(t, root, lockPath), license, "the lock")
 			})
@@ -159,9 +191,9 @@ func TestReconcile(t *testing.T) {
 // later returns a repository on root whose baseline adds newFile to the producers of the cases.
 func later(t *testing.T, root baseline.FS) *baseline.Repository {
 	t.Helper()
-	r, err := baseline.Open(root, catalog(t), version, common, renders(
-		language.File{Path: newFile, Class: language.Managed, Content: []byte("new\n")},
-	))
+	r, err := baseline.Open(root, catalog(t), version, common("hello"), templated("extra", fstest.MapFS{
+		"managed/" + newFile + ".tmpl": {Data: []byte("new\n")},
+	}))
 	assert.NoError(t, err, "Open of the later baseline")
 	return r
 }

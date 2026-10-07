@@ -1,0 +1,72 @@
+# Managed by ergon init. Add repository settings to .ergon/local/.github/workflows/security.yml and run ergon init sync.
+#
+# The security checks: the review of the dependencies that a pull request changes, the weekly
+# OpenSSF Scorecard, and the CodeQL analysis of each language that a producer of ergon init
+# contributes, which calls codeql.yml.
+
+name: Security
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 4 * * 1"
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: {{% yaml .Options.Linux %}}
+    timeout-minutes: {{% .Options.CI.Timeout %}}
+    permissions:
+      contents: read
+    steps:
+      - uses: {{% .Options.CI.Actions.Checkout %}}
+        with:
+          persist-credentials: false
+      - uses: {{% .Options.CI.Actions.DependencyReview %}}
+
+  # Scorecard publishes its results only from a job whose steps are actions of its allow list, in a
+  # workflow without defaults or environment variables at its top level.
+  scorecard:
+    name: Scorecard
+    if: github.event_name == 'schedule'
+    runs-on: {{% yaml .Options.Linux %}}
+    timeout-minutes: {{% .Options.CI.Timeout %}}
+    permissions:
+      contents: read
+      id-token: write
+      security-events: write
+    steps:
+      - uses: {{% .Options.CI.Actions.Checkout %}}
+        with:
+          persist-credentials: false
+      - uses: {{% .Options.CI.Actions.Scorecard %}}
+        with:
+          results_file: scorecard.sarif
+          results_format: sarif
+          publish_results: true
+      - uses: {{% .Options.CI.Actions.CodeQL.Path "upload-sarif" %}}
+        with:
+          sarif_file: scorecard.sarif
+{{%- range .Contributions.CodeQL %}}
+
+  codeql-{{% .Language %}}:
+    name: {{% yaml (printf "CodeQL (%s)" .Name) %}}
+    uses: ./.github/workflows/codeql.yml
+    permissions:
+      contents: read
+      security-events: write
+    with:
+      language: {{% yaml .Language %}}
+      build-mode: {{% yaml .BuildMode %}}
+      files: {{% yaml .Files %}}
+      timeout: {{% .Timeout %}}
+{{%- end %}}

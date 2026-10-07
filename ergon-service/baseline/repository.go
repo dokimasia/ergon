@@ -12,6 +12,9 @@ import (
 
 	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/core/workspace"
+	"go.dokimi.dev/ergon/service/baseline/lock"
+	"go.dokimi.dev/ergon/service/baseline/options"
+	"go.dokimi.dev/ergon/service/baseline/render"
 )
 
 // The errors of the commands.
@@ -37,12 +40,20 @@ var (
 	// have.
 	ErrLanguageAbsent = errors.New("baseline: language not present")
 
-	// ErrUnsupported is the error for a language that registered no [language.Initializer].
-	ErrUnsupported = errors.New("baseline: language without an init role")
+	// ErrUnsupported is the error for a language that registered no [language.Producer].
+	ErrUnsupported = errors.New("baseline: language without a producer")
 
 	// ErrConflict is the error for managed files that a command leaves, because they were edited
 	// by hand or exist with other content. Its text lists the paths.
 	ErrConflict = errors.New("baseline: managed files edited by hand or existing with other content")
+
+	// ErrInvalidFile is the error for a producer that renders .ergon.yaml, which ergon init writes
+	// from the options of the producers alone. It is a defect of the producer.
+	ErrInvalidFile = errors.New("baseline: a producer renders .ergon.yaml")
+
+	// ErrUnknownSection is the error of [Repository.Options] for a section that no producer of the
+	// repository with options has.
+	ErrUnknownSection = errors.New("baseline: no producer of the repository has the section")
 )
 
 // Options are the options of the commands that write.
@@ -72,11 +83,21 @@ type Change struct {
 	Action Action
 }
 
+// Producer is a base producer of a repository, which renders before the languages, such as the
+// producer of the common files.
+type Producer struct {
+	// Producer renders the files of the producer.
+	Producer language.Producer
+
+	// Name identifies the producer in the lock, and names its section of .ergon.yaml, such as
+	// common.
+	Name string
+}
+
 // Repository is a repository that ergon init sets up, on a file system that confines every path
-// to its directory. Its producers are the base producers of [Open], then the
-// [language.Initializer] of each language of the answers, in the order of the catalog. A
-// toolchain with an Initializer renders the files that its languages share, once, before its
-// first language of the answers.
+// to its directory. Its producers are the base producers of [Open], then the producer of each
+// language of the answers, in the order of the catalog. A toolchain with a producer renders the
+// files that its languages share, once, before its first language of the answers.
 //
 // # Concurrency
 //
@@ -96,12 +117,33 @@ type Repository struct {
 	base []Producer
 }
 
+// rendering is what a command renders: the files of the producers, with each local file merged
+// into its managed file, and .ergon.yaml with the sections of the producers.
+type rendering struct {
+	// files are the files of the producers, sorted by path.
+	files []target
+
+	// config is .ergon.yaml with the sections of the producers, and nil when no producer has
+	// options and the repository has no section to drop.
+	config []byte
+
+	// configured reports that config differs from .ergon.yaml in a key or a value.
+	configured bool
+}
+
+// target is a file of a rendering.
+type target struct {
+	// local is the digest of the local file that the content contains, or empty.
+	local string
+
+	render.File
+}
+
 // Open returns the repository on fsys, whose toolchains, languages and roles are in catalog.
 // version is the version of ergon that the lock records. base are the producers that run before
 // the languages, in order. Open returns an error that wraps [ErrInvalidOpen] for a nil fsys or
-// catalog, an empty version, and a base producer without an initializer, whose name is not a
-// valid name, or whose name is the name of another producer or of a toolchain or a language of
-// catalog.
+// catalog, an empty version, and a base producer without a producer, whose name is not a valid
+// name, or whose name is the name of another producer or of a toolchain or a language of catalog.
 func Open(fsys FS, catalog *language.Catalog, version string, base ...Producer) (*Repository, error) {
 	if fsys == nil || catalog == nil || version == "" {
 		return nil, fmt.Errorf("%w: a file system, a catalog and a version are required", ErrInvalidOpen)
@@ -110,7 +152,7 @@ func Open(fsys FS, catalog *language.Catalog, version string, base ...Producer) 
 		_, isLanguage := catalog.Language(workspace.Language(p.Name))
 		_, isToolchain := catalog.Toolchain(workspace.Toolchain(p.Name))
 		taken := slices.ContainsFunc(base[:i], func(q Producer) bool { return q.Name == p.Name })
-		if p.Initializer == nil || !workspace.Language(p.Name).Valid() || isLanguage || isToolchain || taken {
+		if p.Producer == nil || !workspace.Language(p.Name).Valid() || isLanguage || isToolchain || taken {
 			return nil, fmt.Errorf("%w: producer %q", ErrInvalidOpen, p.Name)
 		}
 	}
@@ -118,20 +160,23 @@ func Open(fsys FS, catalog *language.Catalog, version string, base ...Producer) 
 }
 
 // New writes the files of a repository without a lock: the managed files, the seeded files that
-// are missing, the keys of the configured files, and the lock. It returns the files it wrote.
+// are missing, the section of each producer that has options in .ergon.yaml, and the lock. It
+// writes each answer of a into the key of .ergon.yaml that states it, whatever value the key had.
+// It returns the files it wrote.
 //
-// It returns an error that wraps [ErrInitialized] for a repository with a lock, [ErrInvalidLock]
-// for a lock that does not parse, the error of a producer for answers that it cannot render, and
-// an error that wraps [ErrConflict] for a managed file that exists with other content, unless
-// opts.Force overwrites it. New writes nothing when it returns an error before its first write. It
-// reads a and does not modify it.
+// It returns an error that wraps [ErrInitialized] for a repository with a lock,
+// [lock.ErrInvalid] for a lock that does not parse, [language.ErrInvalidAnswer] for answers that no
+// producer can render, [options.ErrInvalid] for an existing .ergon.yaml that the producers do not
+// accept, the error of a producer, and an error that wraps [ErrConflict] for a managed file that
+// exists with other content, unless opts.Force overwrites it. New writes nothing when it returns an
+// error before its first write. It reads a and does not modify it.
 func (r *Repository) New(a *language.Answers, opts Options) ([]Change, error) {
-	data, ok, err := r.read(lockPath)
+	data, ok, err := r.read(lock.Path)
 	if err != nil {
 		return nil, err
 	}
 	if ok {
-		if _, err := decodeLock(data); err != nil {
+		if _, err := lock.Decode(data); err != nil {
 			return nil, err
 		}
 		return nil, ErrInitialized
@@ -140,12 +185,14 @@ func (r *Repository) New(a *language.Answers, opts Options) ([]Change, error) {
 }
 
 // Add adds languages to the answers of the lock, and writes their files: the files of each
-// language, its fragments of the shared files, and the lock. It returns the files it wrote.
+// language, its fragments of the shared files, its section of .ergon.yaml, and the lock. It
+// returns the files it wrote.
 //
 // It returns an error that wraps [ErrNotInitialized] for a repository without a lock,
-// [ErrLanguagePresent] for a language that the answers already have, and [ErrConflict] for a
-// managed file that it would change and that was edited by hand, unless opts.Force overwrites
-// it. Add writes nothing when it returns an error before its first write.
+// [ErrLanguagePresent] for a language that the answers already have, [options.ErrInvalid] for
+// .ergon.yaml that the producers do not accept, and [ErrConflict] for a managed file that it would
+// change and that was edited by hand, unless opts.Force overwrites it. Add writes nothing when it
+// returns an error before its first write.
 func (r *Repository) Add(languages []workspace.Language, opts Options) ([]Change, error) {
 	l, err := r.readLock()
 	if err != nil {
@@ -158,17 +205,18 @@ func (r *Repository) Add(languages []workspace.Language, opts Options) ([]Change
 	}
 	a := l.Answers
 	a.Languages = slices.Concat(a.Languages, languages)
-	return r.change(l.Files, &a, opts)
+	return r.change(&l, &a, opts)
 }
 
-// Remove removes languages from the answers of the lock, removes the files of each language, and
-// rewrites the shared files and the lock. It returns the files it wrote and removed.
+// Remove removes languages from the answers of the lock, removes the files of each language and
+// its section of .ergon.yaml, and rewrites the shared files and the lock. It returns the files it
+// wrote and removed.
 //
 // It returns an error that wraps [ErrNotInitialized] for a repository without a lock,
 // [ErrUnknownLanguage] for a language that the catalog does not have, [ErrLanguageAbsent] for a
-// language that the answers do not have, and [ErrConflict] for a managed file that it would change
-// or remove and that was edited by hand. Remove writes nothing when it returns an error before its
-// first write.
+// language that the answers do not have, [options.ErrInvalid] for .ergon.yaml that the producers do
+// not accept, and [ErrConflict] for a managed file that it would change or remove and that was
+// edited by hand. Remove writes nothing when it returns an error before its first write.
 func (r *Repository) Remove(languages []workspace.Language) ([]Change, error) {
 	l, err := r.readLock()
 	if err != nil {
@@ -187,18 +235,24 @@ func (r *Repository) Remove(languages []workspace.Language) ([]Change, error) {
 	}
 	a := l.Answers
 	a.Languages = remaining
-	return r.change(l.Files, &a, Options{})
+	return r.change(&l, &a, Options{})
 }
 
 // Sync brings the files to the rendering of the installed ergon, with the answers of the lock
 // changed by update: it writes the missing and outdated managed files, the missing seeded files,
-// the keys of the configured files, and the lock. update may be nil. It returns the files it
-// wrote and removed.
+// the section of each producer that has options in .ergon.yaml, and the lock. update may be nil.
+// It returns the files it wrote and removed.
+//
+// An option of .ergon.yaml whose value equals the value that the lock records takes the baseline
+// value of the installed ergon. A key of .ergon.yaml that states an answer must have the answer of
+// the lock or the answer that update sets, and Sync writes the answer that update sets into it.
 //
 // A managed file that was edited by hand conflicts, unless opts.Force overwrites it. Sync writes
-// every other file, keeps the conflicting file and its entry in the lock, and then returns an
-// error that wraps [ErrConflict]. It returns an error that wraps [ErrNotInitialized] for a
-// repository without a lock, and the error of a producer for answers that it cannot render.
+// every other file, keeps the conflicting file and its entry in the lock, and then returns an error
+// that wraps [ErrConflict]. It returns an error that wraps [ErrNotInitialized] for a repository
+// without a lock, [language.ErrInvalidAnswer] for answers that no producer can render,
+// [options.ErrInvalid] for .ergon.yaml that the producers do not accept or whose key of an answer
+// has another value, and the error of a producer.
 func (r *Repository) Sync(update func(*language.Answers), opts Options) ([]Change, error) {
 	l, err := r.readLock()
 	if err != nil {
@@ -209,15 +263,15 @@ func (r *Repository) Sync(update func(*language.Answers), opts Options) ([]Chang
 	if update != nil {
 		update(&a)
 	}
-	targets, ordered, err := r.targets(&a)
+	rend, next, err := r.targets(&a, &l)
 	if err != nil {
 		return nil, err
 	}
-	p, err := r.reconcile(l.Files, targets, opts)
+	p, err := r.reconcile(l.Files, &rend, opts)
 	if err != nil {
 		return nil, err
 	}
-	changes, err := r.apply(&p, &ordered)
+	changes, err := r.apply(&p, &next)
 	if err != nil || len(p.conflicts) == 0 {
 		return changes, err
 	}
@@ -225,54 +279,118 @@ func (r *Repository) Sync(update func(*language.Answers), opts Options) ([]Chang
 }
 
 // Check returns the managed files that differ from the rendering of the installed ergon for the
-// answers of the lock, sorted by path, and writes nothing. It returns an error that wraps
-// [ErrNotInitialized] for a repository without a lock.
+// answers of the lock and the options of .ergon.yaml, sorted by path, and writes nothing. It
+// returns an error that wraps [ErrNotInitialized] for a repository without a lock, and
+// [options.ErrInvalid] for .ergon.yaml that the producers do not accept.
 func (r *Repository) Check() ([]Finding, error) {
 	l, err := r.readLock()
 	if err != nil {
 		return nil, err
 	}
-	targets, _, err := r.targets(&l.Answers)
+	rend, _, err := r.targets(&l.Answers, &l)
 	if err != nil {
 		return nil, err
 	}
-	return r.inspect(l.Files, targets)
+	return r.inspect(l.Files, rend.files)
 }
 
-// change renders a, plans against the recorded lock entries, and applies the plan when nothing
-// conflicts. It returns an error that wraps [ErrConflict], and writes nothing, when a managed file
-// conflicts. It reads a and does not modify it.
-func (r *Repository) change(recorded []lockFile, a *language.Answers, opts Options) ([]Change, error) {
-	targets, ordered, err := r.targets(a)
+// Options returns the options of the section name of .ergon.yaml, resolved as every command
+// resolves them: from the section, the record of the lock and the baseline of the producer of that
+// name among the producers of the repository. It writes nothing.
+//
+// It returns an error that wraps [ErrNotInitialized] for a repository without a lock,
+// [ErrUnknownSection] for a name of no producer with options, the errors that [Repository.Check]
+// returns for the answers of the lock, and [options.ErrInvalid] for .ergon.yaml that the producers
+// do not accept.
+func (r *Repository) Options(name string) (language.Options, error) {
+	l, err := r.readLock()
 	if err != nil {
 		return nil, err
 	}
-	p, err := r.reconcile(recorded, targets, opts)
+	units, next, err := r.units(&l.Answers)
+	if err != nil {
+		return nil, err
+	}
+	_, res, err := r.resolve(units, &next.Answers, &l)
+	if err != nil {
+		return nil, err
+	}
+	i := slices.IndexFunc(res.Sections, func(s options.Section) bool { return s.Name == name })
+	if i < 0 {
+		return nil, fmt.Errorf("%w: %q", ErrUnknownSection, name)
+	}
+	return res.Sections[i].Options, nil
+}
+
+// change renders a with the options that previous records, plans against the file entries of
+// previous, and applies the plan when nothing conflicts. previous is the lock of the repository,
+// and nil for a repository without one. It returns an error that wraps [ErrConflict], and writes
+// nothing, when a managed file conflicts. It reads a and does not modify it.
+func (r *Repository) change(previous *lock.Lock, a *language.Answers, opts Options) ([]Change, error) {
+	rend, next, err := r.targets(a, previous)
+	if err != nil {
+		return nil, err
+	}
+	var recorded []lock.File
+	if previous != nil {
+		recorded = previous.Files
+	}
+	p, err := r.reconcile(recorded, &rend, opts)
 	if err != nil {
 		return nil, err
 	}
 	if len(p.conflicts) > 0 {
 		return nil, fmt.Errorf("%w: %s", ErrConflict, strings.Join(p.conflicts, ", "))
 	}
-	return r.apply(&p, &ordered)
+	return r.apply(&p, &next)
 }
 
-// targets returns the rendering of a, with the local files merged into the managed files, and a
-// copy of a with its languages in the order of the catalog. It reads a and does not modify it.
-// The initializer of a toolchain renders before the first language of the toolchain. It returns
-// an error that wraps [ErrUnknownLanguage] for a language that the catalog does not have,
-// [ErrLanguagePresent] for a language that a names twice, [ErrUnsupported] for a language without
-// an initializer, and the error of a producer or of a local file.
-func (r *Repository) targets(a *language.Answers) ([]target, language.Answers, error) {
-	ordered := *a
-	producers := slices.Clone(r.base)
+// targets returns the rendering of a, of the options of .ergon.yaml and of the local files, and
+// the lock that follows the rendering without its entries of files. That lock has a copy of a with
+// its languages in the order of the catalog, and the baseline value of each option. previous is the
+// lock of the repository, whose record and answers resolve the options, and nil for a repository
+// without one. targets reads a and previous and modifies neither.
+//
+// It returns an error that wraps [language.ErrInvalidAnswer] for answers that no producer can
+// render, [ErrUnknownLanguage] for a language that the catalog does not have, [ErrLanguagePresent]
+// for a language that a names twice, [ErrUnsupported] for a language without a producer,
+// [options.ErrInvalid] for .ergon.yaml that the producers do not accept, [ErrInvalidFile] for a
+// producer that renders .ergon.yaml, and the error of a producer, of the rendering or of a local
+// file.
+func (r *Repository) targets(a *language.Answers, previous *lock.Lock) (rendering, lock.Lock, error) {
+	units, next, err := r.units(a)
+	if err != nil {
+		return rendering{}, lock.Lock{}, err
+	}
+	rend, err := r.render(units, &next.Answers, previous)
+	if err != nil {
+		return rendering{}, lock.Lock{}, err
+	}
+	next.Settings = rend.record
+	return rend.rendering, next, nil
+}
+
+// units returns the producers of a, the base producers and then the toolchain and the producer of
+// each language of a in the order of the catalog, and the lock that follows them without its
+// entries of files and its record: a copy of a with its languages in the order of the catalog. It
+// reads a and does not modify it. It returns the errors that [Repository.targets] states for the
+// answers and the languages.
+func (r *Repository) units(a *language.Answers) ([]render.Unit, lock.Lock, error) {
+	if err := a.Validate(); err != nil {
+		return nil, lock.Lock{}, err
+	}
 	for i, name := range a.Languages {
 		if err := r.known(name); err != nil {
-			return nil, ordered, err
+			return nil, lock.Lock{}, err
 		}
 		if slices.Contains(a.Languages[:i], name) {
-			return nil, ordered, fmt.Errorf("%w: %s, which the answers name twice", ErrLanguagePresent, name)
+			return nil, lock.Lock{}, fmt.Errorf("%w: %s, which the answers name twice", ErrLanguagePresent, name)
 		}
+	}
+	next := lock.Lock{Ergon: r.version, Answers: *a}
+	units := make([]render.Unit, 0, len(r.base)+2*len(a.Languages))
+	for _, p := range r.base {
+		units = append(units, render.Unit{Name: p.Name, Producer: p.Producer})
 	}
 	languages := make([]workspace.Language, 0, len(a.Languages))
 	var toolchains []workspace.Toolchain
@@ -280,28 +398,115 @@ func (r *Repository) targets(a *language.Answers) ([]target, language.Answers, e
 		if !slices.Contains(a.Languages, d.Name) {
 			continue
 		}
-		initializer, ok := language.Role[language.Initializer](r.catalog, d.Name)
+		producer, ok := language.Role[language.Producer](r.catalog, d.Name)
 		if !ok {
-			return nil, ordered, fmt.Errorf("%w: %s", ErrUnsupported, d.Name)
+			return nil, lock.Lock{}, fmt.Errorf("%w: %s", ErrUnsupported, d.Name)
 		}
 		if !slices.Contains(toolchains, d.Toolchain) {
 			toolchains = append(toolchains, d.Toolchain)
-			if shared, ok := language.ToolchainRole[language.Initializer](r.catalog, d.Toolchain); ok {
-				producers = append(producers, Producer{Name: string(d.Toolchain), Initializer: shared})
+			if shared, ok := language.ToolchainRole[language.Producer](r.catalog, d.Toolchain); ok {
+				units = append(units, render.Unit{Name: string(d.Toolchain), Producer: shared})
 			}
 		}
 		languages = append(languages, d.Name)
-		producers = append(producers, Producer{Name: string(d.Name), Initializer: initializer})
+		units = append(units, render.Unit{Name: string(d.Name), Producer: producer})
 	}
-	ordered.Languages = languages
-	targets, err := render(producers, &ordered)
+	next.Answers.Languages = languages
+	return units, next, nil
+}
+
+// resolve returns the content of .ergon.yaml, and the options of the configurable producers of
+// units resolved from it and from previous, the lock of the repository or nil, for a. It returns
+// the error of a file that does not read, and the errors of [options.Resolve].
+func (r *Repository) resolve(units []render.Unit, a *language.Answers, previous *lock.Lock) (
+	[]byte, options.Resolution, error,
+) {
+	file, _, err := r.read(language.Config)
 	if err != nil {
-		return nil, ordered, err
+		return nil, options.Resolution{}, err
 	}
-	if err := r.applyLocal(targets); err != nil {
-		return nil, ordered, err
+	var configurables []options.Producer
+	for _, u := range units {
+		if c, ok := u.Producer.(language.Configurable); ok {
+			configurables = append(configurables, options.Producer{Name: u.Name, Configurable: c})
+		}
 	}
-	return targets, ordered, nil
+	var recorded map[string]any
+	var answered *language.Answers
+	if previous != nil {
+		recorded, answered = previous.Settings, &previous.Answers
+	}
+	res, err := options.Resolve(file, recorded, answered, a, configurables, r.sections())
+	return file, res, err
+}
+
+// resolved is a rendering and the record of the options that it rendered with.
+type resolved struct {
+	// record is the baseline value of each option, by its key in .ergon.yaml.
+	record map[string]any
+
+	rendering
+}
+
+// render resolves the options of units from .ergon.yaml and previous, the lock of the repository or
+// nil, writes their sections into the content of .ergon.yaml, collects their contributions, renders
+// their files for a, and merges the local files into them. It returns the errors that
+// [Repository.targets] states for the options, the rendering and the local files.
+func (r *Repository) render(units []render.Unit, a *language.Answers, previous *lock.Lock) (resolved, error) {
+	file, res, err := r.resolve(units, a, previous)
+	if err != nil {
+		return resolved{}, err
+	}
+	var rend rendering
+	if len(res.Sections) > 0 || len(res.Drop) > 0 {
+		if rend.config, rend.configured, err = options.Write(file, res.Sections, res.Drop); err != nil {
+			return resolved{}, err
+		}
+	}
+	for i := range units {
+		if j := slices.IndexFunc(
+			res.Sections,
+			func(s options.Section) bool { return s.Name == units[i].Name },
+		); j >= 0 {
+			units[i].Options = res.Sections[j].Options
+		}
+	}
+	contributions, err := render.Collect(units)
+	if err != nil {
+		return resolved{}, err
+	}
+	files, err := render.Render(units, a, &contributions)
+	if err != nil {
+		return resolved{}, err
+	}
+	rend.files = make([]target, 0, len(files))
+	for _, f := range files {
+		if f.Path == language.Config {
+			return resolved{}, fmt.Errorf("%w: %s renders it", ErrInvalidFile, f.Producer)
+		}
+		rend.files = append(rend.files, target{File: f})
+	}
+	if err := r.applyLocal(rend.files); err != nil {
+		return resolved{}, err
+	}
+	return resolved{rendering: rend, record: res.Record}, nil
+}
+
+// sections returns the names of every section that .ergon.yaml can have: the names of the base
+// producers, and of every language and toolchain of the catalog.
+func (r *Repository) sections() []string {
+	names := make([]string, 0, len(r.base))
+	for _, p := range r.base {
+		names = append(names, p.Name)
+	}
+	for d := range r.catalog.Languages() {
+		for _, name := range []string{string(d.Name), string(d.Toolchain)} {
+			if !slices.Contains(names, name) {
+				names = append(names, name)
+			}
+		}
+	}
+	return names
 }
 
 // known returns nil for a language of the catalog, and for any other name an error that wraps
@@ -317,10 +522,10 @@ func (r *Repository) known(name workspace.Language) error {
 	return fmt.Errorf("%w: %q, which is none of %s", ErrUnknownLanguage, name, strings.Join(names, ", "))
 }
 
-// apply writes and removes the files of p, then writes the lock of a and p's file entries when it
+// apply writes and removes the files of p, then writes next with p's entries of files when it
 // differs from the lock in the repository. It returns the files that it wrote and removed, those
 // before a failure included, and the error of the first write or removal that fails.
-func (r *Repository) apply(p *plan, a *language.Answers) ([]Change, error) {
+func (r *Repository) apply(p *plan, next *lock.Lock) ([]Change, error) {
 	var changes []Change
 	for _, w := range p.writes {
 		if err := r.write(w.path, w.content); err != nil {
@@ -334,32 +539,31 @@ func (r *Repository) apply(p *plan, a *language.Answers) ([]Change, error) {
 		}
 		changes = append(changes, Change{Path: name, Action: Removed})
 	}
-	files := p.files
-	if files == nil {
-		files = []lockFile{}
+	next.Files = p.files
+	if next.Files == nil {
+		next.Files = []lock.File{}
 	}
-	next := lock{Ergon: r.version, Answers: *a, Files: files}
-	encoded := next.encode()
-	previous, _, err := r.read(lockPath)
+	encoded := next.Encode()
+	previous, _, err := r.read(lock.Path)
 	if err != nil || bytes.Equal(previous, encoded) {
 		return changes, err
 	}
-	if err := r.write(lockPath, encoded); err != nil {
+	if err := r.write(lock.Path, encoded); err != nil {
 		return changes, err
 	}
-	return append(changes, Change{Path: lockPath, Action: Wrote}), nil
+	return append(changes, Change{Path: lock.Path, Action: Wrote}), nil
 }
 
 // readLock returns the lock of the repository. It returns an error that wraps
-// [ErrNotInitialized] for a repository without one, and [ErrInvalidLock] for a lock that does
-// not parse.
-func (r *Repository) readLock() (lock, error) {
-	data, ok, err := r.read(lockPath)
+// [ErrNotInitialized] for a repository without one, and [lock.ErrInvalid] for a lock that does not
+// parse.
+func (r *Repository) readLock() (lock.Lock, error) {
+	data, ok, err := r.read(lock.Path)
 	if err != nil {
-		return lock{}, err
+		return lock.Lock{}, err
 	}
 	if !ok {
-		return lock{}, ErrNotInitialized
+		return lock.Lock{}, ErrNotInitialized
 	}
-	return decodeLock(data)
+	return lock.Decode(data)
 }

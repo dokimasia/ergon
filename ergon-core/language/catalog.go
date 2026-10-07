@@ -113,10 +113,10 @@ func (c *Catalog) Toolchain(name workspace.Toolchain) (Toolchain, bool) {
 }
 
 // RegisterToolchain adds t to c, with the roles that the toolchain implements, such as the
-// [Initializer] of the files that the languages of a shared toolchain share. It returns an error
-// that wraps [ErrInvalidName] for an invalid t.Name, [ErrRegistered] when c has a toolchain of
-// that name, and [ErrUnknownRole] for a role that implements no role interface. c is unchanged
-// when RegisterToolchain returns an error. RegisterToolchain panics for a nil c.
+// [Producer] of the files that the languages of a shared toolchain share. It returns an error that
+// wraps [ErrInvalidName] for an invalid t.Name, [ErrRegistered] when c has a toolchain of that
+// name, and [ErrUnknownRole] for a role that implements no role interface. c is unchanged when
+// RegisterToolchain returns an error. RegisterToolchain panics for a nil c.
 func RegisterToolchain(c *Catalog, t Toolchain, roles ...any) error {
 	if !t.Name.Valid() {
 		return fmt.Errorf("%w: toolchain %q", ErrInvalidName, t.Name)
@@ -131,8 +131,8 @@ func RegisterToolchain(c *Catalog, t Toolchain, roles ...any) error {
 	return nil
 }
 
-// Register adds d to c, with the roles that the language implements, such as an [Initializer].
-// It returns an error that wraps [ErrInvalidName] for an invalid d.Name, [ErrRegistered] when c
+// Register adds d to c, with the roles that the language implements, such as a [Producer]. It
+// returns an error that wraps [ErrInvalidName] for an invalid d.Name, [ErrRegistered] when c
 // has a language of that name, [ErrUnknownToolchain] when c has no toolchain named d.Toolchain,
 // and [ErrUnknownRole] for a role that implements no role interface. c is unchanged when Register
 // returns an error. Register panics for a nil c.
@@ -179,10 +179,11 @@ func ToolchainRole[R any](c *Catalog, name workspace.Toolchain) (R, bool) {
 
 // checkRoles returns an error that wraps [ErrUnknownRole] for the first of roles that implements
 // no role interface, naming the kind and the name of its owner, and nil when every role
-// implements one.
+// implements one. [Producer] is the one role interface that a toolchain or a language registers:
+// [Calculator], [Configurable] and [Contributor] extend a producer.
 func checkRoles(roles []any, kind, name string) error {
 	for _, role := range roles {
-		if _, ok := role.(Initializer); !ok {
+		if _, ok := role.(Producer); !ok {
 			return fmt.Errorf("%w: %T of %s %q", ErrUnknownRole, role, kind, name)
 		}
 	}

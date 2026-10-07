@@ -4,73 +4,64 @@
 package baseline
 
 import (
-	_ "embed"
+	"embed"
+	"io/fs"
 
 	"go.dokimi.dev/ergon/core/language"
+	"go.dokimi.dev/ergon/core/option"
+	"go.dokimi.dev/ergon/core/workflow"
 )
 
-// InitScript is the path of the Gradle init script that lints the Java sources, which Java renders
-// as a managed file of its own. lint-java passes it to Gradle with --init-script.
-const InitScript = "gradle/ergon-java.init.gradle.kts"
+// Name is the name of the producer of Java in the lock, and of its section of .ergon.yaml, which
+// is the name of the language.
+const Name = "java"
 
-// The template of the init script.
+// templates are the templates of Java under java/, and of the jvm toolchain under jvm/. Each tree
+// has the managed files under managed/ and the fragments of the shared files under shared/.
 //
-//go:embed templates/gradle/ergon-java.init.gradle.kts.tmpl
-var initScript string
+//go:embed all:templates
+var templates embed.FS
 
-// The templates of the fragments of Java, which mirror the paths of the shared files.
+// tools are the tools of the section java at the baseline: PMD 7.28.0. [Tools.Validate] requires
+// its package.
+var tools = Tools{PMD: "net.sourceforge.pmd:pmd-java@7.28.0"}
+
+// Producer renders the files of Java: the Gradle init script that lints the Java sources, and the
+// fragments of .editorconfig, .gitattributes, .gitignore and the Makefile. The jvm toolchain
+// renders what Java shares with Kotlin. Its zero value is ready to use, and it is safe for
+// concurrent use.
+type Producer struct{}
+
 var (
-	//go:embed templates/.editorconfig.tmpl
-	editorconfig string
-
-	//go:embed templates/.gitattributes.tmpl
-	gitattributes string
-
-	//go:embed templates/.gitignore.tmpl
-	gitignore string
-
-	//go:embed templates/Makefile.tmpl
-	makefile string
-
-	//go:embed templates/.github/workflows/ci.yml.tmpl
-	ci string
+	_ language.Producer     = Producer{}
+	_ language.Configurable = Producer{}
+	_ language.Contributor  = Producer{}
 )
 
-// The templates of the fragments of the jvm toolchain, which mirror the paths of the shared files.
-var (
-	//go:embed templates/toolchain/Makefile.tmpl
-	toolchainMakefile string
+// Templates returns the templates of Java: gradle/ergon-java.init.gradle.kts under managed/, and
+// the fragments of the shared files under shared/.
+func (Producer) Templates() fs.FS {
+	// templates has the directory templates/java, so Sub returns no error.
+	sub, _ := fs.Sub(templates, "templates/"+Name)
+	return sub
+}
 
-	//go:embed templates/toolchain/.github/workflows/security.yml.tmpl
-	toolchainSecurity string
-
-	//go:embed templates/toolchain/.github/dependabot.yml.tmpl
-	toolchainDependabot string
-)
-
-// Initializer returns the init role of Java: the init script that lints the Java sources, and the
-// fragments that Java contributes to the shared files of a repository. They do not depend on the
-// answers.
-func Initializer() language.Initializer {
-	return language.Fixed{
-		{Path: InitScript, Class: language.Managed, Content: []byte(initScript)},
-		{Path: language.EditorConfig, Class: language.Managed, Fragment: []byte(editorconfig)},
-		{Path: language.GitAttributes, Class: language.Managed, Fragment: []byte(gitattributes)},
-		{Path: language.GitIgnore, Class: language.Managed, Fragment: []byte(gitignore)},
-		{Path: language.Makefile, Class: language.Managed, Fragment: []byte(makefile)},
-		{Path: language.CI, Class: language.Managed, Fragment: []byte(language.Job(ci))},
+// Options returns the section java at the baseline: PMD 7.28.0, the gate of lint, test and audit,
+// and ./gradlew test without arguments.
+func (Producer) Options() language.Options {
+	return &Options{
+		Tools: tools,
+		Check: option.Check{option.StepLint, option.StepTest, option.StepAudit},
+		Test:  option.Run{Args: []string{}},
 	}
 }
 
-// Toolchain returns the init role of the jvm toolchain: the fragments that Java and Kotlin share,
-// which a repository receives once for either or both. They are the target audit-jvm of the
-// Makefile, which osv-scanner runs over the Gradle lockfiles and the gates of both languages
-// require, the CodeQL analysis of java-kotlin and the Gradle updates of Dependabot. They do not
-// depend on the answers.
-func Toolchain() language.Initializer {
-	return language.Fixed{
-		{Path: language.Makefile, Class: language.Managed, Fragment: []byte(toolchainMakefile)},
-		{Path: language.Security, Class: language.Managed, Fragment: []byte(toolchainSecurity)},
-		{Path: language.Dependabot, Class: language.Managed, Fragment: []byte(toolchainDependabot)},
+// Contribution returns the part of Java of the workflows for o, as [Options.Contribution] states
+// it, and for the options at the baseline when o is not the section java.
+func (p Producer) Contribution(o language.Options) workflow.Contribution {
+	opts, ok := o.(*Options)
+	if !ok {
+		opts, _ = p.Options().(*Options)
 	}
+	return opts.Contribution()
 }

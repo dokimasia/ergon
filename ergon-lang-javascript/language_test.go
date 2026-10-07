@@ -11,6 +11,7 @@ import (
 	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/core/workspace"
 	"go.dokimi.dev/ergon/lang/javascript"
+	"go.dokimi.dev/ergon/lang/javascript/baseline"
 )
 
 // The spellings of JavaScript and of the js toolchain in configuration. A repository names them,
@@ -38,12 +39,24 @@ func TestLanguage(t *testing.T) {
 				"the languages of the catalog")
 		})
 
-		t.Run("adds the init role of the js toolchain", func(t *testing.T) {
+		t.Run("adds the producer of the js toolchain, whose section is named after the toolchain", func(t *testing.T) {
 			t.Parallel()
 			var c language.Catalog
 			assert.NoError(t, javascript.Register(&c), "Register of JavaScript")
-			_, ok := language.ToolchainRole[language.Initializer](&c, pinnedToolchain)
-			assert.True(t, ok, "the init role of js")
+			producer, ok := language.ToolchainRole[language.Producer](&c, pinnedToolchain)
+			assert.True(t, ok, "the producer of js")
+			assert.Equal(t, producer, language.Producer(baseline.Toolchain{}), "the producer")
+			assert.Equal(t, baseline.ToolchainName, string(pinnedToolchain), "the name of the section")
+		})
+
+		t.Run("adds the producer of JavaScript, whose section is named after the language", func(t *testing.T) {
+			t.Parallel()
+			var c language.Catalog
+			assert.NoError(t, javascript.Register(&c), "Register of JavaScript")
+			producer, ok := language.Role[language.Producer](&c, pinnedLanguage)
+			assert.True(t, ok, "the producer of JavaScript")
+			assert.Equal(t, producer, language.Producer(baseline.Producer{}), "the producer")
+			assert.Equal(t, baseline.Name, string(pinnedLanguage), "the name of the section")
 		})
 
 		t.Run("returns ErrRegistered for a catalog that has the toolchain", func(t *testing.T) {

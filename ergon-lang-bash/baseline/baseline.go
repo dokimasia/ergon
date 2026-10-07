@@ -4,44 +4,68 @@
 package baseline
 
 import (
-	_ "embed"
+	"embed"
+	"io/fs"
 
 	"go.dokimi.dev/ergon/core/language"
+	"go.dokimi.dev/ergon/core/option"
+	"go.dokimi.dev/ergon/core/workflow"
 )
 
-// ShellCheckRC is the path of the configuration of shellcheck, which Bash renders as a managed
-// file of its own.
-const ShellCheckRC = ".shellcheckrc"
+// Name is the name of the producer of Bash in the lock, and of its section of .ergon.yaml, which is
+// the name of the language.
+const Name = "bash"
 
-// The template of the configuration of shellcheck.
+// templates are the templates of Bash: the configuration of shellcheck under managed/, and the
+// fragments of the shared files under shared/.
 //
-//go:embed templates/.shellcheckrc.tmpl
-var shellcheckrc string
+//go:embed all:templates
+var templates embed.FS
 
-// The templates of the fragments, which mirror the paths of the shared files.
+// Producer renders the files of Bash: the configuration of shellcheck, and the fragments of
+// .editorconfig, .gitattributes and the Makefile. Its zero value is ready to use, and it is safe
+// for concurrent use.
+type Producer struct{}
+
 var (
-	//go:embed templates/.editorconfig.tmpl
-	editorconfig string
-
-	//go:embed templates/.gitattributes.tmpl
-	gitattributes string
-
-	//go:embed templates/Makefile.tmpl
-	makefile string
-
-	//go:embed templates/.github/workflows/ci.yml.tmpl
-	ci string
+	_ language.Producer     = Producer{}
+	_ language.Configurable = Producer{}
+	_ language.Contributor  = Producer{}
 )
 
-// Initializer returns the init role of Bash: the configuration of shellcheck, and the fragments
-// that Bash contributes to the shared files of a repository. They do not depend on the answers.
-// Bash has no build output, no package manager and no CodeQL analysis.
-func Initializer() language.Initializer {
-	return language.Fixed{
-		{Path: ShellCheckRC, Class: language.Managed, Content: []byte(shellcheckrc)},
-		{Path: language.EditorConfig, Class: language.Managed, Fragment: []byte(editorconfig)},
-		{Path: language.GitAttributes, Class: language.Managed, Fragment: []byte(gitattributes)},
-		{Path: language.Makefile, Class: language.Managed, Fragment: []byte(makefile)},
-		{Path: language.CI, Class: language.Managed, Fragment: []byte(language.Job(ci))},
+// Templates returns the templates of Bash: .shellcheckrc under managed/, and the fragments of the
+// shared files under shared/.
+func (Producer) Templates() fs.FS {
+	// templates has the directory templates, so Sub returns no error.
+	sub, _ := fs.Sub(templates, "templates")
+	return sub
+}
+
+// Options returns the section bash at the baseline: shellcheck v0.11.0 with the digests of its
+// assets, the scripts *.sh and *.bash, the gate of lint, and a limit of 30 minutes for the job
+// check-bash on every runner.
+func (Producer) Options() language.Options {
+	return &Options{
+		Tools: Tools{Shellcheck: Shellcheck{Binary: option.Binary{
+			SHA256: map[option.Platform]string{
+				option.LinuxAMD64:   "b7af85e41cc99489dcc21d66c6d5f3685138f06d34651e6d34b42ec6d54fe6f6",
+				option.DarwinARM64:  "339b930feb1ea764467013cc1f72d09cd6b869ebf1013296ba9055ab2ffbd26f",
+				option.WindowsAMD64: "8a4e35ab0b331c85d73567b12f2a444df187f483e5079ceffa6bda1faa2e740e",
+			},
+			Version: "0.11.0",
+		}}},
+		Paths: option.Paths{"*.sh", "*.bash"},
+		Check: option.Check{option.StepLint},
+		CI:    option.RunnerCI[struct{}]{Runners: option.Runners{}, Timeout: 30},
 	}
+}
+
+// Contribution returns the part of Bash of the workflows for o, as [Options.Contribution] states
+// it, and for the options at the baseline when o is not the section bash.
+func (p Producer) Contribution(o language.Options) workflow.Contribution {
+	opts, ok := o.(*Options)
+	if !ok {
+		opts, _ = p.Options().(*Options)
+	}
+	return opts.Contribution()
 }

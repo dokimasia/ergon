@@ -1,0 +1,10 @@
+
+# Java and Kotlin
+.gradle/
+build/
+
+# Java
+*.class
+
+# Kotlin
+.kotlin/

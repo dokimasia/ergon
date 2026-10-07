@@ -16,14 +16,13 @@ const Language workspace.Language = "javascript"
 // TypeScript name it.
 const Toolchain workspace.Toolchain = "js"
 
-// Register adds the js toolchain, with the init role of the files that JavaScript and TypeScript
+// Register adds the js toolchain, with the producer of the files that JavaScript and TypeScript
 // share, and then JavaScript to c. It returns the first error of [language.RegisterToolchain] and
 // [language.Register], which wraps [language.ErrRegistered] when c already has either name. When
 // only the language fails, c keeps the toolchain.
 func Register(c *language.Catalog) error {
-	if err := language.RegisterToolchain(c, language.Toolchain{Name: Toolchain}, baseline.Toolchain()); err != nil {
+	if err := language.RegisterToolchain(c, language.Toolchain{Name: Toolchain}, baseline.Toolchain{}); err != nil {
 		return err
 	}
-	return language.Register(c, language.Declaration{Name: Language, Toolchain: Toolchain},
-		baseline.Initializer())
+	return language.Register(c, language.Declaration{Name: Language, Toolchain: Toolchain}, baseline.Producer{})
 }

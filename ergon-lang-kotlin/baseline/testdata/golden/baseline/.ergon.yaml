@@ -1,0 +1,36 @@
+jvm:
+  # The tools of the targets that Java and Kotlin share.
+  tools:
+    # The release of osv-scanner, the vulnerability scan of audit-jvm, over the Gradle lockfiles.
+    osv-scanner:
+      sha256:
+        darwin/arm64: 98c460dcd37de25819babd757d04542045b6243113e209edcd4d89fedb0256b4
+        linux/amd64: ca69b3d3cd08f889a49dc0a383122f71cc528b83803671df5fd874d97485b108
+        windows/amd64: e0ed7644118b717b028c249ee9d3515024e55e8510747ca08906eb96765354d6
+      version: 2.6.0
+  # The pin of setup-java, the runners and the versions of Java of the jobs check-java and
+  # check-kotlin, and their limit in minutes. Empty runners select every runner of the section
+  # github, and empty versions the Java of .java-version.
+  ci:
+    actions:
+      # The action that installs the Temurin build of the Java of .java-version or of the matrix.
+      setup-java:
+        uses: actions/setup-java
+        commit: de7274f081f381c8f8158605e0321c36c376e2e6
+        release: v6.0.1
+    runners: []
+    versions: []
+    timeout: 30
+kotlin:
+  # The tools of the targets of Kotlin, as <group>:<artifact>@<version> of Maven Central.
+  tools:
+    # The ktlint of fmt-kotlin and lint-kotlin, with the rules of the section of Kotlin of
+    # .editorconfig. ergon tool run runs the jar of com.pinterest.ktlint:ktlint-cli with its
+    # dependencies, so the tool accepts another version of it and no other artifact.
+    ktlint: com.pinterest.ktlint:ktlint-cli@1.8.0
+  # The steps that check-kotlin runs, in order: lint, test or audit. audit runs audit-jvm of the
+  # section jvm.
+  check: [lint, test, audit]
+  # test-kotlin runs ./gradlew test with args.
+  test:
+    args: []

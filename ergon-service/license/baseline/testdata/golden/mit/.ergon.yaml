@@ -1,0 +1,29 @@
+license:
+  # The copyright holder of the headers and of the license files. ergon init writes it from --owner,
+  # and ergon init sync --owner changes it.
+  owner: Dokimasia B.V.
+  # The SPDX identifier of the license of the headers and of the license files. ergon init writes it
+  # from --license, and ergon init sync --license changes it.
+  spdx: MIT
+  # The parameters of BUSL-1.1, which LICENSE states before its terms. Every other license ignores
+  # them.
+  parameters:
+    # The Licensed Work of BUSL-1.1, such as the name and the release of the software.
+    licensed-work: ""
+    # The Additional Use Grant of BUSL-1.1, the production use that the Licensor permits, or None.
+    additional-use-grant: ""
+    # The Change Date of BUSL-1.1, on which the Change License applies, such as 2030-01-01.
+    change-date: ""
+    # The Change License of BUSL-1.1, the license that applies on the Change Date, such as
+    # GPL-2.0-or-later.
+    change-license: ""
+  # The comment style of the header of each extension, such as .sql, or base name, such as
+  # Dockerfile: a style of skywalking-eyes, such as DoubleSlash, Hashtag or Semicolon, or none for
+  # no header. A key here replaces the style that ergon resolves.
+  styles: {}
+  # The doublestar globs of the paths whose files have no header, such as testdata/**.
+  exclude: []
+  # The limit in minutes of the job license of ci.yml, which runs ergon license check.
+  ci:
+    actions: {}
+    timeout: 10

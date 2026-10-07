@@ -1,0 +1,78 @@
+// Copyright Dokimasia B.V. 2026
+// SPDX-License-Identifier: MIT
+
+package vcstest_test
+
+import (
+	"os"
+	"os/exec"
+	"strings"
+	"testing"
+
+	"go.dokimi.dev/assert"
+	"go.dokimi.dev/assert/files"
+	"go.dokimi.dev/ergon/service/vcs/vcstest"
+)
+
+// TestMain runs the tests without the variables and the configuration of git of the environment.
+func TestMain(m *testing.M) {
+	vcstest.Isolate()
+	os.Exit(m.Run())
+}
+
+// TestVcstestEnv runs serially, because it changes the environment of the process.
+func TestVcstestEnv(t *testing.T) {
+	t.Run("Isolate", func(t *testing.T) {
+		t.Run("removes the variables of git and sets the configuration to none", func(t *testing.T) {
+			t.Setenv("GIT_DIR", "/elsewhere/.git")
+			t.Setenv("GIT_INDEX_FILE", "/elsewhere/index")
+			vcstest.Isolate()
+			_, dir := os.LookupEnv("GIT_DIR")
+			assert.False(t, dir, "GIT_DIR is set")
+			_, index := os.LookupEnv("GIT_INDEX_FILE")
+			assert.False(t, index, "GIT_INDEX_FILE is set")
+			assert.Equal(t, os.Getenv("GIT_CONFIG_GLOBAL"), os.DevNull, "GIT_CONFIG_GLOBAL")
+			assert.Equal(t, os.Getenv("GIT_CONFIG_NOSYSTEM"), "1", "GIT_CONFIG_NOSYSTEM")
+		})
+	})
+}
+
+func TestVcstest(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Repository", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("returns a working tree that tracks the files of track", func(t *testing.T) {
+			t.Parallel()
+			dir := vcstest.Repository(t, files.Tree{
+				"a.txt": files.Text("a\n"),
+				"b.txt": files.Text("b\n"),
+			}, "a.txt")
+			out, err := exec.CommandContext(t.Context(), "git", "-C", dir, "ls-files").Output()
+			assert.NoError(t, err, "git ls-files")
+			assert.Equal(t, strings.TrimSpace(string(out)), "a.txt", "the tracked files")
+		})
+
+		t.Run("returns a working tree without a tracked file", func(t *testing.T) {
+			t.Parallel()
+			dir := vcstest.Repository(t, files.Tree{"a.txt": files.Text("a\n")})
+			out, err := exec.CommandContext(t.Context(), "git", "-C", dir, "ls-files").Output()
+			assert.NoError(t, err, "git ls-files")
+			assert.Empty(t, string(out), "the tracked files")
+		})
+	})
+
+	t.Run("Git", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("runs git in the working tree", func(t *testing.T) {
+			t.Parallel()
+			dir := vcstest.Repository(t, files.Tree{"a.txt": files.Text("a\n")})
+			vcstest.Git(t, dir, "add", "a.txt")
+			out, err := exec.CommandContext(t.Context(), "git", "-C", dir, "ls-files").Output()
+			assert.NoError(t, err, "git ls-files")
+			assert.Equal(t, strings.TrimSpace(string(out)), "a.txt", "the tracked files")
+		})
+	})
+}

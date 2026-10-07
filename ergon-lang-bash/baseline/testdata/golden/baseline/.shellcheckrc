@@ -1,0 +1,23 @@
+# Managed by ergon init. Add repository settings to .ergon/local/.shellcheckrc and run ergon init sync.
+#
+# The configuration of shellcheck for every script of the repository. shellcheck reads this file
+# for each script below the repository root.
+
+# Follow a script that a source command names, and check it too.
+external-sources=true
+
+# Optional checks, each of which catches a defect or holds a convention:
+#
+#   check-extra-masked-returns  a status that a substitution or a pipe swallows
+#   check-set-e-suppressed      a function whose failure its caller hides from set -e
+#   add-default-case            a case that ignores an unknown value
+#   avoid-nullary-conditions    [ $var ] instead of [[ -n $var ]]
+#   deprecate-which             which instead of command -v
+#   require-double-brackets     [ ] instead of [[ ]]
+#   require-variable-braces     $var in a concatenation, where the end of the name is unclear
+#   useless-use-of-cat          a cat that a redirection replaces
+#
+# check-unassigned-uppercase stays off, because a test framework such as bats sets its variables
+# at run time. quote-safe-variables and avoid-negated-conditions stay off, because they rewrite
+# readable code.
+enable=check-extra-masked-returns,check-set-e-suppressed,add-default-case,avoid-nullary-conditions,deprecate-which,require-double-brackets,require-variable-braces,useless-use-of-cat

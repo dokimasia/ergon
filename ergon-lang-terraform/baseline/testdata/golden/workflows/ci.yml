@@ -1,0 +1,79 @@
+# Managed by ergon init. Add repository settings to .ergon/local/.github/workflows/ci.yml and run ergon init sync.
+#
+# The gate of the repository, with the jobs that each producer of ergon init contributes. A check
+# of text runs on the Linux runner of the section github of .ergon.yaml, and every other job on a
+# matrix of runners. A job that sets up a toolchain runs its steps once the repository has the
+# files of the toolchain.
+
+name: CI
+
+on:
+  pull_request:
+  merge_group:
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Every command runs in bash, which is Git Bash on Windows.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  baseline:
+    name: "Baseline (${{ matrix.os }})"
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-26.04, macos-26, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-ergon
+      - name: Check the managed files
+        run: |
+          ergon init check
+
+  check-terraform:
+    name: "Terraform (${{ matrix.os }})"
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-26.04, macos-26, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - if: "hashFiles('.terraform-version') != ''"
+        uses: ./.github/actions/setup-make
+      - if: "hashFiles('.terraform-version') != ''"
+        uses: ./.github/actions/setup-ergon
+      - name: Read .terraform-version
+        id: pin
+        if: "hashFiles('.terraform-version') != ''"
+        run: |
+          echo "version=$(cat .terraform-version)" >> "$GITHUB_OUTPUT"
+      - name: Set up Terraform
+        if: "hashFiles('.terraform-version') != ''"
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: "${{ steps.pin.outputs.version }}"
+          terraform_wrapper: "false"
+      - name: Check Terraform
+        if: "hashFiles('.terraform-version') != ''"
+        run: |
+          make check-terraform

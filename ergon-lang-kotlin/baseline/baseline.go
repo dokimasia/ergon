@@ -4,38 +4,61 @@
 package baseline
 
 import (
-	_ "embed"
+	"embed"
+	"io/fs"
 
 	"go.dokimi.dev/ergon/core/language"
+	"go.dokimi.dev/ergon/core/option"
+	"go.dokimi.dev/ergon/core/workflow"
 )
 
-// The templates of the fragments, which mirror the paths of the shared files.
+// Name is the name of the producer of Kotlin in the lock, and of its section of .ergon.yaml, which
+// is the name of the language.
+const Name = "kotlin"
+
+// templates are the templates of Kotlin: the fragments of the shared files under shared/.
+//
+//go:embed all:templates
+var templates embed.FS
+
+// tools are the tools of the section kotlin at the baseline: ktlint 1.8.0. [Tools.Validate]
+// requires its package.
+var tools = Tools{Ktlint: "com.pinterest.ktlint:ktlint-cli@1.8.0"}
+
+// Producer renders the files of Kotlin: the fragments of .editorconfig, with the configuration of
+// ktlint, .gitattributes, .gitignore and the Makefile. The jvm toolchain renders what Kotlin shares
+// with Java. Its zero value is ready to use, and it is safe for concurrent use.
+type Producer struct{}
+
 var (
-	//go:embed templates/.editorconfig.tmpl
-	editorconfig string
-
-	//go:embed templates/.gitattributes.tmpl
-	gitattributes string
-
-	//go:embed templates/.gitignore.tmpl
-	gitignore string
-
-	//go:embed templates/Makefile.tmpl
-	makefile string
-
-	//go:embed templates/.github/workflows/ci.yml.tmpl
-	ci string
+	_ language.Producer     = Producer{}
+	_ language.Configurable = Producer{}
+	_ language.Contributor  = Producer{}
 )
 
-// Initializer returns the init role of Kotlin: the fragments that Kotlin contributes to the
-// shared files of a repository. They do not depend on the answers. The jvm toolchain renders the
-// fragments that Kotlin shares with Java.
-func Initializer() language.Initializer {
-	return language.Fixed{
-		{Path: language.EditorConfig, Class: language.Managed, Fragment: []byte(editorconfig)},
-		{Path: language.GitAttributes, Class: language.Managed, Fragment: []byte(gitattributes)},
-		{Path: language.GitIgnore, Class: language.Managed, Fragment: []byte(gitignore)},
-		{Path: language.Makefile, Class: language.Managed, Fragment: []byte(makefile)},
-		{Path: language.CI, Class: language.Managed, Fragment: []byte(language.Job(ci))},
+// Templates returns the templates of Kotlin: the fragments of the shared files under shared/.
+func (Producer) Templates() fs.FS {
+	// templates has the directory templates, so Sub returns no error.
+	sub, _ := fs.Sub(templates, "templates")
+	return sub
+}
+
+// Options returns the section kotlin at the baseline: ktlint 1.8.0, the gate of lint, test and
+// audit, and ./gradlew test without arguments.
+func (Producer) Options() language.Options {
+	return &Options{
+		Tools: tools,
+		Check: option.Check{option.StepLint, option.StepTest, option.StepAudit},
+		Test:  option.Run{Args: []string{}},
 	}
+}
+
+// Contribution returns the part of Kotlin of the workflows for o, as [Options.Contribution] states
+// it, and for the options at the baseline when o is not the section kotlin.
+func (p Producer) Contribution(o language.Options) workflow.Contribution {
+	opts, ok := o.(*Options)
+	if !ok {
+		opts, _ = p.Options().(*Options)
+	}
+	return opts.Contribution()
 }

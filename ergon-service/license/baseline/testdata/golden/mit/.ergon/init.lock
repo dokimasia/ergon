@@ -1,0 +1,28 @@
+{
+  "ergon": "1.0.0",
+  "files": [
+    {
+      "path": "LICENSE",
+      "producer": "license",
+      "sha256": "540b73560bd7b122c9ed368fed23e0e79a91b9327207c4516caf8dce46d70b15"
+    }
+  ],
+  "settings": {
+    "license.ci.timeout": 10,
+    "license.exclude": [],
+    "license.parameters.additional-use-grant": "",
+    "license.parameters.change-date": "",
+    "license.parameters.change-license": "",
+    "license.parameters.licensed-work": "",
+    "license.styles": {}
+  },
+  "answers": {
+    "name": "demo",
+    "owner": "Dokimasia B.V.",
+    "license": "MIT",
+    "repository": "dokimasia/demo",
+    "security-contact": "security@example.com",
+    "languages": [],
+    "year": 2026
+  }
+}

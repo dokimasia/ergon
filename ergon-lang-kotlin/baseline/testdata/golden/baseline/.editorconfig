@@ -1,0 +1,7 @@
+
+# ktlint reads its configuration from this section: the official code style of Kotlin, with the
+# experimental rules of ktlint.
+[*.{kt,kts}]
+indent_size = 4
+ktlint_code_style = ktlint_official
+ktlint_experimental = enabled

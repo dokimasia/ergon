@@ -1,0 +1,31 @@
+
+# Kotlin
+#
+# The section kotlin of .ergon.yaml sets the tools and the options of the Kotlin targets, and the
+# steps of check-kotlin. One run overrides an option on the command line, such as
+# make test-kotlin KOTLIN_TEST_ARGS=--info.
+
+# The tools of the Kotlin targets, which ergon runs at the versions of the section kotlin. ergon
+# checks the jar of ktlint against the checksum that Maven Central publishes, and runs it with java.
+KTLINT := $(ERGON) tool run kotlin.ktlint --
+
+# The options of the section kotlin.
+KOTLIN_TEST_ARGS ?={{% with words .Options.Test.Args %}} {{% . %}}{{% end %}}
+
+.PHONY: fmt-kotlin lint-kotlin test-kotlin audit-kotlin check-kotlin
+fmt: fmt-kotlin
+lint: lint-kotlin
+test: test-kotlin
+check: check-kotlin
+
+fmt-kotlin: ## Format the Kotlin sources with ktlint
+	git ls-files -z --cached --others --exclude-standard -- '*.kt' '*.kts' | \
+		$(KTLINT) --relative --format --patterns-from-stdin=
+lint-kotlin: ## Check the Kotlin sources with ktlint, and the build's own checks
+	git ls-files -z --cached --others --exclude-standard -- '*.kt' '*.kts' | \
+		$(KTLINT) --relative --patterns-from-stdin=
+	./gradlew check -x test
+test-kotlin: ## Run the Kotlin tests
+	./gradlew test $(KOTLIN_TEST_ARGS)
+audit-kotlin: audit-jvm ## Scan the Gradle lockfiles of Kotlin for known vulnerabilities
+check-kotlin:{{% range .Options.Check %}} {{% . %}}-kotlin{{% end %}} ## Run the gate of Kotlin

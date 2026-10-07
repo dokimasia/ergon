@@ -4,266 +4,143 @@
 package common_test
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
-	"strings"
+	"os"
 	"testing"
 
 	"go.dokimi.dev/assert"
+	"go.dokimi.dev/assert/golden"
 	"go.dokimi.dev/ergon/core/language"
-	"go.dokimi.dev/ergon/core/workspace"
+	"go.dokimi.dev/ergon/core/workflow"
+	"go.dokimi.dev/ergon/service/baseline"
+	"go.dokimi.dev/ergon/service/baseline/baselinetest"
 	"go.dokimi.dev/ergon/service/baseline/common"
-	"go.yaml.in/yaml/v3"
 )
 
-// apacheDigest is the SHA-256 digest of the text of the Apache License 2.0 that
-// https://www.apache.org/licenses/LICENSE-2.0.txt serves, pinned because the LICENSE must be that
-// text byte for byte.
-const apacheDigest = "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+// name pins the name of the producer of the common files.
+const name = "common"
 
-// managed is the comment that opens a managed file with a comment syntax.
-const managed = "Managed by ergon init. Add repository settings to .ergon/local/"
+// markdownlint is the pin of the action of markdownlint at the baseline.
+var markdownlint = workflow.Action{
+	Uses:    "DavidAnson/markdownlint-cli2-action",
+	Commit:  "21c1be1b93ad9ed58fa840aacc3f279cde2a72ff",
+	Release: "v24.2.0",
+}
+
+// read is the permission of the jobs of the common files.
+var read = map[string]string{"contents": "read"}
 
 func TestCommon(t *testing.T) {
 	t.Parallel()
 
-	t.Run("Initializer", func(t *testing.T) {
+	t.Run("Name", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("Files", func(t *testing.T) {
+		t.Run("is common", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, common.Name, name, "Name")
+		})
+	})
+
+	t.Run("Producer", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Templates", func(t *testing.T) {
 			t.Parallel()
 
-			t.Run("renders the managed, seeded and configured common files", func(t *testing.T) {
+			t.Run("renders the common files at the baseline", func(t *testing.T) {
 				t.Parallel()
-				classes := map[string]language.Class{}
-				for path, f := range render(t, answers()) {
-					classes[path] = f.Class
-				}
-				assert.Equal(t, classes, map[string]language.Class{
-					".commitlint.yaml":            language.Managed,
-					".editorconfig":               language.Managed,
-					".gitattributes":              language.Managed,
-					".gitignore":                  language.Managed,
-					".markdownlint.yml":           language.Managed,
-					".pre-commit-config.yaml":     language.Managed,
-					"Makefile":                    language.Managed,
-					"CODE_OF_CONDUCT.md":          language.Managed,
-					"LICENSE":                     language.Managed,
-					".changeset/config.json":      language.Seeded,
-					".changeset/README.md":        language.Seeded,
-					"README.md":                   language.Seeded,
-					"CONTRIBUTING.md":             language.Seeded,
-					"SECURITY.md":                 language.Seeded,
-					"docs/README.md":              language.Seeded,
-					"docs/adr/README.md":          language.Seeded,
-					"docs/architecture/README.md": language.Seeded,
-					"docs/rfc/README.md":          language.Seeded,
-					"docs/roadmap/README.md":      language.Seeded,
-					".ergon.yaml":                 language.Configured,
-				}, "the classes of the common files")
+				dir := baselinetest.New(t, new(language.Catalog), baselinetest.Answers(), producer())
+				baselinetest.Hygiene(t, dir)
+				golden.MatchTree(t, "baseline", os.DirFS(dir), golden.ShouldUpdate())
+			})
+		})
+
+		t.Run("Options", func(t *testing.T) {
+			t.Parallel()
+
+			t.Run("returns a new value on each call", func(t *testing.T) {
+				t.Parallel()
+				first, _ := common.Producer{}.Options().(*common.Options)
+				second, _ := common.Producer{}.Options().(*common.Options)
+				first.Tools.Commitlint.SHA256["linux/amd64"] = "changed"
+				assert.NotEqual(
+					t,
+					second.Tools.Commitlint.SHA256["linux/amd64"],
+					"changed",
+					"the digest of the second value",
+				)
+			})
+		})
+
+		t.Run("Contribution", func(t *testing.T) {
+			t.Parallel()
+
+			t.Run("returns the jobs docs and commits as checks of text", func(t *testing.T) {
+				t.Parallel()
+				got := common.Producer{}.Contribution(common.Producer{}.Options())
+				assert.Equal(t, got, workflow.Contribution{Jobs: []workflow.Job{
+					{
+						ID:          "docs",
+						Name:        "Docs",
+						Text:        true,
+						Timeout:     10,
+						Permissions: read,
+						Steps: []workflow.Step{
+							{Uses: markdownlint, With: map[string]string{"globs": "**/*.md\n#node_modules"}},
+						},
+					},
+					{
+						ID:          "commits",
+						Name:        "Commits",
+						If:          "github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'",
+						Text:        true,
+						Timeout:     10,
+						Permissions: read,
+						History:     true,
+						Ergon:       true,
+						Steps: []workflow.Step{{
+							Name: "Check the commit messages",
+							Env: map[string]string{
+								"BASE": "${{ github.event.pull_request.base.sha }}",
+								"HEAD": "${{ github.event.pull_request.head.sha }}",
+							},
+							Run: []string{
+								"status=0",
+								`for commit in $(git rev-list --no-merges "$BASE..$HEAD"); do`,
+								`  git log -1 --format=%B "$commit" | ergon tool run common.commitlint -- lint || status=1`,
+								"done",
+								`exit "$status"`,
+							},
+						}},
+					},
+				}}, "the contribution")
 			})
 
-			t.Run("renders the shared files as fragments", func(t *testing.T) {
+			t.Run("returns a valid contribution", func(t *testing.T) {
 				t.Parallel()
-				files := render(t, answers())
-				for _, path := range []string{language.EditorConfig, language.GitAttributes, language.GitIgnore, language.Makefile} {
-					assert.True(t, files[path].Content == nil && files[path].Fragment != nil, "the fragment of "+path)
-				}
+				got := common.Producer{}.Contribution(common.Producer{}.Options())
+				assert.NoError(t, got.Validate(), "Validate of the contribution")
 			})
 
-			t.Run("declares the targets of the Makefile that each language extends", func(t *testing.T) {
+			t.Run("returns the contribution of the baseline for options of another type", func(t *testing.T) {
 				t.Parallel()
-				makefile := text(render(t, answers())[language.Makefile])
-				assert.Contains(t, makefile, ".PHONY: help fmt lint test audit check\n", "the phony targets")
-				assert.Contains(t, makefile, "\naudit: ## Run the vulnerability scan of every language\n",
-					"the target audit")
+				want := common.Producer{}.Contribution(common.Producer{}.Options())
+				assert.Equal(t, common.Producer{}.Contribution(nil), want, "the contribution for nil options")
 			})
 
-			t.Run("opens each managed file that has a comment syntax with the managed comment", func(t *testing.T) {
+			t.Run("returns the jobs with the timeout of the options", func(t *testing.T) {
 				t.Parallel()
-				files := render(t, answers())
-				for path, f := range files {
-					if f.Class != language.Managed || path == "LICENSE" {
-						continue
-					}
-					first, _, _ := strings.Cut(text(f), "\n")
-					assert.Contains(t, first, managed+path+" and run ergon init sync.", "the first line of "+path)
-				}
-			})
-
-			t.Run("fills the answers into the files", func(t *testing.T) {
-				t.Parallel()
-				files := render(t, answers())
-				assert.Contains(t, text(files["LICENSE"]), "Copyright (c) 2026 Dokimasia B.V.", "the LICENSE")
-				assert.Contains(t, text(files["CODE_OF_CONDUCT.md"]), "for enforcement at security@example.com.",
-					"the CODE_OF_CONDUCT.md")
-				assert.Contains(t, text(files["SECURITY.md"]), "https://github.com/dokimasia/demo/security",
-					"the SECURITY.md")
-				assert.Contains(t, text(files["README.md"]), "# demo\n", "the README.md")
-				assert.Contains(t, text(files["README.md"]), "demo is licensed under MIT.", "the README.md")
-				assert.NotContains(t, text(files["README.md"])+text(files["SECURITY.md"]), "{{", "the filled files")
-			})
-
-			t.Run("renders the Apache License 2.0 and its NOTICE", func(t *testing.T) {
-				t.Parallel()
-				a := answers()
-				a.License = common.Apache
-				files := render(t, a)
-				digest := sha256.Sum256(files["LICENSE"].Content)
-				assert.Equal(t, hex.EncodeToString(digest[:]), apacheDigest, "the digest of the LICENSE")
-				assert.Equal(t, text(files["NOTICE"]), "demo\nCopyright 2026 Dokimasia B.V.\n", "the NOTICE")
-			})
-
-			t.Run("renders no NOTICE for the MIT license", func(t *testing.T) {
-				t.Parallel()
-				_, ok := render(t, answers())["NOTICE"]
-				assert.False(t, ok, "the NOTICE of MIT")
-			})
-
-			t.Run("renders the release configuration as JSON with the repository", func(t *testing.T) {
-				t.Parallel()
-				var config struct {
-					Changelog []any `json:"changelog"`
-				}
-				assert.NoError(t, json.Unmarshal(render(t, answers())[".changeset/config.json"].Content, &config),
-					"Unmarshal of .changeset/config.json")
-				assert.Equal(t, config.Changelog[1], any(map[string]any{"repo": "dokimasia/demo"}), "the changelog")
-			})
-
-			t.Run("renders the release of commitlint in the hook and in its configuration", func(t *testing.T) {
-				t.Parallel()
-				files := render(t, answers())
-				_, release, _ := strings.Cut(common.Commitlint, "@")
-				assert.Contains(t, text(files[".pre-commit-config.yaml"]),
-					`additional_dependencies: ["`+common.Commitlint+`"]`, "the .pre-commit-config.yaml")
-				assert.Contains(t, text(files[".commitlint.yaml"]), "\nmin-version: "+release+"\n",
-					"the .commitlint.yaml")
-			})
-
-			t.Run("renders the YAML files as YAML", func(t *testing.T) {
-				t.Parallel()
-				files := render(t, answers())
-				documents := []string{".commitlint.yaml", ".markdownlint.yml", ".pre-commit-config.yaml", ".ergon.yaml"}
-				for _, path := range documents {
-					var doc map[string]any
-					assert.NoError(t, yaml.Unmarshal([]byte(text(files[path])), &doc), "Unmarshal of "+path)
-				}
-			})
-
-			t.Run("quotes the answers in .ergon.yaml", func(t *testing.T) {
-				t.Parallel()
-				a := answers()
-				a.Name = "demo: two"
-				a.Owner = `Acme "Inc"`
-				var config struct {
-					Name    string `yaml:"name"`
-					License struct {
-						Owner string `yaml:"owner"`
-						SPDX  string `yaml:"spdx"`
-					} `yaml:"license"`
-				}
-				assert.NoError(t, yaml.Unmarshal(render(t, a)[".ergon.yaml"].Content, &config),
-					"Unmarshal of .ergon.yaml")
-				assert.Equal(t, config.Name, "demo: two", "the name")
-				assert.Equal(t, config.License.Owner, `Acme "Inc"`, "the owner")
-				assert.Equal(t, config.License.SPDX, common.MIT, "the license")
-			})
-
-			tests := []struct {
-				name   string
-				change func(*language.Answers)
-			}{
-				{
-					name:   "returns ErrInvalidAnswer for an empty name",
-					change: func(a *language.Answers) { a.Name = " " },
-				},
-				{
-					name:   "returns ErrInvalidAnswer for a name of two lines",
-					change: func(a *language.Answers) { a.Name = "a\nb" },
-				},
-				{
-					name:   "returns ErrInvalidAnswer for an empty owner",
-					change: func(a *language.Answers) { a.Owner = "" },
-				},
-				{
-					name:   "returns ErrInvalidAnswer for an owner with a carriage return",
-					change: func(a *language.Answers) { a.Owner = "a\rb" },
-				},
-				{
-					name:   "returns ErrInvalidAnswer for an empty security contact",
-					change: func(a *language.Answers) { a.SecurityContact = "" },
-				},
-				{
-					name:   "returns ErrInvalidAnswer for another license",
-					change: func(a *language.Answers) { a.License = "GPL-3.0" },
-				},
-				{
-					name:   "returns ErrInvalidAnswer for the year 0",
-					change: func(a *language.Answers) { a.Year = 0 },
-				},
-				{
-					name:   "returns ErrInvalidAnswer for the year 10000",
-					change: func(a *language.Answers) { a.Year = 10000 },
-				},
-				{
-					name:   "returns ErrInvalidAnswer for a repository without an owner",
-					change: func(a *language.Answers) { a.Repository = "demo" },
-				},
-				{
-					name:   "returns ErrInvalidAnswer for a repository with a space",
-					change: func(a *language.Answers) { a.Repository = "a/b c" },
-				},
-			}
-			for _, tt := range tests {
-				t.Run(tt.name, func(t *testing.T) {
-					t.Parallel()
-					a := answers()
-					tt.change(a)
-					_, err := common.Initializer{}.Files(a)
-					assert.ErrorIs(t, err, common.ErrInvalidAnswer, "Files")
-				})
-			}
-
-			t.Run("returns the files for the years 1 and 9999", func(t *testing.T) {
-				t.Parallel()
-				for _, year := range []int{1, 9999} {
-					a := answers()
-					a.Year = year
-					_, err := common.Initializer{}.Files(a)
-					assert.NoError(t, err, "Files")
-				}
+				o, _ := common.Producer{}.Options().(*common.Options)
+				o.CI.Timeout = 25
+				got := common.Producer{}.Contribution(o)
+				assert.Equal(t, got.Jobs[0].Timeout, 25, "the timeout of docs")
+				assert.Equal(t, got.Jobs[1].Timeout, 25, "the timeout of commits")
 			})
 		})
 	})
 }
 
-// answers returns new answers of the cases, which a case may change.
-func answers() *language.Answers {
-	return &language.Answers{
-		Name:            "demo",
-		Languages:       []workspace.Language{"go"},
-		Owner:           "Dokimasia B.V.",
-		License:         common.MIT,
-		Year:            2026,
-		Repository:      "dokimasia/demo",
-		SecurityContact: "security@example.com",
-	}
-}
-
-// render returns the files of the common files for a, by path.
-func render(t *testing.T, a *language.Answers) map[string]language.File {
-	t.Helper()
-	files, err := common.Initializer{}.Files(a)
-	assert.NoError(t, err, "Files")
-	byPath := make(map[string]language.File, len(files))
-	for _, f := range files {
-		byPath[f.Path] = f
-	}
-	return byPath
-}
-
-// text returns the content or the fragment of f.
-func text(f language.File) string {
-	return string(f.Content) + string(f.Fragment)
+// producer returns the producer of the common files as a base producer.
+func producer() baseline.Producer {
+	return baseline.Producer{Name: common.Name, Producer: common.Producer{}}
 }

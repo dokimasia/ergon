@@ -1,0 +1,74 @@
+# Managed by ergon init. Add repository settings to .ergon/local/.github/workflows/ci.yml and run ergon init sync.
+#
+# The gate of the repository, with the jobs that each producer of ergon init contributes. A check
+# of text runs on the Linux runner of the section github of .ergon.yaml, and every other job on a
+# matrix of runners. A job that sets up a toolchain runs its steps once the repository has the
+# files of the toolchain.
+
+name: CI
+
+on:
+  pull_request:
+  merge_group:
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Every command runs in bash, which is Git Bash on Windows.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  baseline:
+    name: "Baseline (${{ matrix.os }})"
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-26.04, macos-26, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-ergon
+      - name: Check the managed files
+        run: |
+          ergon init check
+
+  check-java:
+    name: "Java (${{ matrix.os }})"
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-26.04, macos-26, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - if: "hashFiles('.java-version') != ''"
+        uses: ./.github/actions/setup-make
+      - if: "hashFiles('.java-version') != ''"
+        uses: ./.github/actions/setup-ergon
+      - name: Set up Java
+        if: "hashFiles('.java-version') != ''"
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version-file: .java-version
+      - name: Check Java
+        if: "hashFiles('.java-version') != ''"
+        run: |
+          make check-java

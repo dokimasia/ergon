@@ -1,0 +1,72 @@
+{
+  "ergon": "1.0.0",
+  "files": [
+    {
+      "path": ".editorconfig",
+      "producer": "terraform",
+      "sha256": "ec3294411c8eb48d9e30a97a1eb992cf8e058b5c4e23e61ed34d2915ea37829b"
+    },
+    {
+      "path": ".gitattributes",
+      "producer": "terraform",
+      "sha256": "8dbf13b48f0c26d9436c60a52e2a8aad13ecc17055fe7c7591272528c146f52e"
+    },
+    {
+      "path": ".gitignore",
+      "producer": "terraform",
+      "sha256": "4f6c2a6f84dd2d3688edb527196a7f4efde871dd5b069ba390d743d9e527bf36"
+    },
+    {
+      "path": ".tflint.hcl",
+      "producer": "terraform",
+      "sha256": "8bb7b4f0e904eaafe3711fb264624b29245b08dc0597a7915a61666fa3abbbce"
+    },
+    {
+      "path": "Makefile",
+      "producer": "terraform",
+      "sha256": "b9a55719b24539a696b25df164ff9fc2cf80afa9cc96d8982bfb462312f230b4"
+    }
+  ],
+  "settings": {
+    "terraform.audit.ignore": [],
+    "terraform.check": [
+      "lint",
+      "test",
+      "audit"
+    ],
+    "terraform.ci.actions.setup-terraform.commit": "dfe3c3f87815947d99a8997f908cb6525fc44e9e",
+    "terraform.ci.actions.setup-terraform.release": "v4.0.1",
+    "terraform.ci.actions.setup-terraform.uses": "hashicorp/setup-terraform",
+    "terraform.ci.runners": [],
+    "terraform.ci.timeout": 30,
+    "terraform.ci.versions": [],
+    "terraform.paths": [
+      "."
+    ],
+    "terraform.test.args": [],
+    "terraform.tools.checkov": "checkov@3.3.23",
+    "terraform.tools.tflint.sha256": {
+      "darwin/arm64": "2496e9cb3d24992d553b45e7c87a0fdc9449ca975233876247a9bfeda857e6c0",
+      "linux/amd64": "cca9d13e2e1d7a2c627af60ff899a3c9b74212899416aeb96ec764d2ef954537",
+      "windows/amd64": "fb42fb859d844b156a8ea9d3363078c4d8b85ca78782e60876b08c9b8e59f303"
+    },
+    "terraform.tools.tflint.version": "0.64.0",
+    "terraform.tools.uv.sha256": {
+      "darwin/arm64": "50487ae565ccd96e499056b4674d438f4c53170202617b4c759defe0c6a1b544",
+      "linux/amd64": "9167d72b3319674b6303c4cbe071854bba13ebdf3d76b1a7cbdc175471fb66d6",
+      "windows/amd64": "75d05de6762778c31ee183398de7dd15093fad0ed90b1f236d8205ea5ec00c90"
+    },
+    "terraform.tools.uv.version": "0.12.23"
+  },
+  "answers": {
+    "name": "demo",
+    "owner": "Dokimasia B.V.",
+    "license": "MIT",
+    "repository": "dokimasia/demo",
+    "security-contact": "security@example.com",
+    "languages": [
+      "terraform"
+    ],
+    "year": 2026
+  }
+}

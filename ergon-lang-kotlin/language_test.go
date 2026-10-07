@@ -12,6 +12,7 @@ import (
 	"go.dokimi.dev/ergon/core/workspace"
 	"go.dokimi.dev/ergon/lang/java"
 	"go.dokimi.dev/ergon/lang/kotlin"
+	"go.dokimi.dev/ergon/lang/kotlin/baseline"
 )
 
 // The spellings of Kotlin and of the jvm toolchain in configuration. A repository names them, so
@@ -36,6 +37,17 @@ func TestLanguage(t *testing.T) {
 				{Name: java.Language, Toolchain: pinnedToolchain},
 				{Name: pinnedLanguage, Toolchain: pinnedToolchain},
 			}, "the languages of the catalog")
+		})
+
+		t.Run("adds the producer of Kotlin, whose section is named after the language", func(t *testing.T) {
+			t.Parallel()
+			var c language.Catalog
+			assert.NoError(t, java.Register(&c), "Register of Java")
+			assert.NoError(t, kotlin.Register(&c), "Register of Kotlin")
+			producer, ok := language.Role[language.Producer](&c, pinnedLanguage)
+			assert.True(t, ok, "the producer of Kotlin")
+			assert.Equal(t, producer, language.Producer(baseline.Producer{}), "the producer")
+			assert.Equal(t, baseline.Name, string(pinnedLanguage), "the name of the section")
 		})
 
 		t.Run("returns ErrUnknownToolchain for a catalog without the jvm toolchain", func(t *testing.T) {
