@@ -36,6 +36,10 @@ github.com/subosito/gotenv v1.6.0 h1:9NlTDc1FTs4qu0DDq7AEtTPNw6SVm7uBMsUCUjABIf8
 github.com/subosito/gotenv v1.6.0/go.mod h1:Dk4QP5c2W3ibzajGcXpNraDfq2IrhjMIvMSWPKKo0FU=
 go.dokimi.dev/assert v0.0.0-20261006203413-f36a960fd058 h1:06zge4ASZ1IEDJCuNxiTL3AbXSNpfac/5f8rDoLGqrY=
 go.dokimi.dev/assert v0.0.0-20261006203413-f36a960fd058/go.mod h1:Mr2lGt+AMXUIuqxAk7aGgGpTbdvFjuCd1qmUt0r091k=
+go.dokimi.dev/ergon/core v0.1.0 h1:pi7q3+iAGmeszxLZkcYeerEMFx5jmdFqyQ3+8zcwm/M=
+go.dokimi.dev/ergon/core v0.1.0/go.mod h1:7BRC+IkYGQnpza1KqkQWxVX0lMLE69aRO33n4reoEag=
+go.dokimi.dev/ergon/service v0.1.0 h1:aD8EtZCAuIehk5RkGTh71bTpnbx9FuYVxGNQdwpfp3o=
+go.dokimi.dev/ergon/service v0.1.0/go.mod h1:na1taTGjMhdtWoWfPLWn/5grdJxxiFp8dbthUKw1xFM=
 go.yaml.in/yaml/v3 v3.0.5 h1:N6y/pJk8buWs9NY5ERU2HSMfm+IuD/OtfdAnq6kESPw=
 go.yaml.in/yaml/v3 v3.0.5/go.mod h1:HVTZu1O7/Vkt2N+BFy8Zza+lnLsABggaTM2ZpNIGuKg=
 golang.org/x/mod v0.41.0 h1:qJmnOUb4YB+FsEuM3HcWucdZASCPGhsX6uljO6pog0c=
