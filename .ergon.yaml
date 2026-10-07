@@ -111,8 +111,8 @@ go:
   # The steps that check-go runs, in order: lint, test, race, fuzz, bench, mutate, generate or
   # audit.
   check: [lint, test, race, audit]
-  # The options of lint-go, which runs golangci-lint with the rules of .golangci.yml, ergon-go-vet
-  # and go mod tidy -diff in every module.
+  # The options of lint-go, which runs golangci-lint with the rules of .golangci.yml and
+  # ergon-go-vet in every module.
   lint:
     # The package patterns that ergon-go-vet skips, such as ./internal/legacy/....
     exclude: []

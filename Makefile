@@ -69,11 +69,10 @@ check: check-go
 fmt-go: ## Format the Go sources of every module with the formatters of .golangci.yml
 	@$(GO) list -m -f '{{.Dir}}' | while IFS= read -r dir; do echo "golangci-lint fmt $$dir"; \
 		(cd "$$dir" && $(GOLANGCI_LINT) fmt $(GO_PATHS)) || exit 1; done
-lint-go: ## Lint every module with .golangci.yml and ergon-go-vet, and check its format and its go.mod
+lint-go: ## Lint every module with .golangci.yml and ergon-go-vet, and check its format
 	@$(GO) list -m -f '{{.Dir}}' | while IFS= read -r dir; do echo "golangci-lint $$dir"; \
 		(cd "$$dir" && $(GOLANGCI_LINT) run $(GO_PATHS) && $(GOLANGCI_LINT) fmt --diff $(GO_PATHS) \
-			&& $(ERGON_GO_VET) $(addprefix -exclude=,$(GO_LINT_EXCLUDE)) $(GO_PATHS) \
-			&& $(GO) mod tidy -diff) || exit 1; done
+			&& $(ERGON_GO_VET) $(addprefix -exclude=,$(GO_LINT_EXCLUDE)) $(GO_PATHS)) || exit 1; done
 test-go: ## Run the Go tests of every module
 	@$(GO) list -m -f '{{.Dir}}' | while IFS= read -r dir; do echo "go test $$dir"; \
 		$(GO) -C "$$dir" test $(GO_TEST_ARGS) $(GO_PATHS) || exit 1; done

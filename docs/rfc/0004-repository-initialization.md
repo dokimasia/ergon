@@ -223,10 +223,9 @@ Each language module renders one managed configuration of its linter. Its fragme
 
 Coverage and mutation testing are not part of this gate. The dokimi addon supplies mutation testing for every language.
 
-The fragment of Go also renders `race-go`, which `check-go` runs by default, and `fuzz-go`, `bench-go`, `benchstat-go`, `mutate-go` and `generate-go`, which run on request. `mutate-go` runs dokimi-mutate-go, the Go engine of the dokimi addon. The section `go` of `.ergon.yaml` sets the options of these targets, and its list `check` adds a step to the gate. `lint-go` also runs ergon-go-vet and `go mod tidy -diff` in every module:
+The fragment of Go also renders `race-go`, which `check-go` runs by default, and `fuzz-go`, `bench-go`, `benchstat-go`, `mutate-go` and `generate-go`, which run on request. `mutate-go` runs dokimi-mutate-go, the Go engine of the dokimi addon. The section `go` of `.ergon.yaml` sets the options of these targets, and its list `check` adds a step to the gate.
 
-- ergon-go-vet runs two analyzers of `ergon-lang-go/analysis`. `errorprefix` reports the text of an error that does not start with the name of its package. `skipexpiry` reports a skipped test whose message names a date that has passed. Both skip generated files, and `go.lint.exclude` names the package patterns they skip, with their external tests. A pattern that `go list` does not resolve fails the run.
-- `go mod tidy -diff` fails on a module whose `go.mod` or `go.sum` the command would change, without changing a file.
+- `lint-go` also runs ergon-go-vet in every module, with two analyzers of `ergon-lang-go/analysis`. `errorprefix` reports the text of an error that does not start with the name of its package. `skipexpiry` reports a skipped test whose message names a date that has passed. Both skip generated files, and `go.lint.exclude` names the package patterns they skip, with their external tests. A pattern that `go list` does not resolve fails the run.
 - `generate-go` fails when the run changes a tracked file or writes a file that git does not track, so the step `generate` in `check` fails on generated code that is out of date.
 
 The linter configuration of each language:

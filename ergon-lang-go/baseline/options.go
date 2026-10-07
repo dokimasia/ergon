@@ -33,7 +33,7 @@ type Options struct {
 	Check option.Check `yaml:"check" doc:"The steps that check-go runs, in order: lint, test, race, fuzz, bench, mutate, generate or audit."`
 
 	// Lint are the options of lint-go.
-	Lint Lint `yaml:"lint" doc:"The options of lint-go, which runs golangci-lint with the rules of .golangci.yml, ergon-go-vet and go mod tidy -diff in every module."`
+	Lint Lint `yaml:"lint" doc:"The options of lint-go, which runs golangci-lint with the rules of .golangci.yml and ergon-go-vet in every module."`
 
 	// Test are the options of test-go.
 	Test option.Run `yaml:"test" doc:"test-go runs go test with args."`

@@ -24,7 +24,7 @@
     {
       "path": "Makefile",
       "producer": "go",
-      "sha256": "0788be96f7b362ec14284dc03f4f48e605c74e09288bf1bc0b6bd89fe006cef0"
+      "sha256": "1ddaee8a9fe134c2f949b569017b8ee583872fd0fb4901714f2ca131b45e5447"
     }
   ],
   "settings": {

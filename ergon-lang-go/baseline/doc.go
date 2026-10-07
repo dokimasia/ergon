@@ -15,8 +15,8 @@
 // check-go, which requires the targets of the steps that the key check of the section names. Every
 // tool runs through ergon tool run, which installs the version that the section names. The fragment
 // states each option of a step as a variable, such as GO_FUZZ_TIME, which one run of make overrides
-// on its command line. lint-go also runs ergon-go-vet and go mod tidy -diff, and generate-go fails
-// when go generate changes a file of the repository.
+// on its command line. lint-go also runs ergon-go-vet, and generate-go fails when go generate
+// changes a file of the repository.
 //
 // # Options
 //
