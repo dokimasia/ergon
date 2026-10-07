@@ -23,11 +23,14 @@
 // so they run on the Linux runner of the section github. commits checks the commit messages of a
 // pull request with the commitlint of the section, the release that the commit-msg hook of
 // .pre-commit-config.yaml runs. changeset runs ergon release status against the base of a pull
-// request, with the configuration .changeset/config.json, which the common files seed.
+// request, with the configuration .changeset/config.json, which the common files seed. Both skip
+// the pull requests of Dependabot, and changeset also skips the version pull request of the
+// repository.
 //
 // # Dependency position
 //
 // Imports the standard library, [go.dokimi.dev/ergon/core/language],
-// [go.dokimi.dev/ergon/core/option] and [go.dokimi.dev/ergon/core/workflow]. internal/cli of the
-// root module imports it.
+// [go.dokimi.dev/ergon/core/option], [go.dokimi.dev/ergon/core/workflow] and
+// [go.dokimi.dev/ergon/service/release], for the branch of the version pull request. internal/cli
+// of the root module imports it.
 package common

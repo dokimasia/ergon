@@ -60,7 +60,7 @@ The language-neutral side of each command. It imports `core` and nothing else in
 | `baseline/options` | The sections of `.ergon.yaml`: the resolution against the record and the answers of the lock, the strict decode into the struct of a producer, its `Validate`, and the sections with the comments of the `doc` tags | `core/*`, viper and mapstructure for the decode, go.yaml.in/yaml/v3 for the writer |
 | `baseline/overlay` | The local files: the merge of YAML and the appended text | `core/*`, go.yaml.in/yaml/v3 |
 | `baseline/render` | The engine of the templates, the classes from the template tree, the collection of the contributions, and the join of fragments | `core/*` |
-| `baseline/common` | The producer of the common files and the section `common` | `core/*` |
+| `baseline/common` | The producer of the common files and the section `common` | `core/*`, `release` for the branch of the version pull request |
 | `baseline/github` | The producer of the GitHub files and the section `github`, which renders the contributions of every producer | `core/*` |
 | `baseline/baselinetest` | The test kit of the producers: `New` renders them into a directory of a test as `init new` does, and `Hygiene` checks the format of each file | `core/*`, `baseline`, assert, go.yaml.in/yaml/v3, go-toml |
 | `tool` | `ergon tool run`: the installation of a tool into the cache, the check of a release binary against its digest, and the run | `core/language`, `core/option` |

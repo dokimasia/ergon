@@ -87,7 +87,7 @@ sequenceDiagram
     P->>R: run the gate, publish in dependency order, then tag and create releases
 ```
 
-Every pull request runs `ergon release status` against the base commit of the pull request, in the job `changeset` of `ci.yml`. It exits 1 when the pull request changes a package without adding a changeset that names it.
+Every pull request runs `ergon release status` against the base commit of the pull request, in the job `changeset` of `ci.yml`. It exits 1 when the pull request changes a package without adding a changeset that names it. The job skips a pull request that Dependabot opens. The next release of its module includes the update. The job also skips the version pull request, whose head is the branch `ergon-release/<base>` of the repository and which removes the changesets that it releases.
 
 ### Changeset files
 
@@ -499,7 +499,7 @@ ergon init renders the workflow `release.yml` among the GitHub files, as RFC-000
 
 - `pack` has no write permission and no OIDC token, so the repository's build scripts cannot publish or push.
 - The job ci calls `ci.yml`, whose runs share the workflow name of their caller. The concurrency group of `ci.yml` starts with `ci`, so the call does not wait on the group of `release.yml`.
-- A push or a tag made with `GITHUB_TOKEN` does not start another workflow, and a pull request it opens does not run workflows. Work that follows a release, such as goreleaser, runs as a later job in the release workflow and reads `published-packages`. ergon's own repository adds such a job in its local file of `release.yml`. Its workflow `binaries.yml` also runs on the push of a tag of the root module, and on `workflow_dispatch` at the tag after a publish from a workstation that pushes more than three tags.
+- A push or a tag made with `GITHUB_TOKEN` does not start another workflow. A pull request that `GITHUB_TOKEN` opens or updates gets its runs in an approval-required state, so the gate of the version pull request runs once a maintainer approves it. Work that follows a release, such as goreleaser, runs as a later job in the release workflow and reads `published-packages`. ergon's own repository adds such a job in its local file of `release.yml`. Its workflow `binaries.yml` also runs on the push of a tag of the root module, and on `workflow_dispatch` at the tag after a publish from a workstation that pushes more than three tags.
 
 ```yaml
 on:
@@ -671,6 +671,12 @@ An action for each job at `dokimasia/ergon/action/{select-mode,version,pack,publ
 
 **Why not:** every pull request of every Go repository would depend on the host of its vanity pages. The go command reads the page at the first `go get` of a module, and a page without the directory fails there with the path that it looked for.
 
+### P. A version branch that status recognizes by its diff
+
+`status` passes a branch that removes every changeset of its base and adds none, which is the diff that `version` writes. A version pull request from a workstation would then pass the job `changeset` too.
+
+**Why not:** a pull request from a fork could pass the check by deleting the changesets. Repositories of changesets skip the check by the name of the release branch, and nodejs/nodejs.org also requires that the branch is in the repository itself. The job `changeset` does the same, so its trust boundary is the write access to the repository, and `status` keeps one meaning.
+
 ## Drawbacks
 
 - ergon reimplements changesets' planner and changelog formats. Parity with changesets 3.0.3 needs a differential test on real repositories, and every changesets release can open a new difference.
@@ -687,7 +693,7 @@ An action for each job at `dokimasia/ergon/action/{select-mode,version,pack,publ
 - Each new crate needs a first release by hand with an API token, before trusted publishing can release it.
 - The release workflow cannot trigger on `workflow_run`, so it cannot wait for a separate CI workflow. It runs CI itself through `workflow_call`, and the merge of a version pull request runs the gate twice: once for the push, and once before the publish.
 - The `release` environment's required reviewers add one approval to every publish.
-- A pull request that changes a module's `go.mod` needs a changeset, a Dependabot update included.
+- A pull request that changes a module's `go.mod` needs a changeset. Dependabot does not add a changeset to its update. The next release of the module includes the update, and the changelog of the module does not list it.
 
 ## Unresolved and future work
 
@@ -722,9 +728,10 @@ An action for each job at `dokimasia/ergon/action/{select-mode,version,pack,publ
 | changesets and other ecosystems | https://github.com/changesets/changesets/issues/849, https://github.com/changesets/changesets/pull/2124 |
 | knope has no dependent cascade | https://github.com/knope-dev/knope/issues/1822 |
 | sampo adapters | https://github.com/bruits/sampo/blob/main/crates/sampo-core/src/adapters.rs |
-| `GITHUB_TOKEN` does not trigger workflows | https://docs.github.com/en/actions/concepts/security/github_token |
+| `GITHUB_TOKEN` starts no workflow, and the runs of its pull requests need an approval | https://docs.github.com/en/actions/concepts/security/github_token |
 | No event for a push of more than three tags | https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows |
 | The setting that lets `GITHUB_TOKEN` create a pull request | https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository |
+| The check of changesets skipped on the release branch | https://github.com/nodejs/nodejs.org/blob/main/.github/workflows/pull-request-policy.yml, https://github.com/vercel/chat/blob/main/.github/workflows/ci.yml, https://github.com/smithy-lang/smithy-typescript/blob/main/.github/workflows/ci.yml |
 | proxy.golang.org caching | https://proxy.golang.org/ |
 | `uv build` and workspace sources | https://github.com/astral-sh/uv/issues/9811 |
 | Cargo 1.90 multi-package publish | https://doc.rust-lang.org/cargo/CHANGELOG.html |

@@ -126,7 +126,7 @@ A producer configures its own concern alone. Its section names the tools, the ac
 
 A repository adds its closed set of commit scopes in its local file of `.commitlint.yaml`, as the rule `scope-enum`.
 
-The job `changeset` runs `ergon release status` against the base commit of each pull request, as RFC-0002 specifies, with the configuration `.changeset/config.json` that the common files seed.
+The job `changeset` runs `ergon release status` against the base commit of each pull request, as RFC-0002 specifies, with the configuration `.changeset/config.json` that the common files seed. It skips the pull requests of Dependabot, as the job `commits` does, and the version pull request from the branch `ergon-release/<base>` of the repository.
 
 ### GitHub files
 
@@ -750,7 +750,7 @@ Each ergon release embeds the baseline value of every option, among them the ver
 | `ergon-service/baseline/options` | The sections of `.ergon.yaml`: the resolution against the record and the answers of the lock, the strict decode into the struct of a producer, its `Validate`, and the sections with the comments of the `doc` tags | `core/*`, viper and mapstructure for the decode, go.yaml.in/yaml/v3 for the writer |
 | `ergon-service/baseline/overlay` | The local files: the merge of YAML and the appended text | `core/*`, go.yaml.in/yaml/v3 |
 | `ergon-service/baseline/render` | The engine of the templates, the classes from the template tree, the collection of the contributions, and the join of fragments | `core/*` |
-| `ergon-service/baseline/common` | The producer of the common files | `core/*` |
+| `ergon-service/baseline/common` | The producer of the common files | `core/*`, `service/release` for the branch of the version pull request |
 | `ergon-service/baseline/github` | The producer of the GitHub files, which renders the contributions of every producer | `core/*` |
 | `ergon-service/licenses/baseline` | The producer of the license files, as RFC-0003 specifies | `core/*`, `service/licenses` |
 | `ergon-service/tool` | `ergon tool run`: the installation, the check and the run of a tool | `core/language`, `core/option` |

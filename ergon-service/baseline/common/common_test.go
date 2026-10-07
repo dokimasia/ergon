@@ -114,9 +114,12 @@ func TestCommon(t *testing.T) {
 						}},
 					},
 					{
-						ID:          "changeset",
-						Name:        "Changeset",
-						If:          "github.event_name == 'pull_request'",
+						ID:   "changeset",
+						Name: "Changeset",
+						If: "github.event_name == 'pull_request' && " +
+							"github.event.pull_request.user.login != 'dependabot[bot]' && " +
+							"!(github.event.pull_request.head.repo.full_name == github.repository && " +
+							"github.head_ref == format('ergon-release/{0}', github.base_ref))",
 						Text:        true,
 						Timeout:     10,
 						Permissions: read,

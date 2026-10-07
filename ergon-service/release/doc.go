@@ -81,5 +81,6 @@
 // Imports the standard library, github.com/bmatcuk/doublestar/v4,
 // [go.dokimi.dev/ergon/core/changeset], [go.dokimi.dev/ergon/core/language],
 // [go.dokimi.dev/ergon/core/version], [go.dokimi.dev/ergon/core/workspace] and
-// [go.dokimi.dev/ergon/service/vcs]. internal/cli of the root module imports it.
+// [go.dokimi.dev/ergon/service/vcs]. internal/cli of the root module and
+// [go.dokimi.dev/ergon/service/baseline/common] import it.
 package release

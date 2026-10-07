@@ -60,7 +60,7 @@
     {
       "path": ".github/workflows/ci.yml",
       "producer": "github",
-      "sha256": "dc82912dc5ecf775ce3754c559d4fa35db7d4822d56fe599897692588331c258"
+      "sha256": "f7b76d171842d6334b060bafa1b3d5c1096c44b52291e0c0e7878e0ea54f9b4d"
     },
     {
       "path": ".github/workflows/codeql.yml",

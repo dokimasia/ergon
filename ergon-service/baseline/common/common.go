@@ -10,6 +10,7 @@ import (
 	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/core/option"
 	"go.dokimi.dev/ergon/core/workflow"
+	"go.dokimi.dev/ergon/service/release"
 )
 
 // Name is the name of the producer of the common files in the lock, and of its section of
@@ -75,7 +76,10 @@ func (Producer) Options() language.Options {
 //   - commits checks each commit message of a pull request with the commitlint of o, through ergon
 //     tool run. It skips the pull requests of Dependabot, whose bodies exceed the length of a line.
 //   - changeset runs ergon release status against the base of a pull request, which fails for a
-//     package that the pull request changes without a changeset that names it.
+//     package that the pull request changes without a changeset that names it. It skips the pull
+//     requests of Dependabot, because the next release of each module includes their updates.
+//     It also skips the version pull request that ergon release ci version opens from the branch
+//     ergon-release/<base> of the repository, which removes the changesets that it releases.
 func (p Producer) Contribution(o language.Options) workflow.Contribution {
 	opts, ok := o.(*Options)
 	if !ok {
@@ -117,9 +121,11 @@ func (p Producer) Contribution(o language.Options) workflow.Contribution {
 		}},
 	}
 	changeset := workflow.Job{
-		ID:          "changeset",
-		Name:        "Changeset",
-		If:          "github.event_name == 'pull_request'",
+		ID:   "changeset",
+		Name: "Changeset",
+		If: "github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]' && " +
+			"!(github.event.pull_request.head.repo.full_name == github.repository && " +
+			"github.head_ref == format('" + release.ReleaseBranch + "{0}', github.base_ref))",
 		Text:        true,
 		Timeout:     opts.CI.Timeout,
 		Permissions: read,
