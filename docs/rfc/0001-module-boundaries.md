@@ -4,7 +4,7 @@ title: Module boundaries
 author: Roy Klopper
 status: Accepted
 created: 2026-09-24
-updated: 2026-10-05
+updated: 2026-10-07
 discussion: none
 supersedes: none
 superseded-by: none
@@ -17,7 +17,7 @@ produces-adr: ADR-0001, ADR-0002, ADR-0007, ADR-0008
 
 Split ergon into Go modules in one repository.
 `core` contains the vocabulary and the ports.
-`service` contains the language-neutral side of each command, and the clients for git and GitHub.
+`service` contains the language-neutral side of each command, the tool runner, and the clients for git and GitHub.
 `lang` contains the machinery that two or more languages use.
 One module per language contains that language's side of every command, for eleven languages: C#, Java, Kotlin, PHP, JavaScript, TypeScript, Go, Python, Rust, Terraform and Bash.
 The root module contains the binary and the composition root.
@@ -60,9 +60,9 @@ The boundary between `core` and its consumers makes that visible to a linter.
 | Directory | Module path | Contains | Third-party |
 |---|---|---|---|
 | `ergon-core/` | `go.dokimi.dev/ergon/core` | Vocabulary, the catalog, the language and toolchain declarations, and the role interfaces | none |
-| `ergon-service/` | `go.dokimi.dev/ergon/service` | The language-neutral side of each command, git, and the GitHub client | `github.com/apache/skywalking-eyes`, for the license command |
+| `ergon-service/` | `go.dokimi.dev/ergon/service` | The language-neutral side of each command, the tool runner, git, and the GitHub client | `github.com/spf13/viper` and `go.yaml.in/yaml/v3`, for the options of `.ergon.yaml`, and `github.com/apache/skywalking-eyes` and `github.com/bmatcuk/doublestar/v4`, for the license command |
 | `ergon-lang/` | `go.dokimi.dev/ergon/lang` | Manifest editing, the subprocess runner and the conformance suite | a TOML parser |
-| `ergon-lang-<language>/` | `go.dokimi.dev/ergon/lang/<language>` | One language each, and the toolchain it declares | The language's own, such as `golang.org/x/mod` in `ergon-lang-go` |
+| `ergon-lang-<language>/` | `go.dokimi.dev/ergon/lang/<language>` | One language each, and the toolchain it declares | The language's own, such as `golang.org/x/tools` for the analyzers of `ergon-lang-go` |
 | `.` | `go.dokimi.dev/ergon` | `cmd/ergon`, the composition root, the command tree | `github.com/spf13/cobra` for the commands, `github.com/spf13/viper` for the configuration |
 
 The language modules are `ergon-lang-csharp`, `ergon-lang-java`, `ergon-lang-kotlin`, `ergon-lang-php`, `ergon-lang-javascript`, `ergon-lang-typescript`, `ergon-lang-go`, `ergon-lang-python`, `ergon-lang-rust`, `ergon-lang-terraform` and `ergon-lang-bash`.
@@ -70,7 +70,7 @@ The language modules are `ergon-lang-csharp`, `ergon-lang-java`, `ergon-lang-kot
 ```mermaid
 flowchart BT
     core["core<br/>vocabulary, ports"]
-    svc["service<br/>per-command logic, git, GitHub"]
+    svc["service<br/>per-command logic, tool runner, git, GitHub"]
     lang["lang<br/>manifest, command, conformance"]
     langx["lang/&lt;language&gt;<br/>eleven modules"]
     root["ergon<br/>cmd, app, cli"]
@@ -80,7 +80,7 @@ flowchart BT
     langx -->|"manifest, command"| lang
     langx -.->|"roles"| core
     root -->|"Catalog"| core
-    root -->|"release, license, init"| svc
+    root -->|"release, license, init, tool"| svc
     root -->|"Register"| langx
 ```
 
@@ -93,6 +93,8 @@ flowchart BT
 5. Only the root module imports a `lang/<x>`, apart from the two imports of rule 4.
 6. Only `service/vcs` and `lang/go/release` run git. `lang/go/release` runs it through `golang.org/x/mod/zip.CreateFromVCS`, which runs `git archive`.
 7. Only `service/forge` calls the GitHub API, and no other package in `service` imports it.
+
+The rules apply to the production code. The tests of a language module also import `service/baseline`, whose test kit renders the language as `ergon init new` renders it.
 
 A service is given what it calls through an interface the service declares. `service/release` declares the `Forge` interface, and `service/forge` satisfies it without importing `release`. The root module joins the two.
 
@@ -188,6 +190,15 @@ var (
 
 Without that assertion, a signature that drifts from its role removes a capability without breaking the build.
 
+The roles of `init` divide the files of a repository by concern, as RFC-0004 specifies:
+
+- `Producer` returns the templates of a concern. Each language, each toolchain that two languages share, and each base producer of RFC-0004 implements it.
+- `Calculator` returns the values that the templates of a producer read beyond the answers, the options and the contributions, such as the text of a license.
+- `Configurable` returns a producer's options, which are a struct in the producer's own package. The struct composes the option types of `core/option`, adds the options that only its concern has, and validates them with its own rules.
+- `Contributor` returns the jobs, the CodeQL analysis and the Dependabot updates of a producer as data. The GitHub producer renders them into the workflows.
+
+A producer configures its own concern alone. A section of `.ergon.yaml` names the tools, the actions and the runtime versions of its own producer, and never those of another ecosystem. The section `github` configures the platform, and the section `go` configures the setup of Go in CI. A tool that runs in the gate of a language other than its own is a release binary, which the tool runner of `service/tool` installs without the toolchain that built it.
+
 ### Registration
 
 The root module's `internal/app` calls the `Register` function of each language module, in a fixed order. Java precedes Kotlin, and JavaScript precedes TypeScript, because Kotlin and TypeScript name the toolchains that Java and JavaScript register. A module's `Register` calls `language.RegisterToolchain` for the toolchain it declares, and then `language.Register` for its language.
@@ -203,10 +214,14 @@ ergon-lang-go/
   language.go   Language, Toolchain and Register
   workspace/    go.work and go.mod discovery, for every command
   release/      the release roles
-  baseline/     the init role: templates, gate tools and fragments
+  baseline/     the init roles: the options of the section go and their rules,
+                the templates, and the jobs in CI
+  analysis/     the analyzers of lint-go: the prefix of error text, and the
+                expiry of a skipped test
+  cmd/          ergon-go-vet, which runs the analyzers
 ```
 
-A language module that declares a toolchain has a `workspace/` package and one package per command it supports. `ergon-lang-typescript` and `ergon-lang-kotlin` have no `workspace/` or `release/` package, because the JavaScript and Java modules discover and release their packages. The package for `init` is `baseline`, because the compiler rejects an import of a package named `init` unless the import renames it. The root package of the Go module cannot be called `go`, because `go` is a keyword. It is `package golang`, imported as `go.dokimi.dev/ergon/lang/go`.
+A language module contains everything about its language that differs from the other languages: the options of its section and their rules, its templates, its jobs, its CodeQL language and its Dependabot ecosystem, and the programs that its gate runs and that no other project provides. A language module that declares a toolchain has a `workspace/` package and one package per command it supports. `ergon-lang-typescript` and `ergon-lang-kotlin` have no `workspace/` or `release/` package, because the JavaScript and Java modules discover and release their packages. The package for `init` is `baseline`, because the compiler rejects an import of a package named `init` unless the import renames it. The root package of the Go module cannot be called `go`, because `go` is a keyword. It is `package golang`, imported as `go.dokimi.dev/ergon/lang/go`.
 
 ### The go.mod files
 
@@ -214,19 +229,22 @@ A language module that declares a toolchain has a `workspace/` package and one p
 ergon-core/go.mod         module go.dokimi.dev/ergon/core
 ergon-service/go.mod      module go.dokimi.dev/ergon/service
                           require go.dokimi.dev/ergon/core
+                          require github.com/spf13/viper, go.yaml.in/yaml/v3
                           require github.com/apache/skywalking-eyes
+                          require github.com/bmatcuk/doublestar/v4
 ergon-lang/go.mod         module go.dokimi.dev/ergon/lang
                           require go.dokimi.dev/ergon/core
 ergon-lang-go/go.mod      module go.dokimi.dev/ergon/lang/go
                           require go.dokimi.dev/ergon/core
                           require go.dokimi.dev/ergon/lang
                           require golang.org/x/mod
+                          require golang.org/x/tools, for go/analysis and go/packages
 go.mod                    module go.dokimi.dev/ergon
                           require every module above, at tagged versions
                           require github.com/spf13/cobra, github.com/spf13/viper
 ```
 
-Every other language module requires `core`. It also requires `lang` once it uses that machinery. `ergon-lang-typescript` requires `ergon-lang-javascript`, and `ergon-lang-kotlin` requires `ergon-lang-java`. A `replace` directive for each required sibling lets each of these modules build and tidy outside the workspace. Inside it, `go.work` lists every directory, and builds and tests resolve across the modules without the network.
+Every language module requires `core`, and `service` for the test kit of its tests. It also requires `lang` once it uses that machinery. `ergon-lang-typescript` requires `ergon-lang-javascript`, and `ergon-lang-kotlin` requires `ergon-lang-java`. A `replace` directive for each required sibling lets each of these modules build and tidy outside the workspace. Inside it, `go.work` lists every directory, and builds and tests resolve across the modules without the network.
 
 The root module has no `replace` directive. `go install <pkg>@<version>` refuses a module whose `go.mod` contains one, so a `replace` in the root module would stop `go install go.dokimi.dev/ergon/cmd/ergon@latest`. The other modules may contain a `replace` for a sibling, because the go command applies `replace` only in the main module. Until the siblings have tags and the vanity pages serve them, the root module builds only inside the workspace, because its `go.mod` cannot require them. Outside the workspace, `go mod tidy` fails with `404 Not Found` from `https://go.dokimi.dev/ergon/core/language?go-get=1`.
 
@@ -311,6 +329,12 @@ Each language registers discovery and the release roles itself, and Java and Kot
 
 **Why not:** a module that declares a toolchain without a language is a third kind of module, with rules of its own. The Java and JavaScript modules declare the toolchains of Kotlin and TypeScript, as the seven other modules declare their own.
 
+### I. Options and templates in core and service
+
+One options struct in `core` for every language, a template engine in `core`, and the validation of every language's options in `service`.
+
+**Why not:** a language could then not declare an option of its own, and an option of one language would change `core` and `service`. The language modules would contain templates and no code of their own.
+
 ## Drawbacks
 
 - Fifteen `go.mod` files, and one more for each language added. Each needs its own tidy and pins its own dependency versions.
@@ -342,3 +366,4 @@ Each language registers discovery and the release roles itself, and Java and Kot
 | An import of a package named `init` needs a rename | `cmd/compile/internal/types2/resolver.go:276`, go1.27.1 |
 | depguard | https://github.com/OpenPeeDeeP/depguard |
 | cobra and viper | https://github.com/spf13/cobra, https://github.com/spf13/viper |
+| The options of a tool in a subsystem of its language backend | Pants, `src/python/pants/backend/go/lint/golangci_lint/subsystem.py` and `src/python/pants/option/option_types.py` |
