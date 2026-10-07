@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 // Package release implements the release roles of the toolchain go: the [Versioner] of require
-// lines and the [Tagger] of the tags that the go command reads.
+// lines, the [Tagger] of the tags that the go command reads, and the [Locker] of the hashes that
+// go.sum records.
 //
 // # Requirements
 //
@@ -21,6 +22,14 @@
 // the zip and the go command read the files of a module with the same git archive. Apply then runs
 // go mod tidy in each such module, a module after every module that it requires.
 //
+// # Pending releases
+//
+// A change to a released module between the version commit and its tag changes the content that
+// the tag names, while the go.sum of a module that requires it still records the content of the
+// version commit. [Locker.Stale] reports such a go.sum. [Locker.Lock] removes its lines of the
+// released modules and runs go mod tidy against the proxy of [Versioner.Apply], so that the go.sum
+// records the content that the tag names.
+//
 // # Workspaces
 //
 // The go command reads the go.mod of every version of a module of the workspace that another
@@ -38,6 +47,7 @@
 // # Dependency position
 //
 // Imports the standard library, golang.org/x/mod/modfile, golang.org/x/mod/module,
-// golang.org/x/mod/zip, [go.dokimi.dev/ergon/core/language], [go.dokimi.dev/ergon/core/version],
-// [go.dokimi.dev/ergon/core/workspace] and [go.dokimi.dev/ergon/lang/go/workspace].
+// golang.org/x/mod/sumdb/dirhash, golang.org/x/mod/zip, [go.dokimi.dev/ergon/core/language],
+// [go.dokimi.dev/ergon/core/version], [go.dokimi.dev/ergon/core/workspace] and
+// [go.dokimi.dev/ergon/lang/go/workspace].
 package release

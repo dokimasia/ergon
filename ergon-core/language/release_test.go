@@ -24,6 +24,7 @@ var (
 	_ language.Tagger    = releaser{}
 	_ language.Packer    = releaser{}
 	_ language.Publisher = releaser{}
+	_ language.Locker    = releaser{}
 )
 
 // Resolve returns ResolutionSelected.
@@ -64,6 +65,16 @@ func (releaser) Published(context.Context, *workspace.Package) (bool, error) {
 // Publish uploads nothing.
 func (releaser) Publish(context.Context, string, []workspace.Package) error {
 	return nil
+}
+
+// Stale returns nil.
+func (releaser) Stale(context.Context, string, []workspace.Package) ([]string, error) {
+	return nil, nil
+}
+
+// Lock returns nil.
+func (releaser) Lock(context.Context, string, []workspace.Package) ([]string, error) {
+	return nil, nil
 }
 
 func TestRelease(t *testing.T) {
@@ -143,6 +154,16 @@ func TestRelease(t *testing.T) {
 			t.Parallel()
 			got := registeredRole[language.Publisher](t)
 			assert.Equal(t, got, language.Publisher(releaser{name: "first"}), "the Publisher of the toolchain")
+		})
+	})
+
+	t.Run("Locker", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("is a role that a toolchain registers", func(t *testing.T) {
+			t.Parallel()
+			got := registeredRole[language.Locker](t)
+			assert.Equal(t, got, language.Locker(releaser{name: "first"}), "the Locker of the toolchain")
 		})
 	})
 }

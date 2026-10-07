@@ -37,6 +37,10 @@ type roles struct {
 	// publisher uploads the artifacts, or is nil for a toolchain that publishes by its tags.
 	publisher language.Publisher
 
+	// locker reports and rewrites the lockfiles that record the content of the packages, or is nil
+	// for a toolchain whose lockfiles do not record such content.
+	locker language.Locker
+
 	// changelogVersion reports that a package records its version in its CHANGELOG.md, as
 	// [language.Toolchain] states.
 	changelogVersion bool
@@ -111,6 +115,7 @@ func NewGraph(c *language.Catalog, pkgs []workspace.Package) (*Graph, error) {
 			r.tagger, _ = language.ToolchainRole[language.Tagger](c, p.Toolchain)
 			r.packer, _ = language.ToolchainRole[language.Packer](c, p.Toolchain)
 			r.publisher, _ = language.ToolchainRole[language.Publisher](c, p.Toolchain)
+			r.locker, _ = language.ToolchainRole[language.Locker](c, p.Toolchain)
 			byToolchain[p.Toolchain] = r
 		}
 		name := p.Name

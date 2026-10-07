@@ -48,6 +48,15 @@ const (
 
 	// omittedReleases replaces the releases of a body that is still over maxBody.
 	omittedReleases = "\n> The releases are left out, because the body would exceed the size limit."
+
+	// lockIntro opens the body of a version pull request that rewrites lockfiles alone.
+	lockIntro = "This pull request was opened by `ergon release ci version`. A package of a release that " +
+		"waits for its publish changed after its version commit, and the lockfiles below still record its earlier " +
+		"content. Merging this pull request rewrites them, so that the release workflow publishes and tags the " +
+		"content that they record. A changeset that is merged into %s before this pull request updates it."
+
+	// lockfilesHeading starts the list of the lockfiles.
+	lockfilesHeading = "# Lockfiles"
 )
 
 // Proposer is the host of a repository that a version pull request needs: its branch, signed
@@ -111,6 +120,8 @@ type Proposal struct {
 //     changelog of the package. The releases of public packages come first, each group from the
 //     highest level to the lowest. A body over 60,000 bytes leaves out the changelogs, and then the
 //     releases.
+//   - A plan without releases is the work of [Lock], which rewrites lockfiles alone. Its Body states
+//     why, under the heading # Lockfiles with a list of the changed files.
 //
 // It returns the error of git, which wraps [vcs.ErrGit], the error of reading a changed file, and
 // the error of reading a changelog, other than the error of a changelog that does not exist.
@@ -119,9 +130,11 @@ func NewProposal(ctx context.Context, root, base string, g *Graph, plan *Plan) (
 	if err != nil {
 		return Proposal{}, err
 	}
-	body, err := proposalBody(root, base, g, plan)
-	if err != nil {
-		return Proposal{}, err
+	body := lockBody(base, files)
+	if len(plan.Releases) > 0 {
+		if body, err = proposalBody(root, base, g, plan); err != nil {
+			return Proposal{}, err
+		}
 	}
 	return Proposal{Files: files, Base: base, Body: body, Deleted: deleted}, nil
 }
@@ -252,6 +265,17 @@ func proposalBody(root, base string, g *Graph, plan *Plan) (string, error) {
 		}
 	}
 	return head + "\n" + omittedReleases, nil
+}
+
+// lockBody returns the body of a version pull request into the branch base that rewrites the
+// lockfiles of files alone, as [NewProposal] states.
+func lockBody(base string, files map[string][]byte) string {
+	lines := make([]string, 0, len(files)+3)
+	lines = append(lines, fmt.Sprintf(lockIntro, base), lockfilesHeading, "")
+	for _, name := range slices.Sorted(maps.Keys(files)) {
+		lines = append(lines, "- `"+name+"`")
+	}
+	return strings.Join(lines, "\n")
 }
 
 // byLevel returns sections sorted from the highest level to the lowest, in their order within a

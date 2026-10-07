@@ -198,6 +198,22 @@ func TestProposal(t *testing.T) {
 			expect.That(t, got.Base).Equal("main", "the base branch")
 		})
 
+		t.Run("lists the changed lockfiles of a plan without releases", func(t *testing.T) {
+			t.Parallel()
+			root := committed(t, files.Tree{"b/go.sum": files.Text("b\n"), "c/go.sum": files.Text("c\n")})
+			for _, name := range []string{"c/go.sum", "b/go.sum"} {
+				err := os.WriteFile(filepath.Join(root, filepath.FromSlash(name)), []byte("locked\n"), versionPerm)
+				assert.NoError(t, err, "the change of "+name)
+			}
+			got, err := release.NewProposal(t.Context(), root, "main", newState(t).graph(t), &release.Plan{})
+			assert.NoError(t, err, "NewProposal")
+			assert.Equal(t, got.Body, "This pull request was opened by `ergon release ci version`. A package of a "+
+				"release that waits for its publish changed after its version commit, and the lockfiles below still "+
+				"record its earlier content. Merging this pull request rewrites them, so that the release workflow "+
+				"publishes and tags the content that they record. A changeset that is merged into main before this pull "+
+				"request updates it.\n# Lockfiles\n\n- `b/go.sum`\n- `c/go.sum`", "the body")
+		})
+
 		t.Run("returns ErrGit for a directory outside a working tree", func(t *testing.T) {
 			t.Parallel()
 			_, err := release.NewProposal(t.Context(), t.TempDir(), "main", newState(t).graph(t), &release.Plan{})

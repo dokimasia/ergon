@@ -52,6 +52,9 @@ const (
 // firstChangelog is the changelog of the module, at the version 1.0.0.
 const firstChangelog = "# " + modulePath + "\n\n## 1.0.0\n\n### Major Changes\n\n- Release the first version.\n"
 
+// staleSum is the go.sum of the module b of the cases with a second module.
+const staleSum = "b/go.sum"
+
 // The publish plan of the module at 1.0.0 without its tag, and the packages that its publish
 // releases, as the release commands write them.
 const (
@@ -160,7 +163,9 @@ const versionHelp = `ergon release version writes the release plan of the change
 repository: the new version of each package, the rewritten requirements of its
 dependents, the entries of the changelogs and the refreshed lockfiles. It
 removes the changesets that it consumed, and restores every file when a step
-fails. --dry-run writes the plan and changes nothing.
+fails. Without changesets it rewrites the lockfiles that record the earlier
+content of a package whose release waits for its publish. --dry-run writes the
+plan and changes nothing.
 
 Usage:
   ergon release version [flags]
@@ -210,7 +215,9 @@ const publishHelp = `ergon release publish uploads each package of the publish p
 lacks its version, and then tags each package at HEAD with the section of its
 changelog as the notes. On a workstation it creates annotated tags and pushes
 them to origin in one push. In GitHub Actions it creates the tags and the
-GitHub Releases through the API of GitHub. --no-git-tag creates no tag.
+GitHub Releases through the API of GitHub. It refuses a plan whose lockfiles
+record other content of its packages than the working tree. --no-git-tag
+creates no tag.
 
 Usage:
   ergon release publish [flags]
@@ -228,7 +235,9 @@ Global Flags:
 
 // gitTagHelp is the help of ergon release git-tag, pinned because a person reads it.
 const gitTagHelp = `ergon release git-tag creates the annotated tag of each package whose tag at
-its version is missing, at HEAD, and pushes the tags to origin in one push.
+its version is missing, at HEAD, and pushes the tags to origin in one push. It
+refuses a plan whose lockfiles record other content of its packages than the
+working tree.
 
 Usage:
   ergon release git-tag [flags]
@@ -259,9 +268,10 @@ Use "ergon release ci [command] --help" for more information about a command.
 
 // selectModeHelp is the help of ergon release ci select-mode, pinned because a person reads it.
 const selectModeHelp = `ergon release ci select-mode writes the mode of the release workflow: version
-for a repository with changesets, publish for a publish plan with a package,
-and none otherwise. --output writes the publish plan into a file for the job
-publish.
+for a repository with changesets or with lockfiles that record the earlier
+content of a package of the publish plan, publish for a publish plan with a
+package, and none otherwise. It writes each such lockfile. --output writes the
+publish plan into a file for the job publish.
 
 Usage:
   ergon release ci select-mode [flags]
@@ -279,7 +289,8 @@ const ciVersionHelp = `ergon release ci version writes the release plan of the c
 release version does. It then commits the changes on the branch
 ergon-release/<base> through the API of GitHub, which signs the commits, and
 opens or updates the version pull request into the base branch. Without
-changesets it changes nothing.
+changesets it proposes the lockfiles that ergon release version rewrites, and
+otherwise changes nothing.
 
 Usage:
   ergon release ci version [flags]
@@ -802,6 +813,34 @@ func TestRelease(t *testing.T) {
 			assert.Equal(t, stdout, "No unreleased changesets found.\n", "the standard output")
 		})
 
+		t.Run("version rewrites a stale go.sum without changesets", func(t *testing.T) {
+			t.Parallel()
+			dir := staleModules(t)
+			status, stdout, stderr := runRelease(t, dir, nil, "release", "version")
+			assert.Equal(t, status, statusOK, "the exit status: "+stderr)
+			assert.Equal(t, stdout, "wrote "+staleSum+"\n", "the standard output")
+			vcstest.Commit(t, dir, "rewrite the lockfiles")
+			status, stdout, stderr = runRelease(t, dir, nil, "release", "ci", "select-mode")
+			assert.Equal(t, status, statusOK, "the exit status of select-mode: "+stderr)
+			assert.Equal(t, stdout, "mode publish\n", "the standard output of select-mode")
+		})
+
+		t.Run("version returns 1 for a go.sum that it cannot read", func(t *testing.T) {
+			t.Parallel()
+			status, _, stderr := runRelease(t, unreadableSum(t), nil, "release", "version")
+			assert.Equal(t, status, statusFailure, "the exit status")
+			assert.HasPrefix(t, stderr, "ergon: release: the lockfiles of the toolchain go: release: read "+staleSum+
+				": ", "the standard error")
+		})
+
+		t.Run("version returns 1 outside a working tree of git without changesets", func(t *testing.T) {
+			t.Parallel()
+			dir := files.Workspace(t, files.Tree{configPath: files.Text(gitConfig)})
+			status, _, stderr := runRelease(t, dir, nil, "release", "version")
+			assert.Equal(t, status, statusFailure, "the exit status")
+			assert.HasPrefix(t, stderr, "ergon: vcs: git failed: ", "the standard error")
+		})
+
 		t.Run("version returns 1 for GITHUB_TOKEN without GITHUB_REPOSITORY", func(t *testing.T) {
 			t.Parallel()
 			dir := goModule(t, gitConfig, files.Tree{changesetPath: files.Text(changesetText)})
@@ -1030,6 +1069,15 @@ func TestRelease(t *testing.T) {
 				"of "+modulePath+" is at "+second+"\n", "the standard error")
 		})
 
+		t.Run("publish returns 1 for a go.sum that records another content of a module", func(t *testing.T) {
+			t.Parallel()
+			status, stdout, stderr := runRelease(t, staleModules(t), nil, "release", "publish")
+			assert.Equal(t, status, statusFailure, "the exit status")
+			assert.Empty(t, stdout, "the standard output")
+			assert.Equal(t, stderr, "ergon: release: stale lockfiles: "+staleSum+", which ergon release version "+
+				"rewrites\n", "the standard error")
+		})
+
 		t.Run("publish returns 1 when an output cannot be written", func(t *testing.T) {
 			t.Parallel()
 			output := filepath.Join(t.TempDir(), "absent", "output")
@@ -1093,6 +1141,21 @@ func TestRelease(t *testing.T) {
 			status, stdout, stderr := runRelease(t, dir, nil, "release", "ci", "select-mode")
 			assert.Equal(t, status, statusOK, "the exit status: "+stderr)
 			assert.Equal(t, stdout, "mode none\n", "the standard output")
+		})
+
+		t.Run("select-mode writes a stale go.sum and version", func(t *testing.T) {
+			t.Parallel()
+			status, stdout, stderr := runRelease(t, staleModules(t), nil, "release", "ci", "select-mode")
+			assert.Equal(t, status, statusOK, "the exit status: "+stderr)
+			assert.Equal(t, stdout, "stale "+staleSum+"\nmode version\n", "the standard output")
+		})
+
+		t.Run("select-mode returns 1 for a go.sum that it cannot read", func(t *testing.T) {
+			t.Parallel()
+			status, _, stderr := runRelease(t, unreadableSum(t), nil, "release", "ci", "select-mode")
+			assert.Equal(t, status, statusFailure, "the exit status")
+			assert.HasPrefix(t, stderr, "ergon: release: the lockfiles of the toolchain go: release: read "+staleSum+
+				": ", "the standard error")
 		})
 
 		t.Run("select-mode returns 1 for a changeset that does not parse", func(t *testing.T) {
@@ -1191,6 +1254,17 @@ func TestRelease(t *testing.T) {
 			assert.Equal(t, status, statusOK, "the exit status: "+stderr)
 			assert.Equal(t, stdout, "No unreleased changesets found.\n", "the standard output")
 			assert.Empty(t, h.calls(), "the requests to GitHub")
+		})
+
+		t.Run("ci version proposes a stale go.sum without changesets", func(t *testing.T) {
+			t.Parallel()
+			h := &hub{}
+			status, stdout, stderr := runRelease(t, staleModules(t), h.start(t), "release", "ci", "version")
+			assert.Equal(t, status, statusOK, "the exit status: "+stderr)
+			assert.Equal(t, stdout, "wrote "+staleSum+"\npull request 7\n", "the standard output")
+			commits := h.commits()
+			assert.Length(t, commits, 1, "the commits")
+			assert.Contains(t, commits[0], `"path":"`+staleSum+`"`, "the lockfile of the commit")
 		})
 
 		t.Run("ci version returns 1 without GITHUB_REPOSITORY", func(t *testing.T) {
@@ -1292,6 +1366,30 @@ func goModule(t *testing.T, config string, extra files.Tree) string {
 	vcstest.Git(t, dir, "symbolic-ref", "HEAD", "refs/heads/main")
 	vcstest.Commit(t, dir, "first")
 	return dir
+}
+
+// staleModules returns the working tree of goModule with the module b in go.work, which imports the
+// module of the cases at its version 1.0.0, and whose go.sum records other hashes of it, as a change
+// to the module after its version commit leaves them.
+func staleModules(t *testing.T) string {
+	t.Helper()
+	return goModule(t, gitConfig, files.Tree{
+		"go.work":  files.Text("go 1.27\n\nuse (\n\t.\n\t./b\n)\n"),
+		"b/go.mod": files.Text("module " + modulePath + "/b\n\ngo 1.27\n\nrequire " + modulePath + " v1.0.0\n"),
+		"b/b.go":   files.Text("// Package b imports the module.\npackage b\n\nimport _ \"" + modulePath + "\"\n"),
+		staleSum:   files.Text(modulePath + " v1.0.0 h1:other=\n" + modulePath + " v1.0.0/go.mod h1:other=\n"),
+	})
+}
+
+// unreadableSum returns the working tree of goModule with the module b in go.work, whose go.sum is a
+// directory.
+func unreadableSum(t *testing.T) string {
+	t.Helper()
+	return goModule(t, gitConfig, files.Tree{
+		"go.work":              files.Text("go 1.27\n\nuse (\n\t.\n\t./b\n)\n"),
+		"b/go.mod":             files.Text("module " + modulePath + "/b\n\ngo 1.27\n"),
+		staleSum + "/inner.md": files.Text("inner\n"),
+	})
 }
 
 // withOrigin adds a bare repository as the remote origin of the working tree dir, and returns the

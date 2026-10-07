@@ -26,19 +26,19 @@ import (
 	modzip "golang.org/x/mod/zip"
 )
 
-// run is one call of [Versioner.Apply]: the modules of the repository, the versions that it
-// releases, the files that it changes, and the proxy that serves the released modules to go mod
-// tidy.
+// run is one call of [Versioner.Apply], [Locker.Stale] or [Locker.Lock]: the modules of the
+// repository, the versions that it releases, the files that it changes, and the proxy that serves
+// the released modules to go mod tidy.
 type run struct {
-	// versioner is the versioner of the call.
-	versioner Versioner
+	// snapshot returns the tree of the working tree of a directory as git would commit it.
+	snapshot func(ctx context.Context, dir string) (string, error)
 
 	// modules maps the path of each module of the repository to the module, with its go.mod as
 	// Apply rewrote it.
 	modules map[string]*goworkspace.Module
 
-	// released maps the path of each module that the edits release to its new version, with a v
-	// before it.
+	// released maps the path of each module that the call releases to its version, with a v before
+	// it: the new version of an edit of Apply, and the version of a package of Stale and Lock.
 	released map[string]string
 
 	// served reports the paths of the released modules that the proxy serves.
@@ -64,10 +64,10 @@ type run struct {
 	files changes
 }
 
-// newRun returns the run of Apply of edits in the repository at root. It returns the error of
-// reading and of parsing go.work, the error of [goworkspace.Modules], and an error for an edit of a
-// module that the repository does not have.
-func newRun(v Versioner, root string, edits []language.Edit) (*run, error) {
+// newRun returns a run in the repository at root that takes its snapshots with snapshot and
+// releases no module yet. It returns the error of reading and of parsing go.work, and the error of
+// [goworkspace.Modules].
+func newRun(snapshot func(ctx context.Context, dir string) (string, error), root string) (*run, error) {
 	work, err := readWork(root)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return nil, err
@@ -77,34 +77,31 @@ func newRun(v Versioner, root string, edits []language.Edit) (*run, error) {
 		return nil, err
 	}
 	r := &run{
-		versioner: v,
-		modules:   make(map[string]*goworkspace.Module, len(mods)),
-		released:  map[string]string{},
-		served:    map[string]bool{},
-		work:      work,
-		root:      root,
-		files:     changes{before: map[string][]byte{}, root: root},
+		snapshot: snapshot,
+		modules:  make(map[string]*goworkspace.Module, len(mods)),
+		released: map[string]string{},
+		served:   map[string]bool{},
+		work:     work,
+		root:     root,
+		files:    changes{before: map[string][]byte{}, root: root},
 	}
 	for i := range mods {
 		r.modules[mods[i].Path] = &mods[i]
 	}
-	for k := range edits {
-		e := &edits[k]
-		if r.modules[e.Package.Name] == nil {
-			return nil, fmt.Errorf("release: the module %s, which the repository does not have", e.Package.Name)
-		}
-		if e.Version != e.Package.Version {
-			r.released[e.Package.Name] = "v" + e.Version.String()
-		}
-	}
 	return r, nil
+}
+
+// checkModule returns an error for a name that is the path of no module of the repository.
+func (r *run) checkModule(name string) error {
+	if r.modules[name] == nil {
+		return fmt.Errorf("release: the module %s, which the repository does not have", name)
+	}
+	return nil
 }
 
 // release writes the requirements of edits into the go.mod of their modules and the replaces of
 // go.work, and runs go mod tidy in each module that requires a rewritten module without a directory
-// replace, a module after every released module that it requires. It returns an error that wraps
-// [ErrCycle] for modules that require each other, and the error of a write, of git and of the go
-// command.
+// replace, as [run.tidyAll] runs it. It returns the error of a write and of tidyAll.
 func (r *run) release(ctx context.Context, edits []language.Edit) error {
 	var pending []*goworkspace.Module
 	rewritten := false
@@ -134,15 +131,23 @@ func (r *run) release(ctx context.Context, edits []language.Edit) error {
 			return err
 		}
 	}
+	return r.tidyAll(ctx, pending)
+}
+
+// tidyAll runs go mod tidy in each module of pending, a module after every released module of
+// pending that it requires, against a module proxy in a temporary directory, which it removes
+// afterwards. It does nothing for no pending module. It returns an error that wraps [ErrCycle] for
+// modules of pending that require each other, and the error of creating the proxy, of go env and of
+// [run.tidy].
+func (r *run) tidyAll(ctx context.Context, pending []*goworkspace.Module) error {
 	if len(pending) == 0 {
 		return nil
 	}
-	tmp, err := os.MkdirTemp("", "ergon-release-")
+	tmp, err := r.open()
 	if err != nil {
-		return fmt.Errorf("release: create the module proxy: %w", err)
+		return err
 	}
 	defer func() { _ = os.RemoveAll(tmp) }()
-	r.proxy = &proxy{versions: map[string][]string{}, dir: filepath.Join(tmp, "proxy")}
 	if r.env, err = r.environment(ctx, filepath.Join(tmp, "modcache")); err != nil {
 		return err
 	}
@@ -161,6 +166,17 @@ func (r *run) release(ctx context.Context, edits []language.Edit) error {
 		pending = slices.Delete(pending, at, at+1)
 	}
 	return nil
+}
+
+// open creates a temporary directory with the module proxy of r, and returns the directory, which
+// the caller removes. It returns the error of creating the directory.
+func (r *run) open() (string, error) {
+	tmp, err := os.MkdirTemp("", "ergon-release-")
+	if err != nil {
+		return "", fmt.Errorf("release: create the module proxy: %w", err)
+	}
+	r.proxy = &proxy{versions: map[string][]string{}, dir: filepath.Join(tmp, "proxy")}
+	return tmp, nil
 }
 
 // ready reports whether m can be tidied: neither m nor a module of pending other than m is a
@@ -219,34 +235,44 @@ func (r *run) tidy(ctx context.Context, m *goworkspace.Module) error {
 	return nil
 }
 
-// serve writes the zip of the released module s at its new version into the proxy, from a
-// snapshot of the working tree, once per run. It returns the error of the snapshot, of the zip and
-// of the proxy.
+// serve writes the zip of the released module s at its version into the proxy, from a snapshot of
+// the working tree, once per run. It returns the error of [run.zip] and of the proxy.
 func (r *run) serve(ctx context.Context, s *goworkspace.Module) error {
 	if r.served[s.Path] {
 		return nil
 	}
+	m, data, err := r.zip(ctx, s)
+	if err != nil {
+		return err
+	}
+	if err := r.proxy.add(m, data, modOf(m, data)); err != nil {
+		return err
+	}
+	r.served[s.Path] = true
+	return nil
+}
+
+// zip returns the released module s at its version, and its zip as golang.org/x/mod/zip writes it
+// from a snapshot of the working tree. It takes the snapshot when r has none since its last go mod
+// tidy. It returns the error of the snapshot and of the zip.
+func (r *run) zip(ctx context.Context, s *goworkspace.Module) (module.Version, []byte, error) {
+	m := module.Version{Path: s.Path, Version: r.released[s.Path]}
 	if r.tree == "" {
-		tree, err := r.versioner.Snapshot(ctx, r.root)
+		tree, err := r.snapshot(ctx, r.root)
 		if err != nil {
-			return err
+			return m, nil, err
 		}
 		r.tree = tree
 	}
-	m := module.Version{Path: s.Path, Version: r.released[s.Path]}
 	subdir := ""
 	if s.Dir != "." {
 		subdir = s.Dir
 	}
 	var data bytes.Buffer
 	if err := modzip.CreateFromVCS(&data, m, r.root, r.tree, subdir); err != nil {
-		return fmt.Errorf("release: write the zip of %s: %w", m, err)
+		return m, nil, fmt.Errorf("release: write the zip of %s: %w", m, err)
 	}
-	if err := r.proxy.add(m, data.Bytes(), modOf(m, data.Bytes())); err != nil {
-		return err
-	}
-	r.served[s.Path] = true
-	return nil
+	return m, data.Bytes(), nil
 }
 
 // environment returns the variables of the environment of go mod tidy, with the module cache in

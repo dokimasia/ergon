@@ -122,7 +122,9 @@ plan as JSON into a file.`
 repository: the new version of each package, the rewritten requirements of its
 dependents, the entries of the changelogs and the refreshed lockfiles. It
 removes the changesets that it consumed, and restores every file when a step
-fails. --dry-run writes the plan and changes nothing.`
+fails. Without changesets it rewrites the lockfiles that record the earlier
+content of a package whose release waits for its publish. --dry-run writes the
+plan and changes nothing.`
 
 	publishPlanShort = "Write the packages that a publish uploads or tags"
 	publishPlanLong  = `ergon release publish-plan writes the publish plan as JSON: each package whose
@@ -138,11 +140,15 @@ that its registry receives as an artifact, into --out-dir.`
 lacks its version, and then tags each package at HEAD with the section of its
 changelog as the notes. On a workstation it creates annotated tags and pushes
 them to origin in one push. In GitHub Actions it creates the tags and the
-GitHub Releases through the API of GitHub. --no-git-tag creates no tag.`
+GitHub Releases through the API of GitHub. It refuses a plan whose lockfiles
+record other content of its packages than the working tree. --no-git-tag
+creates no tag.`
 
 	gitTagShort = "Tag the packages whose tags are missing"
 	gitTagLong  = `ergon release git-tag creates the annotated tag of each package whose tag at
-its version is missing, at HEAD, and pushes the tags to origin in one push.`
+its version is missing, at HEAD, and pushes the tags to origin in one push. It
+refuses a plan whose lockfiles record other content of its packages than the
+working tree.`
 
 	ciShort = "Run the jobs of the release workflow"
 	ciLong  = `ergon release ci runs the steps of the jobs of the release workflow in GitHub
@@ -150,16 +156,18 @@ Actions, and writes their outputs into the file of GITHUB_OUTPUT.`
 
 	selectModeShort = "Choose the job that the release workflow runs"
 	selectModeLong  = `ergon release ci select-mode writes the mode of the release workflow: version
-for a repository with changesets, publish for a publish plan with a package,
-and none otherwise. --output writes the publish plan into a file for the job
-publish.`
+for a repository with changesets or with lockfiles that record the earlier
+content of a package of the publish plan, publish for a publish plan with a
+package, and none otherwise. It writes each such lockfile. --output writes the
+publish plan into a file for the job publish.`
 
 	ciVersionShort = "Write the release and open the version pull request"
 	ciVersionLong  = `ergon release ci version writes the release plan of the changesets as ergon
 release version does. It then commits the changes on the branch
 ergon-release/<base> through the API of GitHub, which signs the commits, and
 opens or updates the version pull request into the base branch. Without
-changesets it changes nothing.`
+changesets it proposes the lockfiles that ergon release version rewrites, and
+otherwise changes nothing.`
 )
 
 // releaseRepository is a repository that a release command works on.
@@ -439,8 +447,9 @@ func gitTagCommand(ctx context.Context, s *session) *cobra.Command {
 	}
 }
 
-// selectModeCommand returns ergon release ci select-mode, which writes the mode of the release
-// workflow, its output mode, and the publish plan into --output.
+// selectModeCommand returns ergon release ci select-mode, which writes the stale lockfiles of
+// [release.Stale], the mode of the release workflow, its output mode, and the publish plan into
+// --output.
 func selectModeCommand(ctx context.Context, s *session) *cobra.Command {
 	var output string
 	cmd := &cobra.Command{
@@ -457,10 +466,17 @@ func selectModeCommand(ctx context.Context, s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			stale, err := release.Stale(ctx, r.root, r.graph, &plan)
+			if err != nil {
+				return err
+			}
 			if err := writeJSON(output, &plan); err != nil {
 				return err
 			}
-			mode := release.SelectMode(sets, &plan)
+			for _, file := range stale {
+				fmt.Fprintf(cmd.OutOrStdout(), "stale %s\n", file)
+			}
+			mode := release.SelectMode(sets, &plan, stale)
 			fmt.Fprintf(cmd.OutOrStdout(), "mode %s\n", mode)
 			return s.output(modeOutput, mode)
 		},
@@ -470,8 +486,9 @@ func selectModeCommand(ctx context.Context, s *session) *cobra.Command {
 }
 
 // ciVersionCommand returns ergon release ci version, which writes the release plan as ergon
-// release version does, and proposes it with [release.Propose] through the API of GitHub. It
-// proposes nothing for a repository without changesets.
+// release version does, and proposes it with [release.Propose] through the API of GitHub. For a
+// repository without changesets it proposes the lockfiles that [release.Lock] rewrites, and nothing
+// when it rewrites none.
 func ciVersionCommand(ctx context.Context, s *session) *cobra.Command {
 	var title string
 	cmd := &cobra.Command{
@@ -560,6 +577,39 @@ func writeFile(file string, data []byte) error {
 	return nil
 }
 
+// relock rewrites the lockfiles of r that record the earlier content of a package of its publish
+// plan with [release.Lock], writes the path of each file that it changed to the output of cmd, and
+// reports whether it changed one. It writes the message of changesets when no lockfile is stale. It
+// returns the error of the publish plan and of Lock.
+func relock(ctx context.Context, cmd *cobra.Command, r *releaseRepository) (bool, error) {
+	plan, err := publishPlanOf(ctx, r)
+	if err != nil {
+		return false, err
+	}
+	written, err := release.Lock(ctx, r.root, r.graph, &plan)
+	if err != nil {
+		return false, err
+	}
+	if len(written) == 0 {
+		fmt.Fprintln(cmd.OutOrStdout(), "No unreleased changesets found.")
+		return false, nil
+	}
+	for _, file := range written {
+		fmt.Fprintf(cmd.OutOrStdout(), "wrote %s\n", file)
+	}
+	return true, nil
+}
+
+// publishPlanOf returns the publish plan of r against the tags of git. It returns the error of git
+// and of [release.NewPublishPlan].
+func publishPlanOf(ctx context.Context, r *releaseRepository) (release.PublishPlan, error) {
+	tags, err := vcs.Tags(ctx, r.root)
+	if err != nil {
+		return release.PublishPlan{}, err
+	}
+	return release.NewPublishPlan(ctx, r.graph, &r.config, tags)
+}
+
 // releaseRepository returns the repository of the working directory of s with its packages and
 // .changeset/config.json, and writes each warning of the configuration to warnings. It returns the
 // error of the discovery, of reading the configuration and of [release.ParseConfig].
@@ -605,11 +655,7 @@ func (s *session) publishPlan(ctx context.Context, warnings io.Writer) (
 	if err != nil {
 		return nil, release.PublishPlan{}, err
 	}
-	tags, err := vcs.Tags(ctx, r.root)
-	if err != nil {
-		return nil, release.PublishPlan{}, err
-	}
-	plan, err := release.NewPublishPlan(ctx, r.graph, &r.config, tags)
+	plan, err := publishPlanOf(ctx, r)
 	return r, plan, err
 }
 
@@ -638,8 +684,8 @@ func (s *session) planOf(ctx context.Context, warnings io.Writer, from string) (
 
 // version writes plan into the repository r with [release.Version], with the host of GitHub of the
 // environment of s for the links of the changelog of GitHub, writes the path of each file that it
-// changed, and reports whether it wrote the plan. It writes the message of changesets for a plan
-// without changesets and reports false. It returns the error of the host and of Version.
+// changed, and reports whether it wrote the plan. For a plan without changesets it rewrites the
+// stale lockfiles of r with [relock]. It returns the error of the host, of Version and of relock.
 func (s *session) version(
 	ctx context.Context, cmd *cobra.Command, r *releaseRepository, plan *release.Plan,
 ) (bool, error) {
@@ -649,8 +695,7 @@ func (s *session) version(
 	}
 	written, err := release.Version(ctx, r.root, r.graph, &r.config, plan, host)
 	if errors.Is(err, release.ErrNoChangesets) {
-		fmt.Fprintln(cmd.OutOrStdout(), "No unreleased changesets found.")
-		return false, nil
+		return relock(ctx, cmd, r)
 	}
 	for _, file := range written {
 		fmt.Fprintf(cmd.OutOrStdout(), "wrote %s\n", file)

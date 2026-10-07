@@ -35,6 +35,8 @@
 //   - A [Tagger] names the tags of a toolchain whose tools read a version from a tag.
 //   - A [Packer] builds the artifacts that a registry receives.
 //   - A [Publisher] uploads them. A toolchain without one publishes a release by its tag.
+//   - A [Locker] reports and rewrites the lockfiles that record the content of a package whose
+//     release waits for its publish, such as a go.sum after a change to a released module.
 //
 // # Answers
 //

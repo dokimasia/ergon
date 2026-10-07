@@ -12,6 +12,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"go.dokimi.dev/ergon/core/workspace"
 	"go.dokimi.dev/ergon/service/vcs"
@@ -63,28 +64,24 @@ type Published struct {
 // A chunk starts after the tags of the chunk before it. Publish calls r.Finish once, after the last
 // tag or after an error.
 //
-// It returns an error that wraps [ErrPublishPlan] for a plan that does not fit g, before it
-// publishes anything, and an error that wraps [ErrTag] for a tag that r has at another commit than
-// head, with both commits. It returns the error of a publisher, of r and of reading a changelog. On
-// an error it also returns the packages that it released before the error.
+// Before it publishes anything, it returns an error that wraps [ErrPublishPlan] for a plan that does
+// not fit g, and an error that wraps [ErrStale] for lockfiles that record other content of the
+// packages of plan than the working tree, as [Stale] reports them, with their paths. It returns an
+// error that wraps [ErrTag] for a tag that r has at another commit than head, with both commits. It
+// returns the error of Stale, of a publisher, of r and of reading a changelog. On an error it also
+// returns the packages that it released before the error.
 func Publish(ctx context.Context, root string, g *Graph, plan *PublishPlan, head, dir string, r Releaser) (
 	[]Published, error,
 ) {
-	for _, chunk := range plan.Plan {
-		for k := range chunk {
-			i, ok := g.index[chunk[k].Name]
-			switch {
-			case !ok:
-				return nil, fmt.Errorf("%w: the package %s, which the repository does not have", ErrPublishPlan,
-					chunk[k].Name)
-			case chunk[k].Kind == KindPublish && g.roles[i].publisher == nil:
-				return nil, fmt.Errorf("%w: the upload of %s, whose toolchain has no registry", ErrPublishPlan,
-					chunk[k].Name)
-			}
-		}
+	stale, err := Stale(ctx, root, g, plan)
+	if err != nil {
+		return nil, err
+	}
+	if len(stale) > 0 {
+		return nil, fmt.Errorf("%w: %s, which ergon release version rewrites", ErrStale, strings.Join(stale, ", "))
 	}
 	var released []Published
-	err := publish(ctx, root, g, plan, head, dir, r, &released)
+	err = publish(ctx, root, g, plan, head, dir, r, &released)
 	return released, errors.Join(err, r.Finish(ctx))
 }
 

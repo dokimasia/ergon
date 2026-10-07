@@ -254,6 +254,18 @@ func TestPublish(t *testing.T) {
 				kind:  release.KindPublish,
 				want:  release.ErrPublishPlan,
 			},
+			{
+				name:  "returns ErrStale for lockfiles that record other content of a package",
+				setup: func(s *state, _ *releaser) { s.roles = []any{&lockfiles{stale: []string{lockA}}} },
+				kind:  release.KindTagOnly,
+				want:  release.ErrStale,
+			},
+			{
+				name:  "returns the error of the lockfiles of a toolchain",
+				setup: func(s *state, _ *releaser) { s.roles = []any{&lockfiles{failStale: errLockfiles}} },
+				kind:  release.KindTagOnly,
+				want:  errLockfiles,
+			},
 		}
 		for _, tt := range failures {
 			t.Run(tt.name, func(t *testing.T) {
@@ -269,6 +281,18 @@ func TestPublish(t *testing.T) {
 				assert.ErrorIs(t, err, tt.want, "Publish")
 			})
 		}
+
+		t.Run("names the stale lockfiles and the command that rewrites them", func(t *testing.T) {
+			t.Parallel()
+			s, plan := publishable(t)
+			s.roles = []any{&lockfiles{stale: []string{lockA}}}
+			r := &releaser{}
+			_, err := release.Publish(t.Context(), t.TempDir(), s.graph(t), plan, commitA, "", r)
+			assert.ErrorIs(t, err, release.ErrStale, "Publish")
+			assert.Contains(t, err.Error(), "stale lockfiles: "+lockA+", which ergon release version rewrites",
+				"the error")
+			assert.Empty(t, r.releases, "the releases")
+		})
 
 		t.Run("returns the error of a changelog that it cannot read", func(t *testing.T) {
 			t.Parallel()

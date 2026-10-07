@@ -101,6 +101,26 @@ func (p *PublishPlan) Empty() bool {
 	return !slices.ContainsFunc(p.Plan, func(chunk []PublishEntry) bool { return len(chunk) > 0 })
 }
 
+// check returns an error that wraps [ErrPublishPlan] for the first entry of p that does not fit g:
+// an entry of a package that g does not have, and an entry of [KindPublish] of a package whose
+// toolchain has no publisher.
+func (p *PublishPlan) check(g *Graph) error {
+	for _, chunk := range p.Plan {
+		for k := range chunk {
+			i, ok := g.index[chunk[k].Name]
+			switch {
+			case !ok:
+				return fmt.Errorf("%w: the package %s, which the repository does not have", ErrPublishPlan,
+					chunk[k].Name)
+			case chunk[k].Kind == KindPublish && g.roles[i].publisher == nil:
+				return fmt.Errorf("%w: the upload of %s, whose toolchain has no registry", ErrPublishPlan,
+					chunk[k].Name)
+			}
+		}
+	}
+	return nil
+}
+
 // chunks returns entries in chunks of dependency order: each entry in the chunk after the last
 // chunk of an entry whose package it requires outside the dev section, in the order of the
 // packages within a chunk. The entries of packages that require each other share the chunk after

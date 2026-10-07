@@ -38,8 +38,8 @@ type Git struct {
 
 // Register adds the toolchain of Go and then Go to c. The toolchain discovers the modules of
 // go.work with [goworkspace.Discoverer], records the version of a module in its CHANGELOG.md and
-// its tags, and releases the modules with [release.Versioner] and [release.Tagger], which read the
-// repository through git.
+// its tags, and releases the modules with [release.Versioner], [release.Tagger] and
+// [release.Locker], which read the repository through git.
 //
 // It returns an error that wraps [ErrGit] for a git without Tags or Snapshot, and the first error
 // of [language.RegisterToolchain] and [language.Register], which wraps [language.ErrRegistered]
@@ -54,7 +54,8 @@ func Register(c *language.Catalog, git Git) error {
 		ChangelogVersion: true,
 	}
 	versioner := release.Versioner{Snapshot: git.Snapshot}
-	if err := language.RegisterToolchain(c, toolchain, versioner, release.Tagger{}); err != nil {
+	locker := release.Locker{Snapshot: git.Snapshot}
+	if err := language.RegisterToolchain(c, toolchain, versioner, release.Tagger{}, locker); err != nil {
 		return err
 	}
 	return language.Register(c, language.Declaration{Name: Language, Toolchain: Toolchain}, baseline.Producer{})

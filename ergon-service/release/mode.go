@@ -17,12 +17,13 @@ const (
 	ModeNone = "none"
 )
 
-// SelectMode returns the mode of the release workflow for the changesets sets of the repository and
-// the publish plan plan: [ModeVersion] for a repository with changesets, [ModePublish] for a plan
-// with an entry, and [ModeNone] otherwise.
-func SelectMode(sets []changeset.Changeset, plan *PublishPlan) string {
+// SelectMode returns the mode of the release workflow for the changesets sets of the repository,
+// the publish plan plan, and the lockfiles that [Stale] reports for plan: [ModeVersion] for a
+// repository with changesets or with stale lockfiles, [ModePublish] for a plan with an entry, and
+// [ModeNone] otherwise.
+func SelectMode(sets []changeset.Changeset, plan *PublishPlan, stale []string) string {
 	switch {
-	case len(sets) > 0:
+	case len(sets) > 0, len(stale) > 0:
 		return ModeVersion
 	case !plan.Empty():
 		return ModePublish

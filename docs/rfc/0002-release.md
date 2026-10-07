@@ -132,13 +132,13 @@ ergon reads `.changeset/config.json`, which the common files of ergon init seed.
 |---|---|---|
 | `ergon release add` | packages, config | one changeset. Flags: `--empty`, `-m`, `--bump <name>=<level>`, `--open` |
 | `ergon release status` | changesets, the diff | the version plan on stdout. Flags: `--since`, `--output`, `--verbose` |
-| `ergon release version` | changesets, config, manifests | versions, dependents' requirements, `CHANGELOG.md`, lockfiles. Deletes consumed changesets. Flag: `--dry-run` |
+| `ergon release version` | changesets, config, manifests, lockfiles | versions, dependents' requirements, `CHANGELOG.md`, lockfiles. Deletes consumed changesets. Without changesets, the stale lockfiles of the publish plan. Flag: `--dry-run` |
 | `ergon release publish-plan` | manifests, changelogs, registries, tags | the publish plan. Flag: `--output` |
 | `ergon release pack` | the publish plan | artifacts. Flags: `--from-publish-plan`, `--out-dir` |
-| `ergon release publish` | the publish plan, the packed artifacts | registries, tags, GitHub Releases. Flags: `--from-publish-plan`, `--from-pack-dir`, `--no-git-tag`, `--output` |
-| `ergon release git-tag` | versions, tags | tags only |
-| `ergon release ci select-mode` | changesets, the publish plan | `mode`, and the publish plan for the next job. Flag: `--output` |
-| `ergon release ci version` | changesets, config, manifests | the writes of `version`, as commits on `ergon-release/<base>`, and the version pull request. Flag: `--title` |
+| `ergon release publish` | the publish plan, the packed artifacts, lockfiles | registries, tags, GitHub Releases, and nothing while a lockfile is stale. Flags: `--from-publish-plan`, `--from-pack-dir`, `--no-git-tag`, `--output` |
+| `ergon release git-tag` | versions, tags, lockfiles | tags only |
+| `ergon release ci select-mode` | changesets, the publish plan, lockfiles | the stale lockfiles, `mode`, and the publish plan for the next job. Flag: `--output` |
+| `ergon release ci version` | changesets, config, manifests, lockfiles | the writes of `version`, as commits on `ergon-release/<base>`, and the version pull request. Flag: `--title` |
 
 ergon init seeds `.changeset/config.json` and `.changeset/README.md` in every repository, so the release command has no `init` that would write the same files. `version` and `add` write files and run no git command that writes.
 
@@ -285,6 +285,20 @@ type Publisher interface {
 	Publish(ctx context.Context, dir string, pkgs []workspace.Package) error
 }
 
+// Locker reports and rewrites the lockfiles that record the content of the
+// packages of the repository, as go.sum records the hash of each module
+// version. The go toolchain implements it. npm, Cargo and uv record no
+// content of a workspace package in their lockfiles.
+type Locker interface {
+	// Stale returns the lockfiles under root that record, for a package of
+	// pkgs at its version, other content than the working tree has.
+	Stale(ctx context.Context, root string, pkgs []workspace.Package) ([]string, error)
+
+	// Lock rewrites those lockfiles to the content of the working tree, and
+	// returns the paths that it changed.
+	Lock(ctx context.Context, root string, pkgs []workspace.Package) ([]string, error)
+}
+
 // Edit is the change release makes to one package's manifest.
 type Edit struct {
 	// Version is the new version, or Package.Version when only
@@ -387,6 +401,8 @@ Two facts make the result general:
 
 A module required through a directory `replace` needs no zip, because `go mod tidy` reads it from disk. A cycle among modules without a `replace` has no fixed point for `go.sum`, so `version` refuses it and lists the modules in the cycle.
 
+A change to a released module between the version commit and its tag changes the content that the tag names, while the `go.sum` of each dependent still records the content of the version commit. The `Locker` of Go compares each `go.sum` line of a module version of the publish plan with the hash of the module's zip from the working tree. `select-mode` returns `version` for such a `go.sum`, and `version` without changesets removes the stale lines and runs `go mod tidy` against the file proxy again, a module after every released module that it requires. `publish` and `git-tag` refuse to tag while a `go.sum` is stale.
+
 The tag prefix is the module's directory relative to the repository root. The vanity page of each module publishes that directory, as RFC-0001 states.
 
 ### Languages
@@ -482,7 +498,7 @@ ergon init renders the workflow `release.yml` among the GitHub files, as RFC-000
 | pack | `contents: read` | the release steps of each producer, then `ergon release pack`, which writes the publish plan and the artifacts as the artifact `release` | none |
 | publish | `contents: write` | `ergon release publish` | `published`, and `published-packages`, a JSON list of names and versions |
 
-- select-mode returns `version` while `.changeset` has changesets, `publish` for a publish plan with an entry, and `none` otherwise. version runs for `version`, and ci, pack and publish run in that order for `publish`.
+- select-mode returns `version` while `.changeset` has changesets or a lockfile records the earlier content of a package of the publish plan, `publish` for a publish plan with an entry, and `none` otherwise. version runs for `version`, and ci, pack and publish run in that order for `publish`.
 - A producer contributes its release steps to the workflows, as it contributes its jobs. The jobs version and pack run them after the installation of ergon, so the version job has the lockfile tool of every language of the repository.
 - The job publish requests `id-token: write` and runs in the environment `release` when a toolchain of the repository publishes to a registry, as the section Credentials states. The toolchain of Go publishes by its tags, without a token of OIDC or an environment.
 - `ci version` first points `ergon-release/<base>` at the base commit through the REST refs endpoint. It then commits with the GraphQL mutation `createCommitOnBranch`, passing `expectedHeadOid`, and opens the pull request or updates the open one. GitHub's schema states that commits made with this mutation are signed by GitHub and marked verified. A repository that runs the job sets "Allow GitHub Actions to create and approve pull requests", because `GITHUB_TOKEN` cannot open a pull request without it.
@@ -566,7 +582,7 @@ jobs:
 | `changelog: false` in a repository with Go modules | Nothing written | The error names the key |
 | A lockfile tool fails during `version` | ergon restores every file it wrote and every changeset it deleted | Fix the cause and re-run |
 | `main` moves while the version pull request is open | The next push regenerates the pull request from the new `main` | None |
-| The version pull request merges while a Go module it released had changed on `main` | A dependent's `go.sum` no longer matches the module content | `select-mode` recomputes the hashes, returns `version`, and the new pull request rewrites only `go.sum` |
+| The version pull request merges while a Go module it released had changed on `main` | A dependent's `go.sum` records other content of the module than its tag would name, and `publish` refuses to tag | `select-mode` reports the `go.sum` and returns `version`, and the new pull request rewrites only the stale `go.sum` files |
 | One package fails to publish | Earlier chunks are published and tagged | Re-run the workflow. `publish` skips what `Published` reports |
 | A tag exists at another commit | That package is not published | The error names the tag and both commits |
 | A Go cycle without `replace` | Nothing written | The error lists the modules in the cycle |
@@ -577,6 +593,7 @@ Invariants:
 
 - `version` is idempotent. A second run over its own output writes the same bytes.
 - `publish` tags a package only after its registry reports the version.
+- `publish` tags a package only while every lockfile records the content of the working tree for the packages of the plan.
 - Registries are not transactional. `publish` works chunk by chunk, so a re-run continues from the first package the registry does not have.
 
 ## Alternatives considered

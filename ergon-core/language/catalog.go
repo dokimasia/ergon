@@ -205,11 +205,12 @@ func ToolchainRole[R any](c *Catalog, name workspace.Toolchain) (R, bool) {
 // checkRoles returns an error that wraps [ErrUnknownRole] for the first of roles that implements
 // no role interface, naming the kind and the name of its owner, and nil when every role
 // implements one. A toolchain or a language registers a [Producer], a [Versioner], a [Tagger], a
-// [Packer] or a [Publisher]: [Calculator], [Configurable] and [Contributor] extend a producer.
+// [Packer], a [Publisher] or a [Locker]: [Calculator], [Configurable] and [Contributor] extend a
+// producer.
 func checkRoles(roles []any, kind, name string) error {
 	for _, role := range roles {
 		switch role.(type) {
-		case Producer, Versioner, Tagger, Packer, Publisher:
+		case Producer, Versioner, Tagger, Packer, Publisher, Locker:
 		default:
 			return fmt.Errorf("%w: %T of %s %q", ErrUnknownRole, role, kind, name)
 		}

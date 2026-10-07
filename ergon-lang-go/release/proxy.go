@@ -21,6 +21,13 @@ const (
 	dirPerm  fs.FileMode = 0o755
 )
 
+// The extensions of the files of a module version in a proxy.
+const (
+	zipExt  = ".zip"
+	modExt  = ".mod"
+	infoExt = ".info"
+)
+
 // proxy is a module proxy in a directory, in the layout that GOPROXY=file:// reads: for each module,
 // the file @v/list with its versions, and the files .info, .mod and .zip of each version.
 type proxy struct {
@@ -43,26 +50,34 @@ func (p *proxy) url() string {
 // golang.org/x/mod/zip wrote data for, so its path and its version escape. It returns the error of
 // the file system.
 func (p *proxy) add(m module.Version, data, mod []byte) error {
-	// zip.Create checked the path and the version of m, and a struct of one string encodes.
-	escaped, _ := module.EscapePath(m.Path)
-	file, _ := module.EscapeVersion(m.Version)
+	// A struct of one string encodes.
 	info, _ := json.Marshal(&struct {
 		Version string `json:"Version"`
 	}{m.Version})
 	p.versions[m.Path] = append(p.versions[m.Path], m.Version)
 	list := strings.Join(p.versions[m.Path], "\n") + "\n"
-	dir := filepath.Join(p.dir, filepath.FromSlash(escaped), "@v")
+	zipFile := p.file(m, zipExt)
+	dir := filepath.Dir(zipFile)
 	if err := os.MkdirAll(dir, dirPerm); err != nil {
 		return fmt.Errorf("release: serve %s: %w", m, err)
 	}
 	files := []struct {
 		name string
 		data []byte
-	}{{file + ".zip", data}, {file + ".mod", mod}, {file + ".info", info}, {"list", []byte(list)}}
+	}{{zipFile, data}, {p.file(m, modExt), mod}, {p.file(m, infoExt), info}, {filepath.Join(dir, "list"), []byte(list)}}
 	for _, f := range files {
-		if err := os.WriteFile(filepath.Join(dir, f.name), f.data, filePerm); err != nil {
+		if err := os.WriteFile(f.name, f.data, filePerm); err != nil {
 			return fmt.Errorf("release: serve %s: %w", m, err)
 		}
 	}
 	return nil
+}
+
+// file returns the path of the file of the version m in p with the extension ext, such as .zip. m
+// is a version that golang.org/x/mod/zip wrote a zip for, so its path and its version escape.
+func (p *proxy) file(m module.Version, ext string) string {
+	// zip.Create checked the path and the version of m.
+	escaped, _ := module.EscapePath(m.Path)
+	version, _ := module.EscapeVersion(m.Version)
+	return filepath.Join(p.dir, filepath.FromSlash(escaped), "@v", version+ext)
 }

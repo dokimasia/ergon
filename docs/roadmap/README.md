@@ -13,7 +13,7 @@ What we are building, in what order, and what has to be true first. Milestone nu
 | 2 | 0007 License headers: `ergon license fix` and `check` on skywalking-eyes, and the job `license` of the workflow of the gate | Built | none |
 | 3 | 0000 Vocabulary, changeset files and the release planner | Built | 0007 |
 | 4 | 0002 Go releases in one commit through the file proxy | Built | 0000 |
-| 5 | 0003 The CI flow: select-mode, version, pack and publish, the workflow `release.yml` and the job `changeset` of ergon init | Built, except the recovery of `go.sum` in select-mode that the failure table of RFC-0002 states | 0002 |
+| 5 | 0003 The CI flow: select-mode, version, pack and publish, the workflow `release.yml` and the job `changeset` of ergon init | Built | 0002 |
 | 6 | 0001 TypeScript and JavaScript releases, checked against changesets 3.0.3 on the same repositories | Planned | 0003 |
 | 7 | 0004 Rust releases | Planned | 0003 |
 | 8 | 0005 Python releases | Planned | 0003 |

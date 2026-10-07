@@ -103,3 +103,23 @@ type Publisher interface {
 	// returns the error of the first upload that fails.
 	Publish(ctx context.Context, dir string, pkgs []workspace.Package) error
 }
+
+// Locker is the release role of a toolchain whose lockfiles record the content of the packages of
+// the repository, as go.sum records the hash of each version of a module that a module requires.
+// The version commit of a release records the content of each released package. A change to such
+// a package before its publish makes the record stale, and the tag of the publish would then name
+// content that the lockfiles do not record. A toolchain whose lockfiles do not record such content,
+// such as npm with its workspace links, does not implement Locker.
+type Locker interface {
+	// Stale returns the lockfiles under root that record, for a package of pkgs at its Version,
+	// content other than the content of the package in the working tree. The paths are relative to
+	// root, slash-separated and sorted. Stale modifies neither the files under root nor pkgs. It
+	// returns the error of reading the lockfiles and of building the content of a package.
+	Stale(ctx context.Context, root string, pkgs []workspace.Package) ([]string, error)
+
+	// Lock rewrites the lockfiles under root that record content of a package of pkgs at its
+	// Version, so that they record the content of the package in the working tree. It returns the
+	// paths that it changed, relative to root and slash-separated. On an error it also returns the
+	// paths that it changed before the error, and the caller restores them.
+	Lock(ctx context.Context, root string, pkgs []workspace.Package) ([]string, error)
+}

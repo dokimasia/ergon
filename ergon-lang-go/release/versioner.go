@@ -96,12 +96,20 @@ func (Versioner) Validate(p *workspace.Package, v version.Version) error {
 // error of the file system. On an error it also returns every go.mod and go.sum that it began to
 // change.
 func (v Versioner) Apply(ctx context.Context, root string, edits []language.Edit) ([]string, error) {
-	r, err := newRun(v, root, edits)
+	r, err := newRun(v.Snapshot, root)
 	if err != nil {
 		return nil, err
 	}
-	err = r.release(ctx, edits)
-	if err != nil {
+	for k := range edits {
+		e := &edits[k]
+		if err := r.checkModule(e.Package.Name); err != nil {
+			return nil, err
+		}
+		if e.Version != e.Package.Version {
+			r.released[e.Package.Name] = "v" + e.Version.String()
+		}
+	}
+	if err := r.release(ctx, edits); err != nil {
 		return r.files.touched, err
 	}
 	return r.files.changed(), nil

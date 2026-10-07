@@ -42,7 +42,7 @@ A type belongs here when a role signature names it. A type that does something, 
 | Package | Contains | Imports |
 |---|---|---|
 | `option` | The option types that every section of `.ergon.yaml` composes, each with `Validate`: the kinds of tool `Module`, `PyPI`, `NPM`, `Crate`, `Maven`, `Composer` and the release binaries `Binary`, `Release` and `UV`, the step options `Run`, `Fuzz`, `Bench`, `Mutate`, `Audit` and `Threshold`, `Check`, `Step`, `Severity`, `Paths`, `Version`, and `CI` with its forms for the runners and the versions | `workflow` |
-| `language` | `Toolchain`, `Declaration`, `Catalog`, `RegisterToolchain`, `Register`, `ToolchainRole` and `Role`, and the role interfaces with one file per command. `release.go` contains `Resolution`, `Versioner`, `Tagger`, `Packer`, `Publisher` and `Edit`. `init.go` contains `Producer`, `Calculator`, `Configurable`, `Contributor`, `Options`, `Answers` with `Validate`, `Repository`, and the path of `.ergon.yaml` | `workspace`, `spdx`, `workflow` |
+| `language` | `Toolchain`, `Declaration`, `Catalog`, `RegisterToolchain`, `Register`, `ToolchainRole` and `Role`, and the role interfaces with one file per command. `release.go` contains `Resolution`, `Versioner`, `Tagger`, `Packer`, `Publisher`, `Locker` and `Edit`. `init.go` contains `Producer`, `Calculator`, `Configurable`, `Contributor`, `Options`, `Answers` with `Validate`, `Repository`, and the path of `.ergon.yaml` | `workspace`, `spdx`, `workflow` |
 
 The catalog has two kinds of entry, and each registers its roles. Toolchains discover packages and implement the release roles. Each language declares its toolchain and implements the roles of `init`. A toolchain that two languages share also implements them, for the files and the contributions those languages share: the `jvm` toolchain of the Java module and the `js` toolchain of the JavaScript module. Roles are separate interfaces, so a toolchain or a language declines a command by not implementing its role. The catalog selects by type assertion, and each implementation asserts its roles at compile time.
 
@@ -52,7 +52,7 @@ The language-neutral side of each command. It imports `core` and nothing else in
 
 | Package | Contains | Imports |
 |---|---|---|
-| `release` | The changesets of a repository, the planner, the status of a branch, the version of a plan with its changelogs, the version pull request, the publish plan, the pack and the publish, and the interfaces `Forge`, `Proposer`, `Releaser` and `TagForge` that it calls | `core/*`, `vcs`, doublestar |
+| `release` | The changesets of a repository, the planner, the status of a branch, the version of a plan with its changelogs, the version pull request, the publish plan, the stale lockfiles of a publish plan and their rewrite, the pack and the publish, and the interfaces `Forge`, `Proposer`, `Releaser` and `TagForge` that it calls | `core/*`, `vcs`, doublestar |
 | `licenses` | `Config`, the `license` section of `.ergon.yaml`, `Text` and the texts of the 44 licenses, `Check`, `Fix`, the table of comment styles with its overrides, and the removal of outdated header blocks | `core/*`, `vcs`, skywalking-eyes `assets`, `pkg/comments`, `pkg/header`, `pkg/license` and `pkg/logger`, logrus, doublestar |
 | `licenses/baseline` | The producer of `LICENSE` and `NOTICE` for `init` | `core/*`, `licenses` |
 | `baseline` | The `init` command: `New`, `Add`, `Remove`, `Check`, `Sync` and `Options` over the producers that `Open` receives, and the plan of their changes | `core/*`, `baseline/lock`, `baseline/options`, `baseline/overlay`, `baseline/render` |
@@ -91,7 +91,8 @@ ergon-lang-go/
   language.go   Language, Toolchain, Git and Register
   workspace/    go.work and go.mod discovery, for every command
   release/      Versioner: require rewrites, go.sum through the file proxy, the
-                replaces of go.work, tag prefixes
+                replaces of go.work, tag prefixes. Locker: the go.sum lines of a
+                pending release that record other content, and their rewrite
   baseline/     the producer: the options of the section go and their rules, the
                 templates, and the contributions to the workflows
   analysis/     the analyzers errorprefix and skipexpiry, which lint-go runs

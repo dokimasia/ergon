@@ -26,16 +26,23 @@ func TestMode(t *testing.T) {
 
 		withEntry := &release.PublishPlan{Version: 1, Plan: [][]release.PublishEntry{{{Name: "pkg-a"}}}}
 		tests := []struct {
-			plan *release.PublishPlan
-			name string
-			want string
-			sets []changeset.Changeset
+			plan  *release.PublishPlan
+			name  string
+			want  string
+			sets  []changeset.Changeset
+			stale []string
 		}{
 			{
 				name: "returns version for a repository with changesets",
 				sets: []changeset.Changeset{{ID: "strange-words-combine"}},
 				plan: withEntry,
 				want: pinnedVersion,
+			},
+			{
+				name:  "returns version for a plan with stale lockfiles",
+				plan:  withEntry,
+				stale: []string{"b/go.sum"},
+				want:  pinnedVersion,
 			},
 			{
 				name: "returns publish for a plan with an entry",
@@ -51,7 +58,7 @@ func TestMode(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				t.Parallel()
-				assert.Equal(t, release.SelectMode(tt.sets, tt.plan), tt.want, "SelectMode")
+				assert.Equal(t, release.SelectMode(tt.sets, tt.plan, tt.stale), tt.want, "SelectMode")
 			})
 		}
 	})

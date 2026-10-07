@@ -57,24 +57,33 @@
 // whose registry lacks its version, and each package without a registry whose tag is missing, in
 // chunks of dependency order. [Pack] builds the artifacts of the plan, and [Publish] uploads the
 // packages and tags them through a [Releaser]: a [GitReleaser] on a workstation, and a
-// [ForgeReleaser] in CI. [SelectMode] chooses the job of the release workflow from the changesets
-// and the publish plan.
+// [ForgeReleaser] in CI. [SelectMode] chooses the job of the release workflow from the changesets,
+// the publish plan and its stale lockfiles.
+//
+// # Lockfiles
+//
+// A change to a package of a publish plan after its version commit changes the content that the tag
+// of the publish names. The lockfiles of the packages that require it, such as a go.sum, still
+// record the content of the version commit. [Stale] returns those lockfiles through the
+// [language.Locker] of each toolchain, and [Lock] rewrites them. [SelectMode] then chooses the job
+// version, and [NewProposal] lists the rewritten lockfiles in the body of the version pull request.
+// [Publish] returns an error that wraps [ErrStale] until the rewrite is merged.
 //
 // # Errors
 //
 // Each error of the package wraps one of [ErrPackages], [ErrConfig], [ErrChangeset],
-// [ErrChangelog], [ErrPublishPlan] and [ErrTag], and names the package, the key, the file or the tag
-// that caused it, or is [ErrNoChangesets]. The package also returns the error of git, which wraps
-// [go.dokimi.dev/ergon/service/vcs.ErrGit], the error of the file system with its path, and the
-// error of a toolchain role, of a [Forge], a [Proposer], a [Releaser] or of
+// [ErrChangelog], [ErrPublishPlan], [ErrTag] and [ErrStale], and names the package, the key, the
+// file or the tag that caused it, or is [ErrNoChangesets]. The package also returns the error of
+// git, which wraps [go.dokimi.dev/ergon/service/vcs.ErrGit], the error of the file system with its
+// path, and the error of a toolchain role, of a [Forge], a [Proposer], a [Releaser] or of
 // [go.dokimi.dev/ergon/core/version].
 //
 // # Concurrency
 //
 // A [Graph], a [Config], a [Plan] and a [PublishPlan] are values that no function of the package
-// modifies after it returns them, so they are safe for concurrent use. [Version], [AddChangeset] and
-// [Publish] write the working tree or the tags of a repository, so two calls must not write one
-// repository at once.
+// modifies after it returns them, so they are safe for concurrent use. [Version], [Lock],
+// [AddChangeset] and [Publish] write the working tree or the tags of a repository, so two calls must
+// not write one repository at once.
 //
 // # Dependency position
 //
