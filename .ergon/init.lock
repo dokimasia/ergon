@@ -1,16 +1,5 @@
 {
   "ergon": "dev",
-  "answers": {
-    "name": "ergon",
-    "owner": "Dokimasia B.V.",
-    "license": "MIT",
-    "repository": "dokimasia/ergon",
-    "security-contact": "security@dokimi.dev",
-    "languages": [
-      "go"
-    ],
-    "year": 2026
-  },
   "files": [
     {
       "path": ".commitlint.yaml",
@@ -55,32 +44,32 @@
     {
       "path": ".github/actions/setup-make/action.yml",
       "producer": "github",
-      "sha256": "8d52179e020afea1bb88a4f2c3557bc0ebb61b598ba2124d7e37bdcbfc130a09"
+      "sha256": "0adbd275abc6c40082dc58e402c8164c41050e44c46417e9f36890eae1822155"
     },
     {
       "path": ".github/dependabot.yml",
       "producer": "github",
-      "sha256": "1d69183e820559a98e5fc4660e8b2315f0225b6de4f1827f7d7712c9ebe5e90e"
+      "sha256": "94971d220707444d500910f6952c7af152fc95ad651d56e552917d55899f1839"
     },
     {
       "path": ".github/workflows/baseline.yml",
       "producer": "github",
-      "sha256": "639ab634b7c254507f1b403f2cd594ae64200abf59f14aaced8e9d56b9ffb406"
+      "sha256": "03cfe431365251a53283a5694113ded894713715ad77e563bb86502044fdb926"
     },
     {
       "path": ".github/workflows/ci.yml",
       "producer": "github",
-      "sha256": "8a62c611049b3a4918a727890d20ddb631465d84927d83ee3c651d136b7760b6"
+      "sha256": "9749d468ceddaf5e2a877f614b515818fd19e23f558554402fbfd7c502ec185a"
     },
     {
       "path": ".github/workflows/codeql.yml",
       "producer": "github",
-      "sha256": "fe9331a203b16a6ef5c9e1fae05895bdf49014d21da63302b9bfb34d62b95b43"
+      "sha256": "73258c4feacff149ac50c7cfb695871a474076c17835059e1a6d70200cfdbcec"
     },
     {
       "path": ".github/workflows/security.yml",
       "producer": "github",
-      "sha256": "055549d7ecda8050d76c7143153dbfe2c9c90c626eae1ce39b23350c62b6c040"
+      "sha256": "623fd26152fc68d822fcf30ffb781d146bd8efb3a94d3ec0ed709b5c2a67f45b"
     },
     {
       "path": ".gitignore",
@@ -90,8 +79,8 @@
     {
       "path": ".golangci.yml",
       "producer": "go",
-      "local": "ceae9664ca306650448cc6fc9bcc23b15aebaa14283d02549f77b2e8db4d6c29",
-      "sha256": "781cdb62de84526945a1014b1d7d1eb5b8807f3ea33176a8ed51f9ac373b51a5"
+      "local": "c054fc0dc5c4ce98143b81f6760effff4873312e2ec4963bc7bd3941e7aea0e3",
+      "sha256": "48ecfa7dd79b2576199bfdbc03b5b970dd1e88b3c1e395535221bf4998a54bae"
     },
     {
       "path": ".markdownlint.yml",
@@ -101,7 +90,7 @@
     {
       "path": ".pre-commit-config.yaml",
       "producer": "common",
-      "sha256": "b977d82b5c0d793f957bed81fdf4d0ccb580e46c54a1107a621d171825b9d1da"
+      "sha256": "c8bf69a0af4d6336be2eb6865a8e8cab50787c05115f1f9dd1ebf87aadd4e3e8"
     },
     {
       "path": "CODE_OF_CONDUCT.md",
@@ -110,13 +99,108 @@
     },
     {
       "path": "LICENSE",
-      "producer": "common",
+      "producer": "license",
       "sha256": "540b73560bd7b122c9ed368fed23e0e79a91b9327207c4516caf8dce46d70b15"
     },
     {
       "path": "Makefile",
       "producer": "common",
-      "sha256": "f5b1e3e83fbbbffa9633eb144176f217eba4002316229d95cb0c81aca1ed8ea6"
+      "sha256": "e32d77e0c43add32b7ec71305655340e64e0aae519cda4a12527940ca7aef2e5"
     }
-  ]
+  ],
+  "settings": {
+    "common.ci.actions.markdownlint.commit": "21c1be1b93ad9ed58fa840aacc3f279cde2a72ff",
+    "common.ci.actions.markdownlint.release": "v24.2.0",
+    "common.ci.actions.markdownlint.uses": "DavidAnson/markdownlint-cli2-action",
+    "common.ci.timeout": 10,
+    "common.pre-commit-hooks": "v6.0.0",
+    "common.tools.commitlint.sha256": {
+      "darwin/arm64": "35f25a55947031db016177ac0211d479c1fca21ccb87b368b6a429629524436c",
+      "linux/amd64": "bf9666441262bf8d31345a6d29d6f788d0dadea7d47e5b91890c3a651999c118",
+      "windows/amd64": "e8f90d08616ab8cd987b2dbef7ae0ee7fd1cb43c97f5a1ad171e8a56d1bd2f3d"
+    },
+    "common.tools.commitlint.version": "0.12.0",
+    "github.ci.actions.checkout.commit": "3d3c42e5aac5ba805825da76410c181273ba90b1",
+    "github.ci.actions.checkout.release": "v7.0.1",
+    "github.ci.actions.checkout.uses": "actions/checkout",
+    "github.ci.actions.codeql.commit": "2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2",
+    "github.ci.actions.codeql.release": "v4.38.2",
+    "github.ci.actions.codeql.uses": "github/codeql-action",
+    "github.ci.actions.dependency-review.commit": "a1d282b36b6f3519aa1f3fc636f609c47dddb294",
+    "github.ci.actions.dependency-review.release": "v5.0.0",
+    "github.ci.actions.dependency-review.uses": "actions/dependency-review-action",
+    "github.ci.actions.scorecard.commit": "2d1146689b8cda280b9bc96326124645441f03bc",
+    "github.ci.actions.scorecard.release": "v2.4.4",
+    "github.ci.actions.scorecard.uses": "ossf/scorecard-action",
+    "github.ci.timeout": 15,
+    "github.linux": "ubuntu-26.04",
+    "github.make": "4.4.1",
+    "github.runners": [
+      "ubuntu-26.04",
+      "macos-26",
+      "windows-2025"
+    ],
+    "go.audit.args": [],
+    "go.bench.args": [
+      "-benchmem"
+    ],
+    "go.bench.count": 6,
+    "go.bench.match": ".",
+    "go.bench.time": "1s",
+    "go.check": [
+      "lint",
+      "test",
+      "race",
+      "audit"
+    ],
+    "go.ci.actions.setup-go.commit": "b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
+    "go.ci.actions.setup-go.release": "v7.0.0",
+    "go.ci.actions.setup-go.uses": "actions/setup-go",
+    "go.ci.runners": [],
+    "go.ci.timeout": 30,
+    "go.ci.versions": [],
+    "go.fuzz.args": [
+      "-fuzzminimizetime=5s"
+    ],
+    "go.fuzz.match": ".",
+    "go.fuzz.time": "30s",
+    "go.generate.args": [],
+    "go.lint.exclude": [],
+    "go.mutate.args": [],
+    "go.mutate.timeout": "0s",
+    "go.mutate.workers": 1,
+    "go.paths": [
+      "./..."
+    ],
+    "go.race.args": [
+      "-count=1",
+      "-p=1"
+    ],
+    "go.test.args": [
+      "-count=1"
+    ],
+    "go.tools.benchstat": "golang.org/x/perf/cmd/benchstat@v0.0.0-20260929162123-406019bb8b68",
+    "go.tools.dokimi-mutate-go": "go.dokimi.dev/mutate/cmd/dokimi-mutate-go@v0.0.0-20261006212535-719083ce3457",
+    "go.tools.ergon-go-vet": "go.dokimi.dev/ergon/lang/go/cmd/ergon-go-vet@v0.1.0",
+    "go.tools.golangci-lint": "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0",
+    "go.tools.govulncheck": "golang.org/x/vuln/cmd/govulncheck@v1.8.0",
+    "license.ci.timeout": 10,
+    "license.exclude": [],
+    "license.parameters.additional-use-grant": "",
+    "license.parameters.change-date": "",
+    "license.parameters.change-license": "",
+    "license.parameters.licensed-work": "",
+    "license.styles": {}
+  },
+  "answers": {
+    "name": "ergon",
+    "owner": "Dokimasia B.V.",
+    "license": "MIT",
+    "repository": "dokimasia/ergon",
+    "security-contact": "security@dokimi.dev",
+    "languages": [
+      "go"
+    ],
+    "year": 2026
+  }
 }

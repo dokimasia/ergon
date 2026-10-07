@@ -1,8 +1,8 @@
 # Managed by ergon init. Add repository settings to .ergon/local/.github/workflows/security.yml and run ergon init sync.
 #
 # The security checks: the review of the dependencies that a pull request changes, the weekly
-# OpenSSF Scorecard, and a CodeQL job for each language that CodeQL analyzes, which calls
-# codeql.yml.
+# OpenSSF Scorecard, and the CodeQL analysis of each language that a producer of ergon init
+# contributes, which calls codeql.yml.
 
 name: Security
 
@@ -24,7 +24,7 @@ jobs:
     name: Dependency review
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-26.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
@@ -33,7 +33,8 @@ jobs:
           persist-credentials: false
       - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
 
-  # Scorecard publishes its results only from a job whose steps are actions of its allow list.
+  # Scorecard publishes its results only from a job whose steps are actions of its allow list, in a
+  # workflow without defaults or environment variables at its top level.
   scorecard:
     name: Scorecard
     if: github.event_name == 'schedule'
@@ -57,7 +58,7 @@ jobs:
           sarif_file: scorecard.sarif
 
   codeql-go:
-    name: CodeQL (Go)
+    name: "CodeQL (Go)"
     uses: ./.github/workflows/codeql.yml
     permissions:
       contents: read
@@ -65,4 +66,5 @@ jobs:
     with:
       language: go
       build-mode: autobuild
-      pin: go.work
+      files: go.work
+      timeout: 30

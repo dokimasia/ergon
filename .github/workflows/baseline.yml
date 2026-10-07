@@ -14,7 +14,7 @@ permissions: {}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: false
 
 jobs:
   baseline:
@@ -33,6 +33,7 @@ jobs:
           version: latest
       - name: Check the baseline
         id: check
+        shell: bash
         run: |
           if ergon init check > "$RUNNER_TEMP/findings" 2>&1; then
             echo "outdated=false" >> "$GITHUB_OUTPUT"
@@ -41,6 +42,7 @@ jobs:
           fi
       - name: Open an issue
         if: steps.check.outputs.outdated == 'true'
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}

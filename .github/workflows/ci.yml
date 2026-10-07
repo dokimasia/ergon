@@ -1,8 +1,9 @@
 # Managed by ergon init. Add repository settings to .ergon/local/.github/workflows/ci.yml and run ergon init sync.
 #
-# The gate of the repository: the checks of the documentation and of the commit messages on Linux,
-# the check of the baseline on Linux, macOS and Windows, and a job check-<language> for each
-# language, which runs make check-<language> on Linux, macOS and Windows.
+# The gate of the repository, with the jobs that each producer of ergon init contributes. A check
+# of text runs on the Linux runner of the section github of .ergon.yaml, and every other job on a
+# matrix of runners. A job that sets up a toolchain runs its steps once the repository has the
+# files of the toolchain.
 
 name: CI
 
@@ -18,6 +19,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# Every command runs in bash, which is Git Bash on Windows.
+defaults:
+  run:
+    shell: bash
+
 jobs:
   docs:
     name: Docs
@@ -31,32 +37,11 @@ jobs:
           persist-credentials: false
       - uses: DavidAnson/markdownlint-cli2-action@21c1be1b93ad9ed58fa840aacc3f279cde2a72ff # v24.2.0
         with:
-          globs: |
-            **/*.md
-            #node_modules
+          globs: "**/*.md\n#node_modules"
 
-  baseline:
-    name: Baseline (${{ matrix.os }})
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-26.04, macos-26, windows-2025]
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: ./.github/actions/setup-ergon
-      - run: ergon init check
-
-  # The commits of a pull request, against .commitlint.yaml. Dependabot writes the messages of its
-  # own pull requests, whose bodies exceed the line length.
   commits:
     name: Commits
-    if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
+    if: "github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'"
     runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
@@ -66,25 +51,54 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: "1.27.1"
-          cache: false
-      - run: go install github.com/conventionalcommit/commitlint@v0.12.0
+      - uses: ./.github/actions/setup-ergon
       - name: Check the commit messages
         env:
-          BASE: ${{ github.event.pull_request.base.sha }}
-          HEAD: ${{ github.event.pull_request.head.sha }}
+          BASE: "${{ github.event.pull_request.base.sha }}"
+          HEAD: "${{ github.event.pull_request.head.sha }}"
         run: |
           status=0
           for commit in $(git rev-list --no-merges "$BASE..$HEAD"); do
-            git log -1 --format=%B "$commit" | commitlint lint || status=1
+            git log -1 --format=%B "$commit" | ergon tool run common.commitlint -- lint || status=1
           done
           exit "$status"
 
-  # The gate of Go on Linux, macOS and Windows, which runs once the repository has go.work.
+  baseline:
+    name: "Baseline (${{ matrix.os }})"
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-26.04, macos-26, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-ergon
+      - name: Check the managed files
+        run: |
+          ergon init check
+
+  license:
+    name: License
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-ergon
+      - name: Check the license headers
+        run: |
+          ergon license check
+
   check-go:
-    name: Check (Go, ${{ matrix.os }})
+    name: "Go (${{ matrix.os }})"
     strategy:
       fail-fast: false
       matrix:
@@ -97,13 +111,22 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - if: hashFiles('go.work') != ''
+      - if: "hashFiles('**/go.mod') != ''"
         uses: ./.github/actions/setup-make
-      - if: hashFiles('go.work') != ''
+      - if: "hashFiles('**/go.mod') != ''"
+        uses: ./.github/actions/setup-ergon
+      - name: Require go.work
+        if: "hashFiles('**/go.mod') != '' && (hashFiles('go.work') == '')"
+        run: |
+          echo "::error::The targets of Go run in the modules of go.work, which the repository lacks."
+          exit 1
+      - name: Set up Go
+        if: "hashFiles('**/go.mod') != ''"
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: go.work
           cache-dependency-path: "**/go.sum"
-      - if: hashFiles('go.work') != ''
-        shell: bash
-        run: make check-go
+          go-version-file: go.work
+      - name: Check Go
+        if: "hashFiles('**/go.mod') != ''"
+        run: |
+          make check-go

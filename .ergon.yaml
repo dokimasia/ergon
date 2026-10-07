@@ -1,4 +1,162 @@
-name: "ergon"
+common:
+  # The tools of the common files.
+  tools:
+    # The release of commitlint, which checks each commit message in the commit-msg hook of
+    # .pre-commit-config.yaml and in the job commits of ci.yml.
+    commitlint:
+      sha256:
+        darwin/arm64: 35f25a55947031db016177ac0211d479c1fca21ccb87b368b6a429629524436c
+        linux/amd64: bf9666441262bf8d31345a6d29d6f788d0dadea7d47e5b91890c3a651999c118
+        windows/amd64: e8f90d08616ab8cd987b2dbef7ae0ee7fd1cb43c97f5a1ad171e8a56d1bd2f3d
+      version: 0.12.0
+  # The release of github.com/pre-commit/pre-commit-hooks, whose hooks check the hygiene of the
+  # files before each commit.
+  pre-commit-hooks: v6.0.0
+  # The pins of the actions of the jobs docs and commits of ci.yml, and the limit of each job in
+  # minutes.
+  ci:
+    actions:
+      # The action that lints the Markdown files in the job docs, with the rules of
+      # .markdownlint.yml.
+      markdownlint:
+        uses: DavidAnson/markdownlint-cli2-action
+        commit: 21c1be1b93ad9ed58fa840aacc3f279cde2a72ff
+        release: v24.2.0
+    timeout: 10
+github:
+  # The runner images of the jobs that run on every runner, each pinned to a version of its system.
+  # The key ci.runners of a section lists a part of them.
+  runners: [ubuntu-26.04, macos-26, windows-2025]
+  # The runner image of the jobs that check text and of the analyses of CodeQL, one of runners.
+  linux: ubuntu-26.04
+  # The release of GNU make that the action setup-make installs from Chocolatey on a Windows runner,
+  # whose image has no make.
+  make: 4.4.1
+  # The pins of the actions of the workflows, and the limit in minutes of each job of the GitHub
+  # files.
+  ci:
+    actions:
+      # The action that checks out the repository in every job of every workflow.
+      checkout:
+        uses: actions/checkout
+        commit: 3d3c42e5aac5ba805825da76410c181273ba90b1
+        release: v7.0.1
+      # The actions of CodeQL. init and analyze run the analysis of each language in codeql.yml, and
+      # upload-sarif uploads the results of the Scorecard.
+      codeql:
+        uses: github/codeql-action
+        commit: 2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2
+        release: v4.38.2
+      # The action that reviews the dependencies that a pull request changes, in the job
+      # dependency-review of security.yml.
+      dependency-review:
+        uses: actions/dependency-review-action
+        commit: a1d282b36b6f3519aa1f3fc636f609c47dddb294
+        release: v5.0.0
+      # The action of the OpenSSF Scorecard, in the weekly job scorecard of security.yml.
+      scorecard:
+        uses: ossf/scorecard-action
+        commit: 2d1146689b8cda280b9bc96326124645441f03bc
+        release: v2.4.4
+    timeout: 15
 license:
-  owner: "Dokimasia B.V."
-  spdx: "MIT"
+  # The copyright holder of the headers and of the license files. ergon init writes it from --owner,
+  # and ergon init sync --owner changes it.
+  owner: Dokimasia B.V.
+  # The SPDX identifier of the license of the headers and of the license files. ergon init writes it
+  # from --license, and ergon init sync --license changes it.
+  spdx: MIT
+  # The parameters of BUSL-1.1, which LICENSE states before its terms. Every other license ignores
+  # them.
+  parameters:
+    # The Licensed Work of BUSL-1.1, such as the name and the release of the software.
+    licensed-work: ""
+    # The Additional Use Grant of BUSL-1.1, the production use that the Licensor permits, or None.
+    additional-use-grant: ""
+    # The Change Date of BUSL-1.1, on which the Change License applies, such as 2030-01-01.
+    change-date: ""
+    # The Change License of BUSL-1.1, the license that applies on the Change Date, such as
+    # GPL-2.0-or-later.
+    change-license: ""
+  # The comment style of the header of each extension, such as .sql, or base name, such as
+  # Dockerfile: a style of skywalking-eyes, such as DoubleSlash, Hashtag or Semicolon, or none for
+  # no header. A key here replaces the style that ergon resolves.
+  styles: {}
+  # The doublestar globs of the paths whose files have no header, such as testdata/**.
+  exclude: ['**/testdata/**']
+  # The limit in minutes of the job license of ci.yml, which runs ergon license check.
+  ci:
+    actions: {}
+    timeout: 10
+go:
+  # The tools of the targets of Go, which ergon tool run installs with go install, as
+  # <module>@<version>.
+  tools:
+    # The linter and the formatter of lint-go and fmt-go, with the rules of .golangci.yml.
+    golangci-lint: github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0
+    # The vulnerability scan of audit-go, which reports a known vulnerability that the code calls.
+    govulncheck: golang.org/x/vuln/cmd/govulncheck@v1.8.0
+    # The comparison of two runs of bench-go in benchstat-go.
+    benchstat: golang.org/x/perf/cmd/benchstat@v0.0.0-20260929162123-406019bb8b68
+    # The mutation engine of mutate-go.
+    dokimi-mutate-go: go.dokimi.dev/mutate/cmd/dokimi-mutate-go@v0.0.0-20261006212535-719083ce3457
+    # The analyzers of lint-go: errorprefix, which reports an error whose text does not start with
+    # the name of its package, and skipexpiry, which reports a skipped test whose date has passed.
+    ergon-go-vet: go.dokimi.dev/ergon/lang/go/cmd/ergon-go-vet@v0.1.0
+  # The package patterns that each target of Go passes in every module of go.work.
+  paths: [./...]
+  # The steps that check-go runs, in order: lint, test, race, fuzz, bench, mutate, generate or
+  # audit.
+  check: [lint, test, race, audit]
+  # The options of lint-go, which runs golangci-lint with the rules of .golangci.yml, ergon-go-vet
+  # and go mod tidy -diff in every module.
+  lint:
+    # The package patterns that ergon-go-vet skips, such as ./internal/legacy/....
+    exclude: []
+  # test-go runs go test with args.
+  test:
+    args: [-count=1]
+  # race-go runs go test -race with args. -p=1 tests one package at a time, because the race
+  # detector multiplies the memory of a test.
+  race:
+    args: [-count=1, -p=1]
+  # fuzz-go fuzzes each fuzz target whose name matches the regular expression match, for time each,
+  # with args. -fuzzminimizetime bounds the minimization of a new input, which go test runs for 60s
+  # by default.
+  fuzz:
+    match: .
+    time: 30s
+    args: [-fuzzminimizetime=5s]
+  # bench-go runs each benchmark whose name matches the regular expression match, count times, for
+  # time each, with args. benchstat states a 95% confidence interval from 6 runs.
+  bench:
+    match: .
+    time: 1s
+    args: [-benchmem]
+    count: 6
+  # mutate-go runs dokimi-mutate-go with workers mutants of a module at a time and args, and ends
+  # the run after timeout. A timeout of 0s sets no limit.
+  mutate:
+    timeout: 0s
+    args: []
+    workers: 1
+  # generate-go runs go generate with args, and fails when the run changes a tracked file or writes
+  # a file that git does not track.
+  generate:
+    args: []
+  # audit-go runs govulncheck with args in every module.
+  audit:
+    args: []
+  # The pin of setup-go, the runners and the versions of Go of the job check-go, and its limit in
+  # minutes. Empty runners select every runner of the section github, and empty versions the version
+  # of go.work.
+  ci:
+    actions:
+      # The action that installs Go, at the version of go.work or of the matrix.
+      setup-go:
+        uses: actions/setup-go
+        commit: b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        release: v7.0.0
+    runners: []
+    versions: []
+    timeout: 30

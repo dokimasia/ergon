@@ -31,6 +31,28 @@ linters:
             - go.dokimi.dev/ergon/service
             # The YAML of the configured files and of the local files, with its comments.
             - go.yaml.in/yaml/v3
+            # The configuration of ergon, which viper parses and decodes into the options of each
+            # producer.
+            - github.com/spf13/viper
+            - github.com/go-viper/mapstructure/v2
+            # The TOML that the test kit of the producers parses, such as ruff.toml.
+            - github.com/pelletier/go-toml/v2
+            # The comment styles, the check and the insertion of the license headers, the logger
+            # that the license headers silence, and the globs of the files without a header.
+            - github.com/apache/skywalking-eyes
+            - github.com/sirupsen/logrus
+            - github.com/bmatcuk/doublestar/v4
+
+        # The package license is the one package of the repository that imports skywalking-eyes and
+        # its logger.
+        license-library:
+          files: ["**/*.go", "!**/ergon-service/license/*.go"]
+          list-mode: lax
+          deny:
+            - pkg: github.com/apache/skywalking-eyes
+              desc: only the package license of ergon-service imports skywalking-eyes
+            - pkg: github.com/sirupsen/logrus
+              desc: only the package license of ergon-service silences the logger of skywalking-eyes
 
         # The production files of a language module import core and the module's own packages, and
         # no other language module. The own packages are allowed as the root package and as the
@@ -55,10 +77,21 @@ linters:
             - go.dokimi.dev/ergon/core
             - go.dokimi.dev/ergon/lang/javascript$
             - go.dokimi.dev/ergon/lang/javascript/
+        # The analyzers of ergon-go-vet read the syntax and the types of Go, and run on
+        # golang.org/x/tools, whose multichecker runs them and whose go/packages resolves the
+        # patterns of -exclude.
         go-module:
           files: ["**/ergon-lang-go/**", "!$test"]
           list-mode: strict
-          allow: [$gostd, go.dokimi.dev/ergon/core, go.dokimi.dev/ergon/lang/go$, go.dokimi.dev/ergon/lang/go/]
+          allow:
+            - $gostd
+            - go/ast
+            - go/constant
+            - go/types
+            - go.dokimi.dev/ergon/core
+            - go.dokimi.dev/ergon/lang/go$
+            - go.dokimi.dev/ergon/lang/go/
+            - golang.org/x/tools
         python-module:
           files: ["**/ergon-lang-python/**", "!$test"]
           list-mode: strict
@@ -101,9 +134,12 @@ linters:
             - go.dokimi.dev/ergon/lang/kotlin/
             - go.dokimi.dev/ergon/lang/java$
 
-        # The tests of a language module import core, their own package and the module of their
-        # toolchain. depguard matches a file against any entry of files, so the globs name the
-        # test files of the language modules.
+        # The tests of a language module import core, their own package, the module of their
+        # toolchain, and the packages of ergon init in service: the test kit, which renders the
+        # language as ergon init new does, the engine of the templates, and the producer of the
+        # GitHub files, which renders the contribution of the language. The tests of the analyzers
+        # of the Go module run them with the test kit of golang.org/x/tools. depguard matches a
+        # file against any entry of files, so the globs name the test files of the language modules.
         language-module-tests:
           files: ["**/ergon-lang-*/*_test.go", "**/ergon-lang-*/**/*_test.go"]
           list-mode: strict
@@ -112,6 +148,8 @@ linters:
             - go.dokimi.dev/assert
             - go.dokimi.dev/ergon/core
             - go.dokimi.dev/ergon/lang
+            - go.dokimi.dev/ergon/service/baseline
+            - golang.org/x/tools/go/analysis
 
     # The modules of ergon return each other's errors, which carry the name of their package, as
     # the errors of one module would.
