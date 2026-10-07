@@ -1,3 +1,8 @@
+<!--
+  ~ Copyright Dokimasia B.V. 2026
+  ~ SPDX-License-Identifier: MIT
+-->
+
 # Package layout
 
 Where a file goes, and what each package may import. The module boundaries and the rules between modules are argued in RFC-0001. This document covers the packages inside them.

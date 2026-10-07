@@ -11,6 +11,11 @@ superseded-by: none
 produces-adr: ADR-0001, ADR-0002, ADR-0007, ADR-0008
 ---
 
+<!--
+  ~ Copyright Dokimasia B.V. 2026
+  ~ SPDX-License-Identifier: MIT
+-->
+
 # RFC-0001: Module boundaries
 
 ## Summary

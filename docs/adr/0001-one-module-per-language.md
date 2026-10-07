@@ -8,6 +8,11 @@ superseded-by: ADR-0008, in part
 rfc: RFC-0001
 ---
 
+<!--
+  ~ Copyright Dokimasia B.V. 2026
+  ~ SPDX-License-Identifier: MIT
+-->
+
 # ADR-0001: One module per language
 
 ## Status

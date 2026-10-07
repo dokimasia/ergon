@@ -1,3 +1,6 @@
+# Copyright Dokimasia B.V. 2026
+# SPDX-License-Identifier: MIT
+
 # The settings of ergon's own repository, which ergon init merges into .golangci.yml.
 
 linters:

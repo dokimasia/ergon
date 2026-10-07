@@ -79,7 +79,7 @@
     {
       "path": ".golangci.yml",
       "producer": "go",
-      "local": "c054fc0dc5c4ce98143b81f6760effff4873312e2ec4963bc7bd3941e7aea0e3",
+      "local": "e702cc734df70a21e8e5d6250539b26c0227723d63365c277a8a331d59a70599",
       "sha256": "48ecfa7dd79b2576199bfdbc03b5b970dd1e88b3c1e395535221bf4998a54bae"
     },
     {

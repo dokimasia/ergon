@@ -1,3 +1,6 @@
+// Copyright Dokimasia B.V. 2026
+// SPDX-License-Identifier: MIT
+
 module go.dokimi.dev/ergon/lang/rust
 
 go 1.27.1

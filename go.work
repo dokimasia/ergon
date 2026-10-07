@@ -1,3 +1,6 @@
+// Copyright Dokimasia B.V. 2026
+// SPDX-License-Identifier: MIT
+
 go 1.27.1
 
 // The repository root module (go.dokimi.dev/ergon) contains the binary and the composition root.
