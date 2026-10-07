@@ -147,6 +147,38 @@ func TestFunction(t *testing.T) {
 				want:     `[ubuntu-26.04, "1.27"]`,
 			},
 			{name: "yaml writes an empty list", template: "{{% yaml .Data %}}", data: []string{}, want: "[]"},
+			{
+				name:     "steps writes an action with its name, its condition and its inputs",
+				template: "{{% steps .Data %}}",
+				data: []workflow.Step{{
+					Name: "Set up Java", If: "hashFiles('.java-version') != ''", Uses: setupJava,
+					With: map[string]string{"java-version-file": ".java-version", "distribution": "temurin"},
+				}},
+				want: "\n      - name: Set up Java\n        if: \"hashFiles('.java-version') != ''\"\n        uses: " +
+					setupJava.String() + "\n        with:\n          distribution: temurin\n" +
+					"          java-version-file: .java-version",
+			},
+			{
+				name:     "steps writes a command with its id and its environment",
+				template: "{{% steps .Data %}}",
+				data: []workflow.Step{
+					{ID: "mode", Env: map[string]string{"TOKEN": "${{ github.token }}"}, Run: []string{"a", "b c"}},
+				},
+				want: "\n      - id: mode\n        env:\n          TOKEN: \"${{ github.token }}\"\n        run: |\n" +
+					"          a\n          b c",
+			},
+			{
+				name:     "steps writes each step as an item",
+				template: "{{% steps .Data %}}",
+				data:     []workflow.Step{{Uses: setupJava}, {Run: []string{"java -version"}}},
+				want:     "\n      - uses: " + setupJava.String() + "\n      - run: |\n          java -version",
+			},
+			{
+				name:     "steps writes nothing for no step",
+				template: "{{% steps .Data %}}",
+				data:     []workflow.Step{},
+				want:     "",
+			},
 		}
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
@@ -183,6 +215,7 @@ func TestFunction(t *testing.T) {
 				template: "{{% yaml .Data %}}",
 				data:     []map[string]string{{}},
 			},
+			{name: "steps returns ErrInvalidTemplate for a string", template: "{{% steps .Data %}}", data: "run"},
 		}
 		for _, tt := range invalid {
 			t.Run(tt.name, func(t *testing.T) {

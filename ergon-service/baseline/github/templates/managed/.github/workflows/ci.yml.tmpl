@@ -3,7 +3,7 @@
 # The gate of the repository, with the jobs that each producer of ergon init contributes. A check
 # of text runs on the Linux runner of the section github of .ergon.yaml, and every other job on a
 # matrix of runners. A job that sets up a toolchain runs its steps once the repository has the
-# files of the toolchain.
+# files of the toolchain. release.yml calls the gate before it publishes a release.
 
 name: CI
 
@@ -12,11 +12,14 @@ on:
   merge_group:
   push:
     branches: [main]
+  workflow_call:
 
 permissions: {}
 
+# A run that release.yml calls has the workflow of its caller, so the group starts with ci to keep
+# it apart from the group of the caller.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # Every command runs in bash, which is Git Bash on Windows.
@@ -75,42 +78,5 @@ jobs:
       - {{% if .Guard %}}if: {{% yaml .Guard %}}
         {{% end %}}uses: ./.github/actions/setup-ergon
 {{%- end %}}
-{{%- range .Steps %}}
-{{%- $lead := "- " %}}
-{{%- if .Name %}}
-      {{% $lead %}}name: {{% yaml .Name %}}
-{{%- $lead = "  " %}}
-{{%- end %}}
-{{%- if .ID %}}
-      {{% $lead %}}id: {{% .ID %}}
-{{%- $lead = "  " %}}
-{{%- end %}}
-{{%- if .If %}}
-      {{% $lead %}}if: {{% yaml .If %}}
-{{%- $lead = "  " %}}
-{{%- end %}}
-{{%- if not .Run %}}
-      {{% $lead %}}uses: {{% .Uses %}}
-{{%- $lead = "  " %}}
-{{%- end %}}
-{{%- if .With %}}
-        with:
-{{%- range $name, $value := .With %}}
-          {{% $name %}}: {{% yaml $value %}}
-{{%- end %}}
-{{%- end %}}
-{{%- if .Env %}}
-      {{% $lead %}}env:
-{{%- range $name, $value := .Env %}}
-          {{% $name %}}: {{% yaml $value %}}
-{{%- end %}}
-{{%- $lead = "  " %}}
-{{%- end %}}
-{{%- if .Run %}}
-      {{% $lead %}}run: |
-{{%- range .Run %}}
-          {{% . %}}
-{{%- end %}}
-{{%- end %}}
-{{%- end %}}
+{{%- steps .Steps %}}
 {{%- end %}}

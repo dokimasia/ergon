@@ -1,23 +1,19 @@
-# Managed by ergon init. Add repository settings to .ergon/local/.github/actions/setup-ergon/action.yml and run ergon init sync.
+# Managed by ergon init, with .ergon/local/.github/actions/setup-ergon/action.yml merged in. Change the repository's settings there and run ergon init sync.
 
 name: Set up ergon
 description: >-
-  Installs a release of ergon from github.com/dokimasia/ergon on a Linux, macOS or Windows runner,
-  and checks the archive against the checksums.txt of the release. The release is the one that
-  .ergon/init.lock names, unless the input version names another.
-
+  Installs a release of ergon from github.com/dokimasia/ergon on a Linux, macOS or Windows runner, and checks the archive against the checksums.txt of the release. The release is the one that .ergon/init.lock names, unless the input version names another.
 inputs:
   version:
     description: >-
-      The release of ergon to install, such as 1.4.0, or latest for the newest release. An empty
-      version installs the release that .ergon/init.lock names.
+      The release of ergon to install, such as 1.4.0, or latest for the newest release. An empty version installs the release that .ergon/init.lock names. The version source installs no release, for a repository that builds ergon in a step of its local file of this action.
     required: false
-    default: ""
-
+    default: source
 runs:
   using: composite
   steps:
     - name: Install ergon
+      if: inputs.version != 'source'
       shell: bash
       env:
         VERSION: ${{ inputs.version }}
@@ -61,3 +57,22 @@ runs:
           echo "$dir" >> "$GITHUB_PATH"
         fi
         ./ergon --version
+    - name: Set up Go
+      if: inputs.version == 'source'
+      uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      with:
+        go-version-file: go.work
+        cache-dependency-path: "**/go.sum"
+    - name: Build ergon
+      if: inputs.version == 'source'
+      shell: bash
+      run: |
+        dir="${RUNNER_TEMP//\\//}/ergon"
+        mkdir -p "$dir"
+        go build -trimpath -o "$dir/" ./cmd/ergon
+        if [ "$RUNNER_OS" = Windows ]; then
+          cygpath --windows "$dir" >> "$GITHUB_PATH"
+        else
+          echo "$dir" >> "$GITHUB_PATH"
+        fi
+        "$dir/ergon" --version

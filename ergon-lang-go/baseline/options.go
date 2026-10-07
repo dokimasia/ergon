@@ -103,10 +103,13 @@ func (o *Options) Validate() error {
 //     repository has a go.mod. It fails a repository with a go.mod and without go.work, because the
 //     targets run in the modules of go.work. setup-go installs the version of go.work, or the
 //     version of the matrix where o lists versions, and caches the modules by every go.sum.
+//   - The release steps install the version of go.work with setup-go in the jobs version and pack of
+//     release.yml, once the repository has go.work, for the go mod tidy of a release.
 //   - The CodeQL analysis of go builds the modules with autobuild, once the repository has go.work.
 //   - Dependabot updates the modules of every directory.
 func (o *Options) Contribution() workflow.Contribution {
-	with := map[string]string{"go-version-file": workspace, "cache-dependency-path": "**/go.sum"}
+	pinned := map[string]string{"go-version-file": workspace, "cache-dependency-path": "**/go.sum"}
+	with := pinned
 	if len(o.CI.Versions) > 0 {
 		with = map[string]string{"go-version": "${{ matrix.version }}", "cache-dependency-path": "**/go.sum"}
 	}
@@ -133,6 +136,12 @@ func (o *Options) Contribution() workflow.Contribution {
 				Timeout: o.CI.Timeout,
 			},
 			Steps: []workflow.Step{{Name: "Check Go", Run: []string{"make check-go"}}},
+		}},
+		Release: []workflow.Step{{
+			Name: "Set up Go",
+			If:   "hashFiles('" + workspace + "') != ''",
+			Uses: o.CI.Actions.SetupGo,
+			With: pinned,
 		}},
 		CodeQL: []workflow.CodeQL{
 			{Language: "go", Name: "Go", BuildMode: "autobuild", Files: workspace, Timeout: o.CI.Timeout},

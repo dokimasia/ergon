@@ -59,6 +59,7 @@ Available Commands:
   help        Help about any command
   init        Set up a repository with the baseline of ergon
   license     Add and check the license header of every file
+  release     Plan, write and publish the releases of the packages of the repository
   tool        Run the tools that the sections of .ergon.yaml name
 
 Flags:
@@ -146,8 +147,8 @@ func TestCommand(t *testing.T) {
 				status: statusOK, stdout: "ergon " + version.Full + "\n",
 			},
 			{
-				name: "returns 2 for an unknown command", args: []string{"release"},
-				status: statusUsage, stderr: "ergon: unknown command \"release\" for \"ergon\"\n" + hint,
+				name: "returns 2 for an unknown command", args: []string{"bogus"},
+				status: statusUsage, stderr: "ergon: unknown command \"bogus\" for \"ergon\"\n" + hint,
 			},
 			{
 				name: "returns 2 for an unknown flag", args: []string{"--bogus"},
@@ -273,13 +274,15 @@ func runWith(
 }
 
 // process returns the process of a case: the command line args, the working directory dir, the
-// time now, the temporary directory of the system as the cache directory, no standard input, the
-// environment of the test with fakeEnv set, and the writers stdout and stderr.
+// time now, the temporary directory of the system as the cache directory, the random digits ab and
+// cd, no standard input, the environment of the test with fakeEnv set, and the writers stdout and
+// stderr.
 func process(dir string, stdout, stderr io.Writer, args ...string) *cli.Process {
 	return &cli.Process{
 		Getwd:    func() (string, error) { return dir, nil },
 		Now:      func() time.Time { return now },
 		CacheDir: func() (string, error) { return os.TempDir(), nil },
+		Random:   bytes.NewReader([]byte{0xab, 0xcd}),
 		Stdin:    strings.NewReader(""),
 		Stdout:   stdout,
 		Stderr:   stderr,

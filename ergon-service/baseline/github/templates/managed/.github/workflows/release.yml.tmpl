@@ -1,0 +1,133 @@
+# Managed by ergon init. Add repository settings to .ergon/local/.github/workflows/release.yml and run ergon init sync.
+#
+# The release flow of the packages of the repository on every push to main. The job select-mode
+# chooses the next job. While main has changesets, the job version opens or updates the version
+# pull request. After the merge of that pull request, the jobs ci, pack and publish release each
+# package of the publish plan. The jobs version and pack set up the toolchains of the repository,
+# which refresh the lockfiles and build the artifacts.
+
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+# Every command runs in bash.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  select-mode:
+    name: Select the mode
+    runs-on: {{% yaml .Options.Linux %}}
+    timeout-minutes: {{% .Options.CI.Timeout %}}
+    permissions:
+      contents: read
+    outputs:
+      mode: ${{ steps.mode.outputs.mode }}
+    steps:
+      - uses: {{% .Options.CI.Actions.Checkout %}}
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/setup-ergon
+      - name: Select the mode
+        id: mode
+        run: |
+          ergon release ci select-mode --output publish-plan.json
+      - uses: {{% .Options.CI.Actions.UploadArtifact %}}
+        with:
+          name: publish-plan
+          path: publish-plan.json
+          if-no-files-found: error
+
+  version:
+    name: Version
+    needs: select-mode
+    if: needs.select-mode.outputs.mode == 'version'
+    runs-on: {{% yaml .Options.Linux %}}
+    timeout-minutes: {{% .Options.CI.Timeout %}}
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: {{% .Options.CI.Actions.Checkout %}}
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/setup-ergon
+{{%- steps .Contributions.Release %}}
+      - name: Open the version pull request
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          ergon release ci version
+
+  ci:
+    name: CI
+    needs: select-mode
+    if: needs.select-mode.outputs.mode == 'publish'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci.yml
+
+  pack:
+    name: Pack
+    needs: ci
+    runs-on: {{% yaml .Options.Linux %}}
+    timeout-minutes: {{% .Options.CI.Timeout %}}
+    permissions:
+      contents: read
+    steps:
+      - uses: {{% .Options.CI.Actions.Checkout %}}
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/setup-ergon
+{{%- steps .Contributions.Release %}}
+      - uses: {{% .Options.CI.Actions.DownloadArtifact %}}
+        with:
+          name: publish-plan
+      - name: Pack the packages
+        run: |
+          ergon release pack --from-publish-plan publish-plan.json --out-dir dist
+      - uses: {{% .Options.CI.Actions.UploadArtifact %}}
+        with:
+          name: release
+          path: |
+            publish-plan.json
+            dist
+          if-no-files-found: error
+
+  publish:
+    name: Publish
+    needs: pack
+    runs-on: {{% yaml .Options.Linux %}}
+    timeout-minutes: {{% .Options.CI.Timeout %}}
+    permissions:
+      contents: write
+    outputs:
+      published: ${{ steps.publish.outputs.published }}
+      published-packages: ${{ steps.publish.outputs.published-packages }}
+    steps:
+      - uses: {{% .Options.CI.Actions.Checkout %}}
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/setup-ergon
+      - uses: {{% .Options.CI.Actions.DownloadArtifact %}}
+        with:
+          name: release
+      - name: Publish the packages
+        id: publish
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          ergon release publish --from-publish-plan publish-plan.json --from-pack-dir dist

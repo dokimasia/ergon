@@ -13,9 +13,15 @@
 //
 // The GitHub files render the contributions of every producer, so no toolchain appears in them:
 //
-//   - ci.yml is the gate on every pull request, on the merge queue and on main. It renders each
-//     job of the contributions from one skeleton: the checkout, the installation of GNU make and of
-//     ergon, the setup steps, and the steps of the job, as [Options.Jobs] states.
+//   - ci.yml is the gate on every pull request, on the merge queue and on main, and the workflow
+//     that release.yml calls before a publish. It renders each job of the contributions from one
+//     skeleton: the checkout, the installation of GNU make and of ergon, the setup steps, and the
+//     steps of the job, as [Options.Jobs] states.
+//   - release.yml runs the release flow of ergon release ci on every push to main. The job
+//     select-mode chooses the next job. The job version opens or updates the version pull request.
+//     After its merge, the jobs ci, pack and publish release each package of the publish plan. The
+//     jobs version and pack run the release steps of the contributions after the installation of
+//     ergon.
 //   - security.yml runs the dependency review on a pull request, the OpenSSF Scorecard weekly, and
 //     a job codeql-<language> for each CodeQL analysis of the contributions, which calls
 //     codeql.yml.
@@ -28,7 +34,8 @@
 // it needs. Every action is pinned to the commit of a release, with the release in a comment.
 // actions/checkout runs with persist-credentials set to false. A workflow that a push or a pull
 // request triggers groups its runs by workflow and ref, and cancels a superseded run on a pull
-// request only.
+// request only. The group of ci.yml starts with ci, so a run that release.yml calls, whose workflow
+// is the caller's, does not share the group of the caller.
 //
 // # Options
 //

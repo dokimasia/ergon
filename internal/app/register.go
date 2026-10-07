@@ -16,7 +16,11 @@ import (
 	"go.dokimi.dev/ergon/lang/rust"
 	"go.dokimi.dev/ergon/lang/terraform"
 	"go.dokimi.dev/ergon/lang/typescript"
+	"go.dokimi.dev/ergon/service/vcs"
 )
+
+// git is the access to the repository that the toolchain of Go reads tags and snapshots through.
+var git = golang.Git{Tags: vcs.Tags, Snapshot: vcs.Snapshot}
 
 // registrations are the Register functions of the language modules, in the order that [Register]
 // calls them. Java precedes Kotlin and JavaScript precedes TypeScript, because Kotlin and
@@ -28,7 +32,7 @@ var registrations = []func(*language.Catalog) error{
 	php.Register,
 	javascript.Register,
 	typescript.Register,
-	golang.Register,
+	func(c *language.Catalog) error { return golang.Register(c, git) },
 	python.Register,
 	rust.Register,
 	terraform.Register,

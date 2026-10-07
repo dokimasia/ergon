@@ -1,0 +1,47 @@
+# Copyright Dokimasia B.V. 2026
+# SPDX-License-Identifier: MIT
+
+# The binaries of a release of ergon, which the workflow binaries.yml builds at the tag v<version>
+# of the root module: an archive of the command ergon for each system and architecture that the
+# action setup-ergon of ergon init installs, and checksums.txt, which it checks the archives
+# against. GoReleaser keeps the notes of a GitHub Release that ergon release publish created, and
+# writes the annotation of the tag into a release that it creates.
+
+version: 2
+
+project_name: ergon
+
+builds:
+  - id: ergon
+    main: ./cmd/ergon
+    binary: ergon
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X go.dokimi.dev/ergon/internal/buildinfo.version={{ .Version }}
+      - -X go.dokimi.dev/ergon/internal/buildinfo.commit={{ .ShortCommit }}
+      - -X go.dokimi.dev/ergon/internal/buildinfo.date={{ .CommitDate }}
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+
+archives:
+  - id: ergon
+    formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  disable: true
+
+release:
+  github:
+    owner: dokimasia
+    name: ergon
+  mode: keep-existing
+  header: "{{ .TagContents }}"

@@ -31,11 +31,16 @@ func Isolate() {
 }
 
 // Repository returns a new working tree of git in a directory of the test, with the files of tree,
-// in which git tracks the files of track. It stops the test at a command of git that fails.
+// in which git tracks the files of track. The repository commits and tags as Test
+// <test@example.invalid> without a signature. It stops the test at a command of git that fails.
 func Repository(tb testing.TB, tree files.Tree, track ...string) string {
 	tb.Helper()
 	dir := files.Workspace(tb, tree)
 	Git(tb, dir, "init", "--quiet")
+	Git(tb, dir, "config", "user.name", "Test")
+	Git(tb, dir, "config", "user.email", "test@example.invalid")
+	Git(tb, dir, "config", "commit.gpgSign", "false")
+	Git(tb, dir, "config", "tag.gpgSign", "false")
 	if len(track) > 0 {
 		Git(tb, dir, append([]string{"add", "--"}, track...)...)
 	}
@@ -43,10 +48,21 @@ func Repository(tb testing.TB, tree files.Tree, track ...string) string {
 }
 
 // Git runs git with args in dir, with the hooks of git off, and stops the test when git fails, with
-// the output of git in the failure.
-func Git(tb testing.TB, dir string, args ...string) {
+// the output of git in the failure. It returns the standard output and the standard error of git.
+func Git(tb testing.TB, dir string, args ...string) string {
 	tb.Helper()
 	all := append([]string{"-C", dir, "-c", "core.hooksPath=" + os.DevNull}, args...)
 	out, err := exec.CommandContext(tb.Context(), "git", all...).CombinedOutput()
 	assert.NoError(tb, err, "git "+strings.Join(args, " ")+": "+string(out))
+	return string(out)
+}
+
+// Commit stages every change of the working tree of dir, a working tree of [Repository], and
+// commits it with message, also when nothing changed. It returns the commit, as 40 hexadecimal
+// digits, and stops the test when git fails.
+func Commit(tb testing.TB, dir, message string) string {
+	tb.Helper()
+	Git(tb, dir, "add", "--all")
+	Git(tb, dir, "commit", "--quiet", "--allow-empty", "--message", message)
+	return strings.TrimSpace(Git(tb, dir, "rev-parse", "HEAD"))
 }

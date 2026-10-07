@@ -4,7 +4,7 @@ title: Independent module versions, with the root module as an entry point
 status: Accepted
 date: 2026-09-24
 supersedes: none
-superseded-by: none
+superseded-by: ADR-0009, in part
 rfc: RFC-0001
 ---
 

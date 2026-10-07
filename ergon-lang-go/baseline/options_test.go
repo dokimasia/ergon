@@ -61,32 +61,47 @@ func TestOptions(t *testing.T) {
 	t.Run("Contribution", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("returns the job, the analysis and the updates of Go at the baseline", func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, goOptions().Contribution(), workflow.Contribution{
-				Jobs: []workflow.Job{{
-					ID:          "check-go",
-					Name:        "Go",
-					Permissions: map[string]string{"contents": "read"},
-					Setup: &workflow.Setup{
-						Files:    "**/go.mod",
-						Runners:  option.Runners{},
-						Versions: []string{},
-						Steps: []workflow.Step{requireWork, {
-							Name: "Set up Go",
-							Uses: setupGo,
-							With: map[string]string{"go-version-file": "go.work", "cache-dependency-path": "**/go.sum"},
-						}},
-						Timeout: 30,
+		t.Run(
+			"returns the job, the release steps, the analysis and the updates of Go at the baseline",
+			func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, goOptions().Contribution(), workflow.Contribution{
+					Jobs: []workflow.Job{{
+						ID:          "check-go",
+						Name:        "Go",
+						Permissions: map[string]string{"contents": "read"},
+						Setup: &workflow.Setup{
+							Files:    "**/go.mod",
+							Runners:  option.Runners{},
+							Versions: []string{},
+							Steps: []workflow.Step{
+								requireWork,
+								{
+									Name: "Set up Go",
+									Uses: setupGo,
+									With: map[string]string{
+										"go-version-file":       "go.work",
+										"cache-dependency-path": "**/go.sum",
+									},
+								},
+							},
+							Timeout: 30,
+						},
+						Steps: []workflow.Step{{Name: "Check Go", Run: []string{"make check-go"}}},
+					}},
+					Release: []workflow.Step{{
+						Name: "Set up Go",
+						If:   "hashFiles('go.work') != ''",
+						Uses: setupGo,
+						With: map[string]string{"go-version-file": "go.work", "cache-dependency-path": "**/go.sum"},
+					}},
+					CodeQL: []workflow.CodeQL{
+						{Language: "go", Name: "Go", BuildMode: "autobuild", Files: "go.work", Timeout: 30},
 					},
-					Steps: []workflow.Step{{Name: "Check Go", Run: []string{"make check-go"}}},
-				}},
-				CodeQL: []workflow.CodeQL{
-					{Language: "go", Name: "Go", BuildMode: "autobuild", Files: "go.work", Timeout: 30},
-				},
-				Updates: []workflow.Update{{Ecosystem: "gomod", Directories: []string{"/", "/**/*"}}},
-			}, "the contribution")
-		})
+					Updates: []workflow.Update{{Ecosystem: "gomod", Directories: []string{"/", "/**/*"}}},
+				}, "the contribution")
+			},
+		)
 
 		t.Run("returns a valid contribution", func(t *testing.T) {
 			t.Parallel()
@@ -104,6 +119,18 @@ func TestOptions(t *testing.T) {
 			assert.Equal(t, setup.Versions, []string{"1.27", "1.26"}, "the versions")
 			assert.Equal(t, setup.Steps[1].With, map[string]string{
 				"go-version":            "${{ matrix.version }}",
+				"cache-dependency-path": "**/go.sum",
+			}, "the inputs of setup-go")
+		})
+
+		t.Run("sets up the version of go.work in a release for versions of the options", func(t *testing.T) {
+			t.Parallel()
+			o := goOptions()
+			o.CI.Versions = []string{"1.27", "1.26"}
+			release := o.Contribution().Release
+			assert.Length(t, release, 1, "the release steps")
+			assert.Equal(t, release[0].With, map[string]string{
+				"go-version-file":       "go.work",
 				"cache-dependency-path": "**/go.sum",
 			}, "the inputs of setup-go")
 		})

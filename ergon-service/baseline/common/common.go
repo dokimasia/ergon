@@ -68,12 +68,14 @@ func (Producer) Options() language.Options {
 }
 
 // Contribution returns the jobs of the common files in ci.yml for o, and for the options at the
-// baseline when o is not the options of the common files. Both jobs check text, so they run on the
+// baseline when o is not the options of the common files. The jobs check text, so they run on the
 // Linux runner of the section github:
 //
 //   - docs lints the Markdown files with the markdownlint of o.
 //   - commits checks each commit message of a pull request with the commitlint of o, through ergon
 //     tool run. It skips the pull requests of Dependabot, whose bodies exceed the length of a line.
+//   - changeset runs ergon release status against the base of a pull request, which fails for a
+//     package that the pull request changes without a changeset that names it.
 func (p Producer) Contribution(o language.Options) workflow.Contribution {
 	opts, ok := o.(*Options)
 	if !ok {
@@ -114,5 +116,20 @@ func (p Producer) Contribution(o language.Options) workflow.Contribution {
 			},
 		}},
 	}
-	return workflow.Contribution{Jobs: []workflow.Job{docs, commits}}
+	changeset := workflow.Job{
+		ID:          "changeset",
+		Name:        "Changeset",
+		If:          "github.event_name == 'pull_request'",
+		Text:        true,
+		Timeout:     opts.CI.Timeout,
+		Permissions: read,
+		History:     true,
+		Ergon:       true,
+		Steps: []workflow.Step{{
+			Name: "Check the changesets",
+			Env:  map[string]string{"BASE": "${{ github.event.pull_request.base.sha }}"},
+			Run:  []string{`ergon release status --since "$BASE"`},
+		}},
+	}
+	return workflow.Contribution{Jobs: []workflow.Job{docs, commits, changeset}}
 }

@@ -20,7 +20,7 @@ produces-adr: tbd
 
 ## Summary
 
-ergon supports 44 licenses by their SPDX identifiers: the licenses for software of GitHub's license list, and BUSL-1.1. `core/spdx` declares the identifiers. `service/license` renders the text of each license, and its producer contributes `LICENSE` to `ergon init`, with a `NOTICE` for Apache-2.0.
+ergon supports 44 licenses by their SPDX identifiers: the licenses for software of GitHub's license list, and BUSL-1.1. `core/spdx` declares the identifiers. `service/licenses` renders the text of each license, and its producer contributes `LICENSE` to `ergon init`, with a `NOTICE` for Apache-2.0.
 
 `ergon license fix` adds and updates the copyright and SPDX header of every file that has a comment syntax. `ergon license check` verifies the headers and exits 1 on a missing, outdated or conflicting one. ergon builds the command on apache/skywalking-eyes v0.9.0, whose packages `pkg/header` and `pkg/comments` generate, match and insert headers for 76 comment-bearing languages. ergon supplies the parts the library gets wrong:
 
@@ -79,7 +79,7 @@ The repositories differ in their licenses as well as in their headers. Of the 17
 
 Both commands work on the repository of the working directory, or of the nearest of its parents that has `.ergon/init.lock`. They read the section `license` of its `.ergon.yaml` as every command of `ergon init` resolves it.
 
-Each command prints the kind and the path of each finding, with the line of a conflict, and then the number of files that it checked and skipped. `fix` first prints the path of each file that it wrote. Files without a comment syntax are skipped, and they never fail the check. A file with a comment syntax whose content is not text, such as a file with a null byte, is reported `unsupported` and fails neither command.
+Each command prints the kind and the path of each finding, with the line of a conflict, and then the number of files that it checked and skipped. `fix` first prints the path of each file that it wrote. Files without a comment syntax are skipped, and they never fail the check. A changeset of `.changeset` is skipped too, because its front matter opens the file and its body is the entry of the changelogs, as RFC-0002 states. A file with a comment syntax whose content is not text, such as a file with a null byte, is reported `unsupported` and fails neither command.
 
 ### Licenses
 
@@ -151,7 +151,7 @@ license:
 - `exclude` takes doublestar globs.
 - `ci.timeout` is the limit in minutes of the job `license` of `ci.yml`. The job runs no action of its own, so `ci.actions` is empty.
 
-The section is the options of the license producer: the struct `Config` of `service/license`, which a strict decode reads. A key that the struct does not have is an error, as it is in every section of `.ergon.yaml`.
+The section is the options of the license producer: the struct `Config` of `service/licenses`, which a strict decode reads. A key that the struct does not have is an error, as it is in every section of `.ergon.yaml`.
 
 ### Changing the license
 
@@ -202,9 +202,9 @@ The `.mod`, `go.work` and `.scm` overrides correct defects in the library. Each 
 ### Calling the library
 
 ```go
-// Package license declares the licenses that ergon supports, renders their
+// Package licenses declares the licenses that ergon supports, renders their
 // texts, and adds and verifies copyright and SPDX headers.
-package license
+package licenses
 
 // Config is the license section of .ergon.yaml.
 type Config struct {
@@ -299,7 +299,7 @@ func Fix(ctx context.Context, root string, c *Config, year int) (Report, error)
 
 1. Set `logger.Log` to discard, once per process. Resolve the style of each file from `c.Styles`, then none for a license file, then ergon's overrides, then the library's table, each by the base name and then by the longest extension.
 2. Build a `header.ConfigHeader` whose `License.Content` is the rendered header and whose pattern is `Copyright <owner> \d{4}(?:\s*[-,]\s*\d{4})*\s+SPDX-License-Identifier: <spdx>(?:\s|$)`, normalized by `NormalizedPattern`.
-3. List the files with `git ls-files --cached --others --exclude-standard`, and drop the excluded files, the generated files, the files without a style and every path that is no regular file. A file is generated when its first line contains `Code generated … DO NOT EDIT` or `Managed by ergon init`.
+3. List the files with `git ls-files --cached --others --exclude-standard`, and drop the excluded files, the changesets, the generated files, the files without a style and every path that is no regular file. A changeset is a Markdown file directly in `.changeset` other than its `README.md`. A file is generated when its first line contains `Code generated … DO NOT EDIT` or `Managed by ergon init`.
 4. Normalize each file with `license.NormalizeHeader`, and match the pattern.
 5. For each failing file, `Fix` looks for an existing header block in the file's style, after its preamble: the first comment block with a copyright line or an SPDX tag, among the comment blocks and blank lines before the first other line. It removes a block whose lines are all copyright lines, SPDX tags or empty comment lines, and keeps its years. It reports a block with any other line as a conflict and leaves the file unchanged. It then inserts the text of `header.GenerateLicenseHeader` after the preamble of the style, as the library inserts it, in one write.
 
@@ -333,15 +333,17 @@ Three of these cases occur in the repositories today. `treesitter/oracles/csharp
 
 ### The license files of ergon init
 
-The license producer is a base producer of `ergon init`, beside the producers of the common files and the GitHub files. It renders `LICENSE` as a managed file. For Apache-2.0 it also renders `NOTICE`. Its options are the `license` section. Its templates call `license.Text`. Its job `license` in the workflow of the gate runs `ergon license check`.
+The license producer is a base producer of `ergon init`, beside the producers of the common files and the GitHub files. It renders `LICENSE` as a managed file. For Apache-2.0 it also renders `NOTICE`. Its options are the `license` section. Its templates call `licenses.Text`. Its job `license` in the workflow of the gate runs `ergon license check`.
 
 ### Packages
 
 | Package | Contains | Imports |
 |---|---|---|
 | `ergon-core/spdx` | `ID`, the 44 identifiers and `ID.Valid` | the standard library |
-| `ergon-service/license` | `Config`, `Text` and the texts of the 44 licenses, `Check`, `Fix`, the table of styles with the overrides, and the header-block removal | `core/*`, `service/vcs`, skywalking-eyes `assets`, `pkg/comments`, `pkg/header`, `pkg/license` and `pkg/logger`, logrus, `github.com/bmatcuk/doublestar/v4` |
-| `ergon-service/license/baseline` | The license producer of `ergon init` | `core/*`, `service/license` |
+| `ergon-service/licenses` | `Config`, `Text` and the texts of the 44 licenses, `Check`, `Fix`, the table of styles with the overrides, and the header-block removal | `core/*`, `service/vcs`, skywalking-eyes `assets`, `pkg/comments`, `pkg/header`, `pkg/license` and `pkg/logger`, logrus, `github.com/bmatcuk/doublestar/v4` |
+| `ergon-service/licenses/baseline` | The license producer of `ergon init` | `core/*`, `service/licenses` |
+
+The name of the directory differs from `LICENSE` in more than its case. The go command adds the `LICENSE` of the repository to the zip of a module in a directory without one, and it refuses a zip with two paths whose names differ in case alone, such as `license/` and `LICENSE`.
 
 No language module takes part, and `ergon-lang` gains nothing. The library's table is keyed by file type, and most file types in it have no language module.
 
@@ -425,3 +427,4 @@ The texts and templates of the SPDX License List 3.29.0 cover its 708 current li
 | GitHub's license API | https://docs.github.com/rest/licenses/licenses |
 | The SPDX License List 3.29.0, and the text of BUSL-1.1 | https://github.com/spdx/license-list-data/tree/v3.29.0, `text/BUSL-1.1.txt` |
 | The survey of the repositories of the earlier ergon | `~/.cache/ergon-migration/`, run on 2026-10-07 |
+| The zip of a module adds the `LICENSE` of the repository, and refuses paths that differ in case alone | `golang.org/x/mod` v0.41.0, `zip/zip.go`, `CreateFromVCS` and `checkFiles` |

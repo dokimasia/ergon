@@ -33,4 +33,16 @@ github:
         uses: ossf/scorecard-action
         commit: 2d1146689b8cda280b9bc96326124645441f03bc
         release: v2.4.4
+      # The action that uploads the publish plan of the job select-mode and the artifacts of the job
+      # pack of release.yml.
+      upload-artifact:
+        uses: actions/upload-artifact
+        commit: cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        release: v7.0.2
+      # The action that downloads the publish plan in the job pack, and the artifacts in the job
+      # publish of release.yml.
+      download-artifact:
+        uses: actions/download-artifact
+        commit: 9000827ccba6bdab643e8b6fd33ac0654aef8333
+        release: v8.0.2
     timeout: 15

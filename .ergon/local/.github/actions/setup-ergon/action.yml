@@ -1,0 +1,32 @@
+# Copyright Dokimasia B.V. 2026
+# SPDX-License-Identifier: MIT
+
+# The repository of ergon runs the ergon of its own source in every job, so the gate checks the
+# managed files against the baseline that the same commit renders. The version source skips the
+# installation of a release, and the steps below build ergon from the checkout.
+
+inputs:
+  version:
+    default: source
+
+runs:
+  steps:
+    - name: Set up Go
+      if: inputs.version == 'source'
+      uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      with:
+        go-version-file: go.work
+        cache-dependency-path: "**/go.sum"
+    - name: Build ergon
+      if: inputs.version == 'source'
+      shell: bash
+      run: |
+        dir="${RUNNER_TEMP//\\//}/ergon"
+        mkdir -p "$dir"
+        go build -trimpath -o "$dir/" ./cmd/ergon
+        if [ "$RUNNER_OS" = Windows ]; then
+          cygpath --windows "$dir" >> "$GITHUB_PATH"
+        else
+          echo "$dir" >> "$GITHUB_PATH"
+        fi
+        "$dir/ergon" --version

@@ -26,6 +26,16 @@
 // A producer configures its own concern alone: a section names the tools, the actions and the
 // runtime versions of its own producer, and never those of another ecosystem.
 //
+// The roles of ergon release belong to a toolchain, which discovers the packages through
+// [Toolchain.Discover]:
+//
+//   - A [Versioner] reads and rewrites the requirements of the toolchain, refuses the versions that
+//     the toolchain cannot release, and writes each [Edit] of a release into the manifests and the
+//     lockfiles.
+//   - A [Tagger] names the tags of a toolchain whose tools read a version from a tag.
+//   - A [Packer] builds the artifacts that a registry receives.
+//   - A [Publisher] uploads them. A toolchain without one publishes a release by its tag.
+//
 // # Answers
 //
 // [Answers] are the answers of ergon init, which every producer reads. [Answers.Validate] checks
@@ -46,5 +56,6 @@
 // # Dependency position
 //
 // Position 1 of ergon-core. Imports the standard library, [go.dokimi.dev/ergon/core/spdx],
-// [go.dokimi.dev/ergon/core/workflow] and [go.dokimi.dev/ergon/core/workspace].
+// [go.dokimi.dev/ergon/core/version], [go.dokimi.dev/ergon/core/workflow] and
+// [go.dokimi.dev/ergon/core/workspace].
 package language

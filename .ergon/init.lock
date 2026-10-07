@@ -39,7 +39,8 @@
     {
       "path": ".github/actions/setup-ergon/action.yml",
       "producer": "github",
-      "sha256": "171580df4891a2627ce86604a01a83967239fe85a3f74f0a948fe94ef93ca54e"
+      "local": "4ec23f6b9ff2696ad8632a95ae9dfb201f815bb148938d55cca343912594bccf",
+      "sha256": "271d356b616d88d977a37a886b6ee800e94fd0c3132ff38260de04ee97b9e500"
     },
     {
       "path": ".github/actions/setup-make/action.yml",
@@ -59,12 +60,18 @@
     {
       "path": ".github/workflows/ci.yml",
       "producer": "github",
-      "sha256": "9749d468ceddaf5e2a877f614b515818fd19e23f558554402fbfd7c502ec185a"
+      "sha256": "dc82912dc5ecf775ce3754c559d4fa35db7d4822d56fe599897692588331c258"
     },
     {
       "path": ".github/workflows/codeql.yml",
       "producer": "github",
       "sha256": "73258c4feacff149ac50c7cfb695871a474076c17835059e1a6d70200cfdbcec"
+    },
+    {
+      "path": ".github/workflows/release.yml",
+      "producer": "github",
+      "local": "121ece7023c9ef7234dfb630f4b006cee8401af33f76233c848fb987ce5484c6",
+      "sha256": "337d956de083906b49786cfe87c8da69d028651d9022d5cd83a3b242d68d9b1e"
     },
     {
       "path": ".github/workflows/security.yml",
@@ -79,8 +86,8 @@
     {
       "path": ".golangci.yml",
       "producer": "go",
-      "local": "e702cc734df70a21e8e5d6250539b26c0227723d63365c277a8a331d59a70599",
-      "sha256": "48ecfa7dd79b2576199bfdbc03b5b970dd1e88b3c1e395535221bf4998a54bae"
+      "local": "80b2bc96bacb658234047d4ad555d15b3ac47171d88bfc7e4974bb30c21d1640",
+      "sha256": "6d91d5c94f195d5a94ad19e81dd9e07a55842085c45f4619f4308fb675c1c67b"
     },
     {
       "path": ".markdownlint.yml",
@@ -129,9 +136,15 @@
     "github.ci.actions.dependency-review.commit": "a1d282b36b6f3519aa1f3fc636f609c47dddb294",
     "github.ci.actions.dependency-review.release": "v5.0.0",
     "github.ci.actions.dependency-review.uses": "actions/dependency-review-action",
+    "github.ci.actions.download-artifact.commit": "9000827ccba6bdab643e8b6fd33ac0654aef8333",
+    "github.ci.actions.download-artifact.release": "v8.0.2",
+    "github.ci.actions.download-artifact.uses": "actions/download-artifact",
     "github.ci.actions.scorecard.commit": "2d1146689b8cda280b9bc96326124645441f03bc",
     "github.ci.actions.scorecard.release": "v2.4.4",
     "github.ci.actions.scorecard.uses": "ossf/scorecard-action",
+    "github.ci.actions.upload-artifact.commit": "cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+    "github.ci.actions.upload-artifact.release": "v7.0.2",
+    "github.ci.actions.upload-artifact.uses": "actions/upload-artifact",
     "github.ci.timeout": 15,
     "github.linux": "ubuntu-26.04",
     "github.make": "4.4.1",

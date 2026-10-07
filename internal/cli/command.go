@@ -80,7 +80,12 @@ type Process struct {
 	// installs the tools under ergon/tools in it.
 	CacheDir func() (string, error)
 
-	// Stdin is the standard input of a tool that ergon tool run runs.
+	// Random is the source of the random digits of the name of a new changeset, such as
+	// [crypto/rand.Reader].
+	Random io.Reader
+
+	// Stdin is the standard input of a tool that ergon tool run runs, and of the editor of ergon
+	// release add --open.
 	Stdin io.Reader
 
 	// Stdout receives the output of a command: the help, the version, and the files it wrote.
@@ -139,6 +144,9 @@ type session struct {
 
 	// cacheDir returns the cache directory of the user.
 	cacheDir func() (string, error)
+
+	// random is the source of the random digits of the name of a new changeset.
+	random io.Reader
 
 	// dir is the absolute path of the working directory. It is empty until [session.resolve]
 	// sets it.
@@ -218,6 +226,7 @@ func command(ctx context.Context, p *Process, register func(*language.Catalog) e
 		catalog:  new(language.Catalog),
 		now:      p.Now,
 		cacheDir: p.CacheDir,
+		random:   p.Random,
 		release:  v.Release,
 		env:      p.Env,
 	}
@@ -258,7 +267,7 @@ func command(ctx context.Context, p *Process, register func(*language.Catalog) e
 	flags.StringVar(&file, configFlag, configFile, "read the configuration from `file`")
 	flags.BoolP(helpFlag, "h", false, "show the help of the command")
 	root.Flags().BoolP(versionFlag, "v", false, "show the version of ergon")
-	root.AddCommand(initCommand(s, names), licenseCommand(ctx, s), toolCommand(ctx, s))
+	root.AddCommand(initCommand(s, names), licenseCommand(ctx, s), releaseCommand(ctx, s), toolCommand(ctx, s))
 	return root, s, nil
 }
 

@@ -44,6 +44,11 @@ func TestContribution(t *testing.T) {
 				want: workflow.ErrInvalidJob,
 			},
 			{
+				name: "returns ErrInvalidStep for a release step that is not valid",
+				give: func(c *workflow.Contribution) { c.Release[0].Uses = workflow.Action{} },
+				want: workflow.ErrInvalidStep,
+			},
+			{
 				name: "returns ErrInvalidCodeQL for an analysis that is not valid",
 				give: func(c *workflow.Contribution) { c.CodeQL[0].BuildMode = "" },
 				want: workflow.ErrInvalidCodeQL,
@@ -66,11 +71,12 @@ func TestContribution(t *testing.T) {
 }
 
 // goContribution returns a new valid contribution of the cases with every part: a shared setup,
-// the check of Go, its analysis and its updates.
+// the check of Go, the setup of Go in a release, its analysis and its updates.
 func goContribution() workflow.Contribution {
 	return workflow.Contribution{
 		Setup:   goSetup(),
 		Jobs:    []workflow.Job{*goJob()},
+		Release: []workflow.Step{{Uses: setupGo, With: map[string]string{"go-version-file": "go.work"}}},
 		CodeQL:  []workflow.CodeQL{goAnalysis()},
 		Updates: []workflow.Update{{Ecosystem: "gomod", Directories: []string{"/"}}},
 	}

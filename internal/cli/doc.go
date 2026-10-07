@@ -15,8 +15,11 @@
 //     [go.dokimi.dev/ergon/service/baseline]. The common files render first, the GitHub files
 //     second, the license files third, and then the files of each language of the catalog.
 //   - ergon license check and ergon license fix check and fix the license headers of the files of
-//     the repository with [go.dokimi.dev/ergon/service/license], by the section license of
+//     the repository with [go.dokimi.dev/ergon/service/licenses], by the section license of
 //     .ergon.yaml.
+//   - ergon release plans, writes and publishes the releases of the packages of the repository
+//     with [go.dokimi.dev/ergon/service/release], and its subcommands ci select-mode and ci
+//     version run the jobs of the release workflow through [go.dokimi.dev/ergon/service/forge].
 //   - ergon tool run installs and runs a tool of a section of .ergon.yaml with
 //     [go.dokimi.dev/ergon/service/tool], in the working directory, and exits with the exit status
 //     of the tool.
@@ -45,9 +48,12 @@
 // # Dependency position
 //
 // Imports the standard library, github.com/spf13/cobra, github.com/spf13/viper,
-// [go.dokimi.dev/ergon/core/language], [go.dokimi.dev/ergon/core/option],
-// [go.dokimi.dev/ergon/core/spdx], [go.dokimi.dev/ergon/core/workspace],
+// [go.dokimi.dev/ergon/core/changeset], [go.dokimi.dev/ergon/core/language],
+// [go.dokimi.dev/ergon/core/option], [go.dokimi.dev/ergon/core/spdx],
+// [go.dokimi.dev/ergon/core/version], [go.dokimi.dev/ergon/core/workspace],
 // [go.dokimi.dev/ergon/service/baseline] with its producers common and github and its package
-// lock, [go.dokimi.dev/ergon/service/license] with its producer of the license files, and
-// [go.dokimi.dev/ergon/service/tool]. cmd/ergon imports it.
+// lock, [go.dokimi.dev/ergon/service/forge], [go.dokimi.dev/ergon/service/licenses] with its
+// producer of the license files, [go.dokimi.dev/ergon/service/release],
+// [go.dokimi.dev/ergon/service/tool] and [go.dokimi.dev/ergon/service/vcs]. cmd/ergon imports
+// it.
 package cli

@@ -1,0 +1,14 @@
+# Copyright Dokimasia B.V. 2026
+# SPDX-License-Identifier: MIT
+
+# A publish that releases the root module of ergon builds the binaries of the release, which the
+# action setup-ergon of every repository of ergon init downloads.
+
+jobs:
+  binaries:
+    name: Binaries
+    needs: publish
+    if: contains(fromJSON(needs.publish.outputs.published-packages).*.name, 'go.dokimi.dev/ergon')
+    permissions:
+      contents: write
+    uses: ./.github/workflows/binaries.yml

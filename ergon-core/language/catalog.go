@@ -4,6 +4,7 @@
 package language
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"iter"
@@ -29,8 +30,19 @@ var ErrUnknownRole = errors.New("language: unknown role")
 // Toolchain states the facts about a build toolchain that the commands working on packages read.
 // A toolchain package constructs exactly one.
 type Toolchain struct {
+	// Discover returns the packages of the toolchain in the repository at root, with the
+	// directory of each relative to root, and no package for a repository without them. It reads
+	// files, and runs a program only for a manifest that is a program, as a settings script of
+	// Gradle is. It is nil for a toolchain that releases no packages.
+	Discover func(ctx context.Context, root string) ([]workspace.Package, error)
+
 	// Name identifies the toolchain in configuration and in reports.
 	Name workspace.Toolchain
+
+	// ChangelogVersion reports that a package of the toolchain records its version in the headings
+	// of its CHANGELOG.md and in its tags, because its manifest has no version field, as go.mod has
+	// none. A release of such a package needs a changelog.
+	ChangelogVersion bool
 }
 
 // Declaration states the facts about a language that every command reads. A language module
@@ -87,6 +99,19 @@ func (c *Catalog) Languages() iter.Seq[Declaration] {
 	return func(yield func(Declaration) bool) {
 		for _, e := range languages {
 			if !yield(e.declaration) {
+				return
+			}
+		}
+	}
+}
+
+// Toolchains returns an iterator over the toolchains registered before the call, in the order of
+// registration. The iterator yields nothing for the zero value.
+func (c *Catalog) Toolchains() iter.Seq[Toolchain] {
+	toolchains := c.toolchains
+	return func(yield func(Toolchain) bool) {
+		for _, e := range toolchains {
+			if !yield(e.toolchain) {
 				return
 			}
 		}
@@ -179,11 +204,13 @@ func ToolchainRole[R any](c *Catalog, name workspace.Toolchain) (R, bool) {
 
 // checkRoles returns an error that wraps [ErrUnknownRole] for the first of roles that implements
 // no role interface, naming the kind and the name of its owner, and nil when every role
-// implements one. [Producer] is the one role interface that a toolchain or a language registers:
-// [Calculator], [Configurable] and [Contributor] extend a producer.
+// implements one. A toolchain or a language registers a [Producer], a [Versioner], a [Tagger], a
+// [Packer] or a [Publisher]: [Calculator], [Configurable] and [Contributor] extend a producer.
 func checkRoles(roles []any, kind, name string) error {
 	for _, role := range roles {
-		if _, ok := role.(Producer); !ok {
+		switch role.(type) {
+		case Producer, Versioner, Tagger, Packer, Publisher:
+		default:
 			return fmt.Errorf("%w: %T of %s %q", ErrUnknownRole, role, kind, name)
 		}
 	}

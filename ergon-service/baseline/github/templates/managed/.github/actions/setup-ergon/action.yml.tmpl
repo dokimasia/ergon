@@ -10,7 +10,8 @@ inputs:
   version:
     description: >-
       The release of ergon to install, such as 1.4.0, or latest for the newest release. An empty
-      version installs the release that .ergon/init.lock names.
+      version installs the release that .ergon/init.lock names. The version source installs no
+      release, for a repository that builds ergon in a step of its local file of this action.
     required: false
     default: ""
 
@@ -18,6 +19,7 @@ runs:
   using: composite
   steps:
     - name: Install ergon
+      if: inputs.version != 'source'
       shell: bash
       env:
         VERSION: ${{ inputs.version }}

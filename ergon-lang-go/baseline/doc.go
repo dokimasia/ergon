@@ -22,7 +22,8 @@
 //
 // [Options] is the section go: the tools, the package patterns, the steps of the gate, the options
 // of each step, and the key ci of the job check-go. [Options.Contribution] returns the job check-go,
-// the CodeQL analysis of go and the updates of the modules.
+// the setup of Go in the jobs of release.yml, the CodeQL analysis of go and the updates of the
+// modules.
 //
 // # Dependency position
 //

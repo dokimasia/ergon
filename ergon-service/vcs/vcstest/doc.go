@@ -13,5 +13,7 @@
 // # Dependency position
 //
 // Imports the standard library and go.dokimi.dev/assert. The tests of
-// [go.dokimi.dev/ergon/service/vcs] and [go.dokimi.dev/ergon/service/license] import it.
+// [go.dokimi.dev/ergon/service/vcs], [go.dokimi.dev/ergon/service/licenses],
+// [go.dokimi.dev/ergon/service/release], the release of the module of Go and the command line of
+// ergon import it.
 package vcstest

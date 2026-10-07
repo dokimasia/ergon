@@ -43,8 +43,9 @@ func (Producer) Templates() fs.FS {
 
 // Options returns the options of the GitHub files at the baseline: the runners ubuntu-26.04,
 // macos-26 and windows-2025, ubuntu-26.04 for the checks of text, GNU make 4.4.1, the pins of
-// actions/checkout v7.0.1, github/codeql-action v4.38.2, actions/dependency-review-action v5.0.0
-// and ossf/scorecard-action v2.4.4, and a limit of 15 minutes for each job.
+// actions/checkout v7.0.1, github/codeql-action v4.38.2, actions/dependency-review-action v5.0.0,
+// ossf/scorecard-action v2.4.4, actions/upload-artifact v7.0.2 and actions/download-artifact
+// v8.0.2, and a limit of 15 minutes for each job.
 func (Producer) Options() language.Options {
 	return &Options{
 		Runners: option.Runners{"ubuntu-26.04", "macos-26", "windows-2025"},
@@ -71,6 +72,16 @@ func (Producer) Options() language.Options {
 					Uses:    "ossf/scorecard-action",
 					Commit:  "2d1146689b8cda280b9bc96326124645441f03bc",
 					Release: "v2.4.4",
+				},
+				UploadArtifact: workflow.Action{
+					Uses:    "actions/upload-artifact",
+					Commit:  "cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+					Release: "v7.0.2",
+				},
+				DownloadArtifact: workflow.Action{
+					Uses:    "actions/download-artifact",
+					Commit:  "9000827ccba6bdab643e8b6fd33ac0654aef8333",
+					Release: "v8.0.2",
 				},
 			},
 			Timeout: 15,

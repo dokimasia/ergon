@@ -4,6 +4,7 @@
 package baseline_test
 
 import (
+	"context"
 	"os"
 	"path"
 	"slices"
@@ -26,8 +27,17 @@ import (
 // name pins the name of the producer of Go, which is the name of its section.
 const name = "go"
 
+// git is the access to a repository that the catalog of the cases does not read.
+var git = golang.Git{
+	Tags:     func(context.Context, string) (map[string]string, error) { return nil, nil },
+	Snapshot: func(context.Context, string) (string, error) { return "", nil },
+}
+
 // workflows are the files of the GitHub files that the contribution of Go changes.
-var workflows = []string{".github/workflows/ci.yml", ".github/workflows/security.yml", ".github/dependabot.yml"}
+var workflows = []string{
+	".github/workflows/ci.yml", ".github/workflows/release.yml", ".github/workflows/security.yml",
+	".github/dependabot.yml",
+}
 
 // linters are the linters that the configuration of golangci-lint enables, pinned because each
 // is a decision of the baseline: every linter that a Go repository of the baseline enables.
@@ -128,7 +138,7 @@ func TestBaseline(t *testing.T) {
 func catalog(t *testing.T) *language.Catalog {
 	t.Helper()
 	c := new(language.Catalog)
-	assert.NoError(t, golang.Register(c), "Register of Go")
+	assert.NoError(t, golang.Register(c, git), "Register of Go")
 	return c
 }
 

@@ -97,13 +97,13 @@ Each managed file that has a comment syntax opens with a comment naming its prod
 
 | Producer | Files | Section | Contributions to the workflows |
 |---|---|---|---|
-| `common` | The common files | `common` | The jobs `docs` and `commits` |
+| `common` | The common files | `common` | The jobs `docs`, `commits` and `changeset` |
 | `github` | The GitHub files | `github` | The job `baseline`, and the rendering of every contribution |
 | `license` | `LICENSE`, and `NOTICE` for Apache-2.0, as RFC-0003 specifies | `license` | The job `license` |
 | `js`, `jvm` | The files that two languages share | `js`, `jvm` | The setup of the jobs of their languages, and the CodeQL analysis and the Dependabot updates of the toolchain |
-| Each language | Its own files, and its fragments of the shared files | Its name | The job `check-<language>`, and the CodeQL analysis and the Dependabot updates of a language whose toolchain is its own |
+| Each language | Its own files, and its fragments of the shared files | Its name | The job `check-<language>`, the setup of its toolchain in `release.yml`, and the CodeQL analysis and the Dependabot updates of a language whose toolchain is its own |
 
-`init` renders the common files, the GitHub files and the license files in every repository, a toolchain's files when the first language that names it is chosen, and a language's files when the language is chosen. The release command adds the job `changeset`.
+`init` renders the common files, the GitHub files and the license files in every repository, a toolchain's files when the first language that names it is chosen, and a language's files when the language is chosen.
 
 A producer configures its own concern alone. Its section names the tools, the actions and the runtime versions of its own producer, and never those of another ecosystem: the section `github` configures the platform, and the section `go` configures the setup of Go in CI.
 
@@ -126,12 +126,14 @@ A producer configures its own concern alone. Its section names the tools, the ac
 
 A repository adds its closed set of commit scopes in its local file of `.commitlint.yaml`, as the rule `scope-enum`.
 
+The job `changeset` runs `ergon release status` against the base commit of each pull request, as RFC-0002 specifies, with the configuration `.changeset/config.json` that the common files seed.
+
 ### GitHub files
 
 | File | Class | Content |
 |---|---|---|
-| `.github/workflows/ci.yml` | Managed | The gate on every pull request, on the merge queue and on `main` |
-| `.github/workflows/release.yml` | Managed | The release flow: select-mode, version, pack and publish |
+| `.github/workflows/ci.yml` | Managed | The gate on every pull request, on the merge queue and on `main`, and before each publish of `release.yml` |
+| `.github/workflows/release.yml` | Managed | The release flow of RFC-0002: select-mode, version, ci, pack and publish |
 | `.github/workflows/security.yml` | Managed | CodeQL, dependency review and the OpenSSF Scorecard |
 | `.github/workflows/codeql.yml` | Managed | The CodeQL analysis of one language, which `security.yml` calls for each language |
 | `.github/workflows/baseline.yml` | Managed | A scheduled check against the newest ergon release |
@@ -146,29 +148,29 @@ The workflows:
 
 | Workflow | Triggers | Jobs | Permissions |
 |---|---|---|---|
-| `ci.yml` | `pull_request`, `merge_group`, `push` to `main` | `check-<language>` for each language, `docs` and `commits` of the common files, `license` of the license files, `baseline` of the GitHub files, and on pull requests `changeset` of the release command | `contents: read` |
-| `release.yml` | `push` to `main` | select-mode, version, pack and publish, as specified for the release command | Per job, as specified for the release command |
+| `ci.yml` | `pull_request`, `merge_group`, `push` to `main`, `workflow_call` | `check-<language>` for each language, `docs` of the common files, `license` of the license files, `baseline` of the GitHub files, and on pull requests `commits` and `changeset` of the common files | `contents: read` |
+| `release.yml` | `push` to `main` | select-mode, version, ci, pack and publish, as RFC-0002 specifies | Per job, as RFC-0002 specifies |
 | `security.yml` | `pull_request`, `push` to `main`, weekly | `codeql-<language>` for each CodeQL analysis that a producer contributes, `dependency-review` on pull requests, `scorecard` weekly | `security-events: write` on the CodeQL jobs and `scorecard`, `id-token: write` on `scorecard`, `contents: read` elsewhere |
 | `baseline.yml` | Weekly, `workflow_dispatch` | Installs the newest ergon release, runs `ergon init check`, and opens an issue when the baseline is outdated and no such issue is open | `contents: read`, `issues: write` |
 
-`setup-ergon` downloads `ergon_<version>_<os>_<arch>.tar.gz` and `checksums.txt` from the release `v<version>` of github.com/dokimasia/ergon, where `<os>` is `linux`, `darwin` or `windows` and `<arch>` is `amd64` or `arm64`. Every release of ergon publishes these assets. Every job that runs a target of the Makefile installs ergon, because the targets run their tools through `ergon tool run`.
+`setup-ergon` downloads `ergon_<version>_<os>_<arch>.tar.gz` and `checksums.txt` from the release `v<version>` of github.com/dokimasia/ergon, where `<os>` is `linux`, `darwin` or `windows` and `<arch>` is `amd64` or `arm64`. Every release of ergon publishes these assets. Every job that runs a target of the Makefile installs ergon, because the targets run their tools through `ergon tool run`. The input `version` names another release, or `latest` for the newest one. With the version `source`, the action skips the installation of a release, and a repository that builds ergon from its own source installs it in a step of its local file of the action. ergon's own repository does that, so its gate checks its managed files against the baseline of the same commit.
 
 Every workflow follows these rules:
 
 - The top-level `permissions` is `{}`. Each job grants only the scopes its table row lists.
 - Every action is pinned to a full commit SHA, with its release in a comment. The pin is an option of the producer whose job runs the action.
 - `actions/checkout` runs with `persist-credentials: false`.
-- `concurrency` groups by workflow and ref, and cancels a superseded run on pull requests only.
-- Every job has `timeout-minutes`, from the `ci.timeout` of its producer. A job that calls `codeql.yml` takes the timeout of the called job.
+- `concurrency` groups by workflow and ref, and cancels a superseded run on pull requests only. The group of `ci.yml` starts with `ci`, because a run that `release.yml` calls has the workflow name of its caller.
+- Every job has `timeout-minutes`, from the `ci.timeout` of its producer. A job that calls `codeql.yml` takes the timeout of the called job, and the job ci of `release.yml` the timeouts of the jobs of `ci.yml`.
 - A toolchain's runtime version comes from its pin file, or from the versions that `ci.versions` of its section lists, as a matrix.
 - No workflow uses `pull_request_target`, and no pull request job receives a secret.
 - Every job specifies its runner image with a version, never a `-latest` label.
-- Each job runs on the runners that `ci.runners` of its producer lists. An empty list selects every runner of the section `github`: `ubuntu-26.04`, `macos-26` and `windows-2025` at the baseline. The job of a language runs without `fail-fast`. A job that checks text, such as `docs` and `commits`, runs on the runner of `github.linux`.
+- Each job runs on the runners that `ci.runners` of its producer lists. An empty list selects every runner of the section `github`: `ubuntu-26.04`, `macos-26` and `windows-2025` at the baseline. The job of a language runs without `fail-fast`. A job that checks text, such as `docs` and `commits`, and every job of `release.yml` run on the runner of `github.linux`.
 - Each `check-<language>` job runs `make check-<language>`, so CI and a local run execute the same commands. The step runs in `bash`, which is Git Bash on Windows, after `setup-make`.
 
 ### Jobs
 
-The GitHub producer renders every job of `ci.yml` from one skeleton: the checkout, `setup-make` on a Windows runner, `setup-ergon`, the setup steps of the job's producer, and the job's command. A producer returns its jobs through the `Contributor` role as values of `workflow.Job`: the name, the runners, the matrix of runtime versions, the setup steps, the command and the permissions. It returns its CodeQL analysis and its Dependabot updates the same way. No toolchain appears in the GitHub producer. The GitHub producer rejects a job whose runners its section does not list.
+The GitHub producer renders every job of `ci.yml` from one skeleton: the checkout, `setup-make` on a Windows runner, `setup-ergon`, the setup steps of the job's producer, and the job's command. A producer returns its jobs through the `Contributor` role as values of `workflow.Job`: the name, the runners, the matrix of runtime versions, the setup steps, the command and the permissions. It returns its CodeQL analysis, its Dependabot updates and the steps that set up its toolchain in a release the same way. No toolchain appears in the GitHub producer. The GitHub producer rejects a job whose runners its section does not list.
 
 A language's job and its CodeQL analysis run once the repository has the file that pins the language's toolchain:
 
@@ -186,6 +188,8 @@ A language's job and its CodeQL analysis run once the repository has the file th
 
 The job of Go fails in a repository that has a `go.mod` and no `go.work`, because the targets of Go run in the modules of `go.work`. It is skipped in a repository without a `go.mod`.
 
+The jobs version and pack of `release.yml` run the release steps of every producer after `setup-ergon`, each once the repository has the pin file of its toolchain. Go contributes `actions/setup-go` at the version of `go.work`, for the `go mod tidy` of a release.
+
 ### Language contributions
 
 Each language produces its own files and its fragments of the shared files, and it contributes to the workflows. A toolchain that two languages share renders the fragments and contributions they share, once, before its first language. The `jvm` toolchain of the Java module renders the target `audit-jvm` and the fragment of `.gitignore` of Gradle, and contributes the setup of Java, the CodeQL analysis of `java-kotlin` and the Gradle updates of Dependabot. The `js` toolchain of the JavaScript module renders `biome.json`, the targets `fmt-js`, `lint-js` and `audit-js`, and the fragments of `.gitattributes` and `.gitignore` that JavaScript and TypeScript share. It contributes the setup of Node.js, the analysis of `javascript-typescript` and the npm updates. The catalog records this rendering as a role of the toolchain, as it records the roles of a language.
@@ -201,6 +205,7 @@ Each language contributes these parts:
 | `.gitattributes` | A fragment: diff and generated-file rules for its file types |
 | `Makefile` | A fragment: `fmt-<language>`, `lint-<language>`, `test-<language>`, `audit-<language>` and `check-<language>`, or `audit-jvm` and `audit-js` for a shared toolchain |
 | `.github/workflows/ci.yml` | A `workflow.Job`: the `check-<language>` job, with its toolchain setup |
+| `.github/workflows/release.yml` | The `workflow.Step` values that set up its toolchain for a release, such as `actions/setup-go` |
 | `.github/workflows/security.yml` | Its CodeQL language, where CodeQL analyzes it: C#, Go, Python and Rust, and the shared `java-kotlin` and `javascript-typescript` |
 | `.github/dependabot.yml` | Its package manager: `nuget`, `gradle`, `composer`, `npm`, `gomod`, `uv`, `cargo` or `terraform` |
 | `.ergon.yaml` | Its section |
@@ -288,7 +293,7 @@ One engine in `service/baseline/render` executes the templates of every producer
 
 - The delimiters are `{{%` and `%}}`, so the `${{ }}` expressions of a workflow and the `{{.Dir}}` of `go list -f` in a Makefile remain text.
 - A template reads `.Answers`, `.Options`, which are the options of its producer, `.Data`, which are the values that its producer computes, and `.Contributions`, which are the contributions of every producer to the workflows. A key that the data lacks is an error.
-- The function `words` writes a list as words of the shell, escaped for make. `make` escapes a value for make, and `yaml` quotes a scalar of YAML.
+- The function `words` writes a list as words of the shell, escaped for make. `make` escapes a value for make, `yaml` quotes a scalar of YAML, and `steps` writes the steps of a job of a workflow, so `ci.yml` and `release.yml` write a step the same way.
 - The engine skips a template that renders zero bytes, as `NOTICE` does for every license but Apache-2.0.
 
 A test renders every template of every producer with its options at the baseline. It checks that each file parses in its format, that no line ends in whitespace, and that each file ends with one newline, which the hooks of `.pre-commit-config.yaml` require.
@@ -388,6 +393,14 @@ github:
         uses: ossf/scorecard-action
         commit: 2d1146689b8cda280b9bc96326124645441f03bc
         release: v2.4.4
+      upload-artifact:
+        uses: actions/upload-artifact
+        commit: cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        release: v7.0.2
+      download-artifact:
+        uses: actions/download-artifact
+        commit: 9000827ccba6bdab643e8b6fd33ac0654aef8333
+        release: v8.0.2
     timeout: 15
 license:
   owner: Example B.V.
@@ -642,7 +655,7 @@ A tool whose integration names its package accepts another version and rejects a
 - `kotlin.tools.ktlint`, because `ergon tool run` runs the jar of `com.pinterest.ktlint:ktlint-cli` with the classifier `all`, which contains ktlint and its dependencies.
 - The four tools of `php`, because the targets run the programs of PHPStan and PHP-CS-Fixer with the flags of those programs, and the extension installer of PHPStan loads phpstan-strict-rules.
 
-The actions of the workflows are options of the producers whose jobs run them: the checkout and the actions of `security.yml` in `github`, markdownlint in `common`, and the setup of each toolchain in its section. Dependabot cannot update `.ergon.yaml`, so `dependabot.yml` updates no action.
+The actions of the workflows are options of the producers whose jobs run them: the checkout, the actions of `security.yml` and the artifact actions of `release.yml` in `github`, markdownlint in `common`, and the setup of each toolchain in its section. Dependabot cannot update `.ergon.yaml`, so `dependabot.yml` updates no action.
 
 Only Go has the steps `race`, `fuzz`, `bench`, `mutate` and `generate`. A fuzzer or a benchmark harness in another language is a dependency of the repository's own build, such as criterion, JMH or pytest-benchmark, and `init` renders no build file. A language gains `mutate` with its engine of the dokimi addon, and dokimi-mutate-go is the only one.
 
@@ -715,6 +728,8 @@ The producer of a shared file is the producer of its first fragment. The produce
 
 `local` is the digest of the file's local file. A changed local file makes its managed file `outdated`.
 
+`ergon` is the release of ergon that wrote the lock, or `dev` for a build without a release. A build of `go install go.dokimi.dev/ergon/cmd/ergon@v1.4.0` writes `1.4.0`.
+
 ### Tool versions
 
 Each ergon release embeds the baseline value of every option, among them the version of each tool its baseline was tested with, the digests of its release binaries, and the pin of each action. Upgrading ergon and running `ergon init sync` moves every option that still has the earlier baseline value to the new one. A repository chooses another version in its section of `.ergon.yaml`. Dependabot updates the dependency manifests and the lockfiles.
@@ -737,12 +752,12 @@ Each ergon release embeds the baseline value of every option, among them the ver
 | `ergon-service/baseline/render` | The engine of the templates, the classes from the template tree, the collection of the contributions, and the join of fragments | `core/*` |
 | `ergon-service/baseline/common` | The producer of the common files | `core/*` |
 | `ergon-service/baseline/github` | The producer of the GitHub files, which renders the contributions of every producer | `core/*` |
-| `ergon-service/license/baseline` | The producer of the license files, as RFC-0003 specifies | `core/*`, `service/license` |
+| `ergon-service/licenses/baseline` | The producer of the license files, as RFC-0003 specifies | `core/*`, `service/licenses` |
 | `ergon-service/tool` | `ergon tool run`: the installation, the check and the run of a tool | `core/language`, `core/option` |
 | `ergon-lang-<language>/baseline` | The producer of the language: the struct of its options with their rules, its templates, and its contributions | `core/*` |
 | `ergon-lang-go/analysis` | The analyzers `errorprefix` and `skipexpiry` | `golang.org/x/tools/go/analysis` |
 | `ergon-lang-go/cmd/ergon-go-vet` | The command that runs the analyzers of `analysis` | `ergon-lang-go/analysis`, `golang.org/x/tools/go/analysis/multichecker`, `golang.org/x/tools/go/packages` |
-| `internal/cli` | `ergon init` and its subcommands, `ergon license` and `ergon tool run`, which open the repository with the common files, the GitHub files and the license files as the producers before the languages | `core/*`, `service/*` |
+| `internal/cli` | `ergon init` and its subcommands, `ergon license`, `ergon release` and `ergon tool run`, which open the repository with the common files, the GitHub files and the license files as the producers before the languages | `core/*`, `service/*` |
 
 The packages for `init` are named `baseline`, because the compiler rejects an import of a package named `init` unless the import renames it. The `baseline` packages of the Java and JavaScript modules also render the fragments and the contributions of the toolchain that Kotlin and TypeScript share with them.
 
@@ -782,7 +797,8 @@ type Configurable interface {
 }
 
 // Contributor is a producer with a part of the workflows: jobs of ci.yml,
-// a CodeQL analysis, or a package manager that Dependabot updates.
+// the setup of its toolchain in release.yml, a CodeQL analysis, or a
+// package manager that Dependabot updates.
 type Contributor interface {
 	// Contribution returns the producer's part of the workflows for o.
 	Contribution(o Options) workflow.Contribution
@@ -931,3 +947,4 @@ The workflows would pin each action as a constant of the ergon release, and Depe
 | The analyzers of Go and their multichecker | https://pkg.go.dev/golang.org/x/tools/go/analysis/multichecker |
 | Typed options of a tool in its language backend | Pants, `src/python/pants/backend/go/lint/golangci_lint/subsystem.py` |
 | Managed files, files written once, and typed workflow options | projen, `FileBase`, `SampleFile`, `workflowRunsOn` and `workflowNodeVersion`, https://github.com/projen/projen |
+| The concurrency group of a called workflow | https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows |

@@ -24,7 +24,7 @@
     {
       "path": ".github/actions/setup-ergon/action.yml",
       "producer": "github",
-      "sha256": "171580df4891a2627ce86604a01a83967239fe85a3f74f0a948fe94ef93ca54e"
+      "sha256": "4aaa13da8da70d09dea1654946ca0badb00a13e00999eaef1a780e9230acad93"
     },
     {
       "path": ".github/actions/setup-make/action.yml",
@@ -39,12 +39,17 @@
     {
       "path": ".github/workflows/ci.yml",
       "producer": "github",
-      "sha256": "99422674471a0b516919283848d1615e3fb8fd97712d81bd3637a69c97ad1304"
+      "sha256": "7b79043f2f66a82e6307dcc64e14bfbe28dfc75cdc7f8afb2c256ab6e20ef254"
     },
     {
       "path": ".github/workflows/codeql.yml",
       "producer": "github",
       "sha256": "73258c4feacff149ac50c7cfb695871a474076c17835059e1a6d70200cfdbcec"
+    },
+    {
+      "path": ".github/workflows/release.yml",
+      "producer": "github",
+      "sha256": "e6339f6953a930e9e8c33d7de389d42ff82aa88c1a9759220ea95a66b952bc88"
     },
     {
       "path": ".github/workflows/security.yml",
@@ -62,9 +67,15 @@
     "github.ci.actions.dependency-review.commit": "a1d282b36b6f3519aa1f3fc636f609c47dddb294",
     "github.ci.actions.dependency-review.release": "v5.0.0",
     "github.ci.actions.dependency-review.uses": "actions/dependency-review-action",
+    "github.ci.actions.download-artifact.commit": "9000827ccba6bdab643e8b6fd33ac0654aef8333",
+    "github.ci.actions.download-artifact.release": "v8.0.2",
+    "github.ci.actions.download-artifact.uses": "actions/download-artifact",
     "github.ci.actions.scorecard.commit": "2d1146689b8cda280b9bc96326124645441f03bc",
     "github.ci.actions.scorecard.release": "v2.4.4",
     "github.ci.actions.scorecard.uses": "ossf/scorecard-action",
+    "github.ci.actions.upload-artifact.commit": "cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+    "github.ci.actions.upload-artifact.release": "v7.0.2",
+    "github.ci.actions.upload-artifact.uses": "actions/upload-artifact",
     "github.ci.timeout": 15,
     "github.linux": "ubuntu-26.04",
     "github.make": "4.4.1",

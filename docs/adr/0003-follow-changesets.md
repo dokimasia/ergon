@@ -4,7 +4,7 @@ title: Follow changesets' file format, configuration and planning rules
 status: Accepted
 date: 2026-09-24
 supersedes: none
-superseded-by: none
+superseded-by: ADR-0009, in part
 rfc: RFC-0002
 ---
 

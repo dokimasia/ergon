@@ -42,7 +42,7 @@ A type belongs here when a role signature names it. A type that does something, 
 | Package | Contains | Imports |
 |---|---|---|
 | `option` | The option types that every section of `.ergon.yaml` composes, each with `Validate`: the kinds of tool `Module`, `PyPI`, `NPM`, `Crate`, `Maven`, `Composer` and the release binaries `Binary`, `Release` and `UV`, the step options `Run`, `Fuzz`, `Bench`, `Mutate`, `Audit` and `Threshold`, `Check`, `Step`, `Severity`, `Paths`, `Version`, and `CI` with its forms for the runners and the versions | `workflow` |
-| `language` | `Toolchain`, `Declaration`, `Catalog`, `RegisterToolchain`, `Register`, `ToolchainRole` and `Role`, and the role interfaces with one file per command. `release.go` contains `Versioner`, `Packer`, `Publisher` and `Edit`. `init.go` contains `Producer`, `Calculator`, `Configurable`, `Contributor`, `Options`, `Answers` with `Validate`, `Repository`, and the path of `.ergon.yaml` | `workspace`, `spdx`, `workflow` |
+| `language` | `Toolchain`, `Declaration`, `Catalog`, `RegisterToolchain`, `Register`, `ToolchainRole` and `Role`, and the role interfaces with one file per command. `release.go` contains `Resolution`, `Versioner`, `Tagger`, `Packer`, `Publisher` and `Edit`. `init.go` contains `Producer`, `Calculator`, `Configurable`, `Contributor`, `Options`, `Answers` with `Validate`, `Repository`, and the path of `.ergon.yaml` | `workspace`, `spdx`, `workflow` |
 
 The catalog has two kinds of entry, and each registers its roles. Toolchains discover packages and implement the release roles. Each language declares its toolchain and implements the roles of `init`. A toolchain that two languages share also implements them, for the files and the contributions those languages share: the `jvm` toolchain of the Java module and the `js` toolchain of the JavaScript module. Roles are separate interfaces, so a toolchain or a language declines a command by not implementing its role. The catalog selects by type assertion, and each implementation asserts its roles at compile time.
 
@@ -52,9 +52,9 @@ The language-neutral side of each command. It imports `core` and nothing else in
 
 | Package | Contains | Imports |
 |---|---|---|
-| `release` | The planner, the changelog writer, the publish plan, tagging, and the `Forge` interface it calls | `core/*`, `vcs`, `workspace` |
-| `license` | `Config`, the `license` section of `.ergon.yaml`, `Text` and the texts of the 44 licenses, `Check`, `Fix`, the table of comment styles with its overrides, and the removal of outdated header blocks | `core/*`, `vcs`, skywalking-eyes `assets`, `pkg/comments`, `pkg/header`, `pkg/license` and `pkg/logger`, logrus, doublestar |
-| `license/baseline` | The producer of `LICENSE` and `NOTICE` for `init` | `core/*`, `license` |
+| `release` | The changesets of a repository, the planner, the status of a branch, the version of a plan with its changelogs, the version pull request, the publish plan, the pack and the publish, and the interfaces `Forge`, `Proposer`, `Releaser` and `TagForge` that it calls | `core/*`, `vcs`, doublestar |
+| `licenses` | `Config`, the `license` section of `.ergon.yaml`, `Text` and the texts of the 44 licenses, `Check`, `Fix`, the table of comment styles with its overrides, and the removal of outdated header blocks | `core/*`, `vcs`, skywalking-eyes `assets`, `pkg/comments`, `pkg/header`, `pkg/license` and `pkg/logger`, logrus, doublestar |
+| `licenses/baseline` | The producer of `LICENSE` and `NOTICE` for `init` | `core/*`, `licenses` |
 | `baseline` | The `init` command: `New`, `Add`, `Remove`, `Check`, `Sync` and `Options` over the producers that `Open` receives, and the plan of their changes | `core/*`, `baseline/lock`, `baseline/options`, `baseline/overlay`, `baseline/render` |
 | `baseline/lock` | The format of `.ergon/init.lock` | `core/*` |
 | `baseline/options` | The sections of `.ergon.yaml`: the resolution against the record and the answers of the lock, the strict decode into the struct of a producer, its `Validate`, and the sections with the comments of the `doc` tags | `core/*`, viper and mapstructure for the decode, go.yaml.in/yaml/v3 for the writer |
@@ -64,12 +64,12 @@ The language-neutral side of each command. It imports `core` and nothing else in
 | `baseline/github` | The producer of the GitHub files and the section `github`, which renders the contributions of every producer | `core/*` |
 | `baseline/baselinetest` | The test kit of the producers: `New` renders them into a directory of a test as `init new` does, and `Hygiene` checks the format of each file | `core/*`, `baseline`, assert, go.yaml.in/yaml/v3, go-toml |
 | `tool` | `ergon tool run`: the installation of a tool into the cache, the check of a release binary against its digest, and the run | `core/language`, `core/option` |
-| `vcs` | git: the files of a working tree, the diff since a ref, tags, the snapshot commit, the atomic push | stdlib |
+| `vcs` | git: the files of a working tree, the diff since a ref, HEAD and the commit that added a file, tags, the snapshot commit, the atomic push | stdlib |
 | `vcs/vcstest` | git in a test: an environment without the configuration of the user, and a working tree of a test | stdlib, assert |
-| `forge` | The GitHub client: signed commits through `createCommitOnBranch`, branch and tag refs, pull requests, releases, and the pull request behind a commit | stdlib, `core/workspace` |
-| `workspace` | Which toolchains and languages are active in a repository, and which package a changed file belongs to | `core/language`, `core/workspace`, `vcs` |
+| `forge` | The GitHub client: signed commits through `createCommitOnBranch`, branch and tag refs, pull requests, releases, and the links of a commit and of a pull request | stdlib |
+| `workspace` | Which toolchains and languages are active in a repository | `core/language`, `core/workspace`, `vcs` |
 
-`vcs` is the only package in this module that runs git, and `forge` is the only package that calls the GitHub API. `forge` satisfies `release.Forge` without importing `release`, and no other package in the module imports `forge`. `license` is the only package in the repository that imports skywalking-eyes. The `baseline` packages name no language and no toolchain.
+`vcs` is the only package in this module that runs git, and `forge` is the only package that calls the GitHub API. `forge` satisfies the interfaces of `release` without importing `release`, and no other package in the module imports `forge`. `licenses` is the only package in the repository that imports skywalking-eyes. The `baseline` packages name no language and no toolchain.
 
 ## ergon-lang
 
@@ -81,16 +81,17 @@ Machinery that two or more languages use. It imports `core` and nothing else in 
 | `command` | The subprocess runner | stdlib |
 | `conformance` | One suite per role. Every toolchain and language runs it against its fixtures | `core/language`, `core/workspace` |
 
-A language module imports `manifest`, `command` and `conformance`. The only imports between language modules are two: `ergon-lang-typescript` imports the root package of `ergon-lang-javascript`, and `ergon-lang-kotlin` imports the root package of `ergon-lang-java`, for the name of their toolchain. The tests of a language module also import `service/baseline`, whose test kit renders the language with its options at the baseline, as every command renders them.
+A language module imports `manifest`, `command` and `conformance`. The only imports between language modules are two: `ergon-lang-typescript` imports the root package of `ergon-lang-javascript`, and `ergon-lang-kotlin` imports the root package of `ergon-lang-java`, for the name of their toolchain. The tests of a language module also import `service/baseline`, whose test kit renders the language with its options at the baseline, as every command renders them. The tests of the release roles of a language module import `service/vcs` and its test kit, which run git in the working trees of the tests.
 
 ## A language module
 
 ```text
 ergon-lang-go/
   doc.go        package golang
-  language.go   Language, Toolchain and Register
+  language.go   Language, Toolchain, Git and Register
   workspace/    go.work and go.mod discovery, for every command
-  release/      Versioner: require rewrites, go.sum through the file proxy, tag prefixes
+  release/      Versioner: require rewrites, go.sum through the file proxy, the
+                replaces of go.work, tag prefixes
   baseline/     the producer: the options of the section go and their rules, the
                 templates, and the contributions to the workflows
   analysis/     the analyzers errorprefix and skipexpiry, which lint-go runs
@@ -111,12 +112,14 @@ ergon-lang-go/
 | `ergon-lang-terraform` | `terraform` | `terraform` | `workspace`, `release`, `baseline` |
 | `ergon-lang-bash` | `bash` | `bash` | `workspace`, `release`, `baseline` |
 
-The root package of a language module declares the name of the language, the name of the toolchain it declares, and `Register`, which registers the toolchain and then the language. The Java and JavaScript modules register their toolchain with the producer of the files and the contributions that Kotlin and TypeScript share with them. A language module that declares a toolchain has one `workspace` package and one package per command it supports. `ergon-lang-typescript` and `ergon-lang-kotlin` have only `baseline`, because the JavaScript and Java modules discover and release their packages. The package for `init` is `baseline`, because the compiler rejects an import of a package named `init` unless the import renames it. `lang/go/release` also runs git, through `golang.org/x/mod/zip.CreateFromVCS`.
+The root package of a language module declares the name of the language, the name of the toolchain it declares, and `Register`, which registers the toolchain and then the language. The Java and JavaScript modules register their toolchain with the producer of the files and the contributions that Kotlin and TypeScript share with them. A language module that declares a toolchain has one `workspace` package and one package per command it supports. `ergon-lang-typescript` and `ergon-lang-kotlin` have only `baseline`, because the JavaScript and Java modules discover and release their packages. The package for `init` is `baseline`, because the compiler rejects an import of a package named `init` unless the import renames it.
+
+`lang/go/release` also runs git, through `golang.org/x/mod/zip.CreateFromVCS`. The Go module reads the tags and snapshots the working tree through the functions of `Git`, which the root module fills with `vcs.Tags` and `vcs.Snapshot`, so the module does not import `service` outside its tests.
 
 A `baseline` package contains:
 
 - `baseline.go`: the producer, with its name, its templates, the baseline value of each option in `Options`, and its contribution for options of another type.
-- `options.go`: the struct of the language's options, composed from `core/option`, with a `doc` tag on each field, `Validate` with the language's own rules, and `Contribution`: the job `check-<language>` with its setup, its CodeQL language and its Dependabot ecosystem, as values of `core/workflow`.
+- `options.go`: the struct of the language's options, composed from `core/option`, with a `doc` tag on each field, `Validate` with the language's own rules, and `Contribution`: the job `check-<language>` with its setup, the steps that set up its toolchain in a release, its CodeQL language and its Dependabot ecosystem, as values of `core/workflow`.
 - `toolchain.go` and `toolchainoptions.go` in the Java and JavaScript modules: the producer and the options of the toolchain that two languages share, whose contribution is the setup that the jobs of both languages run.
 - `templates/managed/`, `templates/seeded/` and `templates/shared/`: the templates, whose directory states their class. The Java and JavaScript modules have a tree for the language and a tree for the toolchain, such as `templates/java/` and `templates/jvm/`.
 
@@ -128,12 +131,12 @@ The root package of the Go module cannot be called `go`, because `go` is a keywo
 
 | Package | Contains | Imports |
 |---|---|---|
-| `internal/app` | The composition root: `Register`, which registers each language module in a fixed order, and the join of `release` to `forge` | `core/language`, every language module |
-| `internal/cli` | The command tree on cobra, one file per command, and the configuration on viper: `.ergon.yaml` or the file of `--config`. `init.go` runs `ergon init`, `license.go` runs `ergon license`, and `tool.go` runs `ergon tool run`. `repository.go` opens a repository with the common files, the GitHub files and the license files as the producers before the languages, and finds the repository of the working directory. These commands read no configuration through viper: `baseline/options` reads the options of `.ergon.yaml` | `core/*`, `service/*`, cobra, viper |
-| `internal/buildinfo` | Build metadata stamped at link time | stdlib |
+| `internal/app` | The composition root: `Register`, which registers each language module in a fixed order, with the functions of `service/vcs` that the Go module reads a repository through | `core/language`, `service/vcs`, every language module |
+| `internal/cli` | The command tree on cobra, one file per command, and the configuration on viper: `.ergon.yaml` or the file of `--config`. `init.go` runs `ergon init`, `license.go` runs `ergon license`, `release.go` runs `ergon release` and joins `release` to the GitHub client of `forge`, and `tool.go` runs `ergon tool run`. `repository.go` opens a repository with the common files, the GitHub files and the license files as the producers before the languages, and finds the repository of the working directory. These commands read no configuration through viper: `baseline/options` reads the options of `.ergon.yaml` | `core/*`, `service/*`, cobra, viper |
+| `internal/buildinfo` | The version of a build: the build metadata stamped at link time, or the version of the module that `go install` built | stdlib, `golang.org/x/mod` |
 | `cmd/ergon` | A shim that forwards an exit code | `internal/app`, `internal/cli`, `internal/buildinfo` |
 
-This is the only module that names a language. Registration is an explicit call in `internal/app`, never an `init` with a blank import. The `action/` directory beside `cmd/` contains the four composite GitHub Actions.
+This is the only module that names a language. Registration is an explicit call in `internal/app`, never an `init` with a blank import. ergon does not publish GitHub Actions: the workflows of a repository install ergon with its action `setup-ergon`, as RFC-0002 states.
 
 ## File conventions inside a package
 

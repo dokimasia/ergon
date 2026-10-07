@@ -36,7 +36,7 @@ Every ergon command has a part that differs per language and a part that does no
 A test runner, a coverage parser and a lint task list differ per language, while thresholds, stage filters and reports do not.
 The earlier Go-only ergon had 15,040 lines of production code in 32 packages, and around 3,000 of those lines encoded Go semantics.
 
-The per-language part brings its own dependencies and its own toolchain. Go's release needs `golang.org/x/mod` v0.40.0, and Rust's and Python's need a TOML parser that reports byte ranges. Each language's tests run its own toolchain:
+The per-language part brings its own dependencies and its own toolchain. Go's release needs `golang.org/x/mod` v0.41.0, and Rust's and Python's need a TOML parser that reports byte ranges. Each language's tests run its own toolchain:
 
 | Language | Toolchain its tests run |
 |---|---|
@@ -67,8 +67,8 @@ The boundary between `core` and its consumers makes that visible to a linter.
 | `ergon-core/` | `go.dokimi.dev/ergon/core` | Vocabulary, the catalog, the language and toolchain declarations, and the role interfaces | none |
 | `ergon-service/` | `go.dokimi.dev/ergon/service` | The language-neutral side of each command, the tool runner, git, and the GitHub client | `github.com/spf13/viper` and `go.yaml.in/yaml/v3`, for the options of `.ergon.yaml`, and `github.com/apache/skywalking-eyes` and `github.com/bmatcuk/doublestar/v4`, for the license command |
 | `ergon-lang/` | `go.dokimi.dev/ergon/lang` | Manifest editing, the subprocess runner and the conformance suite | a TOML parser |
-| `ergon-lang-<language>/` | `go.dokimi.dev/ergon/lang/<language>` | One language each, and the toolchain it declares | The language's own, such as `golang.org/x/tools` for the analyzers of `ergon-lang-go` |
-| `.` | `go.dokimi.dev/ergon` | `cmd/ergon`, the composition root, the command tree | `github.com/spf13/cobra` for the commands, `github.com/spf13/viper` for the configuration |
+| `ergon-lang-<language>/` | `go.dokimi.dev/ergon/lang/<language>` | One language each, and the toolchain it declares | The language's own, such as `golang.org/x/mod` for the release of Go modules and `golang.org/x/tools` for the analyzers of `ergon-lang-go` |
+| `.` | `go.dokimi.dev/ergon` | `cmd/ergon`, the composition root, the command tree | `github.com/spf13/cobra` for the commands, `github.com/spf13/viper` for the configuration, and `golang.org/x/mod` for the version of a build of `go install` |
 
 The language modules are `ergon-lang-csharp`, `ergon-lang-java`, `ergon-lang-kotlin`, `ergon-lang-php`, `ergon-lang-javascript`, `ergon-lang-typescript`, `ergon-lang-go`, `ergon-lang-python`, `ergon-lang-rust`, `ergon-lang-terraform` and `ergon-lang-bash`.
 
@@ -99,9 +99,9 @@ flowchart BT
 6. Only `service/vcs` and `lang/go/release` run git. `lang/go/release` runs it through `golang.org/x/mod/zip.CreateFromVCS`, which runs `git archive`.
 7. Only `service/forge` calls the GitHub API, and no other package in `service` imports it.
 
-The rules apply to the production code. The tests of a language module also import `service/baseline`, whose test kit renders the language as `ergon init new` renders it.
+The rules apply to the production code. The tests of a language module also import `service/baseline`, whose test kit renders the language as `ergon init new` renders it. The tests of the release roles of a language module import `service/vcs` and its test kit, which run git in the working trees of the tests.
 
-A service is given what it calls through an interface the service declares. `service/release` declares the `Forge` interface, and `service/forge` satisfies it without importing `release`. The root module joins the two.
+A service is given what it calls through an interface the service declares. `service/release` declares the `Forge` interface, and `service/forge` satisfies it without importing `release`. The root module joins the two. A language module is given the functions of `service/vcs` that it needs in the same way. `lang/go` declares `Git`, with a function that reads the tags of a repository and a function that snapshots its working tree, and the root module passes `vcs.Tags` and `vcs.Snapshot` to its `Register`.
 
 depguard enforces the rules from the root `.golangci.yml`, with a strict allow-list per module directory:
 
@@ -160,6 +160,11 @@ type Toolchain struct {
 	// a subprocess only when a manifest is a program, as a Gradle settings
 	// script is.
 	Discover func(ctx context.Context, root string) ([]workspace.Package, error)
+
+	// ChangelogVersion reports that a package records its version in the
+	// headings of its CHANGELOG.md and in its tags, because its manifest
+	// has no version field, as go.mod has none.
+	ChangelogVersion bool
 }
 
 // Declaration states the facts about a language that every command reads.
@@ -200,7 +205,7 @@ The roles of `init` divide the files of a repository by concern, as RFC-0004 spe
 - `Producer` returns the templates of a concern. Each language, each toolchain that two languages share, and each base producer of RFC-0004 implements it.
 - `Calculator` returns the values that the templates of a producer read beyond the answers, the options and the contributions, such as the text of a license.
 - `Configurable` returns a producer's options, which are a struct in the producer's own package. The struct composes the option types of `core/option`, adds the options that only its concern has, and validates them with its own rules.
-- `Contributor` returns the jobs, the CodeQL analysis and the Dependabot updates of a producer as data. The GitHub producer renders them into the workflows.
+- `Contributor` returns the jobs, the setup of its toolchain in a release, the CodeQL analysis and the Dependabot updates of a producer as data. The GitHub producer renders them into the workflows.
 
 A producer configures its own concern alone. A section of `.ergon.yaml` names the tools, the actions and the runtime versions of its own producer, and never those of another ecosystem. The section `github` configures the platform, and the section `go` configures the setup of Go in CI. A tool that runs in the gate of a language other than its own is a release binary, which the tool runner of `service/tool` installs without the toolchain that built it.
 
@@ -216,7 +221,7 @@ Nothing registers from `init`. An `init` with a blank import makes the language 
 ergon-lang-go/
   go.mod        module go.dokimi.dev/ergon/lang/go
   doc.go        package golang
-  language.go   Language, Toolchain and Register
+  language.go   Language, Toolchain, Git and Register
   workspace/    go.work and go.mod discovery, for every command
   release/      the release roles
   baseline/     the init roles: the options of the section go and their rules,
@@ -247,25 +252,28 @@ ergon-lang-go/go.mod      module go.dokimi.dev/ergon/lang/go
 go.mod                    module go.dokimi.dev/ergon
                           require every module above, at tagged versions
                           require github.com/spf13/cobra, github.com/spf13/viper
+                          require golang.org/x/mod
 ```
 
-Every language module requires `core`, and `service` for the test kit of its tests. It also requires `lang` once it uses that machinery. `ergon-lang-typescript` requires `ergon-lang-javascript`, and `ergon-lang-kotlin` requires `ergon-lang-java`. A `replace` directive for each required sibling lets each of these modules build and tidy outside the workspace. Inside it, `go.work` lists every directory, and builds and tests resolve across the modules without the network.
+Every language module requires `core`, and `service` for the test kit of its tests. It also requires `lang` once it uses that machinery. `ergon-lang-typescript` requires `ergon-lang-javascript`, and `ergon-lang-kotlin` requires `ergon-lang-java`. A `replace` directive for each required sibling lets each of these modules build and tidy outside the workspace. `ergon-lang-go` has none, because a repository installs its command `ergon-go-vet` with `go install <pkg>@<version>`, which refuses a module whose `go.mod` contains one.
 
-The root module has no `replace` directive. `go install <pkg>@<version>` refuses a module whose `go.mod` contains one, so a `replace` in the root module would stop `go install go.dokimi.dev/ergon/cmd/ergon@latest`. The other modules may contain a `replace` for a sibling, because the go command applies `replace` only in the main module. Until the siblings have tags and the vanity pages serve them, the root module builds only inside the workspace, because its `go.mod` cannot require them. Outside the workspace, `go mod tidy` fails with `404 Not Found` from `https://go.dokimi.dev/ergon/core/language?go-get=1`.
+The root module has no `replace` directive either, so `go install go.dokimi.dev/ergon/cmd/ergon@latest` builds it. The other modules may contain a `replace` for a sibling, because the go command applies `replace` only in the main module.
+
+Inside the workspace, `go.work` lists every directory, and builds and tests resolve across the modules without the network. `go.work` also replaces each version of a sibling that a `go.mod` of the workspace requires by the directory of that sibling, such as `go.dokimi.dev/ergon/core v0.1.0 => ./ergon-core`. The go command reads the `go.mod` of every version of a workspace module that another workspace module requires, and it refuses a replace of a workspace module for every version, so each replace states its version. The workspace then builds before the tag of that version exists. `ergon release version` rewrites these replaces with the requirements that it raises. Outside the workspace, a module resolves its siblings from their tags.
 
 ### Directory names and module paths
 
-The directories follow techne's names, so `go.dokimi.dev/ergon/lang/go` is in `ergon-lang-go/`. The go command derives a module's tag prefix from its subdirectory in the repository. The tags are therefore `ergon-lang-go/vX.Y.Z`. The vanity page for each module has to publish that subdirectory in the fourth field of its `go-import` tag, which Go 1.25 added. Until it does, `go get` and `go install` look for `lang/go/` and fail. `go.work` makes local development independent of the vanity pages.
+The directories follow techne's names, so `go.dokimi.dev/ergon/lang/go` is in `ergon-lang-go/`. The go command derives a module's tag prefix from its subdirectory in the repository, so the tags of the Go module are `ergon-lang-go/vX.Y.Z`. The vanity page of each module publishes that subdirectory in the fourth field of its `go-import` tag, which Go 1.25 added, such as `go.dokimi.dev/ergon/core git https://github.com/dokimasia/ergon ergon-core`. `go.work` makes local development independent of the vanity pages.
 
 ### Versioning ergon's own modules
 
-Each module has its own version. The root module is an entry point, because users install it as a program.
+Each module has its own version.
 
 - `go install` resolves versions from the root module's `require` lines only.
 - Minimal version selection does not select a sibling release that no `go.mod` requires.
-- A sibling release is therefore built into the binary only when the root module is released with a rewritten `require`.
+- A sibling release gets into a user's build only through a release of the modules that require it, with raised `require` lines.
 
-The release planner releases an entry point whenever a module it depends on is released, directly or through another module. A change to `core` releases `core` and the root module. The root module's tag is the ergon version, and goreleaser builds from it.
+As RFC-0002 and ADR-0009 specify, the release planner releases the modules that require a released module, directly or through another module. A change to `core` releases every module, because every module requires `core`. The root module requires its siblings, so it is released with each of them. Its tag is the ergon version, and goreleaser builds the binaries of the release from it.
 
 ### Adding a language
 
@@ -308,7 +316,7 @@ Put every package in `go.dokimi.dev/ergon` and let depguard enforce the position
 
 A `fixed` group puts every module at the same version.
 
-**Why not:** nothing imports ergon's modules, so a shared number tells nobody which modules are compatible. A change to `core` would tag all fifteen modules, and fourteen of those tags would point at unchanged content.
+**Why not:** nothing imports ergon's modules, so a shared number tells nobody which modules are compatible. A change to a language module would tag all fifteen modules, while the planner releases that module and the root module.
 
 ### E. Directories equal to module paths
 
@@ -345,8 +353,7 @@ One options struct in `core` for every language, a template engine in `core`, an
 - Fifteen `go.mod` files, and one more for each language added. Each needs its own tidy and pins its own dependency versions.
 - A role change is a cross-module edit: `core`, `service`, and each language module that implements the role, in one commit.
 - Adding a command touches `core`, `service`, each supporting language module and the root module: at least four modules.
-- Each module has its own tags and its own changelog. A change to `core` produces two releases, `core` and the root module.
-- `go get` and `go install` of every module except the root fail until the vanity pages publish the subdirectory field.
+- Each module has its own tags and its own changelog. A change to `core` releases every module, because every module requires `core`.
 - The depguard allow-lists name every third-party dependency, so adding one is an edit to `.golangci.yml` as well as to `go.mod`.
 - skywalking-eyes brings go-git, logrus and 4.57 MB of embedded assets into `ergon-service`.
 - Coverage thresholds and the CI matrix grow a row per module.
@@ -355,7 +362,7 @@ One options struct in `core` for every language, a template engine in `core`, an
 
 ## Unresolved and future work
 
-- Publishing the subdirectory field on the vanity pages is not part of this proposal.
+None.
 
 ## References
 
@@ -366,6 +373,7 @@ One options struct in `core` for every language, a template engine in `core`, an
 | `go install pkg@version` refuses `replace` | `cmd/go/internal/load/pkg.go:3462-3468`, go1.27.1 |
 | Tag prefix from the module subdirectory | `cmd/go/internal/modfetch/coderepo.go:123-131` and `:557-559`, go1.27.1 |
 | `replace` applies only in the main module | https://go.dev/ref/mod#go-mod-file-replace |
+| The go command reads the `go.mod` of every required version of a workspace module | `cmd/go/internal/modload/buildlist.go`, `readModGraph`, go1.27.1 |
 | Minimal version selection and `go install pkg@version` | https://go.dev/ref/mod#minimal-version-selection, https://go.dev/ref/mod#go-install |
 | The `go-import` subdirectory field, from Go 1.25 | `cmd/go/internal/vcs/vcs.go:1183-1186` and `cmd/go/internal/modfetch/coderepo.go:113-131`, go1.27.1 |
 | An import of a package named `init` needs a rename | `cmd/compile/internal/types2/resolver.go:276`, go1.27.1 |

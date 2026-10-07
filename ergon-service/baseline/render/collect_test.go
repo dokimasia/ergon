@@ -46,13 +46,16 @@ func TestCollect(t *testing.T) {
 				unit("plain", fstest.MapFS{}),
 				contributing("go", workflow.Contribution{
 					Jobs:    []workflow.Job{text("check-go")},
+					Release: []workflow.Step{{Run: []string{"go version"}}},
 					CodeQL:  []workflow.CodeQL{analysis("go")},
 					Updates: []workflow.Update{{Ecosystem: "gomod", Directories: []string{"/"}}},
 				}),
+				contributing("java", workflow.Contribution{Release: []workflow.Step{{Uses: setupJava}}}),
 			})
 			assert.NoError(t, err, "Collect")
 			assert.Equal(t, got, workflow.Contribution{
 				Jobs:    []workflow.Job{text("docs"), text("check-go")},
+				Release: []workflow.Step{{Run: []string{"go version"}}, {Uses: setupJava}},
 				CodeQL:  []workflow.CodeQL{analysis("go")},
 				Updates: []workflow.Update{{Ecosystem: "gomod", Directories: []string{"/"}}},
 			}, "the contributions")

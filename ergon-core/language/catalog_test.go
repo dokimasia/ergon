@@ -100,6 +100,41 @@ func TestCatalog(t *testing.T) {
 		})
 	})
 
+	t.Run("Toolchains", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("yields the toolchains in the order of registration", func(t *testing.T) {
+			t.Parallel()
+			c := registered(t)
+			assert.NoError(t, language.RegisterToolchain(c, language.Toolchain{Name: "shared"}),
+				"RegisterToolchain of shared")
+			var names []workspace.Toolchain
+			for toolchain := range c.Toolchains() {
+				names = append(names, toolchain.Name)
+			}
+			assert.Equal(t, names, []workspace.Toolchain{tool, "shared"}, "the toolchains of the catalog")
+		})
+
+		t.Run("yields nothing for the zero value", func(t *testing.T) {
+			t.Parallel()
+			var c language.Catalog
+			assert.Empty(t, slices.Collect(c.Toolchains()), "the toolchains of the zero value")
+		})
+
+		t.Run("stops when the loop breaks", func(t *testing.T) {
+			t.Parallel()
+			c := registered(t)
+			assert.NoError(t, language.RegisterToolchain(c, language.Toolchain{Name: "shared"}),
+				"RegisterToolchain of shared")
+			var first []workspace.Toolchain
+			for toolchain := range c.Toolchains() {
+				first = append(first, toolchain.Name)
+				break
+			}
+			assert.Equal(t, first, []workspace.Toolchain{tool}, "the toolchains before the break")
+		})
+	})
+
 	t.Run("RegisterToolchain", func(t *testing.T) {
 		t.Parallel()
 

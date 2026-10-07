@@ -14,7 +14,7 @@ import (
 	"go.dokimi.dev/assert"
 	"go.dokimi.dev/assert/files"
 	"go.dokimi.dev/ergon/internal/cli"
-	"go.dokimi.dev/ergon/service/license"
+	"go.dokimi.dev/ergon/service/licenses"
 	"go.dokimi.dev/ergon/service/vcs/vcstest"
 )
 
@@ -51,8 +51,9 @@ repository that has a comment syntax: the copyright of the owner and the SPDX
 identifier of the license, as the section license of .ergon.yaml states them.
 It reads the files that git tracks or would track, in the repository of the
 working directory or of the nearest of its parents with .ergon/init.lock. It
-skips the files that the section excludes, the files that a tool generated or
-that ergon init manages, and the files without a comment syntax.
+skips the files that the section excludes, the changesets of .changeset, the
+files that a tool generated or that ergon init manages, and the files without
+a comment syntax.
 
 A header states the owner and the license, such as:
 
@@ -199,9 +200,9 @@ func TestLicense(t *testing.T) {
 			dir := licensed(t, map[string]string{conflictFile: conflicting})
 			status, stdout, _ := run(t, dir, "license", "check", "--json")
 			assert.Equal(t, status, statusFailure, "the exit status")
-			var report license.Report
+			var report licenses.Report
 			assert.NoError(t, json.Unmarshal([]byte(stdout), &report), "Unmarshal of the report")
-			assert.Equal(t, report.Findings, []license.Finding{{Path: conflictFile, Kind: license.Conflict, Line: 2}},
+			assert.Equal(t, report.Findings, []licenses.Finding{{Path: conflictFile, Kind: licenses.Conflict, Line: 2}},
 				"the findings of the report")
 		})
 
@@ -281,7 +282,7 @@ func TestLicense(t *testing.T) {
 			t.Cleanup(func() { _ = os.Chmod(locked, 0o644) })
 			status, _, stderr := run(t, dir, "license", "fix")
 			assert.Equal(t, status, statusFailure, "the exit status")
-			assert.HasPrefix(t, stderr, "ergon: license: write "+missingFile+": ", "the standard error")
+			assert.HasPrefix(t, stderr, "ergon: licenses: write "+missingFile+": ", "the standard error")
 		})
 	})
 }

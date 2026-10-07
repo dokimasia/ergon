@@ -23,6 +23,8 @@
 //   - make escapes a value for make.
 //   - yaml writes a scalar of YAML, or a list of scalars in flow style, that reads back as the
 //     value.
+//   - steps writes the steps of a job of a workflow, a slice of
+//     [go.dokimi.dev/ergon/core/workflow.Step], as the items of the key steps.
 //
 // # Errors
 //

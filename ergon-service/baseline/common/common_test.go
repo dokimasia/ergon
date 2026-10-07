@@ -75,7 +75,7 @@ func TestCommon(t *testing.T) {
 		t.Run("Contribution", func(t *testing.T) {
 			t.Parallel()
 
-			t.Run("returns the jobs docs and commits as checks of text", func(t *testing.T) {
+			t.Run("returns the jobs docs, commits and changeset as checks of text", func(t *testing.T) {
 				t.Parallel()
 				got := common.Producer{}.Contribution(common.Producer{}.Options())
 				assert.Equal(t, got, workflow.Contribution{Jobs: []workflow.Job{
@@ -113,6 +113,21 @@ func TestCommon(t *testing.T) {
 							},
 						}},
 					},
+					{
+						ID:          "changeset",
+						Name:        "Changeset",
+						If:          "github.event_name == 'pull_request'",
+						Text:        true,
+						Timeout:     10,
+						Permissions: read,
+						History:     true,
+						Ergon:       true,
+						Steps: []workflow.Step{{
+							Name: "Check the changesets",
+							Env:  map[string]string{"BASE": "${{ github.event.pull_request.base.sha }}"},
+							Run:  []string{`ergon release status --since "$BASE"`},
+						}},
+					},
 				}}, "the contribution")
 			})
 
@@ -135,6 +150,7 @@ func TestCommon(t *testing.T) {
 				got := common.Producer{}.Contribution(o)
 				assert.Equal(t, got.Jobs[0].Timeout, 25, "the timeout of docs")
 				assert.Equal(t, got.Jobs[1].Timeout, 25, "the timeout of commits")
+				assert.Equal(t, got.Jobs[2].Timeout, 25, "the timeout of changeset")
 			})
 		})
 	})

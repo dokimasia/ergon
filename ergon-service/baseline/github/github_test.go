@@ -26,6 +26,7 @@ const name = "github"
 // The workflows and the configuration of Dependabot that the contributions of the cases change.
 const (
 	ciPath         = ".github/workflows/ci.yml"
+	releasePath    = ".github/workflows/release.yml"
 	securityPath   = ".github/workflows/security.yml"
 	dependabotPath = ".github/dependabot.yml"
 )
@@ -81,19 +82,22 @@ func TestGithub(t *testing.T) {
 				golden.MatchTree(t, "baseline", os.DirFS(dir), golden.ShouldUpdate())
 			})
 
-			t.Run("renders the jobs, the analyses and the updates of every producer", func(t *testing.T) {
-				t.Parallel()
-				dir := baselinetest.New(t, new(language.Catalog), baselinetest.Answers(), producer(),
-					baseline.Producer{Name: "tool", Producer: part{contribution: toolchain()}},
-					baseline.Producer{Name: "alpha", Producer: part{contribution: languages()}},
-				)
-				baselinetest.Hygiene(t, dir)
-				for _, file := range []string{ciPath, securityPath, dependabotPath} {
-					got, err := os.ReadFile(path.Join(dir, file))
-					assert.NoError(t, err, "ReadFile of "+file)
-					golden.Match(t, path.Join("contributions", path.Base(file)), got, golden.ShouldUpdate())
-				}
-			})
+			t.Run(
+				"renders the jobs, the release steps, the analyses and the updates of every producer",
+				func(t *testing.T) {
+					t.Parallel()
+					dir := baselinetest.New(t, new(language.Catalog), baselinetest.Answers(), producer(),
+						baseline.Producer{Name: "tool", Producer: part{contribution: toolchain()}},
+						baseline.Producer{Name: "alpha", Producer: part{contribution: languages()}},
+					)
+					baselinetest.Hygiene(t, dir)
+					for _, file := range []string{ciPath, releasePath, securityPath, dependabotPath} {
+						got, err := os.ReadFile(path.Join(dir, file))
+						assert.NoError(t, err, "ReadFile of "+file)
+						golden.Match(t, path.Join("contributions", path.Base(file)), got, golden.ShouldUpdate())
+					}
+				},
+			)
 
 			t.Run("renders no configuration of Dependabot without an update", func(t *testing.T) {
 				t.Parallel()
@@ -217,7 +221,7 @@ func producer() baseline.Producer {
 }
 
 // toolchain returns the contribution of the toolchain tool of the cases: the setup of alpha on
-// every runner and two versions, its analysis of CodeQL, and its updates.
+// every runner and two versions, its setup in a release, its analysis of CodeQL, and its updates.
 func toolchain() workflow.Contribution {
 	return workflow.Contribution{
 		Setup: &workflow.Setup{
@@ -231,6 +235,12 @@ func toolchain() workflow.Contribution {
 			}},
 			Timeout: 20,
 		},
+		Release: []workflow.Step{{
+			Name: "Set up alpha",
+			If:   "hashFiles('alpha.lock') != ''",
+			Uses: setupAlpha,
+			With: map[string]string{"version-file": ".alpha-version"},
+		}},
 		CodeQL: []workflow.CodeQL{
 			{Language: "alpha", Name: "Alpha", BuildMode: "none", Files: "alpha.lock", Timeout: 20},
 		},

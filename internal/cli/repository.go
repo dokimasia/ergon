@@ -13,7 +13,7 @@ import (
 	"go.dokimi.dev/ergon/service/baseline/common"
 	"go.dokimi.dev/ergon/service/baseline/github"
 	"go.dokimi.dev/ergon/service/baseline/lock"
-	licensefiles "go.dokimi.dev/ergon/service/license/baseline"
+	licensefiles "go.dokimi.dev/ergon/service/licenses/baseline"
 )
 
 // open opens the repository in dir, with the common files, the GitHub files and the license files

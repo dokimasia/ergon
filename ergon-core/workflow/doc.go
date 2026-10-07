@@ -3,10 +3,10 @@
 
 // Package workflow declares a producer's part of the GitHub workflows of a repository.
 //
-// A producer of ergon init returns its part as a [Contribution]: the jobs of ci.yml, the CodeQL
-// analyses of security.yml and the updates of dependabot.yml. The producer of the GitHub files
-// renders the contributions of every producer into those files, so no toolchain appears in its
-// templates.
+// A producer of ergon init returns its part as a [Contribution]: the jobs of ci.yml, the steps that
+// set up its toolchain in release.yml, the CodeQL analyses of security.yml and the updates of
+// dependabot.yml. The producer of the GitHub files renders the contributions of every producer into
+// those files, so no toolchain appears in its templates.
 //
 //   - A [Job] is a job of ci.yml: the steps that follow the checkout, the permissions, and the
 //     runners. A check job of a language runs the [Setup] of its toolchain before its own steps.

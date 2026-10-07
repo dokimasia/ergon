@@ -6,6 +6,7 @@ package vcs_test
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"go.dokimi.dev/assert"
@@ -72,4 +73,83 @@ func TestFiles(t *testing.T) {
 			assert.ErrorIs(t, err, vcs.ErrGit, "Files")
 		})
 	})
+
+	t.Run("Changed", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("returns the files that the branch and the working tree change since the merge base",
+			func(t *testing.T) {
+				t.Parallel()
+				dir := vcstest.Repository(t, files.Tree{
+					"kept.go":    files.Text("package main\n"),
+					"edited.go":  files.Text("package main\n"),
+					"removed.go": files.Text("package main\n"),
+					"old.go":     files.Text("package main\n\nfunc renamed() {}\n"),
+				})
+				vcstest.Commit(t, dir, "base")
+				vcstest.Git(t, dir, "branch", "base")
+				write(t, dir, "committed.go", "package main\n")
+				vcstest.Commit(t, dir, "add a file")
+				vcstest.Git(t, dir, "mv", "old.go", "new.go")
+				vcstest.Git(t, dir, "rm", "--quiet", "removed.go")
+				write(t, dir, "edited.go", "package main\n\n// Edited.\n")
+				write(t, dir, "untracked.go", "package main\n")
+				got, err := vcs.Changed(t.Context(), dir, "base")
+				assert.NoError(t, err, "Changed")
+				assert.Equal(t, got, []string{
+					"committed.go", "edited.go", "new.go", "old.go", "removed.go", "untracked.go",
+				}, "the changed files")
+			})
+
+		t.Run("returns the changes since the merge base and not the changes of the base after it",
+			func(t *testing.T) {
+				t.Parallel()
+				dir := vcstest.Repository(t, files.Tree{"a.go": files.Text("package main\n")})
+				vcstest.Commit(t, dir, "base")
+				vcstest.Git(t, dir, "branch", "main-line")
+				write(t, dir, "branch.go", "package main\n")
+				vcstest.Commit(t, dir, "on the branch")
+				vcstest.Git(t, dir, "switch", "--quiet", "main-line")
+				write(t, dir, "base.go", "package main\n")
+				vcstest.Commit(t, dir, "on the base")
+				vcstest.Git(t, dir, "switch", "--quiet", "-")
+				got, err := vcs.Changed(t.Context(), dir, "main-line")
+				assert.NoError(t, err, "Changed")
+				assert.Equal(t, got, []string{"branch.go"}, "the changed files")
+			})
+
+		t.Run("returns no file for a branch at its base", func(t *testing.T) {
+			t.Parallel()
+			dir := vcstest.Repository(t, files.Tree{"a.go": files.Text("package main\n")})
+			vcstest.Commit(t, dir, "base")
+			got, err := vcs.Changed(t.Context(), dir, "HEAD")
+			assert.NoError(t, err, "Changed")
+			assert.Empty(t, got, "the changed files")
+		})
+
+		t.Run("returns ErrGit for a base that names no commit", func(t *testing.T) {
+			t.Parallel()
+			dir := vcstest.Repository(t, files.Tree{"a.go": files.Text("package main\n")})
+			vcstest.Commit(t, dir, "base")
+			_, err := vcs.Changed(t.Context(), dir, "origin/main")
+			assert.ErrorIs(t, err, vcs.ErrGit, "Changed")
+		})
+
+		t.Run("returns ErrGit for a context that ended", func(t *testing.T) {
+			t.Parallel()
+			dir := vcstest.Repository(t, files.Tree{"a.go": files.Text("package main\n")})
+			vcstest.Commit(t, dir, "base")
+			ctx, cancel := context.WithCancel(t.Context())
+			cancel()
+			_, err := vcs.Changed(ctx, dir, "HEAD")
+			assert.ErrorIs(t, err, vcs.ErrGit, "Changed")
+		})
+	})
+}
+
+// write writes content to the file at path, relative to dir, and stops the test when the write
+// fails.
+func write(tb testing.TB, dir, path, content string) {
+	tb.Helper()
+	assert.NoError(tb, os.WriteFile(filepath.Join(dir, path), []byte(content), 0o644), "WriteFile of "+path)
 }

@@ -3,6 +3,14 @@
 
 package buildinfo
 
+import (
+	"runtime/debug"
+	"strings"
+
+	"golang.org/x/mod/module"
+	"golang.org/x/mod/semver"
+)
+
 // The variables that a build sets with -X flags of the linker.
 var (
 	// version is the version of the release, such as 1.2.3.
@@ -15,18 +23,36 @@ var (
 	date = ""
 )
 
-// development is the version of a build without the flags of the linker.
+// development is the version of a build without a release.
 const development = "dev"
 
-// Version returns the version of the release of this build, such as 1.2.3, and dev for a build
-// without the flags of the linker.
+// Version returns the version of the release of this build, such as 1.2.3, as [Release] resolves
+// it from the build information of the binary, and dev for a build without a release.
 func Version() string {
-	return Format(version, "", "")
+	info, _ := debug.ReadBuildInfo()
+	return Format(Release(version, info), "", "")
 }
 
-// Full returns the version of this build, as [Format] writes the variables that the build sets.
+// Full returns the version of this build, as [Format] writes the release that [Release] resolves
+// and the commit and the date that the build sets.
 func Full() string {
-	return Format(version, commit, date)
+	info, _ := debug.ReadBuildInfo()
+	return Format(Release(version, info), commit, date)
+}
+
+// Release returns the version of the release of a build: linked, the version that the flags of the
+// linker set, and else the version of the main module of info, without its v, when a release tags
+// it, as go install go.dokimi.dev/ergon/cmd/ergon@v1.2.3 records v1.2.3. It returns the empty
+// string for a build without either: a nil info, the version (devel) that the go command records
+// for a build of a working tree, and a pseudo-version, which it records for go install at a commit.
+func Release(linked string, info *debug.BuildInfo) string {
+	if linked != "" {
+		return linked
+	}
+	if info == nil || !semver.IsValid(info.Main.Version) || module.IsPseudoVersion(info.Main.Version) {
+		return ""
+	}
+	return strings.TrimPrefix(info.Main.Version, "v")
 }
 
 // Format returns the version string of a build of version, commit and date:

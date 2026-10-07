@@ -74,5 +74,31 @@ func TestVcstest(t *testing.T) {
 			assert.NoError(t, err, "git ls-files")
 			assert.Equal(t, strings.TrimSpace(string(out)), "a.txt", "the tracked files")
 		})
+
+		t.Run("returns the output of git", func(t *testing.T) {
+			t.Parallel()
+			dir := vcstest.Repository(t, files.Tree{"a.txt": files.Text("a\n")}, "a.txt")
+			assert.Equal(t, vcstest.Git(t, dir, "ls-files"), "a.txt\n", "the output")
+		})
+	})
+
+	t.Run("Commit", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("commits every change and returns the commit", func(t *testing.T) {
+			t.Parallel()
+			dir := vcstest.Repository(t, files.Tree{"a.txt": files.Text("a\n")})
+			commit := vcstest.Commit(t, dir, "add a")
+			assert.Matches(t, commit, "^[0-9a-f]{40}$", "the commit")
+			assert.Equal(t, vcstest.Git(t, dir, "log", "--format=%H %an %s"), commit+" Test add a\n", "the log")
+			assert.Empty(t, vcstest.Git(t, dir, "status", "--porcelain"), "the changes after the commit")
+		})
+
+		t.Run("commits a working tree without changes", func(t *testing.T) {
+			t.Parallel()
+			dir := vcstest.Repository(t, files.Tree{})
+			first := vcstest.Commit(t, dir, "first")
+			assert.NotEqual(t, vcstest.Commit(t, dir, "second"), first, "the second commit")
+		})
 	})
 }

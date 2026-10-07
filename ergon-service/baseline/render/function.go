@@ -5,12 +5,15 @@ package render
 
 import (
 	"fmt"
+	"maps"
 	"reflect"
 	"regexp"
 	"slices"
 	"strconv"
 	"strings"
 	"text/template"
+
+	"go.dokimi.dev/ergon/core/workflow"
 )
 
 // The names of the functions that every template calls.
@@ -23,6 +26,19 @@ const (
 
 	// yamlFunc writes a scalar, or a list of scalars, of YAML.
 	yamlFunc = "yaml"
+
+	// stepsFunc writes the steps of a job of a workflow.
+	stepsFunc = "steps"
+)
+
+// The indentation of the lines of a step of a job of a workflow.
+const (
+	// stepIndent starts the line of a key of a step.
+	stepIndent = "      "
+
+	// valueIndent starts the line of an input of a step, a variable of its environment, and a line of
+	// its command.
+	valueIndent = "          "
 )
 
 // functions are the functions of every template.
@@ -30,6 +46,7 @@ var functions = template.FuncMap{
 	wordsFunc: words,
 	makeFunc:  escape,
 	yamlFunc:  scalar,
+	stepsFunc: steps,
 }
 
 // plainWord matches a word that a shell takes as it is, without quotes.
@@ -93,13 +110,7 @@ func scalar(value any) (string, error) {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		return strconv.FormatInt(v.Int(), 10), nil
 	case reflect.String:
-		s := v.String()
-		lower := strings.ToLower(s)
-		number := len(s) > 1 && s[0] == '.' && '0' <= s[1] && s[1] <= '9'
-		if plainScalar.MatchString(s) && !slices.Contains(keywords, lower) && !number {
-			return s, nil
-		}
-		return strconv.Quote(s), nil
+		return plain(v.String()), nil
 	case reflect.Slice, reflect.Array:
 		items := make([]string, 0, v.Len())
 		for i := range v.Len() {
@@ -113,4 +124,70 @@ func scalar(value any) (string, error) {
 	default:
 		return "", fmt.Errorf("%w: yaml of a %T", ErrInvalidTemplate, value)
 	}
+}
+
+// steps returns list, a slice of workflow.Step, as the items of the key steps of a job of a
+// workflow, each line after a newline: the keys name, id, if, uses or run, with and env that a step
+// sets, in that order, with the first key after "- " and six spaces, and each other key after eight
+// spaces. A value is as [scalar] writes a string, except the id, the action and the lines of the
+// command. The inputs and the variables follow their key in the order of their names, and the lines
+// of the command follow run: | in a literal block, each after ten spaces. It returns an error that
+// wraps [ErrInvalidTemplate] for a list that is not a slice of workflow.Step.
+func steps(list any) (string, error) {
+	all, ok := list.([]workflow.Step)
+	if !ok {
+		return "", fmt.Errorf("%w: steps of a %T", ErrInvalidTemplate, list)
+	}
+	var b strings.Builder
+	for k := range all {
+		s := &all[k]
+		lead := "- "
+		key := func(name, value string) {
+			b.WriteString("\n" + stepIndent + lead + name + ":" + value)
+			lead = "  "
+		}
+		values := func(name string, m map[string]string) {
+			key(name, "")
+			for _, k := range slices.Sorted(maps.Keys(m)) {
+				b.WriteString("\n" + valueIndent + k + ": " + plain(m[k]))
+			}
+		}
+		if s.Name != "" {
+			key("name", " "+plain(s.Name))
+		}
+		if s.ID != "" {
+			key("id", " "+s.ID)
+		}
+		if s.If != "" {
+			key("if", " "+plain(s.If))
+		}
+		if len(s.Run) == 0 {
+			key("uses", " "+s.Uses.String())
+		}
+		if len(s.With) > 0 {
+			values("with", s.With)
+		}
+		if len(s.Env) > 0 {
+			values("env", s.Env)
+		}
+		if len(s.Run) > 0 {
+			key("run", " |")
+			for _, line := range s.Run {
+				b.WriteString("\n" + valueIndent + line)
+			}
+		}
+	}
+	return b.String(), nil
+}
+
+// plain returns s as a scalar of YAML that reads back as s: s as it is when YAML 1.1 and YAML 1.2
+// read it as that string, and otherwise s in double quotes with the escapes of Go, which YAML
+// accepts.
+func plain(s string) string {
+	lower := strings.ToLower(s)
+	number := len(s) > 1 && s[0] == '.' && '0' <= s[1] && s[1] <= '9'
+	if plainScalar.MatchString(s) && !slices.Contains(keywords, lower) && !number {
+		return s
+	}
+	return strconv.Quote(s)
 }

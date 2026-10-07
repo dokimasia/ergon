@@ -19,10 +19,11 @@
 //
 // # Workflows
 //
-// [Producer.Contribution] returns the jobs docs and commits of ci.yml. Both check text, so they run
-// on the Linux runner of the section github. commits checks the commit messages of a pull request
-// with the commitlint of the section, the release that the commit-msg hook of
-// .pre-commit-config.yaml runs.
+// [Producer.Contribution] returns the jobs docs, commits and changeset of ci.yml. They check text,
+// so they run on the Linux runner of the section github. commits checks the commit messages of a
+// pull request with the commitlint of the section, the release that the commit-msg hook of
+// .pre-commit-config.yaml runs. changeset runs ergon release status against the base of a pull
+// request, with the configuration .changeset/config.json, which the common files seed.
 //
 // # Dependency position
 //

@@ -117,11 +117,11 @@ type data struct {
 }
 
 // Render returns the files that units render for a and the contributions c, sorted by path. It
-// executes the templates of each unit with the delimiters {{% and %}}, the functions words, make
-// and yaml, and the data .Answers, .Options, .Data and .Contributions, where a key that the data
-// lacks is an error. .Data are the values that a [language.Calculator] computes from a, its options
-// and c, and nil for any other producer. Render skips a template that renders no byte, and joins
-// the fragments of a shared file in the order of units.
+// executes the templates of each unit with the delimiters {{% and %}}, the functions words, make,
+// yaml and steps, and the data .Answers, .Options, .Data and .Contributions, where a key that the
+// data lacks is an error. .Data are the values that a [language.Calculator] computes from a, its
+// options and c, and nil for any other producer. Render skips a template that renders no byte, and
+// joins the fragments of a shared file in the order of units.
 //
 // It returns an error that wraps [ErrInvalidTemplate] for templates that a producer declares
 // wrong, the error of the Data of a producer, and the error of a template that does not execute,

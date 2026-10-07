@@ -94,6 +94,12 @@ type Actions struct {
 
 	// Scorecard runs the checks of the OpenSSF Scorecard.
 	Scorecard workflow.Action `yaml:"scorecard" doc:"The action of the OpenSSF Scorecard, in the weekly job scorecard of security.yml."`
+
+	// UploadArtifact passes a file of a job of release.yml to a later job.
+	UploadArtifact workflow.Action `yaml:"upload-artifact" doc:"The action that uploads the publish plan of the job select-mode and the artifacts of the job pack of release.yml."`
+
+	// DownloadArtifact receives a file of an earlier job of release.yml.
+	DownloadArtifact workflow.Action `yaml:"download-artifact" doc:"The action that downloads the publish plan in the job pack, and the artifacts in the job publish of release.yml."`
 }
 
 // Validate returns an error that wraps [option.ErrInvalid] for no runner, and for a Linux that

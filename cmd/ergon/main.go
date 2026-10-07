@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"os"
 	"os/signal"
 	"syscall"
@@ -29,6 +30,7 @@ func run() int {
 		Getwd:    os.Getwd,
 		Now:      time.Now,
 		CacheDir: os.UserCacheDir,
+		Random:   rand.Reader,
 		Stdin:    os.Stdin,
 		Stdout:   os.Stdout,
 		Stderr:   os.Stderr,
