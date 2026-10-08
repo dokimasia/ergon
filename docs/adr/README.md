@@ -14,7 +14,8 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 | [0003](0003-follow-changesets.md) | Follow changesets' file format, configuration and planning rules | Accepted, superseded in part by ADR-0009 |
 | [0004](0004-go-releases-in-one-commit.md) | Go releases in one commit through a file proxy | Accepted |
 | [0005](0005-signed-version-commits.md) | Version commits through createCommitOnBranch, split by size | Accepted |
-| [0006](0006-publish-credentials.md) | OIDC for npm, PyPI and crates.io, and environment secrets for Maven Central | Accepted |
+| [0006](0006-publish-credentials.md) | OIDC for npm, PyPI and crates.io, and environment secrets for Maven Central | Accepted, superseded in part by ADR-0010 |
 | [0007](0007-toolchains-and-languages.md) | Toolchains and languages are separate catalog entries | Accepted, superseded in part by ADR-0008 |
 | [0008](0008-toolchains-in-language-modules.md) | The npm and Gradle toolchains are in the JavaScript and Java modules | Accepted |
 | [0009](0009-release-dependents-by-resolution.md) | Dependent releases by consumer resolution | Accepted |
+| [0010](0010-release-waits-for-ci.md) | The release workflow waits for the CI run of its commit | Accepted |

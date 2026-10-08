@@ -1,10 +1,11 @@
 # Managed by ergon init. Add repository settings to .ergon/local/.github/workflows/release.yml and run ergon init sync.
 #
 # The release flow of the packages of the repository on every push to main. The job select-mode
-# chooses the next job. While main has changesets, the job version opens or updates the version
-# pull request. After the merge of that pull request, the jobs ci, pack and publish release each
-# package of the publish plan. The jobs version and pack set up the toolchains of the repository
-# before ergon, which refresh the lockfiles and build the artifacts.
+# chooses the next job, and the job wait lets it run only after the run of ci.yml for the push
+# succeeds. While main has changesets, the job version opens or updates the version pull request.
+# After the merge of that pull request, the jobs pack and publish release each package of the
+# publish plan. The jobs version and pack set up the toolchains of the repository before ergon,
+# which refresh the lockfiles and build the artifacts.
 
 name: Release
 
@@ -48,9 +49,29 @@ jobs:
           path: publish-plan.json
           if-no-files-found: error
 
+  wait:
+    name: Wait for CI
+    needs: select-mode
+    if: needs.select-mode.outputs.mode != 'none'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 35
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-ergon
+      - name: Wait for the run of ci.yml
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          ergon release ci wait
+
   version:
     name: Version
-    needs: select-mode
+    needs: [select-mode, wait]
     if: needs.select-mode.outputs.mode == 'version'
     runs-on: ubuntu-26.04
     timeout-minutes: 15
@@ -74,17 +95,10 @@ jobs:
         run: |
           ergon release ci version
 
-  ci:
-    name: CI
-    needs: select-mode
-    if: needs.select-mode.outputs.mode == 'publish'
-    permissions:
-      contents: read
-    uses: ./.github/workflows/ci.yml
-
   pack:
     name: Pack
-    needs: ci
+    needs: [select-mode, wait]
+    if: needs.select-mode.outputs.mode == 'publish'
     runs-on: ubuntu-26.04
     timeout-minutes: 15
     permissions:

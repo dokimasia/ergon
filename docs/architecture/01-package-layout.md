@@ -52,7 +52,7 @@ The language-neutral side of each command. It imports `core` and nothing else in
 
 | Package | Contains | Imports |
 |---|---|---|
-| `release` | The changesets of a repository, the planner, the status of a branch, the version of a plan with its changelogs, the version pull request, the publish plan, the stale lockfiles of a publish plan and their rewrite, the pack and the publish, and the interfaces `Forge`, `Proposer`, `Releaser` and `TagForge` that it calls | `core/*`, `vcs`, doublestar |
+| `release` | The changesets of a repository, the planner, the status of a branch, the version of a plan with its changelogs, the version pull request, the publish plan, the stale lockfiles of a publish plan and their rewrite, the pack and the publish, the wait for the CI run of a commit, and the interfaces `Forge`, `Proposer`, `Releaser`, `TagForge` and `RunForge` that it calls | `core/*`, `vcs`, doublestar |
 | `licenses` | `Config` and `Directory`, the `license` section of `.ergon.yaml`, `Text` and the texts of the 44 licenses, `Check`, `Fix`, the table of comment styles with its overrides, and the removal of outdated header blocks | `core/*`, `vcs`, skywalking-eyes `assets`, `pkg/comments`, `pkg/header`, `pkg/license` and `pkg/logger`, logrus, doublestar |
 | `licenses/baseline` | The producer of `LICENSE` and `NOTICE` for `init`, at the root and in each directory of `license.directories` | `core/*`, `licenses` |
 | `baseline` | The `init` command: `New`, `Add`, `Remove`, `Check`, `Sync` and `Options` over the producers that `Open` receives, and the plan of their changes | `core/*`, `baseline/lock`, `baseline/options`, `baseline/overlay`, `baseline/render` |
@@ -66,7 +66,7 @@ The language-neutral side of each command. It imports `core` and nothing else in
 | `tool` | `ergon tool run`: the installation of a tool into the cache, the check of a release binary against its digest, and the run | `core/language`, `core/option` |
 | `vcs` | git: the files of a working tree, the diff since a ref, HEAD and the commit that added a file, tags, the snapshot commit, the atomic push | stdlib |
 | `vcs/vcstest` | git in a test: an environment without the configuration of the user, and a working tree of a test | stdlib, assert |
-| `forge` | The GitHub client: signed commits through `createCommitOnBranch`, branch and tag refs, pull requests, releases, and the links of a commit and of a pull request | stdlib |
+| `forge` | The GitHub client: signed commits through `createCommitOnBranch`, branch and tag refs, pull requests, releases, the runs of a workflow, and the links of a commit and of a pull request | stdlib |
 | `workspace` | Which toolchains and languages are active in a repository | `core/language`, `core/workspace`, `vcs` |
 
 `vcs` is the only package in this module that runs git, and `forge` is the only package that calls the GitHub API. `forge` satisfies the interfaces of `release` without importing `release`, and no other package in the module imports `forge`. `licenses` is the only package in the repository that imports skywalking-eyes. The `baseline` packages name no language and no toolchain.

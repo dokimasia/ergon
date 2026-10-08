@@ -132,8 +132,8 @@ The job `changeset` runs `ergon release status` against the base commit of each 
 
 | File | Class | Content |
 |---|---|---|
-| `.github/workflows/ci.yml` | Managed | The gate on every pull request, on the merge queue and on `main`, and before each publish of `release.yml` |
-| `.github/workflows/release.yml` | Managed | The release flow of RFC-0002: select-mode, version, ci, pack and publish |
+| `.github/workflows/ci.yml` | Managed | The gate on every pull request, on the merge queue and on `main`. The jobs of `release.yml` wait for its run on `main` |
+| `.github/workflows/release.yml` | Managed | The release flow of RFC-0002: select-mode, wait, version, pack and publish |
 | `.github/workflows/security.yml` | Managed | CodeQL, dependency review and the OpenSSF Scorecard |
 | `.github/workflows/codeql.yml` | Managed | The CodeQL analysis of one language, which `security.yml` calls for each language |
 | `.github/workflows/baseline.yml` | Managed | A scheduled check against the newest ergon release |
@@ -148,8 +148,8 @@ The workflows:
 
 | Workflow | Triggers | Jobs | Permissions |
 |---|---|---|---|
-| `ci.yml` | `pull_request`, `merge_group`, `push` to `main`, `workflow_call` | `check-<language>` for each language, `docs` of the common files, `license` of the license files, `baseline` of the GitHub files, and on pull requests `commits` and `changeset` of the common files | `contents: read` |
-| `release.yml` | `push` to `main` | select-mode, version, ci, pack and publish, as RFC-0002 specifies | Per job, as RFC-0002 specifies |
+| `ci.yml` | `pull_request`, `merge_group`, `push` to `main` | `check-<language>` for each language, `docs` of the common files, `license` of the license files, `baseline` of the GitHub files, and on pull requests `commits` and `changeset` of the common files | `contents: read` |
+| `release.yml` | `push` to `main` | select-mode, wait, version, pack and publish, as RFC-0002 specifies | Per job, as RFC-0002 specifies |
 | `security.yml` | `pull_request`, `push` to `main`, weekly | `codeql-<language>` for each CodeQL analysis that a producer contributes, `dependency-review` on pull requests, `scorecard` weekly | `security-events: write` on the CodeQL jobs and `scorecard`, `id-token: write` on `scorecard`, `contents: read` elsewhere |
 | `baseline.yml` | Weekly, `workflow_dispatch` | Installs the newest ergon release, runs `ergon init check`, and opens an issue when the baseline is outdated and no such issue is open | `contents: read`, `issues: write` |
 
@@ -160,8 +160,8 @@ Every workflow follows these rules:
 - The top-level `permissions` is `{}`. Each job grants only the scopes its table row lists.
 - Every action is pinned to a full commit SHA, with its release in a comment. The pin is an option of the producer whose job runs the action.
 - `actions/checkout` runs with `persist-credentials: false`.
-- `concurrency` groups by workflow and ref, and cancels a superseded run on pull requests only. The group of `ci.yml` starts with `ci`, because a run that `release.yml` calls has the workflow name of its caller.
-- Every job has `timeout-minutes`, from the `ci.timeout` of its producer. A job that calls `codeql.yml` takes the timeout of the called job, and the job ci of `release.yml` the timeouts of the jobs of `ci.yml`.
+- `concurrency` groups by workflow and ref, and cancels a superseded run on pull requests only.
+- Every job has `timeout-minutes`, from the `ci.timeout` of its producer. A job that calls `codeql.yml` takes the timeout of the called job. The job wait of `release.yml` takes the longest timeout of the jobs of `ci.yml` plus the `ci.timeout` of the section `github`, for the time that the jobs of the gate wait for a runner.
 - A toolchain's runtime version comes from its pin file, or from the versions that `ci.versions` of its section lists, as a matrix.
 - No workflow uses `pull_request_target`, and no pull request job receives a secret.
 - Every job specifies its runner image with a version, never a `-latest` label.
@@ -986,4 +986,3 @@ The workflows would pin each action as a constant of the ergon release, and Depe
 | The analyzers of Go and their multichecker | https://pkg.go.dev/golang.org/x/tools/go/analysis/multichecker |
 | Typed options of a tool in its language backend | Pants, `src/python/pants/backend/go/lint/golangci_lint/subsystem.py` |
 | Managed files, files written once, and typed workflow options | projen, `FileBase`, `SampleFile`, `workflowRunsOn` and `workflowNodeVersion`, https://github.com/projen/projen |
-| The concurrency group of a called workflow | https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows |

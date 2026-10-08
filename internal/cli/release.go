@@ -29,19 +29,20 @@ import (
 
 // The flags of the release commands.
 const (
-	sinceFlag   = "since"
-	outputFlag  = "output"
-	verboseFlag = "verbose"
-	dryRunFlag  = "dry-run"
-	planFlag    = "from-publish-plan"
-	packDirFlag = "from-pack-dir"
-	outDirFlag  = "out-dir"
-	noTagFlag   = "no-git-tag"
-	messageFlag = "message"
-	bumpFlag    = "bump"
-	emptyFlag   = "empty"
-	openFlag    = "open"
-	titleFlag   = "title"
+	sinceFlag    = "since"
+	outputFlag   = "output"
+	verboseFlag  = "verbose"
+	dryRunFlag   = "dry-run"
+	planFlag     = "from-publish-plan"
+	packDirFlag  = "from-pack-dir"
+	outDirFlag   = "out-dir"
+	noTagFlag    = "no-git-tag"
+	messageFlag  = "message"
+	bumpFlag     = "bump"
+	emptyFlag    = "empty"
+	openFlag     = "open"
+	titleFlag    = "title"
+	workflowFlag = "workflow"
 )
 
 // The variables of the environment that the release commands read, as GitHub Actions sets them, and
@@ -70,6 +71,15 @@ const (
 // apiTimeout bounds a request to the API of GitHub.
 const apiTimeout = time.Minute
 
+// The times of ergon release ci wait.
+const (
+	// readInterval is the time between two reads of the run of the gate.
+	readInterval = 15 * time.Second
+
+	// appearTime is the time that GitHub may take to create the run of the gate for a push.
+	appearTime = 5 * time.Minute
+)
+
 // remote is the remote that ergon release publish and ergon release git-tag push the tags of a
 // workstation to.
 const remote = "origin"
@@ -89,6 +99,9 @@ const (
 
 	// defaultPackDir is the directory of the artifacts of ergon release pack and publish.
 	defaultPackDir = "dist"
+
+	// defaultWorkflow is the workflow of the gate, whose run ergon release ci wait waits for.
+	defaultWorkflow = "ci.yml"
 )
 
 // The help texts of the release commands.
@@ -168,6 +181,12 @@ ergon-release/<base> through the API of GitHub, which signs the commits, and
 opens or updates the version pull request into the base branch. Without
 changesets it proposes the lockfiles that ergon release version rewrites, and
 otherwise changes nothing.`
+
+	ciWaitShort = "Wait for the CI run of the commit to pass"
+	ciWaitLong  = `ergon release ci wait waits for the run of the workflow --workflow for the push
+of the commit of HEAD. It reads the run through the API of GitHub every 15
+seconds, and gives GitHub 5 minutes to create the run. The exit status is 1
+unless the run completes with the conclusion success.`
 )
 
 // releaseRepository is a repository that a release command works on.
@@ -203,7 +222,7 @@ func (untagged) Finish(context.Context) error {
 // releaseCommand returns ergon release with its subcommands, which work on the repository of the
 // working directory of s under ctx.
 func releaseCommand(ctx context.Context, s *session) *cobra.Command {
-	ci := group(s, "ci", ciShort, ciLong, selectModeCommand(ctx, s), ciVersionCommand(ctx, s))
+	ci := group(s, "ci", ciShort, ciLong, selectModeCommand(ctx, s), ciVersionCommand(ctx, s), ciWaitCommand(ctx, s))
 	return group(s, "release", releaseShort, releaseLong, changesetCommand(ctx, s), statusCommand(ctx, s),
 		versionCommand(ctx, s), publishPlanCommand(ctx, s), packCommand(ctx, s), publishCommand(ctx, s),
 		gitTagCommand(ctx, s), ci)
@@ -534,6 +553,41 @@ func ciVersionCommand(ctx context.Context, s *session) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&title, titleFlag, defaultTitle, "the `title` of the pull request and its commits")
+	return cmd
+}
+
+// ciWaitCommand returns ergon release ci wait, which waits with [release.Gate] for the run of the
+// workflow of --workflow for the push of the commit of HEAD, and writes the page of a run that
+// succeeds. It returns the error of [release.Gate.Wait], which wraps [release.ErrGate] for a run
+// without success.
+func ciWaitCommand(ctx context.Context, s *session) *cobra.Command {
+	var workflow string
+	cmd := &cobra.Command{
+		Use:   "wait",
+		Short: ciWaitShort,
+		Long:  ciWaitLong,
+		Args:  usage(cobra.NoArgs),
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			client, repo, err := s.forge()
+			if err != nil {
+				return err
+			}
+			head, err := vcs.Head(ctx, s.root())
+			if err != nil {
+				return err
+			}
+			gate := release.Gate{
+				Forge: client, Repo: repo, Workflow: workflow, Interval: readInterval, Appear: appearTime,
+			}
+			page, err := gate.Wait(ctx, head)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "%s passed: %s\n", workflow, page)
+			return nil
+		},
+	}
+	cmd.Flags().StringVar(&workflow, workflowFlag, defaultWorkflow, "wait for the run of the workflow `file`")
 	return cmd
 }
 

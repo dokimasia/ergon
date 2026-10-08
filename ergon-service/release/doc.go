@@ -69,14 +69,20 @@
 // version, and [NewProposal] lists the rewritten lockfiles in the body of the version pull request.
 // [Publish] returns an error that wraps [ErrStale] until the rewrite is merged.
 //
+// # The gate
+//
+// The release workflow versions and publishes a commit only after the run of its gate for the push
+// of the commit succeeds. [Gate.Wait] reads that run through a [RunForge] until it completes, and
+// returns an error that wraps [ErrGate] for a run without success and for a commit without a run.
+//
 // # Errors
 //
 // Each error of the package wraps one of [ErrPackages], [ErrConfig], [ErrChangeset],
-// [ErrChangelog], [ErrPublishPlan], [ErrTag] and [ErrStale], and names the package, the key, the
-// file or the tag that caused it, or is [ErrNoChangesets]. The package also returns the error of
-// git, which wraps [go.dokimi.dev/ergon/service/vcs.ErrGit], the error of the file system with its
-// path, and the error of a toolchain role, of a [Forge], a [Proposer], a [Releaser] or of
-// [go.dokimi.dev/ergon/core/version].
+// [ErrChangelog], [ErrPublishPlan], [ErrTag], [ErrStale] and [ErrGate], and names the package, the
+// key, the file, the tag or the run that caused it, or is [ErrNoChangesets]. The package also
+// returns the error of git, which wraps [go.dokimi.dev/ergon/service/vcs.ErrGit], the error of the
+// file system with its path, and the error of a toolchain role, of a [Forge], a [Proposer], a
+// [Releaser], a [RunForge] or of [go.dokimi.dev/ergon/core/version].
 //
 // # Concurrency
 //

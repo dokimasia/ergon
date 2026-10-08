@@ -8,7 +8,7 @@ updated: 2026-10-08
 discussion: none
 supersedes: none
 superseded-by: none
-produces-adr: ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0009
+produces-adr: ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0009, ADR-0010
 ---
 
 <!--
@@ -26,6 +26,7 @@ On `main`, ergon turns pending changesets into one version pull request.
 That pull request contains the new versions, the rewritten requirements of dependents, the per-package `CHANGELOG.md` files and the refreshed lockfiles.
 When the pull request merges, ergon packs, publishes, tags and creates GitHub Releases in dependency order.
 ergon reads changesets' file format and `.changeset/config.json`, and runs in the workflow `release.yml` of ergon init as the jobs select-mode, version, pack and publish of `changesets/action` v2, with the same outputs.
+The jobs that version and publish wait for the CI run of their commit to pass.
 The planner follows changesets v3, and releases a dependent whenever its consumers would not receive the new version through its requirement.
 
 ## Motivation
@@ -73,18 +74,23 @@ techne, eidos, treesitter and assert-go already build with the earlier ergon, an
 sequenceDiagram
     participant PR as Pull request
     participant M as main
-    participant S as select-mode
+    participant C as CI
+    participant S as select-mode and wait
     participant V as version
-    participant P as ci, pack and publish
+    participant P as pack and publish
     participant R as Registries and tags
 
     PR->>M: merge, with .changeset/<id>.md
+    M->>C: push
     M->>S: push
+    C->>S: the run of the gate passes
     S->>V: mode=version
     V->>M: open or update the version pull request
-    M->>S: push, after the version pull request merges
+    M->>C: push, after the version pull request merges
+    M->>S: push
+    C->>S: the run of the gate passes
     S->>P: mode=publish, publish plan
-    P->>R: run the gate, publish in dependency order, then tag and create releases
+    P->>R: publish in dependency order, then tag and create releases
 ```
 
 Every pull request runs `ergon release status` against the base commit of the pull request, in the job `changeset` of `ci.yml`. It exits 1 when the pull request changes a package without adding a changeset that names it. The job skips a pull request that Dependabot opens. The next release of its module includes the update. The job also skips the version pull request, whose head is the branch `ergon-release/<base>` of the repository and which removes the changesets that it releases.
@@ -138,6 +144,7 @@ ergon reads `.changeset/config.json`, which the common files of ergon init seed.
 | `ergon release publish` | the publish plan, the packed artifacts, lockfiles | registries, tags, GitHub Releases, and nothing while a lockfile is stale. Flags: `--from-publish-plan`, `--from-pack-dir`, `--no-git-tag`, `--output` |
 | `ergon release git-tag` | versions, tags, lockfiles | tags only |
 | `ergon release ci select-mode` | changesets, the publish plan, lockfiles | the stale lockfiles, `mode`, and the publish plan for the next job. Flag: `--output` |
+| `ergon release ci wait` | the runs of the gate for the commit of HEAD | nothing. It exits 1 unless the run of the gate succeeds. Flag: `--workflow` |
 | `ergon release ci version` | changesets, config, manifests, lockfiles | the writes of `version`, as commits on `ergon-release/<base>`, and the version pull request. Flag: `--title` |
 
 ergon init seeds `.changeset/config.json` and `.changeset/README.md` in every repository, so the release command has no `init` that would write the same files. `version` and `add` write files and run no git command that writes.
@@ -146,6 +153,7 @@ The commands that call the GitHub API:
 
 - `version` reads the links of the changelog of GitHub.
 - `publish` creates the tags and the GitHub Releases in GitHub Actions.
+- `ci wait` reads the runs of the gate.
 - `ci version` writes the version pull request.
 
 ### Vocabulary
@@ -434,7 +442,7 @@ The publish job reads no stored secret for npm, PyPI or crates.io, and reads fou
 | Maven Central | A Central Portal user token and a PGP signing subkey with its passphrase | The Central Portal has no OIDC. A token cannot be scoped to one namespace. Every file needs a `.asc` signature |
 
 - `lang/rust` exchanges the job's OIDC token for a crates.io token itself, with `POST /api/v1/trusted_publishing/tokens`, as `rust-lang/crates-io-auth-action` does. It exchanges one token per publish chunk and revokes it afterwards, so a long workspace publish does not outlive a 30-minute token.
-- The release workflow triggers on `push` to `main` and runs the repository's CI through `workflow_call`, as stealthscale/stealth does. A `workflow_run` trigger would stop every crates.io publish.
+- The release workflow triggers on `push` to `main` and waits for the CI run of its commit, as ADR-0006 and ADR-0010 decide. A `workflow_run` trigger would stop every crates.io publish.
 - The Maven Central secrets are environment secrets of a `release` environment with required reviewers, no self-review, no administrator bypass and deployments from `main` only. A repository secret is readable by anyone with write access. A job with `id-token: write` can also read environment secrets.
 - Naming an environment changes the OIDC `sub` claim to `repo:<owner>/<repo>:environment:release`. Each npm, PyPI and crates.io trusted-publisher configuration names the same environment.
 - The Maven Central token comes from a dedicated account that is an organization member with access to one namespace, and it has an expiry date. The token itself cannot be narrowed.
@@ -488,17 +496,18 @@ A package enters the plan when its registry does not have its version, or, for a
 
 ### CI
 
-ergon init renders the workflow `release.yml` among the GitHub files, as RFC-0004 states. Its jobs are the jobs of `changesets/action` v2, and each job runs one command of ergon in place of the action. Each job installs ergon with the action `setup-ergon` of the repository, which installs the release that `.ergon/init.lock` names and checks it against the release's `checksums.txt`. ergon does not publish actions of its own, because a second set of actions would pin the release of ergon in a second place.
+ergon init renders the workflow `release.yml` among the GitHub files, as RFC-0004 states. Its jobs are the jobs of `changesets/action` v2 and the job wait. Each job runs one command of ergon in place of the action. Each job installs ergon with the action `setup-ergon` of the repository, which installs the release that `.ergon/init.lock` names and checks it against the release's `checksums.txt`. ergon does not publish actions of its own, because a second set of actions would pin the release of ergon in a second place.
 
 | Job | Permissions | Runs | Output |
 |---|---|---|---|
 | select-mode | `contents: read` | `ergon release ci select-mode`, which writes the publish plan as the artifact `publish-plan` | `mode` |
+| wait | `actions: read`, `contents: read` | `ergon release ci wait`, which waits for the run of `ci.yml` for the commit | none |
 | version | `contents: write`, `pull-requests: write` | the release steps of each producer, such as the setup of Go, then `ergon release ci version` | the version pull request |
-| ci | `contents: read` | `ci.yml` through `workflow_call` | the gate of the repository |
 | pack | `contents: read` | the release steps of each producer, then `ergon release pack`, which writes the publish plan and the artifacts as the artifact `release` | none |
 | publish | `contents: write` | `ergon release publish` | `published`, and `published-packages`, a JSON list of names and versions |
 
-- select-mode returns `version` while `.changeset` has changesets or a lockfile records the earlier content of a package of the publish plan, `publish` for a publish plan with an entry, and `none` otherwise. version runs for `version`, and ci, pack and publish run in that order for `publish`.
+- select-mode returns `version` while `.changeset` has changesets or a lockfile records the earlier content of a package of the publish plan, `publish` for a publish plan with an entry, and `none` otherwise. wait runs for `version` and `publish`. version runs after it for `version`, and pack and publish run after it in that order for `publish`.
+- `ci.yml` runs on every push to `main`, and its run is the CI status of `main`. wait finds the newest run of `ci.yml` for the commit of HEAD and the event `push` through the REST API of GitHub. It asks every 15 seconds and gives GitHub 5 minutes to create the run. It exits 1 unless the run completes with the conclusion `success`, so the release flow stops on a red `main`. Each push runs the gate once. The limit of the job is the longest limit of the jobs of `ci.yml` plus the limit of the section `github`. The added minutes cover the time that the jobs of the gate wait for a runner.
 - A producer contributes its release steps to the workflows, as it contributes its jobs. The jobs version and pack run them before the installation of ergon, so the version job has the lockfile tool of every language of the repository. A repository that builds ergon from its own source builds it with the toolchain of those steps.
 - The job publish requests `id-token: write` and runs in the environment `release` when a toolchain of the repository publishes to a registry, as the section Credentials states. The toolchain of Go publishes by its tags, without a token of OIDC or an environment.
 - `ci version` first points `ergon-release/<base>` at the base commit through the REST refs endpoint. It then commits with the GraphQL mutation `createCommitOnBranch`, passing `expectedHeadOid`, and opens the pull request or updates the open one. GitHub's schema states that commits made with this mutation are signed by GitHub and marked verified. A repository that runs the job sets "Allow GitHub Actions to create and approve pull requests", because `GITHUB_TOKEN` cannot open a pull request without it.
@@ -514,7 +523,6 @@ ergon init renders the workflow `release.yml` among the GitHub files, as RFC-000
 674,822 bytes is the size of `dokimasia/stealth/bun.lock`, the largest lockfile in these repositories.
 
 - `pack` has no write permission and no OIDC token, so the repository's build scripts cannot publish or push.
-- The job ci calls `ci.yml`, whose runs share the workflow name of their caller. The concurrency group of `ci.yml` starts with `ci`, so the call does not wait on the group of `release.yml`.
 - A push or a tag made with `GITHUB_TOKEN` does not start another workflow. A pull request that `GITHUB_TOKEN` opens or updates gets its runs in an approval-required state, so the gate of the version pull request runs once a maintainer approves it. Work that follows a release, such as goreleaser, runs as a later job in the release workflow and reads `published-packages`. ergon's own repository adds such a job in its local file of `release.yml`. Its workflow `binaries.yml` also runs on the push of a tag of the root module, and on `workflow_dispatch` at the tag after a publish from a workstation that pushes more than three tags.
 
 ```yaml
@@ -549,8 +557,25 @@ jobs:
           name: publish-plan
           path: publish-plan.json
 
-  version:
+  wait:
     needs: select-mode
+    if: needs.select-mode.outputs.mode != 'none'
+    runs-on: ubuntu-26.04
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-ergon
+      - env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          ergon release ci wait
+
+  version:
+    needs: [select-mode, wait]
     if: needs.select-mode.outputs.mode == 'version'
     runs-on: ubuntu-26.04
     permissions:
@@ -582,6 +607,8 @@ jobs:
 | `changelog: false` in a repository with Go modules | Nothing written | The error names the key |
 | A lockfile tool fails during `version` | ergon restores every file it wrote and every changeset it deleted | Fix the cause and re-run |
 | `main` moves while the version pull request is open | The next push regenerates the pull request from the new `main` | None |
+| The CI run of the commit fails, or a newer push cancels it | The job wait fails, and nothing is versioned or published | Fix `main`. Once a rerun of the CI run passes, rerun the failed jobs of the Release run |
+| GitHub creates no run of `ci.yml` for the commit within 5 minutes | The job wait fails, and nothing is versioned or published | Rerun the failed jobs of the Release run |
 | The version pull request merges while a Go module it released had changed on `main` | A dependent's `go.sum` records other content of the module than its tag would name, and `publish` refuses to tag | `select-mode` reports the `go.sum` and returns `version`, and the new pull request rewrites only the stale `go.sum` files |
 | One package fails to publish | Earlier chunks are published and tagged | Re-run the workflow. `publish` skips what `Published` reports |
 | A tag exists at another commit | That package is not published | The error names the tag and both commits |
@@ -694,6 +721,12 @@ An action for each job at `dokimasia/ergon/action/{select-mode,version,pack,publ
 
 **Why not:** a pull request from a fork could pass the check by deleting the changesets. Repositories of changesets skip the check by the name of the release branch, and nodejs/nodejs.org also requires that the branch is in the repository itself. The job `changeset` does the same, so its trust boundary is the write access to the repository, and `status` keeps one meaning.
 
+### Q. The gate inside the release workflow for every mode
+
+The job version calls `ci.yml` through `workflow_call` before it opens the version pull request. The jobs of a publish call it the same way.
+
+**Why not:** `ci.yml` keeps its own run on every push to `main` for the CI status of `main`. Every push would then run the gate twice. ADR-0010 records this alternative and the others.
+
 ## Drawbacks
 
 - ergon reimplements changesets' planner and changelog formats. Parity with changesets 3.0.3 needs a differential test on real repositories, and every changesets release can open a new difference.
@@ -708,7 +741,8 @@ An action for each job at `dokimasia/ergon/action/{select-mode,version,pack,publ
 - A partial publish is possible, because registries are not transactional.
 - Maven Central needs four long-lived secrets: the token username, the token password, the signing subkey and its passphrase. The token cannot be scoped to a namespace.
 - Each new crate needs a first release by hand with an API token, before trusted publishing can release it.
-- The release workflow cannot trigger on `workflow_run`, so it cannot wait for a separate CI workflow. It runs CI itself through `workflow_call`, and the merge of a version pull request runs the gate twice: once for the push, and once before the publish.
+- The job wait keeps a Linux runner busy for the length of the CI run of its commit. GitHub charges a private repository for that runner.
+- A rerun that turns a failed CI run green does not continue the Release run of its commit. A rerun of the failed jobs of the Release run does.
 - The `release` environment's required reviewers add one approval to every publish.
 - A pull request that changes a module's `go.mod` needs a changeset. Dependabot does not add a changeset to its update. The next release of the module includes the update, and the changelog of the module does not list it.
 
@@ -749,6 +783,8 @@ An action for each job at `dokimasia/ergon/action/{select-mode,version,pack,publ
 | No event for a push of more than three tags | https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows |
 | The setting that lets `GITHUB_TOKEN` create a pull request | https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository |
 | The check of changesets skipped on the release branch | https://github.com/nodejs/nodejs.org/blob/main/.github/workflows/pull-request-policy.yml, https://github.com/vercel/chat/blob/main/.github/workflows/ci.yml, https://github.com/smithy-lang/smithy-typescript/blob/main/.github/workflows/ci.yml |
+| The runs of a workflow, filtered by commit and event | https://docs.github.com/rest/actions/workflow-runs#list-workflow-runs-for-a-workflow |
+| The prices of GitHub Actions | https://docs.github.com/en/billing/concepts/product-billing/github-actions |
 | proxy.golang.org caching | https://proxy.golang.org/ |
 | `uv build` and workspace sources | https://github.com/astral-sh/uv/issues/9811 |
 | Cargo 1.90 multi-package publish | https://doc.rust-lang.org/cargo/CHANGELOG.html |

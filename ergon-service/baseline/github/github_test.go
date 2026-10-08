@@ -131,18 +131,34 @@ func TestGithub(t *testing.T) {
 				assert.NoError(t, err, "Jobs")
 				got, err := github.Producer{}.Data(baselinetest.Answers(), o, &c)
 				assert.NoError(t, err, "Data")
-				assert.Equal(t, got, any(want), "the data")
+				w, ok := got.(github.Workflows)
+				assert.True(t, ok, "the data is a Workflows")
+				assert.Equal(t, w.Jobs, want, "the jobs")
 			})
 
-			t.Run("returns the jobs for the options at the baseline for options of another type", func(t *testing.T) {
+			t.Run(
+				"returns a limit of wait that adds the limit of the section to the longest limit of a job",
+				func(t *testing.T) {
+					t.Parallel()
+					o, _ := github.Producer{}.Options().(*github.Options)
+					o.CI.Timeout = 25
+					c := languages()
+					got, err := github.Producer{}.Data(baselinetest.Answers(), o, &c)
+					assert.NoError(t, err, "Data")
+					w, ok := got.(github.Workflows)
+					assert.True(t, ok, "the data is a Workflows")
+					assert.Equal(t, w.Wait, 30, "the limit of wait, which is the 5 minutes of check-beta plus 25")
+				},
+			)
+
+			t.Run("returns the data of the options at the baseline for options of another type", func(t *testing.T) {
 				t.Parallel()
 				c := languages()
-				o, _ := github.Producer{}.Options().(*github.Options)
-				want, err := o.Jobs(&c)
-				assert.NoError(t, err, "Jobs")
+				want, err := github.Producer{}.Data(baselinetest.Answers(), github.Producer{}.Options(), &c)
+				assert.NoError(t, err, "Data for the options at the baseline")
 				got, err := github.Producer{}.Data(baselinetest.Answers(), nil, &c)
 				assert.NoError(t, err, "Data")
-				assert.Equal(t, got, any(want), "the data")
+				assert.Equal(t, got, want, "the data")
 			})
 
 			t.Run("returns ErrInvalid for a job on a runner that the section does not list", func(t *testing.T) {

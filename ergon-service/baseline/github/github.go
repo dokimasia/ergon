@@ -21,6 +21,17 @@ const Name = "github"
 //go:embed all:templates
 var templates embed.FS
 
+// Workflows are the data of the templates of the GitHub files, which each template reads as .Data.
+type Workflows struct {
+	// Jobs are the jobs of ci.yml, as [Options.Jobs] returns them.
+	Jobs []Job
+
+	// Wait is the limit in minutes of the job wait of release.yml, which waits for the run of
+	// ci.yml: the longest limit of a job of Jobs plus the limit of the section github, for the time
+	// that the jobs of ci.yml wait for a runner.
+	Wait int
+}
+
 // Producer renders the GitHub files of a repository: the workflows, the actions that install ergon
 // and GNU make, the configuration of Dependabot, the issue forms, the template of a pull request,
 // and CODEOWNERS. Its zero value is ready to use, and it is safe for concurrent use.
@@ -94,12 +105,21 @@ func (Producer) Options() language.Options {
 	}
 }
 
-// Data returns the jobs of ci.yml, which its template reads as .Data: the jobs of c, as
-// [Options.Jobs] returns them for o, and for the options at the baseline when o is not the options
-// of the GitHub files. It returns the error of Options.Jobs for a job whose runners the section
-// does not list.
+// Data returns the [Workflows] of c for o, and for the options at the baseline when o is not the
+// options of the GitHub files: the jobs of c, as [Options.Jobs] returns them, and the limit of the
+// job wait. It returns the error of Options.Jobs for a job whose runners the section does not list.
 func (Producer) Data(_ *language.Answers, o language.Options, c *workflow.Contribution) (any, error) {
-	return own(o).Jobs(c)
+	opts := own(o)
+	jobs, err := opts.Jobs(c)
+	if err != nil {
+		return nil, err
+	}
+	w := Workflows{Jobs: jobs}
+	for k := range jobs {
+		w.Wait = max(w.Wait, jobs[k].Timeout)
+	}
+	w.Wait += opts.CI.Timeout
+	return w, nil
 }
 
 // Contribution returns the job baseline of ci.yml for o, and for the options at the baseline when o
