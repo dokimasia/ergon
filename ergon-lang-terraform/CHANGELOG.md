@@ -1,5 +1,18 @@
 # go.dokimi.dev/ergon/lang/terraform
 
+## 0.2.1
+
+### Patch Changes
+
+- 94c3bd1: State the repository on GitHub whose releases publish each release binary, which a baseline update reads.
+- Updated dependencies [94c3bd1]
+- Updated dependencies [8bfa588]
+- Updated dependencies [096abbd]
+- Updated dependencies [6f01723]
+- Updated dependencies [77ee1c0]
+  - go.dokimi.dev/ergon/service@0.3.0
+  - go.dokimi.dev/ergon/core@0.3.0
+
 ## 0.2.0
 
 ### Minor Changes

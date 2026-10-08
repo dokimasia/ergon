@@ -1,5 +1,11 @@
 # go.dokimi.dev/ergon/core
 
+## 0.3.0
+
+### Minor Changes
+
+- 94c3bd1: Add ergon init upgrade and ergon init ci upgrade, which move a repository to the baseline of the newest release of ergon. The job of baseline.yml opens the pull request of the upgrade weekly, in place of an issue. ergon refuses a lock that a newer release of ergon wrote, and a local dependabot.yml that updates github-actions or pre-commit.
+
 ## 0.2.0
 
 ### Minor Changes

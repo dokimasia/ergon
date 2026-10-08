@@ -1,5 +1,20 @@
 # go.dokimi.dev/ergon/service
 
+## 0.3.0
+
+### Minor Changes
+
+- 94c3bd1: Add ergon init upgrade and ergon init ci upgrade, which move a repository to the baseline of the newest release of ergon. The job of baseline.yml opens the pull request of the upgrade weekly, in place of an issue. ergon refuses a lock that a newer release of ergon wrote, and a local dependabot.yml that updates github-actions or pre-commit.
+- 8bfa588: Make ergon release version print removed for each changeset that it removes. release.Version returns the removed paths apart from the written paths.
+- 096abbd: Run make lint and make test in the pre-commit hook of .pre-commit-config.yaml, and make check in its pre-push hook. pre-commit install also installs the pre-push hook.
+- 6f01723: Seed .changeset/config.json with the changelog format @changesets/cli/changelog, whose entries thank no author.
+- 77ee1c0: Wait for the CI run of a commit before release.yml versions or publishes it. The job wait runs a new command for this, ergon release ci wait. The workflow release.yml no longer calls ci.yml, so each push to main runs the gate once.
+
+### Patch Changes
+
+- Updated dependencies [94c3bd1]
+  - go.dokimi.dev/ergon/core@0.3.0
+
 ## 0.2.0
 
 ### Minor Changes
