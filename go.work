@@ -7,7 +7,7 @@ go 1.27.1
 // Every other module is listed here, so builds and tests resolve across the modules without the
 // network.
 use (
-	./
+	.
 	./ergon-core
 	./ergon-lang-bash
 	./ergon-lang-csharp
