@@ -13,7 +13,7 @@ require (
 	github.com/sirupsen/logrus v1.10.2
 	github.com/spf13/viper v1.21.0
 	go.dokimi.dev/assert v0.0.0-20261007161809-4abc39fa6683
-	go.dokimi.dev/ergon/core v0.2.0
+	go.dokimi.dev/ergon/core v0.3.0
 	go.yaml.in/yaml/v3 v3.0.5
 	golang.org/x/mod v0.41.0
 )
