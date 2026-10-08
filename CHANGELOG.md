@@ -1,5 +1,27 @@
 # go.dokimi.dev/ergon
 
+## 0.5.0
+
+### Minor Changes
+
+- 4044f32: Skip the jobs of a run of ci.yml when a passed run covers its content: a push whose content passed, and a version commit whose parent passed. The new first job skip runs ergon release ci skip, ergon release ci version marks the commit of the version pull request with the status ergon/version, and the job result is the one check that a branch requires.
+
+### Patch Changes
+
+- Updated dependencies [4044f32]
+  - go.dokimi.dev/ergon/service@0.5.0
+  - go.dokimi.dev/ergon/lang/bash@0.3.1
+  - go.dokimi.dev/ergon/lang/csharp@0.2.1
+  - go.dokimi.dev/ergon/lang/go@0.3.1
+  - go.dokimi.dev/ergon/lang/java@0.3.1
+  - go.dokimi.dev/ergon/lang/javascript@0.2.1
+  - go.dokimi.dev/ergon/lang/kotlin@0.3.1
+  - go.dokimi.dev/ergon/lang/php@0.3.1
+  - go.dokimi.dev/ergon/lang/python@0.3.1
+  - go.dokimi.dev/ergon/lang/rust@0.3.1
+  - go.dokimi.dev/ergon/lang/terraform@0.3.1
+  - go.dokimi.dev/ergon/lang/typescript@0.2.1
+
 ## 0.4.0
 
 ### Minor Changes
