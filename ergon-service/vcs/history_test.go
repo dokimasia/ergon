@@ -4,9 +4,11 @@
 package vcs_test
 
 import (
+	"strings"
 	"testing"
 
 	"go.dokimi.dev/assert"
+	"go.dokimi.dev/assert/expect"
 	"go.dokimi.dev/assert/files"
 	"go.dokimi.dev/ergon/service/vcs"
 	"go.dokimi.dev/ergon/service/vcs/vcstest"
@@ -32,6 +34,29 @@ func TestHistory(t *testing.T) {
 			t.Parallel()
 			_, err := vcs.Head(t.Context(), vcstest.Repository(t, files.Tree{}))
 			assert.ErrorIs(t, err, vcs.ErrGit, "Head")
+		})
+	})
+
+	t.Run("HeadTree", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("returns the commit of HEAD and its tree", func(t *testing.T) {
+			t.Parallel()
+			dir := vcstest.Repository(t, files.Tree{"a.md": files.Text("a\n")})
+			vcstest.Commit(t, dir, "first")
+			write(t, dir, "a.md", "b\n")
+			want := vcstest.Commit(t, dir, "second")
+			commit, tree, err := vcs.HeadTree(t.Context(), dir)
+			assert.NoError(t, err, "HeadTree")
+			expect.That(t, commit).Equal(want, "the commit")
+			expect.That(t, tree).Equal(strings.TrimSpace(vcstest.Git(t, dir, "log", "-1", "--format=%T", want)),
+				"the tree")
+		})
+
+		t.Run("returns ErrGit for a repository without a commit", func(t *testing.T) {
+			t.Parallel()
+			_, _, err := vcs.HeadTree(t.Context(), vcstest.Repository(t, files.Tree{}))
+			assert.ErrorIs(t, err, vcs.ErrGit, "HeadTree")
 		})
 	})
 

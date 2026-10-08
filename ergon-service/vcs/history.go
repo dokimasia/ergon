@@ -19,6 +19,18 @@ func Head(ctx context.Context, dir string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
+// HeadTree returns the commit of HEAD of the working tree of dir and the tree of that commit, each
+// as 40 hexadecimal digits. It returns an error that wraps [ErrGit] for a dir outside a working
+// tree, for a repository without a commit, and for a ctx that ends before git does.
+func HeadTree(ctx context.Context, dir string) (string, string, error) {
+	out, err := run(ctx, dir, "rev-parse", "HEAD^{commit}", "HEAD^{tree}")
+	if err != nil {
+		return "", "", err
+	}
+	commit, tree, _ := strings.Cut(strings.TrimSpace(string(out)), "\n")
+	return commit, tree, nil
+}
+
 // AddedBy returns the newest commit of the history of HEAD that added or copied the file at path,
 // relative to dir, following the file across renames, as changesets finds the commit of a
 // changeset. It returns the empty string for a file that no commit added, such as a file that only
