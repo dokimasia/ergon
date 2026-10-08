@@ -56,6 +56,137 @@ func TestOptions(t *testing.T) {
 		}
 	})
 
+	t.Run("Nightly", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Validate", func(t *testing.T) {
+			t.Parallel()
+
+			valid := []struct {
+				name string
+				give string
+			}{
+				{name: "returns nil for the schedule at the baseline", give: baselineOptions().Nightly.Schedule},
+				{name: "returns nil for steps, ranges, lists and names", give: "*/30 1-5 1,15 * MON-FRI"},
+			}
+			for _, tt := range valid {
+				t.Run(tt.name, func(t *testing.T) {
+					t.Parallel()
+					assert.NoError(t, github.Nightly{Schedule: tt.give}.Validate(), "Validate")
+				})
+			}
+
+			invalid := []struct {
+				name string
+				give string
+			}{
+				{name: "returns ErrInvalid for four fields", give: "0 3 * *"},
+				{name: "returns ErrInvalid for six fields", give: "0 0 3 * * *"},
+				{name: "returns ErrInvalid for a field with a character of no cron field", give: "0 3 * * $DAY"},
+				{name: "returns ErrInvalid for an empty schedule", give: ""},
+			}
+			for _, tt := range invalid {
+				t.Run(tt.name, func(t *testing.T) {
+					t.Parallel()
+					err := github.Nightly{Schedule: tt.give}.Validate()
+					assert.ErrorIs(t, err, option.ErrInvalid, "Validate")
+					assert.Contains(t, err.Error(), "nightly.schedule", "the error")
+				})
+			}
+		})
+	})
+
+	t.Run("NightlyJobs", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("returns a job whose setup lists no runner on the Linux runner without a matrix", func(t *testing.T) {
+			t.Parallel()
+			fuzz := workflow.Step{Run: []string{"make fuzz-alpha"}}
+			c := workflow.Contribution{Nightly: []workflow.Job{{
+				ID:    "fuzz-alpha",
+				Name:  "Fuzz alpha",
+				Setup: &workflow.Setup{Timeout: 120},
+				Steps: []workflow.Step{fuzz},
+			}}}
+			got, err := baselineOptions().NightlyJobs(&c)
+			assert.NoError(t, err, "NightlyJobs")
+			assert.Equal(t, got, []github.Job{{
+				ID:      "fuzz-alpha",
+				Name:    "Fuzz alpha",
+				Steps:   []workflow.Step{fuzz},
+				Timeout: 120,
+				Make:    true,
+				Ergon:   true,
+			}}, "the jobs")
+		})
+
+		t.Run("returns a job without a setup on the Linux runner without a matrix", func(t *testing.T) {
+			t.Parallel()
+			c := workflow.Contribution{Nightly: []workflow.Job{{
+				ID:      "audit",
+				Name:    "Audit",
+				Timeout: 10,
+				Ergon:   true,
+				Steps:   []workflow.Step{{Run: []string{"ergon audit"}}},
+			}}}
+			got, err := baselineOptions().NightlyJobs(&c)
+			assert.NoError(t, err, "NightlyJobs")
+			assert.Length(t, got, 1, "the jobs")
+			expect.Nil(t, got[0].Runners, "the runners")
+			expect.Equal(t, got[0].Name, "Audit", "the name")
+		})
+
+		t.Run("returns a job whose setup lists versions on a matrix of the Linux runner", func(t *testing.T) {
+			t.Parallel()
+			c := workflow.Contribution{Nightly: []workflow.Job{{
+				ID:    "fuzz-alpha",
+				Name:  "Fuzz alpha",
+				Setup: &workflow.Setup{Versions: []string{"1.0", "2.0"}, Timeout: 120},
+				Steps: []workflow.Step{{Run: []string{"make fuzz-alpha"}}},
+			}}}
+			got, err := baselineOptions().NightlyJobs(&c)
+			assert.NoError(t, err, "NightlyJobs")
+			assert.Length(t, got, 1, "the jobs")
+			expect.Equal(t, got[0].Runners, []string{"ubuntu-26.04"}, "the runners")
+			expect.Equal(t, got[0].Name, "Fuzz alpha (${{ matrix.os }}, ${{ matrix.version }})", "the name")
+		})
+
+		t.Run("returns a job whose setup lists runners on those runners", func(t *testing.T) {
+			t.Parallel()
+			c := workflow.Contribution{Nightly: []workflow.Job{{
+				ID:    "fuzz-alpha",
+				Name:  "Fuzz alpha",
+				Setup: &workflow.Setup{Runners: []string{"macos-26", "windows-2025"}, Timeout: 120},
+				Steps: []workflow.Step{{Run: []string{"make fuzz-alpha"}}},
+			}}}
+			got, err := baselineOptions().NightlyJobs(&c)
+			assert.NoError(t, err, "NightlyJobs")
+			assert.Length(t, got, 1, "the jobs")
+			expect.Equal(t, got[0].Runners, []string{"macos-26", "windows-2025"}, "the runners")
+			expect.Equal(t, got[0].Name, "Fuzz alpha (${{ matrix.os }})", "the name")
+		})
+
+		t.Run("returns no job for a contribution without a nightly job", func(t *testing.T) {
+			t.Parallel()
+			c := workflow.Contribution{Jobs: guarded().Jobs}
+			got, err := baselineOptions().NightlyJobs(&c)
+			assert.NoError(t, err, "NightlyJobs")
+			assert.Empty(t, got, "the jobs")
+		})
+
+		t.Run("returns ErrInvalid for a job on a runner that runners does not list", func(t *testing.T) {
+			t.Parallel()
+			c := workflow.Contribution{Nightly: []workflow.Job{{
+				ID:    "fuzz-alpha",
+				Name:  "Fuzz alpha",
+				Setup: &workflow.Setup{Runners: []string{"ubuntu-24.04"}, Timeout: 120},
+				Steps: []workflow.Step{{Run: []string{"make fuzz-alpha"}}},
+			}}}
+			_, err := baselineOptions().NightlyJobs(&c)
+			assert.ErrorIs(t, err, option.ErrInvalid, "NightlyJobs")
+		})
+	})
+
 	t.Run("Jobs", func(t *testing.T) {
 		t.Parallel()
 

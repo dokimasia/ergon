@@ -17,6 +17,10 @@
 //     job of the contributions from one skeleton: the checkout, the installation of GNU make, the
 //     setup steps, the installation of ergon, the cache of the tools of ergon for a job that runs
 //     tools, and the steps of the job, as [Options.Jobs] states.
+//   - nightly.yml runs the nightly jobs of the contributions on the schedule of the section github
+//     and on demand, each from the same skeleton, on the Linux runner unless its setup lists
+//     runners, as [Options.NightlyJobs] states. A repository without a nightly job has no
+//     nightly.yml.
 //   - version.yml opens or updates the version pull request when the run of ci.yml for a push to
 //     main succeeds, from the commit of that run, through ergon release ci version. With the
 //     variable ERGON_APP_CLIENT_ID and the secret ERGON_APP_PRIVATE_KEY of a GitHub App, it opens
@@ -53,13 +57,14 @@
 //     request.
 //   - release.yml and baseline.yml group their runs by workflow and ref, and version.yml by the
 //     branch of the run of ci.yml that triggered it. These three cancel no run.
+//   - nightly.yml groups its runs by workflow, and cancels no run.
 //
 // # Options
 //
 // The section github of .ergon.yaml, [Options], names the runners of the jobs, the Linux runner of
 // the checks of text and of CodeQL, the release of GNU make for Windows, the pins of the actions of
-// the GitHub files, and the limit of their jobs. It configures the platform alone: the section of
-// each toolchain configures the setup of its jobs.
+// the GitHub files, the limit of their jobs, and the schedule of nightly.yml. It configures the
+// platform alone: the section of each toolchain configures the setup of its jobs.
 //
 // # Contribution
 //
@@ -77,7 +82,8 @@
 // # Errors
 //
 // [Producer.Data] returns an error that wraps [go.dokimi.dev/ergon/core/option.ErrInvalid] for a
-// job whose runners the section github does not list, which names the job and the runner.
+// job of ci.yml or of nightly.yml whose runners the section github does not list, which names the
+// job and the runner.
 // [Producer.CheckLocal] returns an error that wraps [language.ErrInvalidLocal].
 //
 // # Dependency position

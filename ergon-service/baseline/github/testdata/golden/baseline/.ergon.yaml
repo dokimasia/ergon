@@ -7,6 +7,12 @@ github:
   # The release of GNU make that the action setup-make installs from Chocolatey on a Windows runner,
   # whose image has no make.
   make: 4.4.1
+  # The options of nightly.yml, which runs the steps under the key nightly of each language on a
+  # schedule, each in a job of its own.
+  nightly:
+    # When nightly.yml runs, as a cron expression of five fields in UTC, such as 0 3 * * * for 03:00
+    # each day.
+    schedule: 0 3 * * *
   # The pins of the actions of the workflows, and the limit in minutes of each job of the GitHub
   # files.
   ci:

@@ -18,13 +18,14 @@ import (
 // contributions declare. It is a defect of a producer.
 var ErrInvalidContribution = errors.New("render: invalid contribution")
 
-// Collect returns the contributions of units to the workflows, in the order of units: every job,
-// every step of a release, every CodeQL analysis and every update. A job that names a toolchain runs
-// the setup that the unit of that name contributes, which Collect sets as the job's Setup. A unit
-// that is not a [language.Contributor] contributes nothing, and the result has no Setup of its own.
+// Collect returns the contributions of units to the workflows, in the order of units: every job of
+// ci.yml and of nightly.yml, every step of a release, every CodeQL analysis and every update. A job
+// that names a toolchain runs the setup that the unit of that name contributes, which Collect sets
+// as the job's Setup. A unit that is not a [language.Contributor] contributes nothing, and the
+// result has no Setup of its own.
 //
 // It returns an error that wraps [ErrInvalidContribution] for a contribution that a producer
-// declares wrong.
+// declares wrong, and for a job that two contributions declare in the same workflow.
 func Collect(units []Unit) (workflow.Contribution, error) {
 	setups := map[string]*workflow.Setup{}
 	var parts []workflow.Contribution
@@ -45,21 +46,14 @@ func Collect(units []Unit) (workflow.Contribution, error) {
 		names = append(names, u.Name)
 	}
 	var all workflow.Contribution
-	for i, part := range parts {
-		for _, j := range part.Jobs {
-			if j.Toolchain != "" {
-				setup, ok := setups[j.Toolchain]
-				if !ok {
-					return workflow.Contribution{}, fmt.Errorf("%w: the job %s of %s runs the toolchain %s, which "+
-						"contributes no setup", ErrInvalidContribution, j.ID, names[i], j.Toolchain)
-				}
-				j.Setup = setup
-			}
-			if slices.ContainsFunc(all.Jobs, func(k workflow.Job) bool { return k.ID == j.ID }) {
-				return workflow.Contribution{}, fmt.Errorf("%w: %s declares the job %s again", ErrInvalidContribution,
-					names[i], j.ID)
-			}
-			all.Jobs = append(all.Jobs, j)
+	for i := range parts {
+		part := &parts[i]
+		var err error
+		if all.Jobs, err = jobsOf(all.Jobs, part.Jobs, setups, names[i]); err != nil {
+			return workflow.Contribution{}, err
+		}
+		if all.Nightly, err = jobsOf(all.Nightly, part.Nightly, setups, names[i]); err != nil {
+			return workflow.Contribution{}, err
 		}
 		all.Release = append(all.Release, part.Release...)
 		for _, c := range part.CodeQL {
@@ -81,6 +75,27 @@ func Collect(units []Unit) (workflow.Contribution, error) {
 			}
 			all.Updates = append(all.Updates, u)
 		}
+	}
+	return all, nil
+}
+
+// jobsOf returns all with the jobs of the contribution of name appended, each job that names a
+// toolchain with the setup of that toolchain from setups. It returns an error that wraps
+// [ErrInvalidContribution] for a toolchain without a setup, and for a job whose ID all has.
+func jobsOf(all, jobs []workflow.Job, setups map[string]*workflow.Setup, name string) ([]workflow.Job, error) {
+	for _, j := range jobs {
+		if j.Toolchain != "" {
+			setup, ok := setups[j.Toolchain]
+			if !ok {
+				return nil, fmt.Errorf("%w: the job %s of %s runs the toolchain %s, which contributes no setup",
+					ErrInvalidContribution, j.ID, name, j.Toolchain)
+			}
+			j.Setup = setup
+		}
+		if slices.ContainsFunc(all, func(k workflow.Job) bool { return k.ID == j.ID }) {
+			return nil, fmt.Errorf("%w: %s declares the job %s again", ErrInvalidContribution, name, j.ID)
+		}
+		all = append(all, j)
 	}
 	return all, nil
 }

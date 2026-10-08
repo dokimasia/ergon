@@ -12,6 +12,7 @@ import (
 	"testing/fstest"
 
 	"go.dokimi.dev/assert"
+	"go.dokimi.dev/assert/expect"
 	"go.dokimi.dev/assert/golden"
 	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/core/option"
@@ -27,6 +28,7 @@ const name = "github"
 // The workflows and the configuration of Dependabot that the contributions of the cases change.
 const (
 	ciPath         = ".github/workflows/ci.yml"
+	nightlyPath    = ".github/workflows/nightly.yml"
 	releasePath    = ".github/workflows/release.yml"
 	versionPath    = ".github/workflows/version.yml"
 	securityPath   = ".github/workflows/security.yml"
@@ -93,7 +95,8 @@ func TestGithub(t *testing.T) {
 						baseline.Producer{Name: "alpha", Producer: part{contribution: languages()}},
 					)
 					baselinetest.Hygiene(t, dir)
-					for _, file := range []string{ciPath, releasePath, versionPath, securityPath, dependabotPath} {
+					files := []string{ciPath, nightlyPath, releasePath, versionPath, securityPath, dependabotPath}
+					for _, file := range files {
 						got, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(file)))
 						assert.NoError(t, err, "ReadFile of "+file)
 						golden.Match(t, path.Join("contributions", path.Base(file)), got, golden.ShouldUpdate())
@@ -106,6 +109,13 @@ func TestGithub(t *testing.T) {
 				dir := baselinetest.New(t, new(language.Catalog), baselinetest.Answers(), producer())
 				_, err := os.Stat(filepath.Join(dir, filepath.FromSlash(dependabotPath)))
 				assert.ErrorIs(t, err, fs.ErrNotExist, "Stat of "+dependabotPath)
+			})
+
+			t.Run("renders no nightly.yml without a nightly job", func(t *testing.T) {
+				t.Parallel()
+				dir := baselinetest.New(t, new(language.Catalog), baselinetest.Answers(), producer())
+				_, err := os.Stat(filepath.Join(dir, filepath.FromSlash(nightlyPath)))
+				assert.ErrorIs(t, err, fs.ErrNotExist, "Stat of "+nightlyPath)
 			})
 		})
 
@@ -131,12 +141,28 @@ func TestGithub(t *testing.T) {
 				c := languages()
 				want, err := o.Jobs(&c)
 				assert.NoError(t, err, "Jobs")
+				nightly, err := o.NightlyJobs(&c)
+				assert.NoError(t, err, "NightlyJobs")
 				got, err := github.Producer{}.Data(baselinetest.Answers(), o, &c)
 				assert.NoError(t, err, "Data")
 				w, ok := got.(github.Workflows)
 				assert.True(t, ok, "the data is a Workflows")
-				assert.Equal(t, w.Jobs, want, "the jobs")
+				expect.Equal(t, w.Jobs, want, "the jobs")
+				expect.Equal(t, w.Nightly, nightly, "the nightly jobs")
 			})
+
+			t.Run("returns ErrInvalid for a nightly job on a runner that the section does not list",
+				func(t *testing.T) {
+					t.Parallel()
+					c := workflow.Contribution{Nightly: []workflow.Job{{
+						ID:    "fuzz-alpha",
+						Name:  "Fuzz alpha",
+						Setup: &workflow.Setup{Runners: []string{"ubuntu-24.04"}, Timeout: 120},
+						Steps: []workflow.Step{{Run: []string{"make fuzz-alpha"}}},
+					}}}
+					_, err := github.Producer{}.Data(baselinetest.Answers(), nil, &c)
+					assert.ErrorIs(t, err, option.ErrInvalid, "Data")
+				})
 
 			t.Run("returns the data of the options at the baseline for options of another type", func(t *testing.T) {
 				t.Parallel()
@@ -331,9 +357,26 @@ func toolchain() workflow.Contribution {
 
 // languages returns the contribution of the language alpha of the cases: a check that runs tools on
 // the setup of the toolchain tool, a check on a setup of its own, a check of text that runs tools,
-// and a job without a setup whose steps have each key of a step.
+// and a job without a setup whose steps have each key of a step. Its nightly jobs fuzz alpha on the
+// setup of the toolchain tool, and mutate beta on a setup of their own.
 func languages() workflow.Contribution {
-	return workflow.Contribution{Jobs: []workflow.Job{
+	return workflow.Contribution{Nightly: []workflow.Job{
+		{
+			ID:          "fuzz-alpha",
+			Name:        "Fuzz alpha",
+			Toolchain:   "tool",
+			Permissions: read,
+			Tools:       true,
+			Steps:       []workflow.Step{{Name: "Fuzz alpha", Run: []string{"make fuzz-alpha"}}},
+		},
+		{
+			ID:          "mutate-beta",
+			Name:        "Mutate beta",
+			Setup:       &workflow.Setup{Files: "beta.lock", Timeout: 60},
+			Permissions: read,
+			Steps:       []workflow.Step{{Name: "Mutate beta", Run: []string{"make mutate-beta"}}},
+		},
+	}, Jobs: []workflow.Job{
 		{
 			ID:          "check-alpha",
 			Name:        "Alpha",

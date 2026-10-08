@@ -36,6 +36,10 @@ var templates embed.FS
 type Workflows struct {
 	// Jobs are the jobs of ci.yml, as [Options.Jobs] returns them.
 	Jobs []Job
+
+	// Nightly are the jobs of nightly.yml, as [Options.NightlyJobs] returns them. ergon init renders
+	// no nightly.yml without one.
+	Nightly []Job
 }
 
 // Producer renders the GitHub files of a repository: the workflows, the actions that install ergon
@@ -63,7 +67,8 @@ func (Producer) Templates() fs.FS {
 // macos-26 and windows-2025, ubuntu-26.04 for the checks of text, the release of GNU make, the
 // releases of actions/checkout, github/codeql-action, actions/dependency-review-action,
 // ossf/scorecard-action, actions/upload-artifact, actions/download-artifact, actions/cache and
-// actions/create-github-app-token, and a limit of 15 minutes for each job.
+// actions/create-github-app-token, a limit of 15 minutes for each job, and nightly.yml at 03:00
+// UTC each day.
 func (Producer) Options() language.Options {
 	return &Options{
 		Runners: option.Runners{"ubuntu-26.04", "macos-26", "windows-2025"},
@@ -114,18 +119,24 @@ func (Producer) Options() language.Options {
 			},
 			Timeout: 15,
 		},
+		Nightly: Nightly{Schedule: "0 3 * * *"},
 	}
 }
 
 // Data returns the [Workflows] of c for o, and for the options at the baseline when o is not the
-// options of the GitHub files: the jobs of c, as [Options.Jobs] returns them. It returns the error
-// of Options.Jobs for a job whose runners the section does not list.
+// options of the GitHub files: the jobs of c, as [Options.Jobs] returns them, and its nightly jobs,
+// as [Options.NightlyJobs] returns them. It returns the error of either for a job whose runners the
+// section does not list.
 func (Producer) Data(_ *language.Answers, o language.Options, c *workflow.Contribution) (any, error) {
 	jobs, err := own(o).Jobs(c)
 	if err != nil {
 		return nil, err
 	}
-	return Workflows{Jobs: jobs}, nil
+	nightly, err := own(o).NightlyJobs(c)
+	if err != nil {
+		return nil, err
+	}
+	return Workflows{Jobs: jobs, Nightly: nightly}, nil
 }
 
 // Contribution returns the job baseline of ci.yml for o, and for the options at the baseline when o

@@ -1,0 +1,81 @@
+{{% if .Data.Nightly -%}}
+# Managed by ergon init. Add repository settings to .ergon/local/.github/workflows/nightly.yml and run ergon init sync.
+#
+# The steps that are too long for each push, such as fuzz and mutate, on the schedule of the
+# section github of .ergon.yaml and on demand. Each step of each language is a job of its own, so
+# the jobs run in parallel and fail independently. A job runs on the Linux runner of the section
+# github unless its setup states runners, sets up its toolchain before ergon once the repository
+# has the files of the toolchain, and keeps the tools of ergon in the cache of GitHub Actions. A
+# run that starts while another runs waits for it.
+
+name: Nightly
+
+on:
+  schedule:
+    - cron: {{% yaml .Options.Nightly.Schedule %}}
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+# Every command runs in bash, which is Git Bash on Windows.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+{{%- range .Data.Nightly %}}
+  {{% .ID %}}:
+    name: {{% yaml .Name %}}
+{{%- if .If %}}
+    if: {{% yaml .If %}}
+{{%- end %}}
+{{%- if .Runners %}}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: {{% yaml .Runners %}}
+{{%- if .Versions %}}
+        version: {{% yaml .Versions %}}
+{{%- end %}}
+    runs-on: ${{ matrix.os }}
+{{%- else %}}
+    runs-on: {{% yaml $.Options.Linux %}}
+{{%- end %}}
+    timeout-minutes: {{% .Timeout %}}
+{{%- if .Permissions %}}
+    permissions:
+{{%- range $scope, $access := .Permissions %}}
+      {{% $scope %}}: {{% $access %}}
+{{%- end %}}
+{{%- else %}}
+    permissions: {}
+{{%- end %}}
+{{%- if .Env %}}
+    env:
+{{%- range $name, $value := .Env %}}
+      {{% $name %}}: {{% yaml $value %}}
+{{%- end %}}
+{{%- end %}}
+    steps:
+      - uses: {{% $.Options.CI.Actions.Checkout %}}
+        with:
+{{%- if .History %}}
+          fetch-depth: 0
+{{%- end %}}
+          persist-credentials: false
+{{%- if .Make %}}
+      - {{% if .Guard %}}if: {{% yaml .Guard %}}
+        {{% end %}}uses: ./.github/actions/setup-make
+{{%- end %}}
+{{%- steps .Setup %}}
+{{%- if .Ergon %}}
+      - {{% if .Guard %}}if: {{% yaml .Guard %}}
+        {{% end %}}uses: ./.github/actions/setup-ergon
+{{%- end %}}
+{{%- steps .Steps %}}
+{{% end %}}
+{{%- end -%}}

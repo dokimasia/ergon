@@ -5,11 +5,20 @@ package github
 
 import (
 	"fmt"
+	"regexp"
 	"slices"
+	"strings"
 
 	"go.dokimi.dev/ergon/core/option"
 	"go.dokimi.dev/ergon/core/workflow"
 )
+
+// cronFields is the number of fields of a cron expression of GitHub Actions: the minute, the hour,
+// the day of the month, the month and the day of the week.
+const cronFields = 5
+
+// cronField matches one field of a cron expression, such as 3, */15, 1-5 or MON.
+var cronField = regexp.MustCompile(`^[0-9A-Za-z*,/?-]+$`)
 
 // The names of a job of a matrix, after the job's own name: the runner, and the runtime version
 // where the matrix has versions.
@@ -94,8 +103,29 @@ type Options struct {
 	// Make is the release of GNU make that a Windows runner installs.
 	Make option.Version `yaml:"make" source:"chocolatey:make" doc:"The release of GNU make that the action setup-make installs from Chocolatey on a Windows runner, whose image has no make."`
 
+	// Nightly are the options of nightly.yml.
+	Nightly Nightly `yaml:"nightly" doc:"The options of nightly.yml, which runs the steps under the key nightly of each language on a schedule, each in a job of its own."`
+
 	// CI are the pins of the actions of the GitHub files, and the limit of their jobs.
 	CI option.CI[Actions] `yaml:"ci" doc:"The pins of the actions of the workflows, and the limit in minutes of each job of the GitHub files."`
+}
+
+// Nightly are the options of nightly.yml.
+type Nightly struct {
+	// Schedule is when the workflow runs, as a cron expression of GitHub Actions in UTC.
+	Schedule string `yaml:"schedule" doc:"When nightly.yml runs, as a cron expression of five fields in UTC, such as 0 3 * * * for 03:00 each day."`
+}
+
+// Validate returns an error that wraps [option.ErrInvalid] for a Schedule that is not five fields of
+// digits, letters and the characters * , - / and ?, separated by spaces.
+func (n Nightly) Validate() error {
+	fields := strings.Fields(n.Schedule)
+	malformed := func(f string) bool { return !cronField.MatchString(f) }
+	if len(fields) != cronFields || slices.ContainsFunc(fields, malformed) {
+		return fmt.Errorf("%w: nightly.schedule %q, which is no cron expression of five fields", option.ErrInvalid,
+			n.Schedule)
+	}
+	return nil
 }
 
 // Actions are the pins of the actions of the GitHub files.
@@ -222,6 +252,28 @@ func (o *Options) Jobs(c *workflow.Contribution) ([]Job, error) {
 			}
 		}
 		jobs = append(jobs, job)
+	}
+	return jobs, nil
+}
+
+// NightlyJobs returns the nightly jobs of c as nightly.yml renders them for o, in the order of c. It
+// renders each job as [Options.Jobs] does, but a job without a setup that lists runners runs on the
+// runner Linux: without a matrix and without a runner in its name, unless its setup lists versions,
+// which a matrix of Linux runs. It returns the errors of Options.Jobs.
+func (o *Options) NightlyJobs(c *workflow.Contribution) ([]Job, error) {
+	jobs, err := o.Jobs(&workflow.Contribution{Jobs: c.Nightly})
+	if err != nil {
+		return nil, err
+	}
+	for i := range jobs {
+		s := c.Nightly[i].Setup
+		switch {
+		case s != nil && len(s.Runners) > 0:
+		case s != nil && len(s.Versions) > 0:
+			jobs[i].Runners = []string{o.Linux}
+		default:
+			jobs[i].Runners, jobs[i].Name = nil, c.Nightly[i].Name
+		}
 	}
 	return jobs, nil
 }

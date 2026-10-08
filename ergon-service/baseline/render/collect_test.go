@@ -46,6 +46,7 @@ func TestCollect(t *testing.T) {
 				unit("plain", fstest.MapFS{}),
 				contributing("go", workflow.Contribution{
 					Jobs:    []workflow.Job{text("check-go")},
+					Nightly: []workflow.Job{text("fuzz-go"), text("check-go")},
 					Release: []workflow.Step{{Run: []string{"go version"}}},
 					CodeQL:  []workflow.CodeQL{analysis("go")},
 					Updates: []workflow.Update{{Ecosystem: "gomod", Directories: []string{"/"}}},
@@ -55,6 +56,7 @@ func TestCollect(t *testing.T) {
 			assert.NoError(t, err, "Collect")
 			assert.Equal(t, got, workflow.Contribution{
 				Jobs:    []workflow.Job{text("docs"), text("check-go")},
+				Nightly: []workflow.Job{text("fuzz-go"), text("check-go")},
 				Release: []workflow.Step{{Run: []string{"go version"}}, {Uses: setupJava}},
 				CodeQL:  []workflow.CodeQL{analysis("go")},
 				Updates: []workflow.Update{{Ecosystem: "gomod", Directories: []string{"/"}}},
@@ -78,6 +80,24 @@ func TestCollect(t *testing.T) {
 			assert.Length(t, got.Jobs, 1, "the jobs")
 			assert.Equal(t, got.Jobs[0].Setup, setup, "the setup of check-java", assert.ByIdentity())
 			assert.Nil(t, got.Setup, "the setup of the contributions")
+		})
+
+		t.Run("sets the setup of the toolchain that a nightly job names", func(t *testing.T) {
+			t.Parallel()
+			setup := &workflow.Setup{Files: ".java-version", Timeout: 30, Steps: []workflow.Step{{Uses: setupJava}}}
+			job := workflow.Job{
+				ID:        "fuzz-java",
+				Name:      "Java",
+				Toolchain: "jvm",
+				Steps:     []workflow.Step{{Run: []string{"make fuzz-java"}}},
+			}
+			got, err := render.Collect([]render.Unit{
+				contributing("jvm", workflow.Contribution{Setup: setup}),
+				contributing("java", workflow.Contribution{Nightly: []workflow.Job{job}}),
+			})
+			assert.NoError(t, err, "Collect")
+			assert.Length(t, got.Nightly, 1, "the nightly jobs")
+			assert.Equal(t, got.Nightly[0].Setup, setup, "the setup of fuzz-java", assert.ByIdentity())
 		})
 
 		invalid := []struct {
@@ -105,6 +125,24 @@ func TestCollect(t *testing.T) {
 					contributing("common", workflow.Contribution{Jobs: []workflow.Job{text("docs")}}),
 					contributing("other", workflow.Contribution{Jobs: []workflow.Job{text("docs")}}),
 				},
+			},
+			{
+				name: "returns ErrInvalidContribution for a nightly job that two parts declare",
+				units: []render.Unit{
+					contributing("go", workflow.Contribution{Nightly: []workflow.Job{text("fuzz")}}),
+					contributing("other", workflow.Contribution{Nightly: []workflow.Job{text("fuzz")}}),
+				},
+			},
+			{
+				name: "returns ErrInvalidContribution for a nightly job of a toolchain without a setup",
+				units: []render.Unit{contributing("java", workflow.Contribution{Nightly: []workflow.Job{
+					{
+						ID:        "fuzz-java",
+						Name:      "Java",
+						Toolchain: "jvm",
+						Steps:     []workflow.Step{{Run: []string{"make fuzz-java"}}},
+					},
+				}})},
 			},
 			{
 				name: "returns ErrInvalidContribution for an analysis that two parts declare",

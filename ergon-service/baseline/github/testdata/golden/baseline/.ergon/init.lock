@@ -90,6 +90,7 @@
     "github.ci.timeout": 15,
     "github.linux": "ubuntu-26.04",
     "github.make": "4.4.1",
+    "github.nightly.schedule": "0 3 * * *",
     "github.runners": [
       "ubuntu-26.04",
       "macos-26",
