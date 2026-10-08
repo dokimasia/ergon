@@ -43,8 +43,8 @@ func (Producer) Templates() fs.FS {
 
 // Options returns the section python at the baseline: the release of uv with the digests that it
 // states, the releases of ruff, mypy, pytest and pip-audit, the root of the repository, the gate of
-// lint, test and audit, and a limit of 30 minutes for the job check-python on every runner and the
-// Python of pyproject.toml.
+// lint, test and audit, no generators, and a limit of 30 minutes for the job check-python on every
+// runner and the Python of pyproject.toml.
 func (Producer) Options() language.Options {
 	return &Options{
 		Tools: Tools{
@@ -61,11 +61,12 @@ func (Producer) Options() language.Options {
 			Pytest:   "pytest@9.1.1",
 			PipAudit: "pip-audit@2.10.1",
 		},
-		Paths: option.Paths{"."},
-		Check: option.Check{option.StepLint, option.StepTest, option.StepAudit},
-		Test:  option.Run{Args: []string{}},
-		Audit: option.Audit{Ignore: []string{}},
-		CI:    option.MatrixCI[struct{}]{Runners: option.Runners{}, Versions: []string{}, Timeout: 30},
+		Paths:    option.Paths{"."},
+		Check:    option.Check{option.StepLint, option.StepTest, option.StepAudit},
+		Test:     option.Run{Args: []string{}},
+		Generate: option.Generate{Command: []string{}, Args: []string{}},
+		Audit:    option.Audit{Ignore: []string{}},
+		CI:       option.MatrixCI[struct{}]{Runners: option.Runners{}, Versions: []string{}, Timeout: 30},
 	}
 }
 

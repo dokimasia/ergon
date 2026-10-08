@@ -1,8 +1,14 @@
 csharp:
-  # The steps that check-csharp runs, in order: lint, test or audit.
+  # The steps that check-csharp runs, in order: lint, test, generate or audit.
   check: [lint, test, audit]
   # test-csharp runs dotnet test with args.
   test:
+    args: []
+  # generate-csharp runs command with args at the root of the repository. verify-generate-csharp,
+  # the step generate of check, runs the same and fails when the run changes a file of the
+  # repository. Without a command C# has neither target.
+  generate:
+    command: []
     args: []
   # audit-csharp fails on a known vulnerability of a NuGet package of severity or above: low,
   # moderate, high or critical.

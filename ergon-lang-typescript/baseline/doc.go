@@ -14,13 +14,15 @@
 // The fragment of the Makefile runs lint-typescript, which requires lint-js and runs tsc through
 // ergon tool run with the type-safety options of tsc, test-typescript with npm test, and
 // check-typescript, which requires the targets of the steps that the key check of the section
-// names. audit-typescript requires audit-js.
+// names. audit-typescript requires audit-js. With a command in the key generate, the fragment also
+// renders generate-typescript, which runs it, and verify-generate-typescript, which fails when it
+// changes a file. A line ##@ TypeScript starts the group of TypeScript in make help.
 //
 // # Options
 //
-// [Options] is the section typescript: the version of tsc, the steps of the gate and the options of
-// test-typescript. [Options.Contribution] returns the job check-typescript, which runs the setup of
-// the js toolchain.
+// [Options] is the section typescript: the version of tsc, the steps of the gate, and the options
+// of test-typescript and of the generators. [Options.Contribution] returns the job
+// check-typescript, which runs the setup of the js toolchain.
 //
 // # Dependency position
 //

@@ -15,12 +15,15 @@
 // PHP-CS-Fixer run through ergon tool run, which installs the Composer packages of the section
 // together into one project of its own, apart from the composer.json of the repository. PHPUnit
 // runs from the vendor directory of the repository, and audit-php runs composer audit over
-// composer.lock.
+// composer.lock. With a command in the key generate, the fragment also renders generate-php, which
+// runs it, and verify-generate-php, which fails when it changes a file. A line ##@ PHP starts the
+// group of PHP in make help.
 //
 // # Options
 //
 // [Options] is the section php: the tools of the targets, the paths that PHP-CS-Fixer and PHPStan
-// check, the steps of the gate, the options of test-php, and the key ci of the job check-php.
+// check, the steps of the gate, the options of test-php and of the generators, and the key ci of
+// the job check-php.
 // [Tools.Validate] requires the package of each tool of the baseline. [Options.Contribution]
 // returns the job check-php and the updates of the Composer packages.
 //

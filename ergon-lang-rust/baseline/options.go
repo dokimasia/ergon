@@ -12,7 +12,7 @@ import (
 const toolchain = "rust-toolchain.toml"
 
 // steps are the steps of the gate of Rust, which the key check of the section names.
-var steps = []option.Step{option.StepLint, option.StepTest, option.StepAudit}
+var steps = []option.Step{option.StepLint, option.StepTest, option.StepGenerate, option.StepAudit}
 
 // Options are the options of the section rust of .ergon.yaml.
 type Options struct {
@@ -20,10 +20,13 @@ type Options struct {
 	Tools Tools `yaml:"tools" doc:"The tools of the targets of Rust, which ergon tool run installs with cargo install --locked, as <crate>@<version>."`
 
 	// Check are the steps of check-rust.
-	Check option.Check `yaml:"check" doc:"The steps that check-rust runs, in order: lint, test or audit."`
+	Check option.Check `yaml:"check" doc:"The steps that check-rust runs, in order: lint, test, generate or audit."`
 
 	// Test are the options of test-rust.
 	Test option.Run `yaml:"test" doc:"test-rust runs cargo test with args."`
+
+	// Generate are the options of generate-rust and verify-generate-rust.
+	Generate option.Generate `yaml:"generate" doc:"generate-rust runs command with args at the root of the repository. verify-generate-rust, the step generate of check, runs the same and fails when the run changes a file of the repository. Without a command Rust has neither target."`
 
 	// Audit are the options of audit-rust.
 	Audit option.Audit `yaml:"audit" doc:"audit-rust scans Cargo.lock with cargo-audit, and accepts each advisory of ignore, by its identifier, such as RUSTSEC-2024-0001."`
@@ -46,9 +49,13 @@ type Actions struct {
 }
 
 // Validate returns an error that wraps [option.ErrInvalid] for a step of check that Rust does not
-// have. The command checks each option by the Validate method of its type before it calls Validate.
+// have, and for the step generate without a command. The command checks each option by the
+// Validate method of its type before it calls Validate.
 func (o *Options) Validate() error {
-	return o.Check.Only(steps...)
+	if err := o.Check.Only(steps...); err != nil {
+		return err
+	}
+	return o.Generate.CheckStep(o.Check)
 }
 
 // Contribution returns the part of Rust of the workflows for o:

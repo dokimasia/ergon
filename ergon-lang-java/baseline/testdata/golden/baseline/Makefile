@@ -1,5 +1,5 @@
 
-# Java and Kotlin
+##@ Java and Kotlin
 #
 # The section jvm of .ergon.yaml sets the tools of the targets that Java and Kotlin share.
 
@@ -15,7 +15,7 @@ audit-jvm: ## Scan the Gradle lockfiles for known vulnerabilities
 	set --; for lockfile in $$lockfiles; do set -- "$$@" "--lockfile=$$lockfile"; done; \
 	$(OSV_SCANNER) scan source "$$@"
 
-# Java
+##@ Java
 #
 # The section java of .ergon.yaml sets the tools and the options of the Java targets, and the steps
 # of check-java. One run overrides an option on the command line, such as

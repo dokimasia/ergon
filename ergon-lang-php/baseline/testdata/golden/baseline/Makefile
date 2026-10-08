@@ -1,5 +1,5 @@
 
-# PHP
+##@ PHP
 #
 # The section php of .ergon.yaml sets the tools and the options of the PHP targets, and the steps
 # of check-php. One run overrides an option on the command line, such as

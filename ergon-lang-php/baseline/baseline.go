@@ -53,14 +53,15 @@ func (Producer) Templates() fs.FS {
 
 // Options returns the section php at the baseline: the releases of PHPStan, phpstan-strict-rules,
 // the extension installer and PHP-CS-Fixer, the root of the repository, the gate of lint, test and
-// audit, the release of setup-php, and a limit of 30 minutes for the job check-php on every runner
-// and the PHP of .php-version.
+// audit, no generators, the release of setup-php, and a limit of 30 minutes for the job check-php on
+// every runner and the PHP of .php-version.
 func (Producer) Options() language.Options {
 	return &Options{
-		Tools: tools,
-		Paths: option.Paths{"."},
-		Check: option.Check{option.StepLint, option.StepTest, option.StepAudit},
-		Test:  option.Run{Args: []string{}},
+		Tools:    tools,
+		Paths:    option.Paths{"."},
+		Check:    option.Check{option.StepLint, option.StepTest, option.StepAudit},
+		Test:     option.Run{Args: []string{}},
+		Generate: option.Generate{Command: []string{}, Args: []string{}},
 		CI: option.MatrixCI[Actions]{
 			Actions: Actions{SetupPHP: workflow.Action{
 				Uses:    "shivammathur/setup-php",

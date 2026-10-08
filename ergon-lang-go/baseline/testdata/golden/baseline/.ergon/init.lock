@@ -24,7 +24,7 @@
     {
       "path": "Makefile",
       "producer": "go",
-      "sha256": "1ddaee8a9fe134c2f949b569017b8ee583872fd0fb4901714f2ca131b45e5447"
+      "sha256": "9e74ae470c2ab78e02f0387532ef77b6e05e7ab376f6e1da4a0bcc4bbbe4daff"
     }
   ],
   "settings": {
@@ -53,6 +53,10 @@
     "go.fuzz.match": ".",
     "go.fuzz.time": "30s",
     "go.generate.args": [],
+    "go.generate.command": [
+      "go",
+      "generate"
+    ],
     "go.lint.exclude": [],
     "go.mutate.args": [],
     "go.mutate.timeout": "0s",

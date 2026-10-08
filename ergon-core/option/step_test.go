@@ -39,6 +39,33 @@ func TestStep(t *testing.T) {
 		}
 	})
 
+	t.Run("Target", func(t *testing.T) {
+		t.Parallel()
+
+		tests := []struct {
+			name string
+			give option.Step
+			want string
+		}{
+			{
+				name: "returns the step and the section for a step that runs its own target",
+				give: option.StepTest,
+				want: "test-python",
+			},
+			{
+				name: "returns the check of the generated files for the step generate",
+				give: option.StepGenerate,
+				want: "verify-generate-python",
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, tt.give.Target("python"), tt.want, "Target")
+			})
+		}
+	})
+
 	t.Run("Check", func(t *testing.T) {
 		t.Parallel()
 

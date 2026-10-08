@@ -20,10 +20,16 @@ terraform:
     checkov: checkov@3.3.23
   # The directories that the targets format, lint and scan, each with its subdirectories.
   paths: [.]
-  # The steps that check-terraform runs, in order: lint, test or audit.
+  # The steps that check-terraform runs, in order: lint, test, generate or audit.
   check: [lint, test, audit]
   # test-terraform runs terraform test with args.
   test:
+    args: []
+  # generate-terraform runs command with args at the root of the repository, such as terraform-docs.
+  # verify-generate-terraform, the step generate of check, runs the same and fails when the run
+  # changes a file of the repository. Without a command Terraform has neither target.
+  generate:
+    command: []
     args: []
   # audit-terraform scans the configuration with checkov, and accepts each check of ignore, by its
   # identifier, such as CKV_AWS_20.

@@ -11,7 +11,7 @@ import (
 )
 
 // steps are the steps of the gate of Java, which the key check of the section names.
-var steps = []option.Step{option.StepLint, option.StepTest, option.StepAudit}
+var steps = []option.Step{option.StepLint, option.StepTest, option.StepGenerate, option.StepAudit}
 
 // Options are the options of the section java of .ergon.yaml. The section jvm sets the scan that
 // Java shares with Kotlin, and the setup of their jobs.
@@ -20,10 +20,13 @@ type Options struct {
 	Tools Tools `yaml:"tools" doc:"The tools of the targets of Java, as <group>:<artifact>@<version> of Maven Central."`
 
 	// Check are the steps of check-java.
-	Check option.Check `yaml:"check" doc:"The steps that check-java runs, in order: lint, test or audit. audit runs audit-jvm of the section jvm."`
+	Check option.Check `yaml:"check" doc:"The steps that check-java runs, in order: lint, test, generate or audit. audit runs audit-jvm of the section jvm."`
 
 	// Test are the options of test-java.
 	Test option.Run `yaml:"test" doc:"test-java runs ./gradlew test with args."`
+
+	// Generate are the options of generate-java and verify-generate-java.
+	Generate option.Generate `yaml:"generate" doc:"generate-java runs command with args at the root of the repository, such as ./gradlew with a task of a generator. verify-generate-java, the step generate of check, runs the same and fails when the run changes a file of the repository. Without a command Java has neither target."`
 }
 
 // Tools are the tools of the targets of Java.
@@ -43,9 +46,13 @@ func (t *Tools) Validate() error {
 }
 
 // Validate returns an error that wraps [option.ErrInvalid] for a step of check that Java does not
-// have. The command checks each option by the Validate method of its type before it calls Validate.
+// have, and for the step generate without a command. The command checks each option by the
+// Validate method of its type before it calls Validate.
 func (o *Options) Validate() error {
-	return o.Check.Only(steps...)
+	if err := o.Check.Only(steps...); err != nil {
+		return err
+	}
+	return o.Generate.CheckStep(o.Check)
 }
 
 // Contribution returns the part of Java of the workflows: the job check-java, which runs make

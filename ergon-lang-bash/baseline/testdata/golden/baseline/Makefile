@@ -1,5 +1,5 @@
 
-# Bash
+##@ Bash
 #
 # The section bash of .ergon.yaml sets the tools and the paths of the Bash targets, and the steps of
 # check-bash.

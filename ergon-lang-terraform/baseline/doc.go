@@ -14,14 +14,17 @@
 // audit-terraform over the directories of the section, and check-terraform, which requires the
 // targets of the steps that the key check of the section names. tflint and uv are release
 // binaries of the section, and checkov runs through uv on Python 3.13. audit-terraform fails on a
-// file that checkov cannot parse.
+// file that checkov cannot parse. With a command in the key generate, the fragment also renders
+// generate-terraform, which runs it, and verify-generate-terraform, which fails when it changes a
+// file. A line ##@ Terraform starts the group of Terraform in make help.
 //
 // # Options
 //
 // [Options] is the section terraform: the tools, the paths, the steps of the gate, the options of
-// test-terraform and audit-terraform, and the key ci of the job check-terraform. [TFLint] states
-// where the release of tflint publishes the asset of each platform. [Options.Contribution] returns
-// the job check-terraform and the updates of the providers and the modules.
+// test-terraform, of the generators and of audit-terraform, and the key ci of the job
+// check-terraform. [TFLint] states where the release of tflint publishes the asset of each
+// platform. [Options.Contribution] returns the job check-terraform and the updates of the providers
+// and the modules.
 //
 // # Dependency position
 //

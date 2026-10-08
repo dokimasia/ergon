@@ -1,5 +1,5 @@
 
-# C#
+##@ C#
 #
 # The section csharp of .ergon.yaml sets the options of the C# targets and the steps of
 # check-csharp. One run overrides an option on the command line, such as
@@ -8,11 +8,17 @@
 # The options of the section csharp.
 CSHARP_TEST_ARGS ?={{% with words .Options.Test.Args %}} {{% . %}}{{% end %}}
 CSHARP_AUDIT_SEVERITY ?= {{% make .Options.Audit.Severity %}}
+{{%- with .Options.Generate.Command %}}
+CSHARP_GENERATE ?={{% with words $.Options.Generate.Command %}} {{% . %}}{{% end %}}{{% with words $.Options.Generate.Args %}} {{% . %}}{{% end %}}
+{{%- end %}}
 
-.PHONY: fmt-csharp lint-csharp test-csharp audit-csharp check-csharp
+.PHONY: fmt-csharp lint-csharp test-csharp{{% if .Options.Generate.Command %}} generate-csharp verify-generate-csharp{{% end %}} audit-csharp check-csharp
 fmt: fmt-csharp
 lint: lint-csharp
 test: test-csharp
+{{%- if .Options.Generate.Command %}}
+generate: generate-csharp
+{{%- end %}}
 audit: audit-csharp
 check: check-csharp
 
@@ -25,7 +31,13 @@ lint-csharp: ## Check the C# sources with every analyzer rule as an error
 		-p:GenerateDocumentationFile=true -p:WarningLevel=9999
 test-csharp: ## Run the C# tests
 	dotnet test $(CSHARP_TEST_ARGS)
+{{%- if .Options.Generate.Command %}}
+generate-csharp: ## Run the generators of C#
+	$(CSHARP_GENERATE)
+verify-generate-csharp: ## Fail when the generators of C# change a file of the repository
+	@$(call verify-generated,CSHARP_GENERATE,generate-csharp)
+{{%- end %}}
 audit-csharp: ## Scan the NuGet packages for known vulnerabilities
 	dotnet restore --force -p:NuGetAudit=true -p:NuGetAuditMode=all -p:NuGetAuditLevel=$(CSHARP_AUDIT_SEVERITY) \
 		-p:WarningsAsErrors=NU1900%3BNU1901%3BNU1902%3BNU1903%3BNU1904
-check-csharp:{{% range .Options.Check %}} {{% . %}}-csharp{{% end %}} ## Run the gate of C#
+check-csharp:{{% range .Options.Check %}} {{% .Target "csharp" %}}{{% end %}} ## Run the gate of C#

@@ -1,5 +1,5 @@
 
-# JavaScript and TypeScript
+##@ JavaScript and TypeScript
 #
 # The section js of .ergon.yaml sets the tools and the options of the targets that JavaScript and
 # TypeScript share. One run overrides an option on the command line, such as
@@ -23,7 +23,7 @@ lint-js: ## Check the format and the lint of the JavaScript and TypeScript sourc
 audit-js: ## Scan package-lock.json for known vulnerabilities
 	npm audit --audit-level=$(JS_AUDIT_SEVERITY) --include=dev
 
-# TypeScript
+##@ TypeScript
 #
 # The section typescript of .ergon.yaml sets the tools and the options of the TypeScript targets,
 # and the steps of check-typescript. One run overrides an option on the command line, such as

@@ -17,7 +17,7 @@ const pin = ".terraform-version"
 const windows = "windows"
 
 // steps are the steps of the gate of Terraform, which the key check of the section names.
-var steps = []option.Step{option.StepLint, option.StepTest, option.StepAudit}
+var steps = []option.Step{option.StepLint, option.StepTest, option.StepGenerate, option.StepAudit}
 
 // Options are the options of the section terraform of .ergon.yaml.
 type Options struct {
@@ -28,10 +28,13 @@ type Options struct {
 	Paths option.Paths `yaml:"paths" doc:"The directories that the targets format, lint and scan, each with its subdirectories."`
 
 	// Check are the steps of check-terraform.
-	Check option.Check `yaml:"check" doc:"The steps that check-terraform runs, in order: lint, test or audit."`
+	Check option.Check `yaml:"check" doc:"The steps that check-terraform runs, in order: lint, test, generate or audit."`
 
 	// Test are the options of test-terraform.
 	Test option.Run `yaml:"test" doc:"test-terraform runs terraform test with args."`
+
+	// Generate are the options of generate-terraform and verify-generate-terraform.
+	Generate option.Generate `yaml:"generate" doc:"generate-terraform runs command with args at the root of the repository, such as terraform-docs. verify-generate-terraform, the step generate of check, runs the same and fails when the run changes a file of the repository. Without a command Terraform has neither target."`
 
 	// Audit are the options of audit-terraform.
 	Audit option.Audit `yaml:"audit" doc:"audit-terraform scans the configuration with checkov, and accepts each check of ignore, by its identifier, such as CKV_AWS_20."`
@@ -71,10 +74,13 @@ type Actions struct {
 }
 
 // Validate returns an error that wraps [option.ErrInvalid] for a step of check that Terraform does
-// not have. The command checks each option by the Validate method of its type before it calls
-// Validate.
+// not have, and for the step generate without a command. The command checks each option by the
+// Validate method of its type before it calls Validate.
 func (o *Options) Validate() error {
-	return o.Check.Only(steps...)
+	if err := o.Check.Only(steps...); err != nil {
+		return err
+	}
+	return o.Generate.CheckStep(o.Check)
 }
 
 // Contribution returns the part of Terraform of the workflows for o:

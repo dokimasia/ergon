@@ -10,8 +10,14 @@ bash:
       version: 0.11.0
   # The pathspecs of git of the scripts that lint-bash checks.
   paths: ['*.sh', '*.bash']
-  # The steps that check-bash runs: lint.
+  # The steps that check-bash runs, in order: lint or generate.
   check: [lint]
+  # generate-bash runs command with args at the root of the repository. verify-generate-bash, the
+  # step generate of check, runs the same and fails when the run changes a file of the repository.
+  # Without a command Bash has neither target.
+  generate:
+    command: []
+    args: []
   # The runners of the job check-bash, and its limit in minutes. Bash needs no setup, so the job
   # runs no action of its own. Empty runners select every runner of the section github.
   ci:

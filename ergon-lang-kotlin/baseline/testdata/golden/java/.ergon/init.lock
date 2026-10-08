@@ -19,7 +19,7 @@
     {
       "path": "Makefile",
       "producer": "jvm",
-      "sha256": "992d5fa7c3f338b0156c2d683dc163f2a725692035b801c159c4f29a9010753e"
+      "sha256": "dab65fc571643d3e6c734eedd93930488881413c74dcf4a4a7acd73a47680cfa"
     },
     {
       "path": "gradle/ergon-java.init.gradle.kts",
@@ -33,6 +33,8 @@
       "test",
       "audit"
     ],
+    "java.generate.args": [],
+    "java.generate.command": [],
     "java.test.args": [],
     "java.tools.pmd": "net.sourceforge.pmd:pmd-java@7.28.0",
     "jvm.ci.actions.setup-java.commit": "de7274f081f381c8f8158605e0321c36c376e2e6",
@@ -52,6 +54,8 @@
       "test",
       "audit"
     ],
+    "kotlin.generate.args": [],
+    "kotlin.generate.command": [],
     "kotlin.test.args": [],
     "kotlin.tools.ktlint": "com.pinterest.ktlint:ktlint-cli@1.8.0"
   },

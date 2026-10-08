@@ -28,9 +28,15 @@ java:
     # runs net.sourceforge.pmd:pmd-java, so the tool accepts another version of it and no other
     # artifact.
     pmd: net.sourceforge.pmd:pmd-java@7.28.0
-  # The steps that check-java runs, in order: lint, test or audit. audit runs audit-jvm of the
-  # section jvm.
+  # The steps that check-java runs, in order: lint, test, generate or audit. audit runs audit-jvm of
+  # the section jvm.
   check: [lint, test, audit]
   # test-java runs ./gradlew test with args.
   test:
+    args: []
+  # generate-java runs command with args at the root of the repository, such as ./gradlew with a
+  # task of a generator. verify-generate-java, the step generate of check, runs the same and fails
+  # when the run changes a file of the repository. Without a command Java has neither target.
+  generate:
+    command: []
     args: []

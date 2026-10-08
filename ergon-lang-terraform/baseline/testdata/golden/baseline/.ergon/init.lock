@@ -24,7 +24,7 @@
     {
       "path": "Makefile",
       "producer": "terraform",
-      "sha256": "b9a55719b24539a696b25df164ff9fc2cf80afa9cc96d8982bfb462312f230b4"
+      "sha256": "f3788ff76f19a7e12ada328e88ce11deb402a958e33a5d711f1db2dff4094cda"
     }
   ],
   "settings": {
@@ -40,6 +40,8 @@
     "terraform.ci.runners": [],
     "terraform.ci.timeout": 30,
     "terraform.ci.versions": [],
+    "terraform.generate.args": [],
+    "terraform.generate.command": [],
     "terraform.paths": [
       "."
     ],

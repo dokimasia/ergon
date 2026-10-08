@@ -29,9 +29,15 @@ typescript:
   tools:
     # The type checker of lint-typescript, tsc, with its type-safety options.
     typescript: typescript@7.0.2
-  # The steps that check-typescript runs, in order: lint, test or audit. lint runs lint-js of the
-  # section js before tsc, and audit runs audit-js.
+  # The steps that check-typescript runs, in order: lint, test, generate or audit. lint runs lint-js
+  # of the section js before tsc, and audit runs audit-js.
   check: [lint, test, audit]
   # test-typescript runs npm test with args.
   test:
+    args: []
+  # generate-typescript runs command with args at the root of the repository, such as npm run
+  # generate. verify-generate-typescript, the step generate of check, runs the same and fails when
+  # the run changes a file of the repository. Without a command TypeScript has neither target.
+  generate:
+    command: []
     args: []

@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"go.dokimi.dev/assert"
+	"go.dokimi.dev/assert/expect"
 	"go.dokimi.dev/assert/golden"
 	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/core/option"
@@ -71,6 +72,29 @@ func TestBaseline(t *testing.T) {
 				o.Check = option.Check{option.StepAudit}
 				makefile := rendered(t, o, "Makefile")
 				assert.Contains(t, makefile, "\ncheck-rust: audit-rust ## Run the gate of Rust\n", "the Makefile")
+			})
+
+			t.Run("runs the command of the generators and checks their files in the step generate", func(t *testing.T) {
+				t.Parallel()
+				o, _ := baseline.Producer{}.Options().(*baseline.Options)
+				o.Generate = option.Generate{
+					Command: []string{"cargo", "run", "--package", "codegen"},
+					Args:    []string{},
+				}
+				o.Check = option.Check{option.StepGenerate}
+				expect.That(t, rendered(t, o, "Makefile")).
+					Contains("\nRUST_GENERATE ?= cargo run --package codegen\n", "the command of the generators").
+					Contains("\ngenerate: generate-rust\n", "the aggregate generate").
+					Contains("\ngenerate-rust: ## Run the generators of Rust\n\t$(RUST_GENERATE)\n",
+						"the target that runs the generators").
+					Contains("\n\t@$(call verify-generated,RUST_GENERATE,generate-rust)\n", "the target that checks them").
+					Contains("\ncheck-rust: verify-generate-rust ## Run the gate of Rust\n", "the gate")
+			})
+
+			t.Run("renders no target of the generators without a command", func(t *testing.T) {
+				t.Parallel()
+				makefile := rendered(t, baseline.Producer{}.Options(), "Makefile")
+				assert.NotContains(t, makefile, "generate", "the Makefile")
 			})
 		})
 

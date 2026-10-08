@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"go.dokimi.dev/assert"
+	"go.dokimi.dev/assert/expect"
 	"go.dokimi.dev/assert/golden"
 	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/core/option"
@@ -100,6 +101,39 @@ func TestBaseline(t *testing.T) {
 				o.Check = option.Check{option.StepLint, option.StepFuzz}
 				makefile := rendered(t, o, "Makefile")
 				assert.Contains(t, makefile, "\ncheck-go: lint-go fuzz-go ## Run the gate of Go\n", "the Makefile")
+			})
+
+			t.Run("checks the generated files in the step generate", func(t *testing.T) {
+				t.Parallel()
+				o, _ := baseline.Producer{}.Options().(*baseline.Options)
+				o.Check = option.Check{option.StepGenerate}
+				makefile := rendered(t, o, "Makefile")
+				assert.Contains(t, makefile, "\ncheck-go: verify-generate-go ## Run the gate of Go\n", "the Makefile")
+			})
+
+			t.Run("runs the command and the arguments of the generators in every module", func(t *testing.T) {
+				t.Parallel()
+				o, _ := baseline.Producer{}.Options().(*baseline.Options)
+				o.Generate = option.Generate{
+					Command: []string{"buf", "generate"},
+					Args:    []string{"--template", "buf.gen.yaml"},
+				}
+				expect.That(t, rendered(t, o, "Makefile")).
+					Contains("\nGO_GENERATE_COMMAND ?= buf generate\nGO_GENERATE_ARGS ?= --template buf.gen.yaml\n",
+						"the variables of the generators").
+					Contains("\ngenerate: generate-go\n", "the aggregate generate").
+					Contains(
+						"\ngenerate-go: ## Run the generators of every module, such as go generate\n\t@$(GO_GENERATE)\n",
+						"the target that runs the generators",
+					).
+					Contains("\n\t@$(call verify-generated,GO_GENERATE,generate-go)\n", "the target that checks them")
+			})
+
+			t.Run("renders no target of the generators without a command", func(t *testing.T) {
+				t.Parallel()
+				o, _ := baseline.Producer{}.Options().(*baseline.Options)
+				o.Generate = option.Generate{}
+				assert.NotContains(t, rendered(t, o, "Makefile"), "generate", "the Makefile")
 			})
 		})
 

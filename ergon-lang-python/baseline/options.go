@@ -12,7 +12,7 @@ import (
 const project = "pyproject.toml"
 
 // steps are the steps of the gate of Python, which the key check of the section names.
-var steps = []option.Step{option.StepLint, option.StepTest, option.StepAudit}
+var steps = []option.Step{option.StepLint, option.StepTest, option.StepGenerate, option.StepAudit}
 
 // Options are the options of the section python of .ergon.yaml.
 type Options struct {
@@ -23,10 +23,13 @@ type Options struct {
 	Paths option.Paths `yaml:"paths" doc:"The paths that ruff and mypy check."`
 
 	// Check are the steps of check-python.
-	Check option.Check `yaml:"check" doc:"The steps that check-python runs, in order: lint, test or audit."`
+	Check option.Check `yaml:"check" doc:"The steps that check-python runs, in order: lint, test, generate or audit."`
 
 	// Test are the options of test-python.
 	Test option.Run `yaml:"test" doc:"test-python runs pytest with args."`
+
+	// Generate are the options of generate-python and verify-generate-python.
+	Generate option.Generate `yaml:"generate" doc:"generate-python runs command with args at the root of the repository. verify-generate-python, the step generate of check, runs the same and fails when the run changes a file of the repository. Without a command Python has neither target."`
 
 	// Audit are the options of audit-python.
 	Audit option.Audit `yaml:"audit" doc:"audit-python scans the packages of uv.lock with pip-audit, and accepts each advisory of ignore, by its identifier, such as PYSEC-2024-1."`
@@ -54,10 +57,13 @@ type Tools struct {
 }
 
 // Validate returns an error that wraps [option.ErrInvalid] for a step of check that Python does
-// not have. The command checks each option by the Validate method of its type before it calls
-// Validate.
+// not have, and for the step generate without a command. The command checks each option by the
+// Validate method of its type before it calls Validate.
 func (o *Options) Validate() error {
-	return o.Check.Only(steps...)
+	if err := o.Check.Only(steps...); err != nil {
+		return err
+	}
+	return o.Generate.CheckStep(o.Check)
 }
 
 // Contribution returns the part of Python of the workflows for o:

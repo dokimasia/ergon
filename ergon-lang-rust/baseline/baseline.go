@@ -42,14 +42,16 @@ func (Producer) Templates() fs.FS {
 }
 
 // Options returns the section rust at the baseline: the release of cargo-audit, the gate of lint,
-// test and audit, the tests of every target, the release of setup-rust-toolchain, and a limit of 30
-// minutes for the job check-rust on every runner and the toolchain of rust-toolchain.toml.
+// test and audit, the tests of every target, no generators, the release of setup-rust-toolchain,
+// and a limit of 30 minutes for the job check-rust on every runner and the toolchain of
+// rust-toolchain.toml.
 func (Producer) Options() language.Options {
 	return &Options{
-		Tools: Tools{CargoAudit: "cargo-audit@0.22.2"},
-		Check: option.Check{option.StepLint, option.StepTest, option.StepAudit},
-		Test:  option.Run{Args: []string{"--all-targets"}},
-		Audit: option.Audit{Ignore: []string{}},
+		Tools:    Tools{CargoAudit: "cargo-audit@0.22.2"},
+		Check:    option.Check{option.StepLint, option.StepTest, option.StepAudit},
+		Test:     option.Run{Args: []string{"--all-targets"}},
+		Generate: option.Generate{Command: []string{}, Args: []string{}},
+		Audit:    option.Audit{Ignore: []string{}},
 		CI: option.MatrixCI[Actions]{
 			Actions: Actions{SetupRustToolchain: workflow.Action{
 				Uses:    "actions-rust-lang/setup-rust-toolchain",

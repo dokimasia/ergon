@@ -19,7 +19,7 @@
     {
       "path": "Makefile",
       "producer": "python",
-      "sha256": "c68267d44a0c42ac960dca9ad26400a98273f696b2e44806a5e7612b8a6e4883"
+      "sha256": "4702f56eb83c123fd66ac442087b2fb23f305225f5f5697e99818a1c4abc04b8"
     },
     {
       "path": "ruff.toml",
@@ -37,6 +37,8 @@
     "python.ci.runners": [],
     "python.ci.timeout": 30,
     "python.ci.versions": [],
+    "python.generate.args": [],
+    "python.generate.command": [],
     "python.paths": [
       "."
     ],

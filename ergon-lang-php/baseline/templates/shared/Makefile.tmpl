@@ -1,5 +1,5 @@
 
-# PHP
+##@ PHP
 #
 # The section php of .ergon.yaml sets the tools and the options of the PHP targets, and the steps
 # of check-php. One run overrides an option on the command line, such as
@@ -13,11 +13,17 @@ PHP_CS_FIXER := $(ERGON) tool run php.php-cs-fixer --
 # The options of the section php.
 PHP_PATHS ?={{% with words .Options.Paths %}} {{% . %}}{{% end %}}
 PHP_TEST_ARGS ?={{% with words .Options.Test.Args %}} {{% . %}}{{% end %}}
+{{%- with .Options.Generate.Command %}}
+PHP_GENERATE ?={{% with words $.Options.Generate.Command %}} {{% . %}}{{% end %}}{{% with words $.Options.Generate.Args %}} {{% . %}}{{% end %}}
+{{%- end %}}
 
-.PHONY: fmt-php lint-php test-php audit-php check-php
+.PHONY: fmt-php lint-php test-php{{% if .Options.Generate.Command %}} generate-php verify-generate-php{{% end %}} audit-php check-php
 fmt: fmt-php
 lint: lint-php
 test: test-php
+{{%- if .Options.Generate.Command %}}
+generate: generate-php
+{{%- end %}}
 audit: audit-php
 check: check-php
 
@@ -31,6 +37,12 @@ lint-php: ## Check the PHP sources with the PER coding style and PHPStan at its 
 test-php: ## Run the PHP tests
 	composer install --no-interaction --no-progress
 	vendor/bin/phpunit $(PHP_TEST_ARGS)
+{{%- if .Options.Generate.Command %}}
+generate-php: ## Run the generators of PHP
+	$(PHP_GENERATE)
+verify-generate-php: ## Fail when the generators of PHP change a file of the repository
+	@$(call verify-generated,PHP_GENERATE,generate-php)
+{{%- end %}}
 audit-php: ## Scan composer.lock for known vulnerabilities and abandoned packages
 	composer audit --locked
-check-php:{{% range .Options.Check %}} {{% . %}}-php{{% end %}} ## Run the gate of PHP
+check-php:{{% range .Options.Check %}} {{% .Target "php" %}}{{% end %}} ## Run the gate of PHP

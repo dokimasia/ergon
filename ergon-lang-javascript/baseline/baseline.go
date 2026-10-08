@@ -41,12 +41,13 @@ func (Producer) Templates() fs.FS {
 	return sub
 }
 
-// Options returns the section javascript at the baseline: the gate of lint, test and audit, and
-// npm test without arguments.
+// Options returns the section javascript at the baseline: the gate of lint, test and audit, npm
+// test without arguments, and no generators.
 func (Producer) Options() language.Options {
 	return &Options{
-		Check: option.Check{option.StepLint, option.StepTest, option.StepAudit},
-		Test:  option.Run{Args: []string{}},
+		Check:    option.Check{option.StepLint, option.StepTest, option.StepAudit},
+		Test:     option.Run{Args: []string{}},
+		Generate: option.Generate{Command: []string{}, Args: []string{}},
 	}
 }
 

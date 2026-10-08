@@ -8,9 +8,14 @@ import (
 	"slices"
 )
 
+// verifyPrefix starts the target that checks the generated files of a section, as in
+// verify-generate-go.
+const verifyPrefix = "verify-"
+
 // Step is a step of the gate of a section, and a target of the Makefile: the step test of the
-// section python is the target test-python. A section has the key of a step's options only for a
-// step that its producer has.
+// section python is the target test-python. The gate runs the target that [Step.Target] returns,
+// which is verify-generate-python for the step generate. A section has the key of a step's options
+// only for a step that its producer has.
 type Step string
 
 // The steps of the gate of a section, in the order of their targets.
@@ -36,8 +41,8 @@ const (
 	// StepMutate runs the tests against the mutants of the code.
 	StepMutate Step = "mutate"
 
-	// StepGenerate runs the generators of the sources, and fails on generated code that is out of
-	// date.
+	// StepGenerate runs the generators of the sources. Its target in the gate fails on generated code
+	// that is out of date.
 	StepGenerate Step = "generate"
 
 	// StepAudit scans the dependencies, or the configuration, for known vulnerabilities.
@@ -54,6 +59,17 @@ func (s Step) Validate() error {
 			"audit", ErrInvalid, s)
 	}
 	return nil
+}
+
+// Target returns the target of the Makefile that the gate check-<section> runs for s:
+// verify-generate-<section> for the step generate, which fails when the generators change a file,
+// and <step>-<section> for every other step.
+func (s Step) Target(section string) string {
+	target := string(s) + "-" + section
+	if s == StepGenerate {
+		return verifyPrefix + target
+	}
+	return target
 }
 
 // Check is the key check of a section: the steps that its target check-<section> runs, in order.

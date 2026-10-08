@@ -41,14 +41,15 @@ func (Producer) Templates() fs.FS {
 	return sub
 }
 
-// Options returns the section csharp at the baseline: the gate of lint, test and audit, a scan that
-// fails on every known vulnerability, the release of setup-dotnet, and a limit of 30 minutes for
-// the job check-csharp on every runner and the SDK of global.json.
+// Options returns the section csharp at the baseline: the gate of lint, test and audit, no
+// generators, a scan that fails on every known vulnerability, the release of setup-dotnet, and a
+// limit of 30 minutes for the job check-csharp on every runner and the SDK of global.json.
 func (Producer) Options() language.Options {
 	return &Options{
-		Check: option.Check{option.StepLint, option.StepTest, option.StepAudit},
-		Test:  option.Run{Args: []string{}},
-		Audit: option.Threshold{Severity: option.SeverityLow},
+		Check:    option.Check{option.StepLint, option.StepTest, option.StepAudit},
+		Test:     option.Run{Args: []string{}},
+		Generate: option.Generate{Command: []string{}, Args: []string{}},
+		Audit:    option.Threshold{Severity: option.SeverityLow},
 		CI: option.MatrixCI[Actions]{
 			Actions: Actions{SetupDotnet: workflow.Action{
 				Uses:    "actions/setup-dotnet",

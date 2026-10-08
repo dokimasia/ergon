@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"go.dokimi.dev/assert"
+	"go.dokimi.dev/assert/expect"
 	"go.dokimi.dev/assert/golden"
 	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/core/option"
@@ -82,6 +83,27 @@ func TestBaseline(t *testing.T) {
 				makefile := rendered(t, o, "Makefile")
 				assert.Contains(t, makefile, "\ncheck-typescript: audit-typescript ## Run the gate of TypeScript\n",
 					"the Makefile")
+			})
+
+			t.Run("runs the command of the generators and checks their files in the step generate", func(t *testing.T) {
+				t.Parallel()
+				o, _ := baseline.Producer{}.Options().(*baseline.Options)
+				o.Generate = option.Generate{Command: []string{"npm", "run", "generate"}, Args: []string{}}
+				o.Check = option.Check{option.StepGenerate}
+				expect.That(t, rendered(t, o, "Makefile")).
+					Contains("\nTYPESCRIPT_GENERATE ?= npm run generate\n", "the command of the generators").
+					Contains("\ngenerate: generate-typescript\n", "the aggregate generate").
+					Contains("\ngenerate-typescript: ## Run the generators of TypeScript\n\t$(TYPESCRIPT_GENERATE)\n",
+						"the target that runs the generators").
+					Contains("\n\t@$(call verify-generated,TYPESCRIPT_GENERATE,generate-typescript)\n",
+						"the target that checks them").
+					Contains("\ncheck-typescript: verify-generate-typescript ## Run the gate of TypeScript\n", "the gate")
+			})
+
+			t.Run("renders no target of the generators without a command", func(t *testing.T) {
+				t.Parallel()
+				makefile := rendered(t, baseline.Producer{}.Options(), "Makefile")
+				assert.NotContains(t, makefile, "generate", "the Makefile")
 			})
 		})
 

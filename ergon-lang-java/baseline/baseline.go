@@ -47,12 +47,13 @@ func (Producer) Templates() fs.FS {
 }
 
 // Options returns the section java at the baseline: the release of PMD, the gate of lint, test and
-// audit, and ./gradlew test without arguments.
+// audit, ./gradlew test without arguments, and no generators.
 func (Producer) Options() language.Options {
 	return &Options{
-		Tools: tools,
-		Check: option.Check{option.StepLint, option.StepTest, option.StepAudit},
-		Test:  option.Run{Args: []string{}},
+		Tools:    tools,
+		Check:    option.Check{option.StepLint, option.StepTest, option.StepAudit},
+		Test:     option.Run{Args: []string{}},
+		Generate: option.Generate{Command: []string{}, Args: []string{}},
 	}
 }
 

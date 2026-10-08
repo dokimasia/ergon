@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"go.dokimi.dev/assert"
+	"go.dokimi.dev/assert/expect"
 	"go.dokimi.dev/assert/golden"
 	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/core/option"
@@ -71,6 +72,26 @@ func TestBaseline(t *testing.T) {
 				o.Check = option.Check{option.StepAudit}
 				makefile := rendered(t, o, "Makefile")
 				assert.Contains(t, makefile, "\ncheck-csharp: audit-csharp ## Run the gate of C#\n", "the Makefile")
+			})
+
+			t.Run("runs the command of the generators and checks their files in the step generate", func(t *testing.T) {
+				t.Parallel()
+				o, _ := baseline.Producer{}.Options().(*baseline.Options)
+				o.Generate = option.Generate{Command: []string{"dotnet", "tool", "run", "nswag"}, Args: []string{"run"}}
+				o.Check = option.Check{option.StepGenerate}
+				expect.That(t, rendered(t, o, "Makefile")).
+					Contains("\nCSHARP_GENERATE ?= dotnet tool run nswag run\n", "the command of the generators").
+					Contains("\ngenerate: generate-csharp\n", "the aggregate generate").
+					Contains("\ngenerate-csharp: ## Run the generators of C#\n\t$(CSHARP_GENERATE)\n",
+						"the target that runs the generators").
+					Contains("\n\t@$(call verify-generated,CSHARP_GENERATE,generate-csharp)\n", "the target that checks them").
+					Contains("\ncheck-csharp: verify-generate-csharp ## Run the gate of C#\n", "the gate")
+			})
+
+			t.Run("renders no target of the generators without a command", func(t *testing.T) {
+				t.Parallel()
+				makefile := rendered(t, baseline.Producer{}.Options(), "Makefile")
+				assert.NotContains(t, makefile, "generate", "the Makefile")
 			})
 
 			t.Run("runs dotnet test with the arguments of the section csharp", func(t *testing.T) {

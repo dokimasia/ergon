@@ -42,8 +42,8 @@ func (Producer) Templates() fs.FS {
 }
 
 // Options returns the section bash at the baseline: the release of shellcheck with the digests of
-// its assets, the scripts *.sh and *.bash, the gate of lint, and a limit of 30 minutes for the job
-// check-bash on every runner.
+// its assets, the scripts *.sh and *.bash, the gate of lint, no generators, and a limit of 30
+// minutes for the job check-bash on every runner.
 func (Producer) Options() language.Options {
 	return &Options{
 		Tools: Tools{Shellcheck: Shellcheck{Binary: option.Binary{
@@ -54,9 +54,10 @@ func (Producer) Options() language.Options {
 			},
 			Version: "0.11.0",
 		}}},
-		Paths: option.Paths{"*.sh", "*.bash"},
-		Check: option.Check{option.StepLint},
-		CI:    option.RunnerCI[struct{}]{Runners: option.Runners{}, Timeout: 30},
+		Paths:    option.Paths{"*.sh", "*.bash"},
+		Check:    option.Check{option.StepLint},
+		Generate: option.Generate{Command: []string{}, Args: []string{}},
+		CI:       option.RunnerCI[struct{}]{Runners: option.Runners{}, Timeout: 30},
 	}
 }
 

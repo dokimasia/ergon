@@ -43,8 +43,8 @@ func (Producer) Templates() fs.FS {
 
 // Options returns the section terraform at the baseline: the releases of tflint and uv with the
 // digests that the releases state, the release of checkov, the root of the repository, the gate of
-// lint, test and audit, the release of setup-terraform, and a limit of 30 minutes for the job
-// check-terraform on every runner and the version of .terraform-version.
+// lint, test and audit, no generators, the release of setup-terraform, and a limit of 30 minutes for
+// the job check-terraform on every runner and the version of .terraform-version.
 func (Producer) Options() language.Options {
 	return &Options{
 		Tools: Tools{
@@ -66,10 +66,11 @@ func (Producer) Options() language.Options {
 			}},
 			Checkov: "checkov@3.3.23",
 		},
-		Paths: option.Paths{"."},
-		Check: option.Check{option.StepLint, option.StepTest, option.StepAudit},
-		Test:  option.Run{Args: []string{}},
-		Audit: option.Audit{Ignore: []string{}},
+		Paths:    option.Paths{"."},
+		Check:    option.Check{option.StepLint, option.StepTest, option.StepAudit},
+		Test:     option.Run{Args: []string{}},
+		Generate: option.Generate{Command: []string{}, Args: []string{}},
+		Audit:    option.Audit{Ignore: []string{}},
 		CI: option.MatrixCI[Actions]{
 			Actions: Actions{SetupTerraform: workflow.Action{
 				Uses:    "hashicorp/setup-terraform",

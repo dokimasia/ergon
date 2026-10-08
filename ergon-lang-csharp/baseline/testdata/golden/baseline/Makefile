@@ -1,5 +1,5 @@
 
-# C#
+##@ C#
 #
 # The section csharp of .ergon.yaml sets the options of the C# targets and the steps of
 # check-csharp. One run overrides an option on the command line, such as

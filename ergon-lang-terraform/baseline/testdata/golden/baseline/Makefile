@@ -1,5 +1,5 @@
 
-# Terraform
+##@ Terraform
 #
 # The section terraform of .ergon.yaml sets the tools and the options of the Terraform targets, and
 # the steps of check-terraform. One run overrides an option on the command line, such as

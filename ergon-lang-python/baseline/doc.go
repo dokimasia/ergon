@@ -15,13 +15,16 @@
 // Every tool runs through ergon tool run: uv is a release binary of the section, and the packages
 // of PyPI run through it. mypy and pytest run in the environment of the project, and ruff and
 // pip-audit in environments of their own. audit-python scans the packages of uv.lock, which uv
-// exports to a pylock.toml, because uv audit is a preview command.
+// exports to a pylock.toml, because uv audit is a preview command. With a command in the key
+// generate, the fragment also renders generate-python, which runs it, and verify-generate-python,
+// which fails when it changes a file. A line ##@ Python starts the group of Python in make help.
 //
 // # Options
 //
 // [Options] is the section python: the tools, the paths, the steps of the gate, the options of
-// test-python and audit-python, and the key ci of the job check-python. [Options.Contribution]
-// returns the job check-python, the CodeQL analysis of python and the updates of uv.lock.
+// test-python, of the generators and of audit-python, and the key ci of the job check-python.
+// [Options.Contribution] returns the job check-python, the CodeQL analysis of python and the
+// updates of uv.lock.
 //
 // # Dependency position
 //

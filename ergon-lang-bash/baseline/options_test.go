@@ -26,10 +26,25 @@ func TestOptions(t *testing.T) {
 			assert.NoError(t, baseline.Producer{}.Options().Validate(), "Validate")
 		})
 
-		t.Run("returns ErrInvalid for a step other than lint", func(t *testing.T) {
+		t.Run("returns ErrInvalid for a step other than lint and generate", func(t *testing.T) {
 			t.Parallel()
 			o := bashOptions()
 			o.Check = option.Check{option.StepTest}
+			assert.ErrorIs(t, o.Validate(), option.ErrInvalid, "Validate")
+		})
+
+		t.Run("returns nil for the step generate with a command", func(t *testing.T) {
+			t.Parallel()
+			o := bashOptions()
+			o.Check = option.Check{option.StepLint, option.StepGenerate}
+			o.Generate.Command = []string{"./scripts/generate.sh"}
+			assert.NoError(t, o.Validate(), "Validate")
+		})
+
+		t.Run("returns ErrInvalid for the step generate without a command", func(t *testing.T) {
+			t.Parallel()
+			o := bashOptions()
+			o.Check = option.Check{option.StepGenerate}
 			assert.ErrorIs(t, o.Validate(), option.ErrInvalid, "Validate")
 		})
 	})

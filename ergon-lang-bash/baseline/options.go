@@ -25,7 +25,10 @@ type Options struct {
 	Paths option.Paths `yaml:"paths" doc:"The pathspecs of git of the scripts that lint-bash checks."`
 
 	// Check are the steps of check-bash.
-	Check option.Check `yaml:"check" doc:"The steps that check-bash runs: lint."`
+	Check option.Check `yaml:"check" doc:"The steps that check-bash runs, in order: lint or generate."`
+
+	// Generate are the options of generate-bash and verify-generate-bash.
+	Generate option.Generate `yaml:"generate" doc:"generate-bash runs command with args at the root of the repository. verify-generate-bash, the step generate of check, runs the same and fails when the run changes a file of the repository. Without a command Bash has neither target."`
 
 	// CI are the runners and the limit of the job check-bash.
 	CI option.RunnerCI[struct{}] `yaml:"ci" doc:"The runners of the job check-bash, and its limit in minutes. Bash needs no setup, so the job runs no action of its own. Empty runners select every runner of the section github."`
@@ -48,10 +51,14 @@ var _ option.Release = Shellcheck{}
 // shellcheckRepository is the repository on GitHub whose releases publish shellcheck.
 const shellcheckRepository = "koalaman/shellcheck"
 
-// Validate returns an error that wraps [option.ErrInvalid] for a step of check other than lint.
-// The command checks each option by the Validate method of its type before it calls Validate.
+// Validate returns an error that wraps [option.ErrInvalid] for a step of check other than lint and
+// generate, and for the step generate without a command. The command checks each option by the
+// Validate method of its type before it calls Validate.
 func (o *Options) Validate() error {
-	return o.Check.Only(option.StepLint)
+	if err := o.Check.Only(option.StepLint, option.StepGenerate); err != nil {
+		return err
+	}
+	return o.Generate.CheckStep(o.Check)
 }
 
 // Contribution returns the part of Bash of the workflows for o: the job check-bash, which runs

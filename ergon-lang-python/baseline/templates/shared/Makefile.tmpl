@@ -1,5 +1,5 @@
 
-# Python
+##@ Python
 #
 # The section python of .ergon.yaml sets the tools and the options of the Python targets, and the
 # steps of check-python. One run overrides an option on the command line, such as
@@ -16,16 +16,22 @@ PIP_AUDIT := $(ERGON) tool run python.pip-audit --
 PYTHON_PATHS ?={{% with words .Options.Paths %}} {{% . %}}{{% end %}}
 PYTHON_TEST_ARGS ?={{% with words .Options.Test.Args %}} {{% . %}}{{% end %}}
 PYTHON_AUDIT_IGNORE ?={{% with words .Options.Audit.Ignore %}} {{% . %}}{{% end %}}
+{{%- with .Options.Generate.Command %}}
+PYTHON_GENERATE ?={{% with words $.Options.Generate.Command %}} {{% . %}}{{% end %}}{{% with words $.Options.Generate.Args %}} {{% . %}}{{% end %}}
+{{%- end %}}
 
 # The error codes of mypy that neither its defaults nor --strict turn on.
 MYPY_CODES := $(foreach code,redundant-expr possibly-undefined truthy-bool truthy-iterable ignore-without-code \
 	unused-awaitable redundant-self explicit-override mutable-override unimported-reveal exhaustive-match deprecated,\
 	--enable-error-code $(code))
 
-.PHONY: fmt-python lint-python test-python audit-python check-python
+.PHONY: fmt-python lint-python test-python{{% if .Options.Generate.Command %}} generate-python verify-generate-python{{% end %}} audit-python check-python
 fmt: fmt-python
 lint: lint-python
 test: test-python
+{{%- if .Options.Generate.Command %}}
+generate: generate-python
+{{%- end %}}
 audit: audit-python
 check: check-python
 
@@ -37,6 +43,12 @@ lint-python: ## Check the Python sources with ruff.toml and with mypy in its str
 	$(MYPY) --strict --warn-unreachable --strict-equality-for-none $(MYPY_CODES) --exclude-gitignore $(PYTHON_PATHS)
 test-python: ## Run the Python tests
 	$(PYTEST) $(PYTHON_TEST_ARGS)
+{{%- if .Options.Generate.Command %}}
+generate-python: ## Run the generators of Python
+	$(PYTHON_GENERATE)
+verify-generate-python: ## Fail when the generators of Python change a file of the repository
+	@$(call verify-generated,PYTHON_GENERATE,generate-python)
+{{%- end %}}
 audit-python: ## Scan the packages of uv.lock for known vulnerabilities
 	@dir="$$(mktemp -d)"; \
 	$(UV) export --frozen --all-packages --all-extras --all-groups --no-emit-local --format pylock.toml \
@@ -47,4 +59,4 @@ audit-python: ## Scan the packages of uv.lock for known vulnerabilities
 		$(PIP_AUDIT) --locked --strict $(foreach id,$(PYTHON_AUDIT_IGNORE),--ignore-vuln $(id)) "$$dir"; status=$$?; \
 	fi; \
 	rm -rf "$$dir"; exit $$status
-check-python:{{% range .Options.Check %}} {{% . %}}-python{{% end %}} ## Run the gate of Python
+check-python:{{% range .Options.Check %}} {{% .Target "python" %}}{{% end %}} ## Run the gate of Python

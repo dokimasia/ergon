@@ -1,5 +1,5 @@
 
-# Go
+##@ Go
 #
 # The Go targets run in every module that go list -m lists, which is every module of go.work. The
 # section go of .ergon.yaml sets their tools and options, and the steps of check-go. One run
@@ -30,6 +30,7 @@ GO_BENCH_ARGS ?= -benchmem
 GO_MUTATE_WORKERS ?= 1
 GO_MUTATE_TIMEOUT ?= 0s
 GO_MUTATE_ARGS ?=
+GO_GENERATE_COMMAND ?= go generate
 GO_GENERATE_ARGS ?=
 GO_AUDIT_ARGS ?=
 
@@ -37,10 +38,15 @@ GO_AUDIT_ARGS ?=
 GO_BENCH_OLD ?=
 GO_BENCH_NEW ?=
 
-.PHONY: fmt-go lint-go test-go race-go fuzz-go bench-go benchstat-go mutate-go generate-go audit-go check-go
+# The run of the generators in every module, which generate-go and verify-generate-go run.
+GO_GENERATE = $(GO) list -m -f '{{.Dir}}' | while IFS= read -r dir; do echo "$(GO_GENERATE_COMMAND) $$dir"; \
+	(cd "$$dir" && $(GO_GENERATE_COMMAND) $(GO_GENERATE_ARGS) $(GO_PATHS)) || exit 1; done
+
+.PHONY: fmt-go lint-go test-go race-go fuzz-go bench-go benchstat-go mutate-go generate-go verify-generate-go audit-go check-go
 fmt: fmt-go
 lint: lint-go
 test: test-go
+generate: generate-go
 audit: audit-go
 check: check-go
 
@@ -78,13 +84,10 @@ mutate-go: ## Run dokimi-mutate-go on every module, and fail on a mutant that th
 	@$(GO) list -m -f '{{.Dir}}' | { status=0; while IFS= read -r dir; do echo "dokimi-mutate-go $$dir"; \
 		$(DOKIMI_MUTATE_GO) -C "$$dir" -workers $(GO_MUTATE_WORKERS) -timeout $(GO_MUTATE_TIMEOUT) $(GO_MUTATE_ARGS) \
 			$(GO_PATHS) || status=1; done; exit $$status; }
-generate-go: ## Run go generate in every module, and fail when it changes a file of the repository
-	@before="$$(git diff HEAD --binary 2>/dev/null; git ls-files --others --exclude-standard)"; \
-	$(GO) list -m -f '{{.Dir}}' | while IFS= read -r dir; do echo "go generate $$dir"; \
-		$(GO) -C "$$dir" generate $(GO_GENERATE_ARGS) $(GO_PATHS) || exit 1; done || exit 1; \
-	after="$$(git diff HEAD --binary 2>/dev/null; git ls-files --others --exclude-standard)"; \
-	if [ "$$before" != "$$after" ]; then echo "generate-go: go generate changed the files of the repository:" >&2; \
-		git status --short >&2; exit 1; fi
+generate-go: ## Run the generators of every module, such as go generate
+	@$(GO_GENERATE)
+verify-generate-go: ## Fail when the generators of a module change a file of the repository
+	@$(call verify-generated,GO_GENERATE,generate-go)
 audit-go: ## Scan every Go module for known vulnerabilities that its code reaches
 	@$(GO) list -m -f '{{.Dir}}' | while IFS= read -r dir; do echo "govulncheck $$dir"; \
 		$(GOVULNCHECK) -C "$$dir" $(GO_AUDIT_ARGS) $(GO_PATHS) || exit 1; done

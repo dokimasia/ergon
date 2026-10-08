@@ -13,13 +13,16 @@
 // The fragment of the Makefile runs lint-bash, which checks every script that git tracks or would
 // track and that the pathspecs of the section match, and check-bash. shellcheck is a release binary
 // of the section, which ergon tool run installs. Bash has no locked dependencies, so the gate has no
-// vulnerability scan.
+// vulnerability scan. With a command in the key generate, the fragment also renders generate-bash,
+// which runs it, and verify-generate-bash, which fails when it changes a file. A line ##@ Bash
+// starts the group of Bash in make help.
 //
 // # Options
 //
-// [Options] is the section bash: the tools, the paths, the steps of the gate, and the key ci of the
-// job check-bash. [Shellcheck] states where the release of shellcheck publishes the asset of each
-// platform. [Options.Contribution] returns the job check-bash.
+// [Options] is the section bash: the tools, the paths, the steps of the gate, the options of the
+// generators, and the key ci of the job check-bash. [Shellcheck] states where the release of
+// shellcheck publishes the asset of each platform. [Options.Contribution] returns the job
+// check-bash.
 //
 // # Dependency position
 //

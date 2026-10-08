@@ -1,5 +1,5 @@
 
-# Python
+##@ Python
 #
 # The section python of .ergon.yaml sets the tools and the options of the Python targets, and the
 # steps of check-python. One run overrides an option on the command line, such as

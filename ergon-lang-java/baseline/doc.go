@@ -15,16 +15,20 @@
 // osv-scanner through ergon tool run, and fails in a repository without one. The fragment of Java
 // runs lint-java, which applies the init script to the Gradle build of the repository with
 // --init-script, test-java with ./gradlew test, and check-java, which requires the targets of the
-// steps that the key check of the section names. audit-java requires audit-jvm.
+// steps that the key check of the section names. audit-java requires audit-jvm. With a command in
+// the key generate, the fragment of Java also renders generate-java, which runs it, and
+// verify-generate-java, which fails when it changes a file. In make help, the line
+// ##@ Java and Kotlin starts the group of the jvm toolchain, and the line ##@ Java starts the group
+// of Java.
 //
 // # Options
 //
 // [ToolchainOptions] is the section jvm: the release of osv-scanner, and the key ci of the setup of
 // Java. [ToolchainOptions.Contribution] returns that setup, the CodeQL analysis of java-kotlin and
 // the Gradle updates. [Options] is the section java: the version of PMD, which [Tools.Validate]
-// requires of the artifact that the PMD plugin of Gradle runs, the steps of the gate and the
-// options of test-java. [Options.Contribution] returns the job check-java, which runs the setup of
-// the jvm toolchain.
+// requires of the artifact that the PMD plugin of Gradle runs, the steps of the gate, and the
+// options of test-java and of the generators. [Options.Contribution] returns the job check-java,
+// which runs the setup of the jvm toolchain.
 //
 // # Dependency position
 //

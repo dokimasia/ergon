@@ -19,7 +19,7 @@
     {
       "path": "Makefile",
       "producer": "jvm",
-      "sha256": "972a24bb4d05c4f64bc85f277978b1de584b0cdc906def9cffb3732728782e93"
+      "sha256": "affe44b7e8c4d9937b335ccd0da33bf3d0f19ea869eba6a25ec45a7a22e8027c"
     }
   ],
   "settings": {
@@ -40,6 +40,8 @@
       "test",
       "audit"
     ],
+    "kotlin.generate.args": [],
+    "kotlin.generate.command": [],
     "kotlin.test.args": [],
     "kotlin.tools.ktlint": "com.pinterest.ktlint:ktlint-cli@1.8.0"
   },

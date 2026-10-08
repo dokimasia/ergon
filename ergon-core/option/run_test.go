@@ -27,6 +27,90 @@ func TestRun(t *testing.T) {
 		})
 	})
 
+	t.Run("Generate", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Validate", func(t *testing.T) {
+			t.Parallel()
+
+			valid := []struct {
+				name string
+				give option.Generate
+			}{
+				{
+					name: "returns nil for a command with arguments",
+					give: option.Generate{Command: []string{"go", "generate"}, Args: []string{"-x"}},
+				},
+				{name: "returns nil for no command and no arguments", give: option.Generate{}},
+			}
+			for _, tt := range valid {
+				t.Run(tt.name, func(t *testing.T) {
+					t.Parallel()
+					assert.NoError(t, tt.give.Validate(), "Validate")
+				})
+			}
+
+			invalid := []struct {
+				name string
+				give option.Generate
+			}{
+				{
+					name: "returns ErrInvalid for a word of the command that spans lines",
+					give: option.Generate{Command: []string{"npm\nrun"}},
+				},
+				{
+					name: "returns ErrInvalid for an argument that spans lines",
+					give: option.Generate{Command: []string{"buf", "generate"}, Args: []string{"a\nb"}},
+				},
+				{
+					name: "returns ErrInvalid for arguments without a command",
+					give: option.Generate{Args: []string{"-x"}},
+				},
+			}
+			for _, tt := range invalid {
+				t.Run(tt.name, func(t *testing.T) {
+					t.Parallel()
+					assert.ErrorIs(t, tt.give.Validate(), option.ErrInvalid, "Validate")
+				})
+			}
+		})
+
+		t.Run("CheckStep", func(t *testing.T) {
+			t.Parallel()
+
+			valid := []struct {
+				name  string
+				give  option.Generate
+				check option.Check
+			}{
+				{
+					name:  "returns nil for a gate with the step generate and a command",
+					give:  option.Generate{Command: []string{"buf", "generate"}},
+					check: option.Check{option.StepLint, option.StepGenerate},
+				},
+				{
+					name:  "returns nil for a gate without the step generate and without a command",
+					give:  option.Generate{},
+					check: option.Check{option.StepLint},
+				},
+			}
+			for _, tt := range valid {
+				t.Run(tt.name, func(t *testing.T) {
+					t.Parallel()
+					assert.NoError(t, tt.give.CheckStep(tt.check), "CheckStep")
+				})
+			}
+
+			t.Run("returns ErrInvalid for a gate with the step generate and without a command", func(t *testing.T) {
+				t.Parallel()
+				err := option.Generate{}.CheckStep(option.Check{option.StepGenerate})
+				assert.ErrorIs(t, err, option.ErrInvalid, "CheckStep")
+				assert.Equal(t, err.Error(), "option: invalid value: check names generate, which needs a command in "+
+					"generate.command", "the error")
+			})
+		})
+	})
+
 	t.Run("Fuzz", func(t *testing.T) {
 		t.Parallel()
 

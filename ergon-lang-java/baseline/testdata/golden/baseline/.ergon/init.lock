@@ -19,7 +19,7 @@
     {
       "path": "Makefile",
       "producer": "jvm",
-      "sha256": "9f53cc263f65bff1a240d296be28ecb23b1f150f526c1f81a3fa48f7c23e13e0"
+      "sha256": "17ed1ee16d0647c328a5f005ec42107251b4f9f2fb99096d637aa6b292d98770"
     },
     {
       "path": "gradle/ergon-java.init.gradle.kts",
@@ -33,6 +33,8 @@
       "test",
       "audit"
     ],
+    "java.generate.args": [],
+    "java.generate.command": [],
     "java.test.args": [],
     "java.tools.pmd": "net.sourceforge.pmd:pmd-java@7.28.0",
     "jvm.ci.actions.setup-java.commit": "de7274f081f381c8f8158605e0321c36c376e2e6",

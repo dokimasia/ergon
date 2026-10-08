@@ -1,5 +1,5 @@
 
-# Rust
+##@ Rust
 #
 # The section rust of .ergon.yaml sets the tools and the options of the Rust targets, and the steps
 # of check-rust. One run overrides an option on the command line, such as
@@ -11,11 +11,17 @@ CARGO_AUDIT := $(ERGON) tool run rust.cargo-audit --
 # The options of the section rust.
 RUST_TEST_ARGS ?={{% with words .Options.Test.Args %}} {{% . %}}{{% end %}}
 RUST_AUDIT_IGNORE ?={{% with words .Options.Audit.Ignore %}} {{% . %}}{{% end %}}
+{{%- with .Options.Generate.Command %}}
+RUST_GENERATE ?={{% with words $.Options.Generate.Command %}} {{% . %}}{{% end %}}{{% with words $.Options.Generate.Args %}} {{% . %}}{{% end %}}
+{{%- end %}}
 
-.PHONY: fmt-rust lint-rust test-rust audit-rust check-rust
+.PHONY: fmt-rust lint-rust test-rust{{% if .Options.Generate.Command %}} generate-rust verify-generate-rust{{% end %}} audit-rust check-rust
 fmt: fmt-rust
 lint: lint-rust
 test: test-rust
+{{%- if .Options.Generate.Command %}}
+generate: generate-rust
+{{%- end %}}
 audit: audit-rust
 check: check-rust
 
@@ -29,6 +35,12 @@ lint-rust: ## Check the Rust sources with clippy.toml, the pedantic lints and th
 		cargo doc --workspace --all-features --no-deps
 test-rust: ## Run the Rust tests
 	cargo test $(RUST_TEST_ARGS)
+{{%- if .Options.Generate.Command %}}
+generate-rust: ## Run the generators of Rust
+	$(RUST_GENERATE)
+verify-generate-rust: ## Fail when the generators of Rust change a file of the repository
+	@$(call verify-generated,RUST_GENERATE,generate-rust)
+{{%- end %}}
 audit-rust: ## Scan Cargo.lock for known vulnerabilities
 	$(CARGO_AUDIT) audit $(foreach id,$(RUST_AUDIT_IGNORE),--ignore $(id))
-check-rust:{{% range .Options.Check %}} {{% . %}}-rust{{% end %}} ## Run the gate of Rust
+check-rust:{{% range .Options.Check %}} {{% .Target "rust" %}}{{% end %}} ## Run the gate of Rust

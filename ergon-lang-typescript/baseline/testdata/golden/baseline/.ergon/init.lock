@@ -19,7 +19,7 @@
     {
       "path": "Makefile",
       "producer": "js",
-      "sha256": "1638c1babcfae4b7f2694a4820210f15fdc4f4d0f3cf262038d74c1bc79aba44"
+      "sha256": "4646da8554e8e4d5b2a85926a2cfb49a9d7162e1bfd3e8b195f9d5f219b61b1b"
     },
     {
       "path": "biome.json",
@@ -44,6 +44,8 @@
       "test",
       "audit"
     ],
+    "typescript.generate.args": [],
+    "typescript.generate.command": [],
     "typescript.test.args": [],
     "typescript.tools.typescript": "typescript@7.0.2"
   },

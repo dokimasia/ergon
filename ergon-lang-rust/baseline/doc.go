@@ -15,13 +15,15 @@
 // section names. lint-rust runs rustfmt, clippy with every pedantic lint and the lints of the
 // documentation as errors, and rustdoc. clippy reads no lint level from clippy.toml, so lint-rust
 // sets the levels on the command line. audit-rust runs cargo-audit through ergon tool run, which
-// installs the crate with cargo install --locked.
+// installs the crate with cargo install --locked. With a command in the key generate, the fragment
+// also renders generate-rust, which runs it, and verify-generate-rust, which fails when it changes
+// a file. A line ##@ Rust starts the group of Rust in make help.
 //
 // # Options
 //
-// [Options] is the section rust: the tools, the steps of the gate, the options of test-rust and
-// audit-rust, and the key ci of the job check-rust. [Options.Contribution] returns the job
-// check-rust, the CodeQL analysis of rust and the updates of Cargo.lock.
+// [Options] is the section rust: the tools, the steps of the gate, the options of test-rust, of the
+// generators and of audit-rust, and the key ci of the job check-rust. [Options.Contribution]
+// returns the job check-rust, the CodeQL analysis of rust and the updates of Cargo.lock.
 //
 // # Dependency position
 //

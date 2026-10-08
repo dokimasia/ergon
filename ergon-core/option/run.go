@@ -6,13 +6,13 @@ package option
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 )
 
-// Run is the options of a step that runs a command with arguments, such as test, race and
-// generate.
+// Run is the options of a step that runs a command with arguments, such as test and race.
 type Run struct {
 	// Args are the arguments that follow the step's command, each on one line.
 	Args []string `yaml:"args"`
@@ -21,6 +21,41 @@ type Run struct {
 // Validate returns an error that wraps [ErrInvalid] for an argument that spans lines.
 func (r Run) Validate() error {
 	return lines("args", r.Args)
+}
+
+// Generate is the options of the step generate: the command of the generators of a section and
+// the arguments that follow it. A section whose command is empty has no generate targets.
+type Generate struct {
+	// Command is the command of the generators with its first arguments, each on one line, such as
+	// go and generate.
+	Command []string `yaml:"command"`
+
+	// Args are the arguments that follow the command, each on one line.
+	Args []string `yaml:"args"`
+}
+
+// Validate returns an error that wraps [ErrInvalid] for a word of the command or an argument that
+// spans lines, and for arguments without a command.
+func (g Generate) Validate() error {
+	if err := lines("command", g.Command); err != nil {
+		return err
+	}
+	if err := lines("args", g.Args); err != nil {
+		return err
+	}
+	if len(g.Command) == 0 && len(g.Args) > 0 {
+		return fmt.Errorf("%w: args %q, which follow no command", ErrInvalid, g.Args)
+	}
+	return nil
+}
+
+// CheckStep returns an error that wraps [ErrInvalid] when c names the step generate and g has no
+// command, which leaves the step without a target. A producer's Validate calls it.
+func (g Generate) CheckStep(c Check) error {
+	if len(g.Command) == 0 && slices.Contains(c, StepGenerate) {
+		return fmt.Errorf("%w: check names generate, which needs a command in generate.command", ErrInvalid)
+	}
+	return nil
 }
 
 // Fuzz is the options of the step fuzz: which fuzz targets run, and for how long each.

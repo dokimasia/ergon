@@ -1,5 +1,5 @@
 
-# Rust
+##@ Rust
 #
 # The section rust of .ergon.yaml sets the tools and the options of the Rust targets, and the steps
 # of check-rust. One run overrides an option on the command line, such as

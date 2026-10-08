@@ -50,8 +50,8 @@ type Options struct {
 	// Mutate are the options of mutate-go.
 	Mutate option.Mutate `yaml:"mutate" doc:"mutate-go runs dokimi-mutate-go with workers mutants of a module at a time and args, and ends the run after timeout. A timeout of 0s sets no limit."`
 
-	// Generate are the options of generate-go.
-	Generate option.Run `yaml:"generate" doc:"generate-go runs go generate with args, and fails when the run changes a tracked file or writes a file that git does not track."`
+	// Generate are the options of generate-go and verify-generate-go.
+	Generate option.Generate `yaml:"generate" doc:"generate-go runs command with args and the paths in every module. verify-generate-go, the step generate of check, runs the same and fails when the run changes a tracked file or writes a file that git does not track. An empty command removes both targets."`
 
 	// Audit are the options of audit-go.
 	Audit option.Run `yaml:"audit" doc:"audit-go runs govulncheck with args in every module."`
@@ -92,9 +92,13 @@ type Actions struct {
 }
 
 // Validate returns an error that wraps [option.ErrInvalid] for a step of check that Go does not
-// have. The command checks each option by the Validate method of its type before it calls Validate.
+// have, and for the step generate without a command. The command checks each option by the
+// Validate method of its type before it calls Validate.
 func (o *Options) Validate() error {
-	return o.Check.Only(steps...)
+	if err := o.Check.Only(steps...); err != nil {
+		return err
+	}
+	return o.Generate.CheckStep(o.Check)
 }
 
 // Contribution returns the part of Go of the workflows for o:

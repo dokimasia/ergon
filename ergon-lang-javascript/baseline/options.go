@@ -9,23 +9,29 @@ import (
 )
 
 // steps are the steps of the gate of JavaScript, which the key check of the section names.
-var steps = []option.Step{option.StepLint, option.StepTest, option.StepAudit}
+var steps = []option.Step{option.StepLint, option.StepTest, option.StepGenerate, option.StepAudit}
 
 // Options are the options of the section javascript of .ergon.yaml. The section js sets the tools,
 // the paths and the scan that JavaScript shares with TypeScript, and the setup of their jobs.
 type Options struct {
 	// Check are the steps of check-javascript.
-	Check option.Check `yaml:"check" doc:"The steps that check-javascript runs, in order: lint, test or audit. lint runs lint-js of the section js, and audit runs audit-js."`
+	Check option.Check `yaml:"check" doc:"The steps that check-javascript runs, in order: lint, test, generate or audit. lint runs lint-js of the section js, and audit runs audit-js."`
 
 	// Test are the options of test-javascript.
 	Test option.Run `yaml:"test" doc:"test-javascript runs npm test with args."`
+
+	// Generate are the options of generate-javascript and verify-generate-javascript.
+	Generate option.Generate `yaml:"generate" doc:"generate-javascript runs command with args at the root of the repository, such as npm run generate. verify-generate-javascript, the step generate of check, runs the same and fails when the run changes a file of the repository. Without a command JavaScript has neither target."`
 }
 
 // Validate returns an error that wraps [option.ErrInvalid] for a step of check that JavaScript does
-// not have. The command checks each option by the Validate method of its type before it calls
-// Validate.
+// not have, and for the step generate without a command. The command checks each option by the
+// Validate method of its type before it calls Validate.
 func (o *Options) Validate() error {
-	return o.Check.Only(steps...)
+	if err := o.Check.Only(steps...); err != nil {
+		return err
+	}
+	return o.Generate.CheckStep(o.Check)
 }
 
 // Contribution returns the part of JavaScript of the workflows: the job check-javascript, which

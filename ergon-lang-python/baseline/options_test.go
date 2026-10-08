@@ -29,6 +29,21 @@ func TestOptions(t *testing.T) {
 			o.Check = option.Check{option.StepRace}
 			assert.ErrorIs(t, o.Validate(), option.ErrInvalid, "Validate")
 		})
+
+		t.Run("returns nil for the step generate with a command", func(t *testing.T) {
+			t.Parallel()
+			o := pythonOptions()
+			o.Check = option.Check{option.StepGenerate}
+			o.Generate.Command = []string{"datamodel-codegen"}
+			assert.NoError(t, o.Validate(), "Validate")
+		})
+
+		t.Run("returns ErrInvalid for the step generate without a command", func(t *testing.T) {
+			t.Parallel()
+			o := pythonOptions()
+			o.Check = option.Check{option.StepGenerate}
+			assert.ErrorIs(t, o.Validate(), option.ErrInvalid, "Validate")
+		})
 	})
 
 	t.Run("Contribution", func(t *testing.T) {

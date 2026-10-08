@@ -1,5 +1,5 @@
 
-# Kotlin
+##@ Kotlin
 #
 # The section kotlin of .ergon.yaml sets the tools and the options of the Kotlin targets, and the
 # steps of check-kotlin. One run overrides an option on the command line, such as
@@ -11,11 +11,17 @@ KTLINT := $(ERGON) tool run kotlin.ktlint --
 
 # The options of the section kotlin.
 KOTLIN_TEST_ARGS ?={{% with words .Options.Test.Args %}} {{% . %}}{{% end %}}
+{{%- with .Options.Generate.Command %}}
+KOTLIN_GENERATE ?={{% with words $.Options.Generate.Command %}} {{% . %}}{{% end %}}{{% with words $.Options.Generate.Args %}} {{% . %}}{{% end %}}
+{{%- end %}}
 
-.PHONY: fmt-kotlin lint-kotlin test-kotlin audit-kotlin check-kotlin
+.PHONY: fmt-kotlin lint-kotlin test-kotlin{{% if .Options.Generate.Command %}} generate-kotlin verify-generate-kotlin{{% end %}} audit-kotlin check-kotlin
 fmt: fmt-kotlin
 lint: lint-kotlin
 test: test-kotlin
+{{%- if .Options.Generate.Command %}}
+generate: generate-kotlin
+{{%- end %}}
 check: check-kotlin
 
 fmt-kotlin: ## Format the Kotlin sources with ktlint
@@ -27,5 +33,11 @@ lint-kotlin: ## Check the Kotlin sources with ktlint, and the build's own checks
 	./gradlew check -x test
 test-kotlin: ## Run the Kotlin tests
 	./gradlew test $(KOTLIN_TEST_ARGS)
+{{%- if .Options.Generate.Command %}}
+generate-kotlin: ## Run the generators of Kotlin
+	$(KOTLIN_GENERATE)
+verify-generate-kotlin: ## Fail when the generators of Kotlin change a file of the repository
+	@$(call verify-generated,KOTLIN_GENERATE,generate-kotlin)
+{{%- end %}}
 audit-kotlin: audit-jvm ## Scan the Gradle lockfiles of Kotlin for known vulnerabilities
-check-kotlin:{{% range .Options.Check %}} {{% . %}}-kotlin{{% end %}} ## Run the gate of Kotlin
+check-kotlin:{{% range .Options.Check %}} {{% .Target "kotlin" %}}{{% end %}} ## Run the gate of Kotlin

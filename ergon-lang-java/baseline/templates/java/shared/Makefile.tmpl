@@ -1,5 +1,5 @@
 
-# Java
+##@ Java
 #
 # The section java of .ergon.yaml sets the tools and the options of the Java targets, and the steps
 # of check-java. One run overrides an option on the command line, such as
@@ -7,15 +7,27 @@
 
 # The options of the section java.
 JAVA_TEST_ARGS ?={{% with words .Options.Test.Args %}} {{% . %}}{{% end %}}
+{{%- with .Options.Generate.Command %}}
+JAVA_GENERATE ?={{% with words $.Options.Generate.Command %}} {{% . %}}{{% end %}}{{% with words $.Options.Generate.Args %}} {{% . %}}{{% end %}}
+{{%- end %}}
 
-.PHONY: lint-java test-java audit-java check-java
+.PHONY: lint-java test-java{{% if .Options.Generate.Command %}} generate-java verify-generate-java{{% end %}} audit-java check-java
 lint: lint-java
 test: test-java
+{{%- if .Options.Generate.Command %}}
+generate: generate-java
+{{%- end %}}
 check: check-java
 
 lint-java: ## Check the Java sources with PMD, and with javac and javadoc warnings as errors
 	./gradlew --init-script gradle/ergon-java.init.gradle.kts check javadoc -x test
 test-java: ## Run the Java tests
 	./gradlew test $(JAVA_TEST_ARGS)
+{{%- if .Options.Generate.Command %}}
+generate-java: ## Run the generators of Java
+	$(JAVA_GENERATE)
+verify-generate-java: ## Fail when the generators of Java change a file of the repository
+	@$(call verify-generated,JAVA_GENERATE,generate-java)
+{{%- end %}}
 audit-java: audit-jvm ## Scan the Gradle lockfiles of Java for known vulnerabilities
-check-java:{{% range .Options.Check %}} {{% . %}}-java{{% end %}} ## Run the gate of Java
+check-java:{{% range .Options.Check %}} {{% .Target "java" %}}{{% end %}} ## Run the gate of Java

@@ -4,11 +4,17 @@ rust:
   tools:
     # The vulnerability scan of audit-rust, over Cargo.lock.
     cargo-audit: cargo-audit@0.22.2
-  # The steps that check-rust runs, in order: lint, test or audit.
+  # The steps that check-rust runs, in order: lint, test, generate or audit.
   check: [lint, test, audit]
   # test-rust runs cargo test with args.
   test:
     args: [--all-targets]
+  # generate-rust runs command with args at the root of the repository. verify-generate-rust, the
+  # step generate of check, runs the same and fails when the run changes a file of the repository.
+  # Without a command Rust has neither target.
+  generate:
+    command: []
+    args: []
   # audit-rust scans Cargo.lock with cargo-audit, and accepts each advisory of ignore, by its
   # identifier, such as RUSTSEC-2024-0001.
   audit:

@@ -19,7 +19,7 @@
     {
       "path": "Makefile",
       "producer": "rust",
-      "sha256": "9ec2d29377abffc507f968b57105ea436b2e7027c05be64c8b2001a088346652"
+      "sha256": "940700764187269c908b3accdccff091c02006a01563f8ff743bab8e308c16b0"
     },
     {
       "path": "clippy.toml",
@@ -40,6 +40,8 @@
     "rust.ci.runners": [],
     "rust.ci.timeout": 30,
     "rust.ci.versions": [],
+    "rust.generate.args": [],
+    "rust.generate.command": [],
     "rust.test.args": [
       "--all-targets"
     ],

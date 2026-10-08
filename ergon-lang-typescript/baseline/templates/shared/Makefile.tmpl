@@ -1,5 +1,5 @@
 
-# TypeScript
+##@ TypeScript
 #
 # The section typescript of .ergon.yaml sets the tools and the options of the TypeScript targets,
 # and the steps of check-typescript. One run overrides an option on the command line, such as
@@ -10,10 +10,16 @@ TSC := $(ERGON) tool run typescript.typescript --
 
 # The options of the section typescript.
 TYPESCRIPT_TEST_ARGS ?={{% with words .Options.Test.Args %}} {{% . %}}{{% end %}}
+{{%- with .Options.Generate.Command %}}
+TYPESCRIPT_GENERATE ?={{% with words $.Options.Generate.Command %}} {{% . %}}{{% end %}}{{% with words $.Options.Generate.Args %}} {{% . %}}{{% end %}}
+{{%- end %}}
 
-.PHONY: lint-typescript test-typescript audit-typescript check-typescript
+.PHONY: lint-typescript test-typescript{{% if .Options.Generate.Command %}} generate-typescript verify-generate-typescript{{% end %}} audit-typescript check-typescript
 lint: lint-typescript
 test: test-typescript
+{{%- if .Options.Generate.Command %}}
+generate: generate-typescript
+{{%- end %}}
 check: check-typescript
 
 lint-typescript: lint-js ## Check the TypeScript sources with Biome, and with tsc in its strictest mode
@@ -21,5 +27,11 @@ lint-typescript: lint-js ## Check the TypeScript sources with Biome, and with ts
 		--noFallthroughCasesInSwitch --noPropertyAccessFromIndexSignature --exactOptionalPropertyTypes
 test-typescript: ## Run the TypeScript tests
 	npm test $(if $(TYPESCRIPT_TEST_ARGS),-- $(TYPESCRIPT_TEST_ARGS))
+{{%- if .Options.Generate.Command %}}
+generate-typescript: ## Run the generators of TypeScript
+	$(TYPESCRIPT_GENERATE)
+verify-generate-typescript: ## Fail when the generators of TypeScript change a file of the repository
+	@$(call verify-generated,TYPESCRIPT_GENERATE,generate-typescript)
+{{%- end %}}
 audit-typescript: audit-js ## Scan the packages of TypeScript for known vulnerabilities
-check-typescript:{{% range .Options.Check %}} {{% . %}}-typescript{{% end %}} ## Run the gate of TypeScript
+check-typescript:{{% range .Options.Check %}} {{% .Target "typescript" %}}{{% end %}} ## Run the gate of TypeScript

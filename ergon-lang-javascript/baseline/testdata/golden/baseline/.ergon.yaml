@@ -24,9 +24,15 @@ js:
     versions: []
     timeout: 30
 javascript:
-  # The steps that check-javascript runs, in order: lint, test or audit. lint runs lint-js of the
-  # section js, and audit runs audit-js.
+  # The steps that check-javascript runs, in order: lint, test, generate or audit. lint runs lint-js
+  # of the section js, and audit runs audit-js.
   check: [lint, test, audit]
   # test-javascript runs npm test with args.
   test:
+    args: []
+  # generate-javascript runs command with args at the root of the repository, such as npm run
+  # generate. verify-generate-javascript, the step generate of check, runs the same and fails when
+  # the run changes a file of the repository. Without a command JavaScript has neither target.
+  generate:
+    command: []
     args: []

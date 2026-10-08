@@ -1,5 +1,5 @@
 
-# JavaScript
+##@ JavaScript
 #
 # The section javascript of .ergon.yaml sets the options of the JavaScript targets and the steps of
 # check-javascript. One run overrides an option on the command line, such as
@@ -7,14 +7,26 @@
 
 # The options of the section javascript.
 JAVASCRIPT_TEST_ARGS ?={{% with words .Options.Test.Args %}} {{% . %}}{{% end %}}
+{{%- with .Options.Generate.Command %}}
+JAVASCRIPT_GENERATE ?={{% with words $.Options.Generate.Command %}} {{% . %}}{{% end %}}{{% with words $.Options.Generate.Args %}} {{% . %}}{{% end %}}
+{{%- end %}}
 
-.PHONY: lint-javascript test-javascript audit-javascript check-javascript
+.PHONY: lint-javascript test-javascript{{% if .Options.Generate.Command %}} generate-javascript verify-generate-javascript{{% end %}} audit-javascript check-javascript
 lint: lint-javascript
 test: test-javascript
+{{%- if .Options.Generate.Command %}}
+generate: generate-javascript
+{{%- end %}}
 check: check-javascript
 
 lint-javascript: lint-js ## Check the JavaScript sources with Biome
 test-javascript: ## Run the JavaScript tests
 	npm test $(if $(JAVASCRIPT_TEST_ARGS),-- $(JAVASCRIPT_TEST_ARGS))
+{{%- if .Options.Generate.Command %}}
+generate-javascript: ## Run the generators of JavaScript
+	$(JAVASCRIPT_GENERATE)
+verify-generate-javascript: ## Fail when the generators of JavaScript change a file of the repository
+	@$(call verify-generated,JAVASCRIPT_GENERATE,generate-javascript)
+{{%- end %}}
 audit-javascript: audit-js ## Scan the packages of JavaScript for known vulnerabilities
-check-javascript:{{% range .Options.Check %}} {{% . %}}-javascript{{% end %}} ## Run the gate of JavaScript
+check-javascript:{{% range .Options.Check %}} {{% .Target "javascript" %}}{{% end %}} ## Run the gate of JavaScript

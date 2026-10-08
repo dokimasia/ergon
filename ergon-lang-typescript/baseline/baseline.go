@@ -40,12 +40,13 @@ func (Producer) Templates() fs.FS {
 }
 
 // Options returns the section typescript at the baseline: the release of tsc, the gate of lint, test
-// and audit, and npm test without arguments.
+// and audit, npm test without arguments, and no generators.
 func (Producer) Options() language.Options {
 	return &Options{
-		Tools: Tools{TypeScript: "typescript@7.0.2"},
-		Check: option.Check{option.StepLint, option.StepTest, option.StepAudit},
-		Test:  option.Run{Args: []string{}},
+		Tools:    Tools{TypeScript: "typescript@7.0.2"},
+		Check:    option.Check{option.StepLint, option.StepTest, option.StepAudit},
+		Test:     option.Run{Args: []string{}},
+		Generate: option.Generate{Command: []string{}, Args: []string{}},
 	}
 }
 

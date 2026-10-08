@@ -43,8 +43,9 @@ func (Producer) Templates() fs.FS {
 
 // Options returns the section go at the baseline: the releases of golangci-lint, govulncheck,
 // benchstat, dokimi-mutate-go and ergon-go-vet, every package of each module, the gate of lint,
-// test, race and audit, the options of each step, the release of setup-go, and a limit of 30
-// minutes for the job check-go on every runner and the version of go.work.
+// test, race and audit, the options of each step with go generate as the generators, the release of
+// setup-go, and a limit of 30 minutes for the job check-go on every runner and the version of
+// go.work.
 func (Producer) Options() language.Options {
 	return &Options{
 		Tools: Tools{
@@ -62,7 +63,7 @@ func (Producer) Options() language.Options {
 		Fuzz:     option.Fuzz{Match: ".", Time: "30s", Args: []string{"-fuzzminimizetime=5s"}},
 		Bench:    option.Bench{Match: ".", Time: "1s", Args: []string{"-benchmem"}, Count: 6},
 		Mutate:   option.Mutate{Timeout: "0s", Args: []string{}, Workers: 1},
-		Generate: option.Run{Args: []string{}},
+		Generate: option.Generate{Command: []string{"go", "generate"}, Args: []string{}},
 		Audit:    option.Run{Args: []string{}},
 		CI: option.MatrixCI[Actions]{
 			Actions: Actions{SetupGo: workflow.Action{

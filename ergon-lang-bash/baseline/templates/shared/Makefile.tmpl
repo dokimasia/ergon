@@ -1,5 +1,5 @@
 
-# Bash
+##@ Bash
 #
 # The section bash of .ergon.yaml sets the tools and the paths of the Bash targets, and the steps of
 # check-bash.
@@ -9,11 +9,23 @@ SHELLCHECK := $(ERGON) tool run bash.shellcheck --
 
 # The options of the section bash: the pathspecs of git of the scripts.
 BASH_PATHS ?={{% with words .Options.Paths %}} {{% . %}}{{% end %}}
+{{%- with .Options.Generate.Command %}}
+BASH_GENERATE ?={{% with words $.Options.Generate.Command %}} {{% . %}}{{% end %}}{{% with words $.Options.Generate.Args %}} {{% . %}}{{% end %}}
+{{%- end %}}
 
-.PHONY: lint-bash check-bash
+.PHONY: lint-bash{{% if .Options.Generate.Command %}} generate-bash verify-generate-bash{{% end %}} check-bash
 lint: lint-bash
+{{%- if .Options.Generate.Command %}}
+generate: generate-bash
+{{%- end %}}
 check: check-bash
 
 lint-bash: ## Check the Bash sources with shellcheck
 	git ls-files -z --cached --others --exclude-standard -- $(BASH_PATHS) | xargs -0 -r $(SHELLCHECK)
-check-bash:{{% range .Options.Check %}} {{% . %}}-bash{{% end %}} ## Run the gate of Bash
+{{%- if .Options.Generate.Command %}}
+generate-bash: ## Run the generators of Bash
+	$(BASH_GENERATE)
+verify-generate-bash: ## Fail when the generators of Bash change a file of the repository
+	@$(call verify-generated,BASH_GENERATE,generate-bash)
+{{%- end %}}
+check-bash:{{% range .Options.Check %}} {{% .Target "bash" %}}{{% end %}} ## Run the gate of Bash

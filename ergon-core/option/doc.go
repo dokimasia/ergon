@@ -34,8 +34,10 @@
 // # Steps
 //
 // A [Step] is a target of the Makefile, and [Check] lists the steps of a section's gate. The
-// options of a step are [Run], [Fuzz], [Bench], [Mutate], [Audit] or [Threshold]. [Paths] states
-// what the targets work on.
+// options of a step are [Run], [Generate], [Fuzz], [Bench], [Mutate], [Audit] or [Threshold].
+// [Paths] states what the targets work on. The step generate has two targets: generate-<section>
+// runs the command of [Generate], and verify-generate-<section>, which the gate runs, fails when
+// the command changes a file.
 //
 // # CI
 //

@@ -19,7 +19,7 @@
     {
       "path": "Makefile",
       "producer": "php",
-      "sha256": "6880f59f82086fd3474bdd3c31fd9ad4761ad00de253063950f7df68301a8b85"
+      "sha256": "6cb1185eb9080ad473a6f40b954ba586646ef882e4642d6308621029c8dfb7c5"
     },
     {
       "path": "phpstan.dist.neon",
@@ -39,6 +39,8 @@
     "php.ci.runners": [],
     "php.ci.timeout": 30,
     "php.ci.versions": [],
+    "php.generate.args": [],
+    "php.generate.command": [],
     "php.paths": [
       "."
     ],

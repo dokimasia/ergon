@@ -24,7 +24,7 @@
     {
       "path": "Makefile",
       "producer": "csharp",
-      "sha256": "aafe5ddf10454c6e81e0358cf62bed85799f3c83c6724fb69496849f0fcfc3ec"
+      "sha256": "893a96aeb9759ead3bea7d8cf47d8622c1b91061d13dcfea69ecaf4f8d39767f"
     }
   ],
   "settings": {
@@ -40,6 +40,8 @@
     "csharp.ci.runners": [],
     "csharp.ci.timeout": 30,
     "csharp.ci.versions": [],
+    "csharp.generate.args": [],
+    "csharp.generate.command": [],
     "csharp.test.args": []
   },
   "answers": {

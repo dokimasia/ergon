@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"go.dokimi.dev/assert"
+	"go.dokimi.dev/assert/expect"
 	"go.dokimi.dev/assert/golden"
 	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/core/option"
@@ -71,6 +72,29 @@ func TestBaseline(t *testing.T) {
 				o.Check = option.Check{option.StepTest}
 				makefile := rendered(t, o, "Makefile")
 				assert.Contains(t, makefile, "\ncheck-python: test-python ## Run the gate of Python\n", "the Makefile")
+			})
+
+			t.Run("runs the command of the generators and checks their files in the step generate", func(t *testing.T) {
+				t.Parallel()
+				o, _ := baseline.Producer{}.Options().(*baseline.Options)
+				o.Generate = option.Generate{
+					Command: []string{"datamodel-codegen"},
+					Args:    []string{"--input", "api.yaml"},
+				}
+				o.Check = option.Check{option.StepGenerate}
+				expect.That(t, rendered(t, o, "Makefile")).
+					Contains("\nPYTHON_GENERATE ?= datamodel-codegen --input api.yaml\n", "the command of the generators").
+					Contains("\ngenerate: generate-python\n", "the aggregate generate").
+					Contains("\ngenerate-python: ## Run the generators of Python\n\t$(PYTHON_GENERATE)\n",
+						"the target that runs the generators").
+					Contains("\n\t@$(call verify-generated,PYTHON_GENERATE,generate-python)\n", "the target that checks them").
+					Contains("\ncheck-python: verify-generate-python ## Run the gate of Python\n", "the gate")
+			})
+
+			t.Run("renders no target of the generators without a command", func(t *testing.T) {
+				t.Parallel()
+				makefile := rendered(t, baseline.Producer{}.Options(), "Makefile")
+				assert.NotContains(t, makefile, "generate", "the Makefile")
 			})
 		})
 

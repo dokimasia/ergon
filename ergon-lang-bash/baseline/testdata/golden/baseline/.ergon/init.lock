@@ -19,7 +19,7 @@
     {
       "path": "Makefile",
       "producer": "bash",
-      "sha256": "fdfda9f14f8cc9dcc8dfb26aedcd9b56cec5b7a2372df9b2382b595e40c8592b"
+      "sha256": "591e12bc7e95b9f15fae8797499698897f8ef7434ef076d9bfedcebcc7b21d9a"
     }
   ],
   "settings": {
@@ -28,6 +28,8 @@
     ],
     "bash.ci.runners": [],
     "bash.ci.timeout": 30,
+    "bash.generate.args": [],
+    "bash.generate.command": [],
     "bash.paths": [
       "*.sh",
       "*.bash"
