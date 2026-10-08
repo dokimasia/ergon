@@ -841,7 +841,7 @@ func TestRelease(t *testing.T) {
 			commit := vcstest.Commit(t, dir, "add a changeset")
 			status, stdout, stderr := runRelease(t, dir, nil, "release", "version")
 			assert.Equal(t, status, statusOK, "the exit status: "+stderr)
-			assert.Equal(t, stdout, "wrote "+changelogPath+"\nwrote "+changesetPath+"\n", "the standard output")
+			assert.Equal(t, stdout, "wrote "+changelogPath+"\nremoved "+changesetPath+"\n", "the standard output")
 			files.HasContent(
 				t,
 				filepath.Join(dir, changelogPath),
@@ -1264,7 +1264,7 @@ func TestRelease(t *testing.T) {
 			env["GITHUB_OUTPUT"] = output
 			status, stdout, stderr := runRelease(t, dir, env, "release", "ci", "version")
 			assert.Equal(t, status, statusOK, "the exit status: "+stderr)
-			assert.Equal(t, stdout, "wrote "+changelogPath+"\nwrote "+changesetPath+"\npull request 7\n",
+			assert.Equal(t, stdout, "wrote "+changelogPath+"\nremoved "+changesetPath+"\npull request 7\n",
 				"the standard output")
 			files.HasContent(t, output, "pull-request-number=7\n", "the outputs")
 			assert.Equal(t, h.calls(), []string{

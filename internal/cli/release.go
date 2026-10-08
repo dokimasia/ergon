@@ -22,6 +22,7 @@ import (
 	"github.com/spf13/cobra"
 	"go.dokimi.dev/ergon/core/changeset"
 	"go.dokimi.dev/ergon/core/version"
+	"go.dokimi.dev/ergon/service/baseline"
 	"go.dokimi.dev/ergon/service/forge"
 	"go.dokimi.dev/ergon/service/release"
 	"go.dokimi.dev/ergon/service/vcs"
@@ -273,7 +274,7 @@ func changesetCommand(ctx context.Context, s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "wrote %s\n", file)
+			fmt.Fprintf(cmd.OutOrStdout(), "%s %s\n", baseline.Wrote, file)
 			if !open {
 				return nil
 			}
@@ -656,7 +657,7 @@ func relock(ctx context.Context, cmd *cobra.Command, r *releaseRepository) (bool
 		return false, nil
 	}
 	for _, file := range written {
-		fmt.Fprintf(cmd.OutOrStdout(), "wrote %s\n", file)
+		fmt.Fprintf(cmd.OutOrStdout(), "%s %s\n", baseline.Wrote, file)
 	}
 	return true, nil
 }
@@ -744,9 +745,10 @@ func (s *session) planOf(ctx context.Context, warnings io.Writer, from string) (
 }
 
 // version writes plan into the repository r with [release.Version], with the host of GitHub of the
-// environment of s for the links of the changelog of GitHub, writes the path of each file that it
-// changed, and reports whether it wrote the plan. For a plan without changesets it rewrites the
-// stale lockfiles of r with [relock]. It returns the error of the host, of Version and of relock.
+// environment of s for the links of the changelog of GitHub, writes a line of each file that it wrote
+// and then of each file that it removed, and reports whether it wrote the plan. For a plan without
+// changesets it rewrites the stale lockfiles of r with [relock]. It returns the error of the host,
+// of Version and of relock.
 func (s *session) version(
 	ctx context.Context, cmd *cobra.Command, r *releaseRepository, plan *release.Plan,
 ) (bool, error) {
@@ -754,12 +756,16 @@ func (s *session) version(
 	if err != nil {
 		return false, err
 	}
-	written, err := release.Version(ctx, r.root, r.graph, &r.config, plan, host)
+	written, removed, err := release.Version(ctx, r.root, r.graph, &r.config, plan, host)
 	if errors.Is(err, release.ErrNoChangesets) {
 		return relock(ctx, cmd, r)
 	}
+	out := cmd.OutOrStdout()
 	for _, file := range written {
-		fmt.Fprintf(cmd.OutOrStdout(), "wrote %s\n", file)
+		fmt.Fprintf(out, "%s %s\n", baseline.Wrote, file)
+	}
+	for _, file := range removed {
+		fmt.Fprintf(out, "%s %s\n", baseline.Removed, file)
 	}
 	return err == nil, err
 }

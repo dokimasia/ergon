@@ -233,7 +233,7 @@ func ciUpgradeCommand(ctx context.Context, s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(out, "wrote %s\n", file)
+			fmt.Fprintf(out, "%s %s\n", baseline.Wrote, file)
 			files, deleted, err := release.ChangedFiles(ctx, s.dir)
 			if err != nil {
 				return err

@@ -117,14 +117,24 @@ func TestVersion(t *testing.T) {
 	t.Run("Version", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("returns the paths that it changed in the order of its writes", func(t *testing.T) {
+		t.Run("returns the paths that it wrote in the order of its writes", func(t *testing.T) {
 			t.Parallel()
 			s := dependentState(t)
 			dir, _ := repository(t, s, nil)
 			cfg := defaultConfig()
-			written, _, err := runVersion(t, s, &cfg, dir)
+			written, _, _, err := runVersion(t, s, &cfg, dir)
 			assert.NoError(t, err, "Version")
-			assert.Equal(t, written, []string{changelogA, changelogB, changesetA, versionA, versionB}, "the paths")
+			assert.Equal(t, written, []string{changelogA, changelogB, versionA, versionB}, "the written paths")
+		})
+
+		t.Run("returns the paths of the changesets that it removed", func(t *testing.T) {
+			t.Parallel()
+			s := dependentState(t)
+			dir, _ := repository(t, s, nil)
+			cfg := defaultConfig()
+			_, removed, _, err := runVersion(t, s, &cfg, dir)
+			assert.NoError(t, err, "Version")
+			assert.Equal(t, removed, []string{changesetA}, "the removed paths")
 		})
 
 		t.Run("writes an entry into the changelog of each released package", func(t *testing.T) {
@@ -132,7 +142,7 @@ func TestVersion(t *testing.T) {
 			s := dependentState(t)
 			dir, commit := repository(t, s, nil)
 			cfg := defaultConfig()
-			_, _, err := runVersion(t, s, &cfg, dir)
+			_, _, _, err := runVersion(t, s, &cfg, dir)
 			assert.NoError(t, err, "Version")
 			sha := commit[:7]
 			wantA := "# pkg-a\n\n## 1.0.1\n\n### Patch Changes\n\n- " + sha + ": base summary whatever\n"
@@ -146,7 +156,7 @@ func TestVersion(t *testing.T) {
 			s := dependentState(t)
 			dir, _ := repository(t, s, nil)
 			cfg := defaultConfig()
-			_, _, err := runVersion(t, s, &cfg, dir)
+			_, _, _, err := runVersion(t, s, &cfg, dir)
 			assert.NoError(t, err, "Version")
 			files.Absent(t, filepath.Join(dir, changesetA), "the changeset")
 		})
@@ -156,7 +166,7 @@ func TestVersion(t *testing.T) {
 			s := dependentState(t)
 			dir, _ := repository(t, s, nil)
 			cfg := defaultConfig()
-			_, edits, err := runVersion(t, s, &cfg, dir)
+			_, _, edits, err := runVersion(t, s, &cfg, dir)
 			assert.NoError(t, err, "Version")
 			assert.Equal(t, edits, []language.Edit{
 				{Version: parse(t, "1.0.1"), Package: s.pkgs[0]},
@@ -211,7 +221,7 @@ func TestVersion(t *testing.T) {
 				s := newState(t)
 				dir, commit := repository(t, s, files.Tree{changelogA: files.Text(tt.give)})
 				cfg := defaultConfig()
-				_, _, err := runVersion(t, s, &cfg, dir)
+				_, _, _, err := runVersion(t, s, &cfg, dir)
 				assert.NoError(t, err, "Version")
 				entry := "## 1.0.1\n\n### Patch Changes\n\n- " + commit[:7] + ": base summary whatever"
 				files.HasContent(t, filepath.Join(dir, changelogA), tt.want(entry), "the changelog")
@@ -224,7 +234,7 @@ func TestVersion(t *testing.T) {
 			dir, _ := repository(t, s, nil)
 			cfg := defaultConfig()
 			cfg.Changelog = release.Changelog{}
-			_, _, err := runVersion(t, s, &cfg, dir)
+			_, _, _, err := runVersion(t, s, &cfg, dir)
 			assert.NoError(t, err, "Version")
 			files.Absent(t, filepath.Join(dir, changelogA), "the changelog")
 		})
@@ -237,12 +247,12 @@ func TestVersion(t *testing.T) {
 			dir, _ := repository(t, s, nil)
 			cfg := defaultConfig()
 			cfg.Ignore = []string{"pkg-b"}
-			_, _, err := runVersion(t, s, &cfg, dir)
+			_, _, _, err := runVersion(t, s, &cfg, dir)
 			assert.NoError(t, err, "Version")
 			files.IsFile(t, filepath.Join(dir, changeset.Dir, "ignored-fix"+changeset.Ext), "the changeset of pkg-b")
 		})
 
-		t.Run("returns no path for a changeset whose file the repository does not have", func(t *testing.T) {
+		t.Run("returns no removed path for a changeset whose file the repository does not have", func(t *testing.T) {
 			t.Parallel()
 			s := blankState(t)
 			s.add("pkg-a", "1.0.0")
@@ -250,9 +260,9 @@ func TestVersion(t *testing.T) {
 			s.changeset("strange-words-combine", r("pkg-a", patch))
 			cfg := defaultConfig()
 			cfg.Changelog = release.Changelog{}
-			written, _, err := runVersion(t, s, &cfg, dir)
+			_, removed, _, err := runVersion(t, s, &cfg, dir)
 			assert.NoError(t, err, "Version")
-			assert.Equal(t, written, []string{versionA}, "the paths")
+			assert.Empty(t, removed, "the removed paths")
 		})
 
 		requirements := []struct {
@@ -320,7 +330,7 @@ func TestVersion(t *testing.T) {
 				if tt.config != nil {
 					tt.config(&cfg)
 				}
-				_, edits, err := runVersion(t, s, &cfg, dir)
+				_, _, edits, err := runVersion(t, s, &cfg, dir)
 				assert.NoError(t, err, "Version")
 				assert.Length(t, edits, 2, "the edits")
 				assert.Equal(t, edits[1].Requirements, tt.want, "the requirements of pkg-b")
@@ -336,7 +346,7 @@ func TestVersion(t *testing.T) {
 			s.changeset("docs-c", r("pkg-c", none))
 			dir, _ := repository(t, s, nil)
 			cfg := defaultConfig()
-			_, edits, err := runVersion(t, s, &cfg, dir)
+			_, _, edits, err := runVersion(t, s, &cfg, dir)
 			assert.NoError(t, err, "Version")
 			assert.Equal(t, edits, []language.Edit{
 				{Version: parse(t, "1.0.1"), Package: s.pkgs[0]},
@@ -357,7 +367,7 @@ func TestVersion(t *testing.T) {
 			s.changeset("fix-b", r("example.com/b", patch))
 			dir, _ := repository(t, s, nil)
 			cfg := defaultConfig()
-			_, edits, err := runVersion(t, s, &cfg, dir)
+			_, _, edits, err := runVersion(t, s, &cfg, dir)
 			assert.NoError(t, err, "Version")
 			reqs := []workspace.Dependency{{Name: "example.com/a", Kind: workspace.KindRuntime, Req: "v1.0.0"}}
 			assert.Equal(t, edits, []language.Edit{
@@ -372,7 +382,7 @@ func TestVersion(t *testing.T) {
 			const history = "# pkg-a\n\n## 1.0.0\n\n- First.\n"
 			dir, _ := repository(t, s, files.Tree{changelogA: files.Text(history)})
 			cfg := defaultConfig()
-			_, _, err := runVersion(t, s, &cfg, dir)
+			_, _, _, err := runVersion(t, s, &cfg, dir)
 			assert.ErrorIs(t, err, errApply, "Version")
 			files.HasContent(t, filepath.Join(dir, changelogA), history, "the changelog")
 			files.IsFile(t, filepath.Join(dir, changesetA), "the changeset")
@@ -384,7 +394,7 @@ func TestVersion(t *testing.T) {
 			s := blankState(t)
 			s.add("pkg-a", "1.0.0")
 			cfg := defaultConfig()
-			_, _, err := runVersion(t, s, &cfg, t.TempDir())
+			_, _, _, err := runVersion(t, s, &cfg, t.TempDir())
 			assert.ErrorIs(t, err, release.ErrNoChangesets, "Version")
 		})
 
@@ -394,7 +404,7 @@ func TestVersion(t *testing.T) {
 			s.versioner = unrewritable{}
 			dir, _ := repository(t, s, nil)
 			cfg := defaultConfig()
-			_, _, err := runVersion(t, s, &cfg, dir)
+			_, _, _, err := runVersion(t, s, &cfg, dir)
 			assert.ErrorIs(t, err, errRewrite, "Version")
 			assert.Contains(t, err.Error(), "the requirement 1.0.0 of pkg-b on pkg-a", "the error")
 		})
@@ -403,8 +413,12 @@ func TestVersion(t *testing.T) {
 			t.Parallel()
 			s := newState(t)
 			cfg := defaultConfig()
-			_, _, err := runVersion(t, s, &cfg, t.TempDir())
+			dir := t.TempDir()
+			_, want := vcs.AddedBy(t.Context(), dir, changesetA)
+			assert.HasError(t, want, "AddedBy outside a working tree")
+			_, _, _, err := runVersion(t, s, &cfg, dir)
 			assert.ErrorIs(t, err, vcs.ErrGit, "Version")
+			assert.Equal(t, err.Error(), want.Error(), "the error of Version has the same text as the error of AddedBy")
 		})
 
 		t.Run("returns ErrGit outside a working tree for a configuration without a changelog", func(t *testing.T) {
@@ -412,7 +426,7 @@ func TestVersion(t *testing.T) {
 			s := newState(t)
 			cfg := defaultConfig()
 			cfg.Changelog = release.Changelog{}
-			_, _, err := runVersion(t, s, &cfg, t.TempDir())
+			_, _, _, err := runVersion(t, s, &cfg, t.TempDir())
 			assert.ErrorIs(t, err, vcs.ErrGit, "Version")
 		})
 
@@ -421,7 +435,7 @@ func TestVersion(t *testing.T) {
 			s := newState(t)
 			cfg := defaultConfig()
 			cfg.Changelog = release.Changelog{}
-			_, _, err := runVersion(t, s, &cfg, filepath.Join(t.TempDir(), "absent"))
+			_, _, _, err := runVersion(t, s, &cfg, filepath.Join(t.TempDir(), "absent"))
 			assert.ErrorIs(t, err, fs.ErrNotExist, "Version")
 		})
 
@@ -431,7 +445,7 @@ func TestVersion(t *testing.T) {
 			dir, _ := repository(t, s, nil)
 			cfg := defaultConfig()
 			cfg.Changelog = release.Changelog{Format: release.ChangelogGitHub}
-			_, _, err := runVersion(t, s, &cfg, dir)
+			_, _, _, err := runVersion(t, s, &cfg, dir)
 			assert.ErrorIs(t, err, release.ErrChangelog, "Version")
 		})
 
@@ -440,7 +454,7 @@ func TestVersion(t *testing.T) {
 			s := newState(t)
 			dir, _ := repository(t, s, files.Tree{path.Join(changelogA, "inner"): files.Text("inner\n")})
 			cfg := defaultConfig()
-			_, _, err := runVersion(t, s, &cfg, dir)
+			_, _, _, err := runVersion(t, s, &cfg, dir)
 			assert.HasError(t, err, "Version")
 			assert.Contains(t, err.Error(), "read "+changelogA, "the error")
 		})
@@ -451,7 +465,7 @@ func TestVersion(t *testing.T) {
 			dir := vcstest.Repository(t, files.Tree{changesetA: files.Bytes(changeset.Format(&s.sets[0]))})
 			vcstest.Commit(t, dir, "add the changeset")
 			cfg := defaultConfig()
-			_, _, err := runVersion(t, s, &cfg, dir)
+			_, _, _, err := runVersion(t, s, &cfg, dir)
 			assert.ErrorIs(t, err, fs.ErrNotExist, "Version")
 			assert.Contains(t, err.Error(), "write "+changelogA, "the error")
 		})
@@ -466,7 +480,7 @@ func TestVersion(t *testing.T) {
 			vcstest.Commit(t, dir, "add a directory in place of the changeset")
 			cfg := defaultConfig()
 			cfg.Changelog = release.Changelog{}
-			_, _, err := runVersion(t, s, &cfg, dir)
+			_, _, _, err := runVersion(t, s, &cfg, dir)
 			assert.HasError(t, err, "Version")
 			assert.Contains(t, err.Error(), "remove "+changesetA, "the error")
 		})
@@ -501,15 +515,15 @@ func repository(tb testing.TB, s *state, extra files.Tree) (string, string) {
 }
 
 // runVersion plans the changesets of s under c and writes the plan into dir through a recorder of
-// the versioner of s, for the test tb. It returns the paths and the error of Version, and the edits
-// that the recorder recorded.
-func runVersion(tb testing.TB, s *state, c *release.Config, dir string) ([]string, []language.Edit, error) {
+// the versioner of s, for the test tb. It returns the paths that Version wrote and removed, the edits
+// that the recorder recorded, and the error of Version.
+func runVersion(tb testing.TB, s *state, c *release.Config, dir string) ([]string, []string, []language.Edit, error) {
 	tb.Helper()
 	rec := &recorder{Versioner: s.versioner, tb: tb}
 	s.versioner = rec
 	g := s.graph(tb)
 	plan, err := release.NewPlan(g, c, s.sets)
 	assert.NoError(tb, err, "NewPlan")
-	written, err := release.Version(tb.Context(), dir, g, c, &plan, release.Host{})
-	return written, rec.edits, err
+	written, removed, err := release.Version(tb.Context(), dir, g, c, &plan, release.Host{})
+	return written, removed, rec.edits, err
 }

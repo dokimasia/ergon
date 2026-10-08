@@ -36,9 +36,9 @@ type toolchainEdits struct {
 	edits []language.Edit
 }
 
-// Version writes plan into the repository at root, as changeset version writes a release plan, and
-// returns the paths that it changed, relative to root and slash-separated, in the order of the
-// writes:
+// Version writes plan into the repository at root, as changeset version writes a release plan. It
+// returns the paths that it wrote and the paths that it removed, each relative to root,
+// slash-separated and in the order of the changes. It changes these paths in this order:
 //
 //   - The CHANGELOG.md of each package with an entry of [Entries], with the entry before the first
 //     heading of a version, under a new heading # and the Name of the package, or after the first
@@ -65,62 +65,64 @@ type toolchainEdits struct {
 // wraps [vcs.ErrGit], the error of [Entries], the error of a versioner that cannot rewrite a
 // requirement, with the package and the requirement, the error of opening root, and the error of a
 // write or of a versioner, joined with the error of the restore.
-func Version(ctx context.Context, root string, g *Graph, c *Config, plan *Plan, h Host) ([]string, error) {
+func Version(ctx context.Context, root string, g *Graph, c *Config, plan *Plan, h Host) ([]string, []string, error) {
 	if len(plan.Changesets) == 0 {
-		return nil, ErrNoChangesets
+		return nil, nil, ErrNoChangesets
 	}
 	commits := map[string]string{}
 	if c.Changelog.Format != "" {
 		for _, s := range plan.Changesets {
 			commit, err := vcs.AddedBy(ctx, root, changesetPath(s.ID))
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			commits[s.ID] = commit
 		}
 	}
 	entries, err := Entries(ctx, g, c, plan, commits, h)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	groups, err := edits(g, c, plan)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	dir, err := os.OpenRoot(root)
 	if err != nil {
-		return nil, fmt.Errorf("release: open the repository: %w", err)
+		return nil, nil, fmt.Errorf("release: open the repository: %w", err)
 	}
 	defer func() { _ = dir.Close() }()
 	tree, err := vcs.Snapshot(ctx, root)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	written, err := write(ctx, dir, g, c, plan, entries, groups)
+	written, removed, err := write(ctx, dir, g, c, plan, entries, groups)
 	if err != nil {
-		return nil, errors.Join(err, vcs.Restore(context.WithoutCancel(ctx), root, tree, written))
+		changed := slices.Concat(written, removed)
+		return nil, nil, errors.Join(err, vcs.Restore(context.WithoutCancel(ctx), root, tree, changed))
 	}
-	return written, nil
+	return written, removed, nil
 }
 
 // write writes the entries into the changelogs, removes the changesets of plan that do not name a
 // skipped package, and applies the edits of each toolchain, in that order, in the repository at
-// dir. It returns the paths that it changed, each listed before its change, and on an error the
-// paths that it changed or began to change before the error.
+// dir. It returns the paths that it wrote, each listed before its write, and the paths that it
+// removed, each listed after its removal. On an error, they are the paths that it changed or began
+// to change before the error.
 func write(
 	ctx context.Context, dir *os.Root, g *Graph, c *Config, plan *Plan, entries []Entry, groups []toolchainEdits,
-) ([]string, error) {
-	var written []string
+) ([]string, []string, error) {
+	var written, removed []string
 	for _, e := range entries {
 		p := &g.pkgs[g.index[e.Name]]
 		file := path.Join(p.Dir, ChangelogFile)
 		data, err := dir.ReadFile(filepath.FromSlash(file))
 		if err != nil && !errors.Is(err, fs.ErrNotExist) {
-			return written, fmt.Errorf("release: read %s: %w", file, err)
+			return written, removed, fmt.Errorf("release: read %s: %w", file, err)
 		}
 		written = append(written, file)
 		if err := dir.WriteFile(filepath.FromSlash(file), updateChangelog(data, p.Name, e.Text), filePerm); err != nil {
-			return written, fmt.Errorf("release: write %s: %w", file, err)
+			return written, removed, fmt.Errorf("release: write %s: %w", file, err)
 		}
 	}
 	for _, s := range plan.Changesets {
@@ -135,18 +137,18 @@ func write(
 			if errors.Is(err, fs.ErrNotExist) {
 				continue
 			}
-			return written, fmt.Errorf("release: remove %s: %w", file, err)
+			return written, removed, fmt.Errorf("release: remove %s: %w", file, err)
 		}
-		written = append(written, file)
+		removed = append(removed, file)
 	}
 	for _, group := range groups {
 		paths, err := group.versioner.Apply(ctx, dir.Name(), group.edits)
 		written = append(written, paths...)
 		if err != nil {
-			return written, fmt.Errorf("release: apply the release: %w", err)
+			return written, removed, fmt.Errorf("release: apply the release: %w", err)
 		}
 	}
-	return written, nil
+	return written, removed, nil
 }
 
 // edits returns the edits of the packages of plan whose version or requirements change, grouped by
