@@ -111,8 +111,6 @@ audit-go: ## Scan every Go module for known vulnerabilities that its code reache
 	@$(GO) list -m -f '{{.Dir}}' | while IFS= read -r dir; do echo "govulncheck $$dir"; \
 		$(GOVULNCHECK) -C "$$dir" $(GO_AUDIT_ARGS) $(GO_PATHS) || exit 1; done
 check-go: lint-go test-go race-go audit-go ## Run the gate of Go
-# Copyright Dokimasia B.V. 2026
-# SPDX-License-Identifier: MIT
 
 # The targets of ergon's own repository, which ergon init appends to the Makefile.
 

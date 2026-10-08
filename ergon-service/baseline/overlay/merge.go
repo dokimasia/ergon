@@ -48,7 +48,8 @@ func Merge(base, over []byte) ([]byte, error) {
 // merge merges src into dst, as [Merge] states.
 func merge(dst, src *yaml.Node) {
 	if dst.Kind == yaml.MappingNode && src.Kind == yaml.MappingNode {
-		for i := 0; i+1 < len(src.Content); i += 2 {
+		// The content of a map node has a key and a value for each entry, so its length is even.
+		for i := 0; i < len(src.Content); i += 2 {
 			key, value := src.Content[i], src.Content[i+1]
 			j := index(dst, key.Value)
 			if j < 0 {
@@ -68,7 +69,7 @@ func merge(dst, src *yaml.Node) {
 
 // index returns the index of the key named key in the map node m, or -1.
 func index(m *yaml.Node, key string) int {
-	for i := 0; i+1 < len(m.Content); i += 2 {
+	for i := 0; i < len(m.Content); i += 2 {
 		if m.Content[i].Value == key {
 			return i
 		}

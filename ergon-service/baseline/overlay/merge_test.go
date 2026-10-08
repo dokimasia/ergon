@@ -50,6 +50,18 @@ func TestMerge(t *testing.T) {
 				want: "a: [1]\n",
 			},
 			{
+				name: "replaces a scalar with a map of the second document",
+				base: "a: 1\n",
+				over: "a:\n  b: 2\n",
+				want: "a:\n  b: 2\n",
+			},
+			{
+				name: "replaces a list with a scalar of the second document",
+				base: "a: [1]\n",
+				over: "a: x\n",
+				want: "a: x\n",
+			},
+			{
 				name: "keeps the comments of the second document",
 				base: "a: 1\n",
 				over: "# b is local\nb: 2\n",

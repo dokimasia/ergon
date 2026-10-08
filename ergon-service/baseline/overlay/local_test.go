@@ -105,6 +105,20 @@ func TestLocal(t *testing.T) {
 			}, "the local files")
 		})
 
+		t.Run("returns a file of a directory after a file whose path is lower", func(t *testing.T) {
+			t.Parallel()
+			fsys := fstest.MapFS{
+				dir + "/a/b.txt": {Data: []byte("b\n")},
+				dir + "/a-c.txt": {Data: []byte("c\n")},
+			}
+			got, err := overlay.Read(fsys)
+			assert.NoError(t, err, "Read")
+			assert.Equal(t, got, []overlay.Local{
+				{Path: "a-c.txt", Content: []byte("c\n")},
+				{Path: "a/b.txt", Content: []byte("b\n")},
+			}, "the local files, in the order of their paths and not of the walk")
+		})
+
 		t.Run("returns no local file for a repository without the directory", func(t *testing.T) {
 			t.Parallel()
 			got, err := overlay.Read(fstest.MapFS{"README.md": {Data: []byte("# demo\n")}})
@@ -164,6 +178,48 @@ func TestLocal(t *testing.T) {
 				content: "",
 				local:   "only\n",
 				want:    "only\n",
+			},
+			{
+				name:    "appends a local file without the license header on its first lines",
+				path:    "Makefile",
+				content: "check:\n",
+				local:   "# Copyright Example B.V. 2026\n# SPDX-License-Identifier: MIT\n\nlocal:\n",
+				want:    "check:\n\nlocal:\n",
+			},
+			{
+				name:    "appends a local file without a license header whose tag of SPDX comes first",
+				path:    "Makefile",
+				content: "check:\n",
+				local:   "# SPDX-License-Identifier: MIT\n# Copyright Example B.V. 2026\n\nlocal:\n",
+				want:    "check:\n\nlocal:\n",
+			},
+			{
+				name:    "appends the lines after a license header that no empty line follows",
+				path:    "Makefile",
+				content: "check:\n",
+				local:   "# SPDX-License-Identifier: MIT\nlocal:\n",
+				want:    "check:\nlocal:\n",
+			},
+			{
+				name:    "appends nothing of a local file that is a license header alone",
+				path:    "Makefile",
+				content: "check:\n",
+				local:   "# Copyright Example B.V. 2026\n# SPDX-License-Identifier: MIT",
+				want:    "check:\n",
+			},
+			{
+				name:    "appends a first line with a copyright notice and without a tag of SPDX",
+				path:    ".gitignore",
+				content: "bin/\n",
+				local:   "# Copyright notices of the vendored files\nvendor/\n",
+				want:    "bin/\n# Copyright notices of the vendored files\nvendor/\n",
+			},
+			{
+				name:    "merges a YAML file without the license header of its local file",
+				path:    "tools.yml",
+				content: "a: 1\n",
+				local:   "# Copyright Example B.V. 2026\n# SPDX-License-Identifier: MIT\n\nb: 2\n",
+				want:    "a: 1\nb: 2\n",
 			},
 			{
 				name:    "names the local file in the header of a file that is not YAML",
