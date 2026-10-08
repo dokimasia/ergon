@@ -1,5 +1,36 @@
 # go.dokimi.dev/ergon
 
+## 0.3.0
+
+### Minor Changes
+
+- 94c3bd1: Add ergon init upgrade and ergon init ci upgrade, which move a repository to the baseline of the newest release of ergon. The job of baseline.yml opens the pull request of the upgrade weekly, in place of an issue. ergon refuses a lock that a newer release of ergon wrote, and a local dependabot.yml that updates github-actions or pre-commit.
+- 6f01723: Seed .changeset/config.json with the changelog format @changesets/cli/changelog, whose entries thank no author.
+- 77ee1c0: Wait for the CI run of a commit before release.yml versions or publishes it. The job wait runs a new command for this, ergon release ci wait. The workflow release.yml no longer calls ci.yml, so each push to main runs the gate once.
+
+### Patch Changes
+
+- 8bfa588: Make ergon release version print removed for each changeset that it removes. release.Version returns the removed paths apart from the written paths.
+- Updated dependencies [94c3bd1]
+- Updated dependencies [8bfa588]
+- Updated dependencies [096abbd]
+- Updated dependencies [6f01723]
+- Updated dependencies [94c3bd1]
+- Updated dependencies [77ee1c0]
+  - go.dokimi.dev/ergon/service@0.3.0
+  - go.dokimi.dev/ergon/core@0.3.0
+  - go.dokimi.dev/ergon/lang/csharp@0.1.2
+  - go.dokimi.dev/ergon/lang/go@0.2.1
+  - go.dokimi.dev/ergon/lang/javascript@0.1.2
+  - go.dokimi.dev/ergon/lang/kotlin@0.2.1
+  - go.dokimi.dev/ergon/lang/php@0.2.1
+  - go.dokimi.dev/ergon/lang/python@0.2.1
+  - go.dokimi.dev/ergon/lang/rust@0.2.1
+  - go.dokimi.dev/ergon/lang/typescript@0.1.2
+  - go.dokimi.dev/ergon/lang/bash@0.2.1
+  - go.dokimi.dev/ergon/lang/java@0.2.1
+  - go.dokimi.dev/ergon/lang/terraform@0.2.1
+
 ## 0.2.0
 
 ### Minor Changes
