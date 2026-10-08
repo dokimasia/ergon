@@ -43,6 +43,9 @@ const section = "demo"
 // exe ends the name of a program on Windows.
 const exe = ".exe"
 
+// windows is the system that runs a program only by an extension of its name, such as .exe.
+const windows = "windows"
+
 // linux is the system that refuses to run a program that a process has open for writing.
 const linux = "linux"
 
@@ -52,7 +55,14 @@ var (
 	// self is the content of the test binary.
 	self []byte
 
-	// toolTarGz is a .tar.gz with the test binary as tool-1.0/tool.
+	// program is the name of the program of a release binary of the cases on the system of the test:
+	// tool, and tool.exe on Windows.
+	program string
+
+	// entry is the path of the program in toolTarGz.
+	entry string
+
+	// toolTarGz is a .tar.gz with the test binary at entry.
 	toolTarGz []byte
 
 	// toolZip is a .zip with the test binary as tool.exe.
@@ -153,13 +163,19 @@ func (r redirect) RoundTrip(req *http.Request) (*http.Response, error) {
 	return resp, nil
 }
 
-// TestMain acts as a fake program when fakeEnv is set. Otherwise it puts the fake toolchains first
-// on the PATH of the process, from which exec resolves a program, and builds the archives of the
-// cases.
+// TestMain acts as a fake program when fakeEnv is set. Otherwise it names the programs for the
+// system of the test, puts the fake toolchains first on the PATH of the process, from which exec
+// resolves a program, and builds the archives of the cases.
 func TestMain(m *testing.M) {
 	if os.Getenv(fakeEnv) != "" {
 		os.Exit(fake(os.Args))
 	}
+	var suffix string
+	if runtime.GOOS == windows {
+		suffix = exe
+	}
+	program = "tool" + suffix
+	entry = "tool-1.0/" + program
 	name, err := os.Executable()
 	if err == nil {
 		self, err = os.ReadFile(name)
@@ -170,16 +186,13 @@ func TestMain(m *testing.M) {
 		os.Exit(2)
 	}
 	for _, fake := range []string{"go", "cargo", "composer", "npx", "java", "php"} {
-		if runtime.GOOS == "windows" {
-			fake += exe
-		}
-		if err := os.WriteFile(filepath.Join(dir, fake), self, 0o755); err != nil {
+		if err := os.WriteFile(filepath.Join(dir, fake+suffix), self, 0o755); err != nil {
 			fmt.Fprintln(os.Stderr, "tool_test: the fakes do not install:", err)
 			os.Exit(2)
 		}
 	}
 	_ = os.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
-	toolTarGz = archive(".tar.gz", "tool-1.0/tool", self)
+	toolTarGz = archive(".tar.gz", entry, self)
 	toolZip = archive(".zip", "tool.exe", self)
 	code := m.Run()
 	_ = os.RemoveAll(dir)
@@ -195,7 +208,7 @@ func TestTool(t *testing.T) {
 		t.Run("runs a release binary with the arguments and returns its exit status", func(t *testing.T) {
 			t.Parallel()
 			o, served := demo(), map[string][]byte{}
-			o.Tools.Tool = release(served, "tool.tar.gz", "tool-1.0/tool", toolTarGz)
+			o.Tools.Tool = release(served, "tool.tar.gz", entry, toolTarGz)
 			r, out, _ := runner(t, served)
 			code, err := r.Run(t.Context(), section, o, "tool", []string{"lint", "--exit=3"})
 			assert.NoError(t, err, "Run")
@@ -206,7 +219,7 @@ func TestTool(t *testing.T) {
 		t.Run("runs the tool in the directory Dir", func(t *testing.T) {
 			t.Parallel()
 			o, served := demo(), map[string][]byte{}
-			o.Tools.Tool = release(served, "tool.tar.gz", "tool-1.0/tool", toolTarGz)
+			o.Tools.Tool = release(served, "tool.tar.gz", entry, toolTarGz)
 			r, out, _ := runner(t, served)
 			_, err := r.Run(t.Context(), section, o, "tool", []string{"--pwd"})
 			assert.NoError(t, err, "Run")
@@ -218,7 +231,7 @@ func TestTool(t *testing.T) {
 		t.Run("runs a release binary of the cache without a download", func(t *testing.T) {
 			t.Parallel()
 			o, served := demo(), map[string][]byte{}
-			o.Tools.Tool = release(served, "tool.tar.gz", "tool-1.0/tool", toolTarGz)
+			o.Tools.Tool = release(served, "tool.tar.gz", entry, toolTarGz)
 			r, out, _ := runner(t, served)
 			_, err := r.Run(t.Context(), section, o, "tool", nil)
 			assert.NoError(t, err, "the first Run")
@@ -234,13 +247,13 @@ func TestTool(t *testing.T) {
 				t.Skip("Linux alone refuses to run a program that a process has open for writing")
 			}
 			o, served := demo(), map[string][]byte{}
-			o.Tools.Tool = release(served, "tool", "", self)
+			o.Tools.Tool = release(served, program, "", self)
 			r, out, _ := runner(t, served)
 			_, err := r.Run(t.Context(), section, o, "tool", nil)
 			assert.NoError(t, err, "the Run that installs the tool")
 			var programs []string
 			err = filepath.WalkDir(r.Cache, func(p string, d fs.DirEntry, err error) error {
-				if err == nil && d.Type().IsRegular() && d.Name() == "tool" {
+				if err == nil && d.Type().IsRegular() && d.Name() == program {
 					programs = append(programs, p)
 				}
 				return err
@@ -304,7 +317,7 @@ func TestTool(t *testing.T) {
 		t.Run("returns the error of a program that does not start", func(t *testing.T) {
 			t.Parallel()
 			o, served := demo(), map[string][]byte{}
-			o.Tools.Tool = release(served, "tool", "", []byte("no program\n"))
+			o.Tools.Tool = release(served, program, "", []byte("no program\n"))
 			r, _, _ := runner(t, served)
 			_, err := r.Run(t.Context(), section, o, "tool", nil)
 			assert.HasError(t, err, "Run")

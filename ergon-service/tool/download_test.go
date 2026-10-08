@@ -35,9 +35,9 @@ func TestDownload(t *testing.T) {
 			program string
 			content []byte
 		}{
-			{name: "runs the program of a .tar.gz", file: "tool.tar.gz", program: "tool-1.0/tool", content: toolTarGz},
+			{name: "runs the program of a .tar.gz", file: "tool.tar.gz", program: entry, content: toolTarGz},
 			{name: "runs the program of a .zip", file: "tool.zip", program: "tool.exe", content: toolZip},
-			{name: "runs an asset that is the program", file: "tool", content: self},
+			{name: "runs an asset that is the program", file: program, content: self},
 		}
 		for _, tt := range runs {
 			t.Run(tt.name, func(t *testing.T) {
@@ -76,7 +76,7 @@ func TestDownload(t *testing.T) {
 			{
 				name: "returns ErrInstall for a platform without a digest",
 				give: func(served map[string][]byte) binary {
-					b := release(served, "tool.tar.gz", "tool-1.0/tool", toolTarGz)
+					b := release(served, "tool.tar.gz", entry, toolTarGz)
 					b.SHA256 = map[option.Platform]string{"plan9/amd64": digest(toolTarGz)}
 					return b
 				},
@@ -84,7 +84,7 @@ func TestDownload(t *testing.T) {
 			{
 				name: "returns ErrInstall for a download of another digest",
 				give: func(served map[string][]byte) binary {
-					b := release(served, "tool.tar.gz", "tool-1.0/tool", toolTarGz)
+					b := release(served, "tool.tar.gz", entry, toolTarGz)
 					b.SHA256[host()] = digest([]byte("other"))
 					return b
 				},
@@ -92,7 +92,7 @@ func TestDownload(t *testing.T) {
 			{
 				name: "returns ErrInstall for an asset that the server does not have",
 				give: func(served map[string][]byte) binary {
-					b := release(served, "tool.tar.gz", "tool-1.0/tool", toolTarGz)
+					b := release(served, "tool.tar.gz", entry, toolTarGz)
 					clear(served)
 					return b
 				},
@@ -100,7 +100,7 @@ func TestDownload(t *testing.T) {
 			{
 				name: "returns ErrInstall for an address that is no URL",
 				give: func(served map[string][]byte) binary {
-					b := release(served, "tool.tar.gz", "tool-1.0/tool", toolTarGz)
+					b := release(served, "tool.tar.gz", entry, toolTarGz)
 					b.asset.URL = "https://example.com/\x7f"
 					return b
 				},
@@ -155,7 +155,7 @@ func TestDownload(t *testing.T) {
 		t.Run("returns ErrInstall for a request that fails", func(t *testing.T) {
 			t.Parallel()
 			o, served := demo(), map[string][]byte{}
-			o.Tools.Tool = release(served, "tool.tar.gz", "tool-1.0/tool", toolTarGz)
+			o.Tools.Tool = release(served, "tool.tar.gz", entry, toolTarGz)
 			r, _, _ := runner(t, served)
 			r.Client.Transport.(redirect).target.Host = "127.0.0.1:1"
 			_, err := r.Run(t.Context(), section, o, "tool", nil)
@@ -165,7 +165,7 @@ func TestDownload(t *testing.T) {
 		t.Run("returns ErrInstall for a cache that does not create", func(t *testing.T) {
 			t.Parallel()
 			o, served := demo(), map[string][]byte{}
-			o.Tools.Tool = release(served, "tool.tar.gz", "tool-1.0/tool", toolTarGz)
+			o.Tools.Tool = release(served, "tool.tar.gz", entry, toolTarGz)
 			r, _, _ := runner(t, served)
 			r.Cache = filepath.Join(r.Cache, "file")
 			assert.NoError(t, os.WriteFile(r.Cache, nil, 0o644), "WriteFile of the cache")

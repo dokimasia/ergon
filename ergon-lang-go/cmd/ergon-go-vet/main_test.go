@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -19,11 +20,15 @@ import (
 // test merges into the profile.
 const childVar = "ERGON_GO_VET_MAIN"
 
-// The findings of the module of the cases, after the path of each package.
-const (
-	demoPrefix = `demo/demo.go:6:14: the text "bad" of errors.New does not start with "demo:", the name of its package`
-	demoSkip   = "demo/demo_test.go:6:2: the skip expired on 2020-01-01, so fix the test and remove the skip"
-	legacy     = `legacy/legacy.go:6:14: the text "old" of errors.New does not start with "legacy:"`
+// The findings of the module of the cases, each after the path of its file in the module, which
+// ergon-go-vet prints with the separator of the system.
+var (
+	demoPrefix = filepath.FromSlash("demo/demo.go") +
+		`:6:14: the text "bad" of errors.New does not start with "demo:", the name of its package`
+	demoSkip = filepath.FromSlash("demo/demo_test.go") +
+		":6:2: the skip expired on 2020-01-01, so fix the test and remove the skip"
+	legacy = filepath.FromSlash("legacy/legacy.go") +
+		`:6:14: the text "old" of errors.New does not start with "legacy:"`
 )
 
 // module is the module of the cases: the package demo breaks both rules, and the package legacy

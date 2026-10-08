@@ -191,7 +191,10 @@ func TestSnapshotEnv(t *testing.T) {
 	t.Run("Snapshot", func(t *testing.T) {
 		t.Run("returns the error of a temporary directory that it cannot create", func(t *testing.T) {
 			dir := vcstest.Repository(t, files.Tree{"a.txt": files.Text("a\n")})
-			t.Setenv("TMPDIR", filepath.Join(dir, "absent"))
+			// os.TempDir reads TMPDIR on Linux and macOS, and TMP and TEMP on Windows.
+			for _, name := range []string{"TMPDIR", "TMP", "TEMP"} {
+				t.Setenv(name, filepath.Join(dir, "absent"))
+			}
 			_, err := vcs.Snapshot(t.Context(), dir)
 			assert.ErrorIs(t, err, fs.ErrNotExist, "Snapshot")
 		})
