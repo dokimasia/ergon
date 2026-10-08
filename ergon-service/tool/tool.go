@@ -15,6 +15,8 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"syscall"
+	"time"
 
 	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/core/option"
@@ -41,6 +43,9 @@ const (
 
 // windows is the system whose programs end in .exe.
 const windows = "windows"
+
+// busyWait is the time between two starts of a program that a process has open for writing.
+const busyWait = 10 * time.Millisecond
 
 // major matches the last element of the path of a Go module of a major version, such as v2, which
 // go install does not name the program after.
@@ -114,6 +119,11 @@ type entry struct {
 //   - an [option.Composer] installs with every Composer package of the section into one project,
 //     and runs with php
 //
+// A program that does not start with ETXTBSY starts again after 10 ms, until ctx ends. Linux
+// refuses to run a program that a process has open for writing, and a process that another
+// goroutine forks has the open files of this one until its exec, such as the program that an
+// install has just written and closed.
+//
 // It returns an error that wraps [ErrUnknown] for options without the tool name, which lists the
 // tools of the section, [ErrInstall] for a tool that does not install, and the error of a tool that
 // does not start. A tool that runs and fails returns its exit status and no error.
@@ -128,10 +138,16 @@ func (r *Runner) Run(ctx context.Context, section string, o language.Options, na
 	if err != nil {
 		return 0, err
 	}
-	cmd := exec.CommandContext(ctx, program, slices.Concat(prefix, args)...)
-	cmd.Dir, cmd.Env = r.Dir, r.Env
-	cmd.Stdin, cmd.Stdout, cmd.Stderr = r.Stdin, r.Stdout, r.Stderr
-	err = cmd.Run()
+	for {
+		cmd := exec.CommandContext(ctx, program, slices.Concat(prefix, args)...)
+		cmd.Dir, cmd.Env = r.Dir, r.Env
+		cmd.Stdin, cmd.Stdout, cmd.Stderr = r.Stdin, r.Stdout, r.Stderr
+		err = cmd.Run()
+		if !errors.Is(err, syscall.ETXTBSY) {
+			break
+		}
+		time.Sleep(busyWait)
+	}
 	if exit, ok := errors.AsType[*exec.ExitError](err); ok {
 		return exit.ExitCode(), nil
 	}

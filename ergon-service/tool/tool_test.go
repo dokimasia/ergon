@@ -12,6 +12,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -23,6 +24,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"go.dokimi.dev/assert"
 	"go.dokimi.dev/ergon/core/language"
@@ -40,6 +42,9 @@ const section = "demo"
 
 // exe ends the name of a program on Windows.
 const exe = ".exe"
+
+// linux is the system that refuses to run a program that a process has open for writing.
+const linux = "linux"
 
 // The programs of the cases: the test binary, which acts as a tool, and the archives of the
 // release binaries that contain it.
@@ -220,6 +225,36 @@ func TestTool(t *testing.T) {
 			clear(served)
 			_, err = r.Run(t.Context(), section, o, "tool", []string{"again"})
 			assert.NoError(t, err, "the second Run")
+			assert.Equal(t, out.String(), "tool\n"+"tool again\n", "the output of both runs")
+		})
+
+		t.Run("starts a program again while a process has it open for writing", func(t *testing.T) {
+			t.Parallel()
+			if runtime.GOOS != linux {
+				t.Skip("Linux alone refuses to run a program that a process has open for writing")
+			}
+			o, served := demo(), map[string][]byte{}
+			o.Tools.Tool = release(served, "tool", "", self)
+			r, out, _ := runner(t, served)
+			_, err := r.Run(t.Context(), section, o, "tool", nil)
+			assert.NoError(t, err, "the Run that installs the tool")
+			var programs []string
+			err = filepath.WalkDir(r.Cache, func(p string, d fs.DirEntry, err error) error {
+				if err == nil && d.Type().IsRegular() && d.Name() == "tool" {
+					programs = append(programs, p)
+				}
+				return err
+			})
+			assert.NoError(t, err, "WalkDir of the cache")
+			assert.Length(t, programs, 1, "the programs of the tool in the cache")
+			var f *os.File
+			assert.EventuallyTrue(t, 5*time.Second, func() bool {
+				f, err = os.OpenFile(programs[0], os.O_WRONLY, 0)
+				return err == nil
+			}, "the program opens for writing once the kernel releases the exited run")
+			time.AfterFunc(100*time.Millisecond, func() { _ = f.Close() })
+			_, err = r.Run(t.Context(), section, o, "tool", []string{"again"})
+			assert.NoError(t, err, "the Run while the program is open for writing")
 			assert.Equal(t, out.String(), "tool\n"+"tool again\n", "the output of both runs")
 		})
 
