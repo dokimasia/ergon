@@ -5,9 +5,9 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -212,8 +212,9 @@ func TestUpdateBaselineProcess(t *testing.T) {
 
 		t.Run("returns the error of a program that does not start", func(t *testing.T) {
 			missing := filepath.Join(t.TempDir(), "missing")
+			want := exec.CommandContext(t.Context(), missing, "first").Run()
 			err := execute(t.Context(), t.TempDir(), io.Discard, io.Discard, missing, "first")
-			assert.ErrorIs(t, err, fs.ErrNotExist, "the error of execute")
+			assert.Equal(t, errors.Unwrap(err), want, "the error that execute wraps, the error of os/exec")
 			expect.HasPrefix(t, err.Error(), missing+" first: ", "the text of the error")
 		})
 	})
