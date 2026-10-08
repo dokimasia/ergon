@@ -777,7 +777,7 @@ func TestInit(t *testing.T) {
 					assert.NotEmpty(t, job.TimeoutMinutes, "the timeout of "+id)
 					assert.True(t, strings.HasPrefix(job.Steps[0].Uses, checkout.Uses+"@"), "the first step of "+id)
 					assert.Equal(t, job.Steps[0].With["persist-credentials"], any(false), "persist-credentials of "+id)
-					matrix := gate && (strings.HasPrefix(id, "check-") || id == "baseline")
+					matrix := gate && strings.HasPrefix(id, "check-")
 					if !matrix {
 						assert.Equal(t, job.RunsOn, platform.Linux, "the runner of "+id)
 						continue

@@ -86,12 +86,8 @@ jobs:
           ergon release status --since "$BASE"
 
   baseline:
-    name: "Baseline (${{ matrix.os }})"
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-26.04, macos-26, windows-2025]
-    runs-on: ${{ matrix.os }}
+    name: Baseline
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     permissions:
       contents: read

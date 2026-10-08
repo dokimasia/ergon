@@ -98,12 +98,14 @@ func (Producer) Data(_ *language.Answers, o language.Options, c *workflow.Contri
 }
 
 // Contribution returns the job baseline of ci.yml for o, and for the options at the baseline when o
-// is not the options of the GitHub files. The job runs ergon init check on every runner of the
-// section, so a managed file that differs from its rendering fails the gate on each system.
+// is not the options of the GitHub files. The job runs ergon init check on the Linux runner of the
+// section, as a check of text: the managed .gitattributes checks out every text file with LF on
+// each system, so the check compares the same bytes everywhere.
 func (Producer) Contribution(o language.Options) workflow.Contribution {
 	return workflow.Contribution{Jobs: []workflow.Job{{
 		ID:          "baseline",
 		Name:        "Baseline",
+		Text:        true,
 		Timeout:     own(o).CI.Timeout,
 		Permissions: map[string]string{"contents": "read"},
 		Ergon:       true,

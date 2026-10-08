@@ -139,7 +139,7 @@ The job `changeset` runs `ergon release status` against the base commit of each 
 | `.github/workflows/baseline.yml` | Managed | A scheduled check against the newest ergon release |
 | `.github/actions/setup-ergon/action.yml` | Managed | Installs the ergon release that the lock names on a Linux, macOS or Windows runner, and checks its archive against the release's `checksums.txt` |
 | `.github/actions/setup-make/action.yml` | Managed | Installs GNU make from Chocolatey on a Windows runner, whose image has no make |
-| `.github/dependabot.yml` | Managed | Weekly updates for the package manager of each language |
+| `.github/dependabot.yml` | Managed | Weekly updates for the package manager of each language: the minor and patch updates of each directory in one pull request, and each major update in a pull request of its own |
 | `.github/ISSUE_TEMPLATE/config.yml`, `bug.yml`, `feature.yml` | Managed | Issue forms, with blank issues off and security reports sent to the advisory form |
 | `.github/PULL_REQUEST_TEMPLATE.md` | Managed | The summary, the changeset and the gate checklist |
 | `.github/CODEOWNERS` | Seeded | The repository's reviewers |
@@ -165,7 +165,7 @@ Every workflow follows these rules:
 - A toolchain's runtime version comes from its pin file, or from the versions that `ci.versions` of its section lists, as a matrix.
 - No workflow uses `pull_request_target`, and no pull request job receives a secret.
 - Every job specifies its runner image with a version, never a `-latest` label.
-- Each job runs on the runners that `ci.runners` of its producer lists. An empty list selects every runner of the section `github`: `ubuntu-26.04`, `macos-26` and `windows-2025` at the baseline. The job of a language runs without `fail-fast`. A job that checks text, such as `docs` and `commits`, and every job of `release.yml` run on the runner of `github.linux`.
+- Each job runs on the runners that `ci.runners` of its producer lists. An empty list selects every runner of the section `github`: `ubuntu-26.04`, `macos-26` and `windows-2025` at the baseline. The job of a language runs without `fail-fast`. A job that checks text, such as `docs`, `commits` and `baseline`, and every job of `release.yml` run on the runner of `github.linux`. `baseline` checks text, because the managed `.gitattributes` checks out every text file with LF on every system.
 - Each `check-<language>` job runs `make check-<language>`, so CI and a local run execute the same commands. The step runs in `bash`, which is Git Bash on Windows, after `setup-make`.
 
 ### Jobs

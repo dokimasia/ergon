@@ -27,8 +27,9 @@
 //     codeql.yml.
 //   - baseline.yml checks the managed files against the newest release of ergon weekly, and opens
 //     an issue when they are outdated.
-//   - dependabot.yml updates the package manager of each update of the contributions weekly. A
-//     repository without one has no dependabot.yml.
+//   - dependabot.yml updates the package manager of each update of the contributions weekly, with
+//     the minor and patch updates of each directory in one pull request and each major update in a
+//     pull request of its own. A repository without an update has no dependabot.yml.
 //
 // Every workflow grants no permission at its top level, and each job grants only the scopes that
 // it needs. Every action is pinned to the commit of a release, with the release in a comment.
@@ -46,8 +47,9 @@
 //
 // # Contribution
 //
-// [Producer.Contribution] returns the job baseline of ci.yml, which runs ergon init check on every
-// runner, so a managed file that differs from its rendering fails the gate.
+// [Producer.Contribution] returns the job baseline of ci.yml, which runs ergon init check on the
+// Linux runner as a check of text, so a managed file that differs from its rendering fails the
+// gate.
 //
 // # Errors
 //

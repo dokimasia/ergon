@@ -50,7 +50,7 @@
     {
       "path": ".github/dependabot.yml",
       "producer": "github",
-      "sha256": "94971d220707444d500910f6952c7af152fc95ad651d56e552917d55899f1839"
+      "sha256": "2b2022de9d4fc916fca8d4f608db653f33791a5855786f0f4d804d9a09d391ad"
     },
     {
       "path": ".github/workflows/baseline.yml",
@@ -60,7 +60,7 @@
     {
       "path": ".github/workflows/ci.yml",
       "producer": "github",
-      "sha256": "f7b76d171842d6334b060bafa1b3d5c1096c44b52291e0c0e7878e0ea54f9b4d"
+      "sha256": "e7ee3568568b3dd564478324bf5a72b8961a2c71bf6242fd23a504793ed4f2a9"
     },
     {
       "path": ".github/workflows/codeql.yml",

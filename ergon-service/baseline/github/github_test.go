@@ -179,12 +179,13 @@ func TestGithub(t *testing.T) {
 		t.Run("Contribution", func(t *testing.T) {
 			t.Parallel()
 
-			t.Run("returns the job baseline, which runs ergon init check", func(t *testing.T) {
+			t.Run("returns the job baseline, which runs ergon init check as a check of text", func(t *testing.T) {
 				t.Parallel()
 				got := github.Producer{}.Contribution(github.Producer{}.Options())
 				assert.Equal(t, got, workflow.Contribution{Jobs: []workflow.Job{{
 					ID:          "baseline",
 					Name:        "Baseline",
+					Text:        true,
 					Timeout:     15,
 					Permissions: read,
 					Ergon:       true,
