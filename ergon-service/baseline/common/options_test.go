@@ -73,5 +73,14 @@ func TestOptions(t *testing.T) {
 				assert.ErrorIs(t, err, option.ErrNoAsset, "Asset")
 			})
 		})
+
+		t.Run("Repository", func(t *testing.T) {
+			t.Parallel()
+
+			t.Run("returns the repository of the releases of commitlint", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, common.Commitlint{}.Repository(), "conventionalcommit/commitlint", "Repository")
+			})
+		})
 	})
 }

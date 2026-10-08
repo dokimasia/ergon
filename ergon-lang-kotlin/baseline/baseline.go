@@ -21,7 +21,7 @@ const Name = "kotlin"
 //go:embed all:templates
 var templates embed.FS
 
-// tools are the tools of the section kotlin at the baseline: ktlint 1.8.0. [Tools.Validate]
+// tools are the tools of the section kotlin at the baseline: a release of ktlint. [Tools.Validate]
 // requires its package.
 var tools = Tools{Ktlint: "com.pinterest.ktlint:ktlint-cli@1.8.0"}
 
@@ -43,8 +43,8 @@ func (Producer) Templates() fs.FS {
 	return sub
 }
 
-// Options returns the section kotlin at the baseline: ktlint 1.8.0, the gate of lint, test and
-// audit, and ./gradlew test without arguments.
+// Options returns the section kotlin at the baseline: the release of ktlint, the gate of lint, test
+// and audit, and ./gradlew test without arguments.
 func (Producer) Options() language.Options {
 	return &Options{
 		Tools: tools,

@@ -24,6 +24,8 @@
 //     renders.
 //   - A [Placer] returns each [File] whose path its options state, such as the LICENSE of a
 //     directory, which no template tree can mirror.
+//   - A [LocalChecker] refuses the local file of one of its managed files, such as a local file of
+//     the configuration of Dependabot that would let Dependabot edit another managed file.
 //
 // A producer configures its own concern alone: a section names the tools, the actions and the
 // runtime versions of its own producer, and never those of another ecosystem.
@@ -50,7 +52,7 @@
 // RegisterToolchain and Register leave the catalog unchanged when they return an error. Each
 // error wraps one of [ErrInvalidName], [ErrRegistered], [ErrUnknownToolchain] and [ErrUnknownRole],
 // and quotes the name that caused it. Answers.Validate returns an error that wraps
-// [ErrInvalidAnswer].
+// [ErrInvalidAnswer], and a LocalChecker an error that wraps [ErrInvalidLocal].
 //
 // # Concurrency
 //

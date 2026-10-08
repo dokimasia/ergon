@@ -327,6 +327,33 @@ func TestConfig(t *testing.T) {
 			})
 		}
 	})
+
+	t.Run("ParseBaseBranch", func(t *testing.T) {
+		t.Parallel()
+
+		tests := []struct {
+			name string
+			give string
+			want string
+		}{
+			{name: "returns the baseBranch of the configuration", give: `{"baseBranch": "develop"}`, want: "develop"},
+			{name: "returns main for a configuration without baseBranch", give: `{"commit": false}`, want: "main"},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+				got, err := release.ParseBaseBranch([]byte(tt.give))
+				assert.NoError(t, err, "ParseBaseBranch")
+				assert.Equal(t, got, tt.want, "the base branch")
+			})
+		}
+
+		t.Run("returns ErrConfig for a baseBranch that is no string", func(t *testing.T) {
+			t.Parallel()
+			_, err := release.ParseBaseBranch([]byte(`{"baseBranch": 5}`))
+			assert.ErrorIs(t, err, release.ErrConfig, "ParseBaseBranch")
+		})
+	})
 }
 
 // configState returns the packages of the cases of the configuration for the test tb: pkg-a to

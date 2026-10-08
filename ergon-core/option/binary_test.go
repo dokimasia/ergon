@@ -196,6 +196,15 @@ func TestBinary(t *testing.T) {
 				assert.ErrorIs(t, err, option.ErrNoAsset, "Asset of linux/386")
 			})
 		})
+
+		t.Run("Repository", func(t *testing.T) {
+			t.Parallel()
+
+			t.Run("returns the repository of the releases of uv", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, uv().Repository(), "astral-sh/uv", "Repository")
+			})
+		})
 	})
 }
 

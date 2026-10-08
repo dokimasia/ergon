@@ -42,8 +42,8 @@ func (Producer) Templates() fs.FS {
 }
 
 // Options returns the section csharp at the baseline: the gate of lint, test and audit, a scan that
-// fails on every known vulnerability, setup-dotnet v6.0.0, and a limit of 30 minutes for the job
-// check-csharp on every runner and the SDK of global.json.
+// fails on every known vulnerability, the release of setup-dotnet, and a limit of 30 minutes for
+// the job check-csharp on every runner and the SDK of global.json.
 func (Producer) Options() language.Options {
 	return &Options{
 		Check: option.Check{option.StepLint, option.StepTest, option.StepAudit},

@@ -12,6 +12,7 @@ import (
 	"path"
 	"slices"
 
+	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/service/baseline/lock"
 	"go.dokimi.dev/ergon/service/baseline/overlay"
 	"go.dokimi.dev/ergon/service/baseline/render"
@@ -91,10 +92,11 @@ func (r *Repository) remove(name string) error {
 }
 
 // applyLocal merges each local file into the managed target of its path, as [overlay.Apply]
-// states, and records the digest of the local file. It returns an error that wraps
-// [ErrUnmanagedLocal] for a local file whose path is not a managed target, and the error of a
-// local file that does not read or merge.
-func (r *Repository) applyLocal(targets []target) error {
+// states, and records the digest of the local file. units are the producers of the targets, and the
+// producer of a target that is a [language.LocalChecker] checks the merged content. It returns an
+// error that wraps [ErrUnmanagedLocal] for a local file whose path is not a managed target, the
+// error of a local file that does not read or merge, and the error of CheckLocal.
+func (r *Repository) applyLocal(targets []target, units []render.Unit) error {
 	locals, err := overlay.Read(r.fsys.FS())
 	if err != nil {
 		return err
@@ -107,6 +109,12 @@ func (r *Repository) applyLocal(targets []target) error {
 		content, err := overlay.Apply(l.Path, targets[i].Content, l.Content)
 		if err != nil {
 			return err
+		}
+		j := slices.IndexFunc(units, func(u render.Unit) bool { return u.Name == targets[i].Producer })
+		if checker, ok := units[j].Producer.(language.LocalChecker); ok {
+			if err := checker.CheckLocal(l.Path, content); err != nil {
+				return fmt.Errorf("baseline: %s/%s: %w", overlay.Dir, l.Path, err)
+			}
 		}
 		targets[i].Content = content
 		targets[i].local = lock.Digest(l.Content)

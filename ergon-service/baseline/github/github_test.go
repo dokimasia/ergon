@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"path/filepath"
 	"testing"
 	"testing/fstest"
 
@@ -92,7 +93,7 @@ func TestGithub(t *testing.T) {
 					)
 					baselinetest.Hygiene(t, dir)
 					for _, file := range []string{ciPath, releasePath, securityPath, dependabotPath} {
-						got, err := os.ReadFile(path.Join(dir, file))
+						got, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(file)))
 						assert.NoError(t, err, "ReadFile of "+file)
 						golden.Match(t, path.Join("contributions", path.Base(file)), got, golden.ShouldUpdate())
 					}
@@ -102,7 +103,7 @@ func TestGithub(t *testing.T) {
 			t.Run("renders no configuration of Dependabot without an update", func(t *testing.T) {
 				t.Parallel()
 				dir := baselinetest.New(t, new(language.Catalog), baselinetest.Answers(), producer())
-				_, err := os.Stat(path.Join(dir, dependabotPath))
+				_, err := os.Stat(filepath.Join(dir, filepath.FromSlash(dependabotPath)))
 				assert.ErrorIs(t, err, fs.ErrNotExist, "Stat of "+dependabotPath)
 			})
 		})
@@ -227,6 +228,83 @@ func TestGithub(t *testing.T) {
 				o.CI.Timeout = 25
 				got := github.Producer{}.Contribution(o)
 				assert.Equal(t, got.Jobs[0].Timeout, 25, "the timeout of baseline")
+			})
+		})
+
+		t.Run("CheckLocal", func(t *testing.T) {
+			t.Parallel()
+
+			refused := []struct {
+				name string
+				give string
+				want string
+			}{
+				{
+					name: "returns ErrInvalidLocal for an update of github-actions",
+					give: "updates:\n  - package-ecosystem: gomod\n  - package-ecosystem: github-actions\n",
+					want: dependabotPath + " updates the ecosystem github-actions, so Dependabot would edit the " +
+						"workflows and the actions under .github/, which ergon init renders",
+				},
+				{
+					name: "returns ErrInvalidLocal for an update of pre-commit",
+					give: "updates:\n  - package-ecosystem: pre-commit\n",
+					want: dependabotPath + " updates the ecosystem pre-commit, so Dependabot would edit " +
+						".pre-commit-config.yaml, which ergon init renders",
+				},
+				{
+					name: "returns ErrInvalidLocal for updates that do not decode",
+					give: "updates: 5\n",
+					want: "the updates of " + dependabotPath,
+				},
+			}
+			for _, tt := range refused {
+				t.Run(tt.name, func(t *testing.T) {
+					t.Parallel()
+					err := github.Producer{}.CheckLocal(dependabotPath, []byte(tt.give))
+					assert.ErrorIs(t, err, language.ErrInvalidLocal, "CheckLocal")
+					assert.Contains(t, err.Error(), tt.want, "the error")
+				})
+			}
+
+			accepted := []struct {
+				name string
+				path string
+				give string
+			}{
+				{
+					name: "returns nil for updates of package managers",
+					path: dependabotPath,
+					give: "updates:\n  - package-ecosystem: gomod\n  - package-ecosystem: npm\n",
+				},
+				{
+					name: "returns nil for another file",
+					path: ciPath,
+					give: "updates:\n  - package-ecosystem: github-actions\n",
+				},
+			}
+			for _, tt := range accepted {
+				t.Run(tt.name, func(t *testing.T) {
+					t.Parallel()
+					assert.NoError(t, github.Producer{}.CheckLocal(tt.path, []byte(tt.give)), "CheckLocal")
+				})
+			}
+
+			t.Run("returns ErrInvalidLocal from New for a local file with an update of pre-commit", func(t *testing.T) {
+				t.Parallel()
+				root, err := os.OpenRoot(t.TempDir())
+				assert.NoError(t, err, "OpenRoot")
+				t.Cleanup(func() { _ = root.Close() })
+				local := path.Join(".ergon/local", dependabotPath)
+				assert.NoError(t, root.MkdirAll(path.Dir(local), 0o755), "MkdirAll of the directory of the local file")
+				assert.NoError(t, root.WriteFile(local, []byte("updates:\n  - package-ecosystem: pre-commit\n"), 0o644),
+					"WriteFile of the local file")
+				r, err := baseline.Open(root, new(language.Catalog), baselinetest.Version, producer(),
+					baseline.Producer{Name: "tool", Producer: part{contribution: toolchain()}},
+					baseline.Producer{Name: "alpha", Producer: part{contribution: languages()}},
+				)
+				assert.NoError(t, err, "Open")
+				_, err = r.New(baselinetest.Answers(), baseline.Options{})
+				assert.ErrorIs(t, err, language.ErrInvalidLocal, "New")
 			})
 		})
 	})

@@ -14,12 +14,19 @@
 //     through the subcommands new, add, remove, check and sync of
 //     [go.dokimi.dev/ergon/service/baseline]. The common files render first, the GitHub files
 //     second, the license files third, and then the files of each language of the catalog.
+//   - ergon init upgrade moves the repository to the baseline of the newest release of ergon. It
+//     finds the release in the module proxy of Go with [go.dokimi.dev/ergon/service/pin], and
+//     runs it through [go.dokimi.dev/ergon/service/tool] when it is newer than the running ergon.
+//     The newest release syncs the repository and lists the pins of .ergon.yaml that differ from
+//     its baseline. ergon init ci upgrade upgrades the repository in the same way in the workflow
+//     baseline.yml, and proposes the change as a pull request through
+//     [go.dokimi.dev/ergon/service/forge].
 //   - ergon license check and ergon license fix check and fix the license headers of the files of
 //     the repository with [go.dokimi.dev/ergon/service/licenses], by the section license of
 //     .ergon.yaml.
 //   - ergon release plans, writes and publishes the releases of the packages of the repository
-//     with [go.dokimi.dev/ergon/service/release], and its subcommands ci select-mode and ci
-//     version run the jobs of the release workflow through [go.dokimi.dev/ergon/service/forge].
+//     with [go.dokimi.dev/ergon/service/release]. Its subcommands ci select-mode, ci version and ci
+//     wait run the jobs of the release workflow through [go.dokimi.dev/ergon/service/forge].
 //   - ergon tool run installs and runs a tool of a section of .ergon.yaml with
 //     [go.dokimi.dev/ergon/service/tool], in the working directory, and exits with the exit status
 //     of the tool.
@@ -53,7 +60,7 @@
 // [go.dokimi.dev/ergon/core/version], [go.dokimi.dev/ergon/core/workspace],
 // [go.dokimi.dev/ergon/service/baseline] with its producers common and github and its package
 // lock, [go.dokimi.dev/ergon/service/forge], [go.dokimi.dev/ergon/service/licenses] with its
-// producer of the license files, [go.dokimi.dev/ergon/service/release],
-// [go.dokimi.dev/ergon/service/tool] and [go.dokimi.dev/ergon/service/vcs]. cmd/ergon imports
-// it.
+// producer of the license files, [go.dokimi.dev/ergon/service/pin],
+// [go.dokimi.dev/ergon/service/release], [go.dokimi.dev/ergon/service/tool] and
+// [go.dokimi.dev/ergon/service/vcs]. cmd/ergon imports it.
 package cli

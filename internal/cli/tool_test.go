@@ -26,6 +26,13 @@ import (
 // base name of its path states, as [fake] states.
 const fakeEnv = "ERGON_CLI_FAKE"
 
+// The variables of the environment that the fake program reads: the exit status, which exitFlag
+// overrides, and the release that an upgrade of ergon started, which the fake writes.
+const (
+	fakeExitEnv = "ERGON_CLI_FAKE_EXIT"
+	upgradeEnv  = "ERGON_UPGRADE"
+)
+
 // The flags of the fake program.
 const (
 	// exitFlag makes the fake exit with the status after the equals sign.
@@ -214,7 +221,9 @@ func TestTool(t *testing.T) {
 			t.Parallel()
 			var stdout, stderr bytes.Buffer
 			p := process(javascriptRepository(t), &stdout, &stderr, "tool", "run", "js.biome")
-			p.CacheDir = func() (string, error) { return "", errCache }
+			// The error comes with a directory of the test, which a run that went on would install into.
+			cache := t.TempDir()
+			p.CacheDir = func() (string, error) { return cache, errCache }
 			assert.Equal(t, cli.Run(t.Context(), p, app.Register, version), statusFailure, "the exit status")
 			assert.Equal(t, stderr.String(), "ergon: cli: find the cache directory: "+errCache.Error()+"\n",
 				"the standard error")
@@ -243,12 +252,16 @@ func javascriptRepository(t *testing.T) string {
 }
 
 // fake acts as the program of the base name of args[0], without the suffix .exe. It writes the
-// name and the other arguments to stdout, on one line. Then it writes its working directory for
-// pwdFlag, copies stdin to stdout for stdinFlag, and exits with the status of exitFlag, or 0.
+// name and the other arguments to stdout, on one line, and the line upgradeEnv=<release> when the
+// environment sets upgradeEnv. Then it writes its working directory for pwdFlag, copies stdin to
+// stdout for stdinFlag, and exits with the status of exitFlag, or of fakeExitEnv, or 0.
 func fake(args []string, stdin io.Reader, stdout io.Writer) int {
 	name := strings.TrimSuffix(filepath.Base(args[0]), ".exe")
 	fmt.Fprintln(stdout, strings.Join(append([]string{name}, args[1:]...), " "))
-	status := 0
+	if release := os.Getenv(upgradeEnv); release != "" {
+		fmt.Fprintln(stdout, upgradeEnv+"="+release)
+	}
+	status, _ := strconv.Atoi(os.Getenv(fakeExitEnv))
 	for _, arg := range args[1:] {
 		switch {
 		case arg == pwdFlag:

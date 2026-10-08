@@ -61,6 +61,9 @@ type TFLint struct {
 
 var _ option.Release = TFLint{}
 
+// tflintRepository is the repository on GitHub whose releases publish tflint.
+const tflintRepository = "terraform-linters/tflint"
+
 // Actions are the pins of the actions of the job check-terraform.
 type Actions struct {
 	// SetupTerraform installs Terraform.
@@ -123,10 +126,16 @@ func (t TFLint) Asset(p option.Platform) (option.Asset, error) {
 		program += ".exe"
 	}
 	return option.Asset{
-		URL: "https://github.com/terraform-linters/tflint/releases/download/v" + t.Version + "/tflint_" + p.OS() +
+		URL: "https://github.com/" + tflintRepository + "/releases/download/v" + t.Version + "/tflint_" + p.OS() +
 			"_" + p.Arch() + ".zip",
 		Program: program,
 	}, nil
+}
+
+// Repository returns terraform-linters/tflint, the repository on GitHub whose releases publish
+// tflint.
+func (TFLint) Repository() string {
+	return tflintRepository
 }
 
 // setup returns the step that installs the version of Terraform with the action, without the

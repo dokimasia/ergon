@@ -25,6 +25,8 @@
 // A tool runs in the working directory of the command, such as a module of Go, with the arguments
 // of the command, and the command exits with its exit status. A toolchain that installs a tool
 // writes its output to the standard error, so the standard output of the tool stays its own.
+// [Runner.RunRelease] installs and runs a release binary of no section the same way, such as a
+// release of ergon itself.
 //
 // # Errors
 //

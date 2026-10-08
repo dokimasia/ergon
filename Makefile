@@ -1,4 +1,4 @@
-# Managed by ergon init. Add repository settings to .ergon/local/Makefile and run ergon init sync.
+# Managed by ergon init, with .ergon/local/Makefile merged in. Change the repository's settings there and run ergon init sync.
 #
 # make check is the gate of the repository. Each language adds its own fmt, lint, test, audit and
 # check targets as prerequisites of the targets below, and CI runs make check-<language> per
@@ -111,3 +111,12 @@ audit-go: ## Scan every Go module for known vulnerabilities that its code reache
 	@$(GO) list -m -f '{{.Dir}}' | while IFS= read -r dir; do echo "govulncheck $$dir"; \
 		$(GOVULNCHECK) -C "$$dir" $(GO_AUDIT_ARGS) $(GO_PATHS) || exit 1; done
 check-go: lint-go test-go race-go audit-go ## Run the gate of Go
+# Copyright Dokimasia B.V. 2026
+# SPDX-License-Identifier: MIT
+
+# The targets of ergon's own repository, which ergon init appends to the Makefile.
+
+.PHONY: update-baseline
+
+update-baseline: ## Move the pins of the baselines of ergon's producers to their newest releases, with GITHUB_TOKEN set
+	$(GO) run ./internal/cmd/update-baseline

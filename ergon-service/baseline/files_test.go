@@ -4,6 +4,7 @@
 package baseline_test
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -34,6 +35,26 @@ const (
 
 // localDir is the directory of the local files of a repository.
 const localDir = ".ergon/local/"
+
+// checked is the managed file of the producer checking.
+const checked = "checked.txt"
+
+// checking is a base producer of the cases that renders checked.txt, and refuses a local file of it
+// that makes it longer than one line.
+type checking struct {
+	producer
+}
+
+var _ language.LocalChecker = checking{}
+
+// CheckLocal returns an error that wraps language.ErrInvalidLocal for content of more than one
+// line, which names path.
+func (checking) CheckLocal(path string, content []byte) error {
+	if bytes.Count(content, []byte("\n")) > 1 {
+		return fmt.Errorf("%w: %s has more than one line", language.ErrInvalidLocal, path)
+	}
+	return nil
+}
 
 // faulty is the os.Root of a directory that fails one operation on one path. A failed write is
 // the write of the temporary file of the path, and a failed read is a read after the first reads
@@ -275,6 +296,25 @@ func TestFiles(t *testing.T) {
 				assert.HasError(t, err, "New")
 				assert.Contains(t, err.Error(), "overlay: merge "+localDir+ci, "the error")
 			})
+
+			t.Run("returns the error of the producer for a merged local file that it refuses", func(t *testing.T) {
+				t.Parallel()
+				root := directory(t)
+				put(t, root, localDir+checked, "local\n")
+				_, err := checkedRepository(t, root).New(answers(), baseline.Options{})
+				assert.ErrorIs(t, err, language.ErrInvalidLocal, "New")
+				assert.Contains(t, err.Error(), "baseline: "+localDir+checked+": ", "the error")
+				assert.Contains(t, err.Error(), checked+" has more than one line", "the error")
+			})
+
+			t.Run("writes a managed file whose producer accepts its merged local file", func(t *testing.T) {
+				t.Parallel()
+				root := directory(t)
+				put(t, root, localDir+checked, "local")
+				_, err := checkedRepository(t, root).New(answers(), baseline.Options{})
+				assert.NoError(t, err, "New")
+				assert.Equal(t, content(t, root, checked), "managed\nlocal", "the merged file")
+			})
 		})
 
 		t.Run("Add", func(t *testing.T) {
@@ -379,4 +419,18 @@ func TestFiles(t *testing.T) {
 func fault(t *testing.T, op, name string) *faulty {
 	t.Helper()
 	return &faulty{Root: directory(t), op: op, name: name}
+}
+
+// checkedRepository returns the repository of the cases on root, whose base producers are common
+// and checking, which renders checked.txt with the line managed.
+func checkedRepository(t *testing.T, root *os.Root) *baseline.Repository {
+	t.Helper()
+	r, err := baseline.Open(root, catalog(t), version, common("hello"), baseline.Producer{
+		Name: "checking",
+		Producer: checking{
+			producer{templates: fstest.MapFS{"managed/" + checked + ".tmpl": {Data: []byte("managed\n")}}},
+		},
+	})
+	assert.NoError(t, err, "Open with the producer checking")
+	return r
 }

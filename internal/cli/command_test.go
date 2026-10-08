@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -19,6 +20,7 @@ import (
 
 	"go.dokimi.dev/assert"
 	"go.dokimi.dev/ergon/core/language"
+	"go.dokimi.dev/ergon/core/option"
 	"go.dokimi.dev/ergon/core/workspace"
 	"go.dokimi.dev/ergon/internal/cli"
 	"go.dokimi.dev/ergon/service/vcs/vcstest"
@@ -275,19 +277,21 @@ func runWith(
 
 // process returns the process of a case: the command line args, the working directory dir, the
 // time now, the temporary directory of the system as the cache directory, the random digits ab and
-// cd, no standard input, the environment of the test with fakeEnv set, and the writers stdout and
-// stderr.
+// cd, no standard input, the environment of the test with fakeEnv set, the writers stdout and
+// stderr, the transport of net/http, and the platform of the test.
 func process(dir string, stdout, stderr io.Writer, args ...string) *cli.Process {
 	return &cli.Process{
-		Getwd:    func() (string, error) { return dir, nil },
-		Now:      func() time.Time { return now },
-		CacheDir: func() (string, error) { return os.TempDir(), nil },
-		Random:   bytes.NewReader([]byte{0xab, 0xcd}),
-		Stdin:    strings.NewReader(""),
-		Stdout:   stdout,
-		Stderr:   stderr,
-		Args:     args,
-		Env:      append(os.Environ(), fakeEnv+"=1"),
+		Getwd:     func() (string, error) { return dir, nil },
+		Now:       func() time.Time { return now },
+		CacheDir:  func() (string, error) { return os.TempDir(), nil },
+		Random:    bytes.NewReader([]byte{0xab, 0xcd}),
+		Stdin:     strings.NewReader(""),
+		Stdout:    stdout,
+		Stderr:    stderr,
+		Transport: http.DefaultTransport,
+		Platform:  option.Platform(runtime.GOOS + "/" + runtime.GOARCH),
+		Args:      args,
+		Env:       append(os.Environ(), fakeEnv+"=1"),
 	}
 }
 

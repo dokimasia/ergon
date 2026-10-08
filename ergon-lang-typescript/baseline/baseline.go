@@ -39,8 +39,8 @@ func (Producer) Templates() fs.FS {
 	return sub
 }
 
-// Options returns the section typescript at the baseline: tsc 7.0.2, the gate of lint, test and
-// audit, and npm test without arguments.
+// Options returns the section typescript at the baseline: the release of tsc, the gate of lint, test
+// and audit, and npm test without arguments.
 func (Producer) Options() language.Options {
 	return &Options{
 		Tools: Tools{TypeScript: "typescript@7.0.2"},

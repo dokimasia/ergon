@@ -34,9 +34,9 @@ func (Toolchain) Templates() fs.FS {
 	return sub
 }
 
-// Options returns the section jvm at the baseline: osv-scanner 2.6.0 with the digests of its
-// release, setup-java v6.0.1, and a limit of 30 minutes for the jobs of Java and Kotlin on every
-// runner and the Java of .java-version.
+// Options returns the section jvm at the baseline: the release of osv-scanner with the digests of
+// its assets, the release of setup-java, and a limit of 30 minutes for the jobs of Java and Kotlin
+// on every runner and the Java of .java-version.
 func (Toolchain) Options() language.Options {
 	return &ToolchainOptions{
 		Tools: ToolchainTools{OSVScanner: OSVScanner{Binary: option.Binary{

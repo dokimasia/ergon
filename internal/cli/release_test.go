@@ -360,11 +360,15 @@ type hub struct {
 	// graphql are the bodies of the requests of GraphQL, in their order.
 	graphql []string
 
-	// mu guards requests and graphql.
+	// pulls are the bodies of the pull requests that the requests open, in their order.
+	pulls []string
+
+	// mu guards requests, graphql and pulls.
 	mu sync.Mutex
 }
 
-// ServeHTTP records the request and answers it.
+// ServeHTTP records the request and responds to it. It records an empty body for a request to open
+// a pull request whose JSON does not decode.
 func (h *hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	body, _ := io.ReadAll(r.Body)
 	call := r.Method + " " + r.URL.RequestURI()
@@ -372,6 +376,13 @@ func (h *hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.requests = append(h.requests, call)
 	if r.URL.Path == graphqlPath {
 		h.graphql = append(h.graphql, string(body))
+	}
+	if r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/pulls") {
+		var pull struct {
+			Body string `json:"body"`
+		}
+		_ = json.Unmarshal(body, &pull)
+		h.pulls = append(h.pulls, pull.Body)
 	}
 	h.mu.Unlock()
 	w.Header().Set("Content-Type", "application/json")
@@ -418,6 +429,13 @@ func (h *hub) commits() []string {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	return slices.Clone(h.graphql)
+}
+
+// opened returns the bodies of the pull requests that the requests to h opened, in their order.
+func (h *hub) opened() []string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return slices.Clone(h.pulls)
 }
 
 func TestRelease(t *testing.T) {
@@ -675,7 +693,8 @@ func TestRelease(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				t.Parallel()
 				dir := goModule(t, gitConfig, nil)
-				assert.NoError(t, os.Remove(filepath.Join(dir, configPath)), "Remove of the configuration")
+				config := filepath.Join(dir, filepath.FromSlash(configPath))
+				assert.NoError(t, os.Remove(config), "Remove of the configuration")
 				status, stdout, stderr := runRelease(t, dir, tt.env, tt.args...)
 				assert.Equal(t, status, statusFailure, "the exit status")
 				assert.Empty(t, stdout, "the standard output")

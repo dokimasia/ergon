@@ -4,6 +4,7 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -163,15 +164,17 @@ func (a *answers) apply(cmd *cobra.Command, to *language.Answers) {
 }
 
 // initCommand returns ergon init with its subcommands, which work on the repository in the working
-// directory of s. names are the names of the languages of the catalog of s.
+// directory of s under ctx. names are the names of the languages of the catalog of s.
 //
 // ergon init and its subcommands resolve the working directory and read no configuration through
 // viper. Each subcommand reads the options of .ergon.yaml through [baseline.Repository], so in a
 // repository whose .ergon.yaml does not parse every subcommand returns the parse error of the
 // file. ergon init without a subcommand returns a [usageError] that lists the subcommands.
-func initCommand(s *session, names []string) *cobra.Command {
+func initCommand(ctx context.Context, s *session, names []string) *cobra.Command {
+	ci := group(s, "ci", initCIShort, initCILong, ciUpgradeCommand(ctx, s))
 	return group(s, "init", initShort, initLong,
-		newCommand(s, names), addCommand(s), removeCommand(s), checkCommand(s), syncCommand(s))
+		newCommand(s, names), addCommand(s), removeCommand(s), checkCommand(s), syncCommand(s),
+		upgradeCommand(ctx, s), ci)
 }
 
 // newCommand returns ergon init new, which writes the baseline into the repository of s with

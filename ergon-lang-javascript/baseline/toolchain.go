@@ -35,9 +35,9 @@ func (Toolchain) Templates() fs.FS {
 	return sub
 }
 
-// Options returns the section js at the baseline: Biome 2.5.15, the root of the repository, a scan
-// that fails on every known vulnerability, setup-node v7.0.0, and a limit of 30 minutes for the
-// jobs of JavaScript and TypeScript on every runner and the Node.js of package.json.
+// Options returns the section js at the baseline: the release of Biome, the root of the repository,
+// a scan that fails on every known vulnerability, the release of setup-node, and a limit of 30
+// minutes for the jobs of JavaScript and TypeScript on every runner and the Node.js of package.json.
 func (Toolchain) Options() language.Options {
 	return &ToolchainOptions{
 		Tools: ToolchainTools{Biome: "@biomejs/biome@2.5.15"},

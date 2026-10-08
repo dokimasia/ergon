@@ -41,8 +41,8 @@ func (Producer) Templates() fs.FS {
 	return sub
 }
 
-// Options returns the section bash at the baseline: shellcheck v0.11.0 with the digests of its
-// assets, the scripts *.sh and *.bash, the gate of lint, and a limit of 30 minutes for the job
+// Options returns the section bash at the baseline: the release of shellcheck with the digests of
+// its assets, the scripts *.sh and *.bash, the gate of lint, and a limit of 30 minutes for the job
 // check-bash on every runner.
 func (Producer) Options() language.Options {
 	return &Options{

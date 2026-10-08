@@ -35,6 +35,12 @@ const (
 	// ClassifierTag is the key of the classifier of the jar of a tool of the kind [Maven], such as
 	// all for the jar that contains its dependencies.
 	ClassifierTag = "classifier"
+
+	// SourceTag is the key of the registry of a field of the type [Version] whose release a
+	// baseline update resolves, as <registry>:<name>: chocolatey:<package> for a package of the
+	// Chocolatey community repository, or github:<owner>/<name> for the releases of a repository
+	// on GitHub.
+	SourceTag = "source"
 )
 
 // Project is the value of [RunTag] for a tool that runs in the environment of the project, as a

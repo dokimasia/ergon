@@ -43,9 +43,9 @@ func (Producer) Templates() fs.FS {
 	return sub
 }
 
-// Options returns the options of the common files at the baseline: commitlint 0.12.0 with the
-// digests that its release states, pre-commit-hooks v6.0.0, markdownlint-cli2-action v24.2.0, and
-// a limit of 10 minutes for each job.
+// Options returns the options of the common files at the baseline: the release of commitlint with
+// the digests that it states, the releases of pre-commit-hooks and markdownlint-cli2-action, and a
+// limit of 10 minutes for each job.
 func (Producer) Options() language.Options {
 	return &Options{
 		Tools: Tools{Commitlint: Commitlint{Binary: option.Binary{

@@ -86,6 +86,12 @@ func (b binary) Asset(option.Platform) (option.Asset, error) {
 	return b.asset, nil
 }
 
+// Repository returns the repository of the release binary of the cases, which ergon tool run does
+// not read.
+func (binary) Repository() string {
+	return "example/tool"
+}
+
 // tools are the tools of the section of the cases, one of each kind.
 type tools struct {
 	Tool    binary          `yaml:"tool"`
@@ -322,6 +328,39 @@ func TestTool(t *testing.T) {
 			_, err := r.Run(t.Context(), section, o, "tool", nil)
 			assert.HasError(t, err, "Run")
 			assert.ErrorIsNot(t, err, tool.ErrInstall, "Run")
+			assert.HasPrefix(t, err.Error(), "tool: run demo.tool: ", "the error")
+		})
+	})
+
+	t.Run("RunRelease", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("runs a release binary with the arguments and returns its exit status", func(t *testing.T) {
+			t.Parallel()
+			served := map[string][]byte{}
+			rel := release(served, "tool.tar.gz", entry, toolTarGz)
+			r, out, _ := runner(t, served)
+			code, err := r.RunRelease(t.Context(), "tool", rel, []string{"lint", "--exit=3"})
+			assert.NoError(t, err, "RunRelease")
+			assert.Equal(t, code, 3, "the exit status")
+			assert.Equal(t, out.String(), "tool lint --exit=3\n", "the output of the tool")
+		})
+
+		t.Run("returns ErrInstall for a release without the asset of the platform", func(t *testing.T) {
+			t.Parallel()
+			r, _, _ := runner(t, map[string][]byte{})
+			_, err := r.RunRelease(t.Context(), "tool", binary{Version: "1.0"}, nil)
+			assert.ErrorIs(t, err, tool.ErrInstall, "RunRelease")
+		})
+
+		t.Run("returns the error of a program that does not start with the name of the tool", func(t *testing.T) {
+			t.Parallel()
+			served := map[string][]byte{}
+			rel := release(served, program, "", []byte("no program\n"))
+			r, _, _ := runner(t, served)
+			_, err := r.RunRelease(t.Context(), "tool", rel, nil)
+			assert.ErrorIsNot(t, err, tool.ErrInstall, "RunRelease")
+			assert.HasPrefix(t, err.Error(), "tool: run tool: ", "the error")
 		})
 	})
 }

@@ -7,7 +7,8 @@
 // A producer of ergon init that is [language.Configurable] declares its options as a struct: one
 // field per key, with a yaml tag that names the key and a doc tag that states its meaning, as
 // [go.dokimi.dev/ergon/core/option] specifies. A field whose type is a struct is a group of
-// options, and every other field is one option: a scalar, a list or a map.
+// options, and every other field is one option: a scalar, a list or a map. [Fields] returns every
+// key of the options with its field.
 //
 // # Resolution
 //
@@ -42,5 +43,6 @@
 //
 // Imports the standard library, github.com/spf13/viper, github.com/go-viper/mapstructure/v2,
 // go.yaml.in/yaml/v3, [go.dokimi.dev/ergon/core/language] and [go.dokimi.dev/ergon/core/option].
-// The package [go.dokimi.dev/ergon/service/baseline] and the tool runner import it.
+// The packages [go.dokimi.dev/ergon/service/baseline] and [go.dokimi.dev/ergon/service/pin] import
+// it.
 package options

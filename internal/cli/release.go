@@ -830,7 +830,7 @@ func (s *session) forge() (*forge.Client, string, error) {
 	if repo == "" {
 		return nil, "", fmt.Errorf("cli: set %s to the repository on GitHub, as owner/name", repositoryEnv)
 	}
-	client, err := forge.New(&http.Client{Timeout: apiTimeout}, forge.Config{
+	client, err := forge.New(&http.Client{Transport: s.transport, Timeout: apiTimeout}, forge.Config{
 		Token: s.getenv(authEnv), API: s.getenv(apiEnv), GraphQL: s.getenv(graphqlEnv), Server: s.getenv(serverEnv),
 	})
 	return client, repo, err

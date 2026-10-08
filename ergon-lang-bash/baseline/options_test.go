@@ -121,6 +121,15 @@ func TestOptions(t *testing.T) {
 				})
 			}
 		})
+
+		t.Run("Repository", func(t *testing.T) {
+			t.Parallel()
+
+			t.Run("returns the repository of the releases of shellcheck", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, bashOptions().Tools.Shellcheck.Repository(), "koalaman/shellcheck", "Repository")
+			})
+		})
 	})
 }
 

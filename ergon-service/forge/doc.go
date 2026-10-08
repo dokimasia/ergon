@@ -3,8 +3,8 @@
 
 // Package forge is the GitHub client of ergon: the links of a commit and of a pull request for the
 // changelog of GitHub, the branch, the signed commits and the pull request of a version pull
-// request, the tags and the releases of a publish, and the run of a workflow that a release waits
-// for.
+// request, the tags and the releases of a publish, the run of a workflow that a release waits for,
+// and the releases of a repository with the digests of their assets for a baseline update.
 //
 // # Requests
 //
@@ -29,5 +29,6 @@
 // # Dependency position
 //
 // Imports the standard library alone. internal/cli of the root module joins it to the package
-// release, which declares the interfaces that a Client implements.
+// release, which declares the interfaces that a Client implements, and
+// [go.dokimi.dev/ergon/service/pin] reads its releases.
 package forge

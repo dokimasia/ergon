@@ -49,6 +49,10 @@ const (
 // groups and packages contradict each other.
 var ErrConfig = errors.New("release: invalid .changeset/config.json")
 
+// defaultBaseBranch is the base branch of a configuration without baseBranch, as changesets
+// defaults it.
+const defaultBaseBranch = "main"
+
 // Changelog is the changelog format of a configuration. The zero value writes no changelog.
 type Changelog struct {
 	// Format is [ChangelogGit] or [ChangelogGitHub], and empty for no changelog.
@@ -158,7 +162,7 @@ func ParseConfig(data []byte, g *Graph) (Config, error) {
 		return Config{}, fmt.Errorf("%w: %w", ErrConfig, err)
 	}
 	c := Config{
-		BaseBranch:                 orDefault(w.BaseBranch, "main"),
+		BaseBranch:                 orDefault(w.BaseBranch, defaultBaseBranch),
 		Access:                     orDefault(w.Access, "restricted"),
 		UpdateInternalDependencies: version.Bump(orDefault(w.UpdateInternalDependencies, string(version.BumpPatch))),
 		UpdateInternalDependents:   orDefault(w.Unsafe.UpdateInternalDependents, DependentsOutOfRange),
@@ -272,6 +276,18 @@ func (c *Config) changelogVersions(g *Graph) error {
 		}
 	}
 	return nil
+}
+
+// ParseBaseBranch returns the base branch of data, the content of .changeset/config.json, as
+// [ParseConfig] reads it without the packages of the repository: its baseBranch, and main for a
+// configuration without one. It returns an error that wraps [ErrConfig] for data that is no JSON
+// object, and for a key of a type that changesets does not accept.
+func ParseBaseBranch(data []byte) (string, error) {
+	var w writtenConfig
+	if err := json.Unmarshal(data, &w); err != nil {
+		return "", fmt.Errorf("%w: %w", ErrConfig, err)
+	}
+	return orDefault(w.BaseBranch, defaultBaseBranch), nil
 }
 
 // changelogOf returns the changelog format that raw, the key changelog, states: the default of

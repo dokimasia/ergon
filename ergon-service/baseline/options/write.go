@@ -6,7 +6,6 @@ package options
 import (
 	"bytes"
 	"fmt"
-	"reflect"
 	"slices"
 	"strings"
 
@@ -75,11 +74,7 @@ func Write(existing []byte, sections []Section, drop []string) ([]byte, bool, er
 // in flow style. It returns an error that wraps [ErrDefect] for options that are not a pointer to a
 // struct, that declare a field wrong, or that YAML cannot encode.
 func section(o language.Options) (*yaml.Node, error) {
-	t := reflect.TypeOf(o)
-	if t == nil || t.Kind() != reflect.Pointer || t.Elem().Kind() != reflect.Struct {
-		return nil, fmt.Errorf("%w: options of the type %v, which is not a pointer to a struct", ErrDefect, t)
-	}
-	fs, err := fields(t.Elem(), "", nil)
+	fs, err := Fields(o)
 	if err != nil {
 		return nil, err
 	}
@@ -88,12 +83,12 @@ func section(o language.Options) (*yaml.Node, error) {
 		return nil, fmt.Errorf("%w: %w", ErrDefect, err)
 	}
 	for _, f := range fs {
-		key, value := lookup(&n, f.key)
+		key, value := lookup(&n, f.Key)
 		if key == nil {
 			continue
 		}
-		depth := strings.Count(f.key, ".") + 1
-		key.HeadComment = comment(f.doc, width-indent*depth-len("# "))
+		depth := strings.Count(f.Key, ".") + 1
+		key.HeadComment = comment(f.Doc, width-indent*depth-len("# "))
 		if value.Kind == yaml.SequenceNode &&
 			!slices.ContainsFunc(value.Content, func(e *yaml.Node) bool { return e.Kind != yaml.ScalarNode }) {
 

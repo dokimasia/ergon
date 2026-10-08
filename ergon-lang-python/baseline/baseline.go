@@ -41,10 +41,10 @@ func (Producer) Templates() fs.FS {
 	return sub
 }
 
-// Options returns the section python at the baseline: uv 0.12.23 with the digests that its release
-// states, ruff 0.16.10, mypy 2.4.0, pytest 9.1.1 and pip-audit 2.10.1, the root of the repository,
-// the gate of lint, test and audit, and a limit of 30 minutes for the job check-python on every
-// runner and the Python of pyproject.toml.
+// Options returns the section python at the baseline: the release of uv with the digests that it
+// states, the releases of ruff, mypy, pytest and pip-audit, the root of the repository, the gate of
+// lint, test and audit, and a limit of 30 minutes for the job check-python on every runner and the
+// Python of pyproject.toml.
 func (Producer) Options() language.Options {
 	return &Options{
 		Tools: Tools{

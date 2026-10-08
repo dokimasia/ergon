@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 
+	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/core/option"
 )
 
@@ -20,37 +21,47 @@ const inline = "inline"
 // for them.
 var stateless = []reflect.Kind{reflect.Func, reflect.Chan, reflect.UnsafePointer, reflect.Complex64, reflect.Complex128}
 
-// field is a key of the options of a producer: an exported field of the options' struct, of a group
-// in it, or of a struct that one of them embeds inline.
-type field struct {
-	// typ is the type of the field. A field whose type is a struct is a group of options.
-	typ reflect.Type
+// Field is a key of the options of a producer. An exported field states the key in the options'
+// struct, in a group of it, or in a struct that one of them embeds inline.
+type Field struct {
+	// Type is the type of the field. A field whose type is a struct is a group of options.
+	Type reflect.Type
 
-	// key is the key of the field below the section, with the keys of its groups before it,
+	// Key is the key of the field below the section, with the keys of its groups before it,
 	// separated by dots, such as fuzz.time.
-	key string
+	Key string
 
-	// doc is the meaning of the field, which ergon init writes as the comment above its key, or
+	// Doc is the meaning of the field, which ergon init writes as the comment above its key, or
 	// empty.
-	doc string
+	Doc string
 
-	// answer is the key of the answer of ergon init that the field states, or empty.
-	answer string
+	// Answer is the key of the answer of ergon init that the field states, or empty.
+	Answer string
 
-	// index is the index sequence of the field from the options' struct, through every group and
-	// every inline struct.
-	index []int
+	// Index is the index sequence of the field from the options' struct, through every group and
+	// every inline struct, as reflect.Value.FieldByIndex takes it.
+	Index []int
 }
 
-// fields returns every key of the struct type t at every depth, in the order of the fields: a group
-// before its keys, and the keys of an inline struct in place of the struct. prefix is the key of t,
-// with a dot, or empty for the options' struct, and index is the index sequence of t. fields skips
-// a field tagged yaml:"-" and an unexported field that t does not embed. It returns an error that
-// wraps [ErrDefect] for an exported field without a key, for an inline field that is not a struct,
-// for an embedded field without the option inline, which YAML and viper read in different ways, and
-// for a field of a kind that no document of YAML states, such as a function.
-func fields(t reflect.Type, prefix string, index []int) ([]field, error) {
-	var out []field
+// Fields returns every key of the options o at every depth, in the order of the fields: a group
+// before its keys, and the keys of an inline struct in place of the struct. It skips a field tagged
+// yaml:"-" and an unexported field that its struct does not embed. It returns an error that wraps
+// [ErrDefect] for options that are not a pointer to a struct, for an exported field without a key,
+// for an inline field that is not a struct, for an embedded field without the option inline, which
+// YAML and viper read in different ways, and for a field of a kind that no document of YAML states,
+// such as a function.
+func Fields(o language.Options) ([]Field, error) {
+	t := reflect.TypeOf(o)
+	if t == nil || t.Kind() != reflect.Pointer || t.Elem().Kind() != reflect.Struct {
+		return nil, fmt.Errorf("%w: options of the type %v, which is not a pointer to a struct", ErrDefect, t)
+	}
+	return fields(t.Elem(), "", nil)
+}
+
+// fields returns every key of the struct type t at every depth, as [Fields] states. prefix is the
+// key of t, with a dot, or empty for the options' struct, and index is the index sequence of t.
+func fields(t reflect.Type, prefix string, index []int) ([]Field, error) {
+	var out []Field
 	for i := range t.NumField() {
 		f := t.Field(i)
 		tag := f.Tag.Get(configType)
@@ -81,12 +92,12 @@ func fields(t reflect.Type, prefix string, index []int) ([]field, error) {
 			return nil, fmt.Errorf("%w: the field %s of %s is a %s, which no document of YAML states", ErrDefect,
 				f.Name, t, f.Type.Kind())
 		}
-		out = append(out, field{
-			typ:    f.Type,
-			key:    prefix + name,
-			doc:    f.Tag.Get(option.DocTag),
-			answer: f.Tag.Get(option.AnswerTag),
-			index:  at,
+		out = append(out, Field{
+			Type:   f.Type,
+			Key:    prefix + name,
+			Doc:    f.Tag.Get(option.DocTag),
+			Answer: f.Tag.Get(option.AnswerTag),
+			Index:  at,
 		})
 		if f.Type.Kind() == reflect.Struct {
 			inner, err := fields(f.Type, prefix+name+".", at)

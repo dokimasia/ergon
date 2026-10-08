@@ -61,6 +61,21 @@ func (*long) Validate() error {
 	return nil
 }
 
+// nested is options with a doc in a group whose first 32 words fill a comment line of 100 columns
+// at the indentation of the group.
+type nested struct {
+	// Group has a key with a doc of 33 words.
+	Group struct {
+		// Text has a doc of 33 words.
+		Text string `yaml:"text" doc:"x ab ac ab ac ab ac ab ac ab ac ab ac ab ac ab ac ab ac ab ac ab ac ab ac ab ac ab ac ab ac ab zz"`
+	} `yaml:"group"`
+}
+
+// Validate returns nil.
+func (*nested) Validate() error {
+	return nil
+}
+
 // sparse is options with a field that its encoding omits when it is empty.
 type sparse struct {
 	// Note is omitted when it is empty.
@@ -161,6 +176,18 @@ func TestWrite(t *testing.T) {
 				"  # seventeen eighteen nineteen twenty twenty-one twenty-two twenty-three twenty-four twenty-five\n"+
 				"  # twenty-six twenty-seven twenty-eight twenty-nine thirty\n"+
 				"  text: x\n", "the file")
+		})
+
+		t.Run("wraps the doc of a key in a group into lines of at most 100 columns", func(t *testing.T) {
+			t.Parallel()
+			o := &nested{}
+			o.Group.Text = "x"
+			got, _, err := options.Write(nil, []options.Section{{Name: "nested", Options: o}}, nil)
+			assert.NoError(t, err, "Write")
+			assert.Equal(t, string(got), "nested:\n  group:\n"+
+				"    # x"+strings.Repeat(" ab ac", 15)+" ab\n"+
+				"    # zz\n"+
+				"    text: x\n", "the file")
 		})
 
 		t.Run("skips the comment of a field that the encoding omits", func(t *testing.T) {

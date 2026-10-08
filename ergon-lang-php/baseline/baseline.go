@@ -22,9 +22,9 @@ const Name = "php"
 //go:embed all:templates
 var templates embed.FS
 
-// tools are the tools of the section php at the baseline: PHPStan 2.2.17 with phpstan-strict-rules
-// 2.0.12 and the extension installer 1.4.3, and PHP-CS-Fixer 3.95.27 from its package without
-// dependencies. [Tools.Validate] requires the package of each.
+// tools are the tools of the section php at the baseline: a release of PHPStan with releases of
+// phpstan-strict-rules and of the extension installer, and a release of PHP-CS-Fixer from its
+// package without dependencies. [Tools.Validate] requires the package of each.
 var tools = Tools{
 	PHPStan:            "phpstan/phpstan@2.2.17",
 	StrictRules:        "phpstan/phpstan-strict-rules@2.0.12",
@@ -51,10 +51,10 @@ func (Producer) Templates() fs.FS {
 	return sub
 }
 
-// Options returns the section php at the baseline: PHPStan 2.2.17 with phpstan-strict-rules 2.0.12
-// and the extension installer 1.4.3, PHP-CS-Fixer 3.95.27, the root of the repository, the gate of
-// lint, test and audit, setup-php 2.37.2, and a limit of 30 minutes for the job check-php on every
-// runner and the PHP of .php-version.
+// Options returns the section php at the baseline: the releases of PHPStan, phpstan-strict-rules,
+// the extension installer and PHP-CS-Fixer, the root of the repository, the gate of lint, test and
+// audit, the release of setup-php, and a limit of 30 minutes for the job check-php on every runner
+// and the PHP of .php-version.
 func (Producer) Options() language.Options {
 	return &Options{
 		Tools: tools,

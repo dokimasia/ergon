@@ -22,6 +22,10 @@ const Config = ".ergon.yaml"
 // ErrInvalidAnswer is the error of [Answers.Validate] for an answer that no producer can render.
 var ErrInvalidAnswer = errors.New("language: invalid answer")
 
+// ErrInvalidLocal is the error of a [LocalChecker] for a local file that the repository may not
+// have.
+var ErrInvalidLocal = errors.New("language: invalid local file")
+
 // repository matches a repository on GitHub as owner/name.
 var repository = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9._-]+$`)
 
@@ -153,4 +157,13 @@ type File struct {
 
 	// Content is the content of the file.
 	Content []byte
+}
+
+// LocalChecker is a producer that checks the local files of the managed files that it renders,
+// such as a local file that would let a tool edit another managed file.
+type LocalChecker interface {
+	// CheckLocal returns an error that wraps [ErrInvalidLocal] for content, the managed file at path
+	// with its local file merged in, that the producer refuses. path is relative, clean and
+	// slash-separated. CheckLocal reads no file and runs no command, and it modifies no content.
+	CheckLocal(path string, content []byte) error
 }

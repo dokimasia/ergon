@@ -19,7 +19,7 @@ type Options struct {
 	Tools Tools `yaml:"tools" doc:"The tools of the common files."`
 
 	// PreCommitHooks is the release of github.com/pre-commit/pre-commit-hooks.
-	PreCommitHooks option.Version `yaml:"pre-commit-hooks" doc:"The release of github.com/pre-commit/pre-commit-hooks, whose hooks check the hygiene of the files before each commit."`
+	PreCommitHooks option.Version `yaml:"pre-commit-hooks" source:"github:pre-commit/pre-commit-hooks" doc:"The release of github.com/pre-commit/pre-commit-hooks, whose hooks check the hygiene of the files before each commit."`
 
 	// CI are the pins of the actions of the jobs docs and commits, and their limit.
 	CI option.CI[Actions] `yaml:"ci" doc:"The pins of the actions of the jobs docs and commits of ci.yml, and the limit of each job in minutes."`
@@ -45,6 +45,9 @@ type Commitlint struct {
 
 var _ option.Release = Commitlint{}
 
+// commitlintRepository is the repository on GitHub whose releases publish commitlint.
+const commitlintRepository = "conventionalcommit/commitlint"
+
 // Validate returns nil. The options of the section common have no rule between them, and the
 // command checks each option by the Validate method of its type before it calls Validate.
 func (*Options) Validate() error {
@@ -62,9 +65,15 @@ func (c Commitlint) Asset(p option.Platform) (option.Asset, error) {
 	if p.OS() == windows {
 		program += ".exe"
 	}
-	download := "https://github.com/conventionalcommit/commitlint/releases/download/v" + c.Version
+	download := "https://github.com/" + commitlintRepository + "/releases/download/v" + c.Version
 	return option.Asset{
 		URL:     download + "/commitlint_v" + c.Version + "_" + p.OS() + "_" + p.Arch() + ".tar.gz",
 		Program: program,
 	}, nil
+}
+
+// Repository returns conventionalcommit/commitlint, the repository on GitHub whose releases
+// publish commitlint.
+func (Commitlint) Repository() string {
+	return commitlintRepository
 }

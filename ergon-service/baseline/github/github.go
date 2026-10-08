@@ -5,16 +5,27 @@ package github
 
 import (
 	"embed"
+	"fmt"
 	"io/fs"
 
 	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/core/option"
 	"go.dokimi.dev/ergon/core/workflow"
+	"go.yaml.in/yaml/v3"
 )
 
 // Name is the name of the producer of the GitHub files in the lock, and of its section of
 // .ergon.yaml.
 const Name = "github"
+
+// dependabot is the path of the configuration of Dependabot.
+const dependabot = ".github/dependabot.yml"
+
+// rendered are the files that ergon init renders of each ecosystem of Dependabot that edits them.
+var rendered = map[string]string{
+	"github-actions": "the workflows and the actions under .github/",
+	"pre-commit":     ".pre-commit-config.yaml",
+}
 
 // templates are the templates of the GitHub files, under managed/ and seeded/.
 //
@@ -42,6 +53,7 @@ var (
 	_ language.Configurable = Producer{}
 	_ language.Calculator   = Producer{}
 	_ language.Contributor  = Producer{}
+	_ language.LocalChecker = Producer{}
 )
 
 // Templates returns the templates of the GitHub files: the managed files under managed/.github/,
@@ -53,10 +65,10 @@ func (Producer) Templates() fs.FS {
 }
 
 // Options returns the options of the GitHub files at the baseline: the runners ubuntu-26.04,
-// macos-26 and windows-2025, ubuntu-26.04 for the checks of text, GNU make 4.4.1, the pins of
-// actions/checkout v7.0.1, github/codeql-action v4.38.2, actions/dependency-review-action v5.0.0,
-// ossf/scorecard-action v2.4.4, actions/upload-artifact v7.0.2, actions/download-artifact v8.0.2
-// and actions/cache v6.1.0, and a limit of 15 minutes for each job.
+// macos-26 and windows-2025, ubuntu-26.04 for the checks of text, the release of GNU make, the
+// releases of actions/checkout, github/codeql-action, actions/dependency-review-action,
+// ossf/scorecard-action, actions/upload-artifact, actions/download-artifact and actions/cache, and a
+// limit of 15 minutes for each job.
 func (Producer) Options() language.Options {
 	return &Options{
 		Runners: option.Runners{"ubuntu-26.04", "macos-26", "windows-2025"},
@@ -136,6 +148,34 @@ func (Producer) Contribution(o language.Options) workflow.Contribution {
 		Ergon:       true,
 		Steps:       []workflow.Step{{Name: "Check the managed files", Run: []string{"ergon init check"}}},
 	}}}
+}
+
+// CheckLocal returns an error that wraps [language.ErrInvalidLocal] for content, the configuration
+// of Dependabot at path with its local file merged in, that has an update of the ecosystem
+// github-actions or pre-commit. ergon init renders the files of both ecosystems, so a pull request of
+// Dependabot would edit a managed file. The error names the ecosystem and the files. CheckLocal also
+// returns one for updates that do not decode, and nil for every other path.
+func (Producer) CheckLocal(path string, content []byte) error {
+	if path != dependabot {
+		return nil
+	}
+	var config struct {
+		// Updates are the updates of the configuration.
+		Updates []struct {
+			// Ecosystem is the package manager of the update, such as gomod.
+			Ecosystem string `yaml:"package-ecosystem"`
+		} `yaml:"updates"`
+	}
+	if err := yaml.Unmarshal(content, &config); err != nil {
+		return fmt.Errorf("%w: the updates of %s: %w", language.ErrInvalidLocal, path, err)
+	}
+	for _, u := range config.Updates {
+		if files, ok := rendered[u.Ecosystem]; ok {
+			return fmt.Errorf("%w: %s updates the ecosystem %s, so Dependabot would edit %s, which ergon init "+
+				"renders", language.ErrInvalidLocal, path, u.Ecosystem, files)
+		}
+	}
+	return nil
 }
 
 // own returns o as the options of the GitHub files, and the options at the baseline when o is not.

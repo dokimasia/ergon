@@ -41,9 +41,9 @@ func (Producer) Templates() fs.FS {
 	return sub
 }
 
-// Options returns the section rust at the baseline: cargo-audit 0.22.2, the gate of lint, test and
-// audit, the tests of every target, setup-rust-toolchain v2.0.0, and a limit of 30 minutes for the
-// job check-rust on every runner and the toolchain of rust-toolchain.toml.
+// Options returns the section rust at the baseline: the release of cargo-audit, the gate of lint,
+// test and audit, the tests of every target, the release of setup-rust-toolchain, and a limit of 30
+// minutes for the job check-rust on every runner and the toolchain of rust-toolchain.toml.
 func (Producer) Options() language.Options {
 	return &Options{
 		Tools: Tools{CargoAudit: "cargo-audit@0.22.2"},

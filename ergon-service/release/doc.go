@@ -18,8 +18,9 @@
 //
 // [ParseConfig] reads .changeset/config.json into a [Config], with the defaults and the rules of
 // changesets 4.0.1. ergon reads two changelog formats and refuses every other module, because it
-// does not run JavaScript. [ReadChangesets] reads the changesets of .changeset and skips the files
-// that changesets skips. [ChangesetID] names a new changeset after its summary, and
+// does not run JavaScript. [ParseBaseBranch] reads the base branch alone, for a command that knows
+// no packages of the repository. [ReadChangesets] reads the changesets of .changeset and skips the
+// files that changesets skips. [ChangesetID] names a new changeset after its summary, and
 // [AddChangeset] writes it.
 //
 // # Planning
@@ -49,7 +50,9 @@
 // entries into the changelogs, the removal of the changesets, and the edits that the versioner of
 // each toolchain applies to the manifests of its packages. It restores every path that it changed
 // when a step fails. [NewProposal] collects the files that a version wrote into a version pull
-// request, and [Propose] opens or updates the pull request through a [Proposer].
+// request on the branch ergon-release/<base>, and [Propose] opens or updates the pull request of a
+// [Proposal] on its branch through a [Proposer]. [ChangedFiles] returns the changes of the working
+// tree that a proposal commits, so another command proposes its own changes the same way.
 //
 // # Publishing
 //

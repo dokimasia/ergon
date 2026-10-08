@@ -26,8 +26,8 @@
 //   - security.yml runs the dependency review on a pull request, the OpenSSF Scorecard weekly, and
 //     a job codeql-<language> for each CodeQL analysis of the contributions, which calls
 //     codeql.yml.
-//   - baseline.yml checks the managed files against the newest release of ergon weekly, and opens
-//     an issue when they are outdated.
+//   - baseline.yml runs ergon init ci upgrade weekly, which moves the managed files to the newest
+//     release of ergon and opens or updates the pull request of the change.
 //   - dependabot.yml updates the package manager of each update of the contributions weekly, with
 //     the minor and patch updates of each directory in one pull request and each major update in a
 //     pull request of its own. A repository without an update has no dependabot.yml.
@@ -57,14 +57,22 @@
 // Linux runner as a check of text, so a managed file that differs from its rendering fails the
 // gate.
 //
+// # Local files
+//
+// [Producer.CheckLocal] refuses a local file of dependabot.yml that adds an update of the ecosystem
+// github-actions or pre-commit. ergon init renders the files of both ecosystems, so a pull request
+// of Dependabot would edit a managed file, and ergon init sync would write the pins of .ergon.yaml
+// back.
+//
 // # Errors
 //
 // [Producer.Data] returns an error that wraps [go.dokimi.dev/ergon/core/option.ErrInvalid] for a
 // job whose runners the section github does not list, which names the job and the runner.
+// [Producer.CheckLocal] returns an error that wraps [language.ErrInvalidLocal].
 //
 // # Dependency position
 //
-// Imports the standard library, [go.dokimi.dev/ergon/core/language],
+// Imports the standard library, go.yaml.in/yaml/v3, [go.dokimi.dev/ergon/core/language],
 // [go.dokimi.dev/ergon/core/option] and [go.dokimi.dev/ergon/core/workflow]. internal/cli of the
 // root module imports it.
 package github

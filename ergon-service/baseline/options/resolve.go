@@ -122,23 +122,19 @@ func resolve(v *viper.Viper, p *Producer, recorded map[string]any, previous, a *
 	record map[string]any,
 ) (language.Options, error) {
 	o := p.Configurable.Options()
-	rv := reflect.ValueOf(o)
-	if rv.Kind() != reflect.Pointer || rv.Elem().Kind() != reflect.Struct {
-		return nil, fmt.Errorf("%w: the options of %s are a %T, not a pointer to a struct", ErrDefect, p.Name, o)
-	}
-	options := rv.Elem()
-	fs, err := fields(options.Type(), "", nil)
+	fs, err := Fields(o)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: the section %s", err, p.Name)
 	}
+	options := reflect.ValueOf(o).Elem()
 	if err := answer(options, fs, a); err != nil {
 		return nil, err
 	}
 	leaves := map[string]any{}
 	for _, f := range fs {
-		if f.typ.Kind() != reflect.Struct && f.answer == "" {
-			leaves[f.key] = stated(options.FieldByIndex(f.index))
-			record[p.Name+"."+f.key] = leaves[f.key]
+		if f.Type.Kind() != reflect.Struct && f.Answer == "" {
+			leaves[f.Key] = stated(options.FieldByIndex(f.Index))
+			record[p.Name+"."+f.Key] = leaves[f.Key]
 		}
 	}
 	if v.InConfig(p.Name) {
@@ -158,12 +154,12 @@ func resolve(v *viper.Viper, p *Producer, recorded map[string]any, previous, a *
 		_ = answer(options, fs, a)
 	}
 	for _, f := range fs {
-		m, ok := reflect.TypeAssert[interface{ Validate() error }](options.FieldByIndex(f.index).Addr())
+		m, ok := reflect.TypeAssert[interface{ Validate() error }](options.FieldByIndex(f.Index).Addr())
 		if !ok {
 			continue
 		}
 		if err := m.Validate(); err != nil {
-			return nil, fmt.Errorf("%w: %s.%s: %w", ErrInvalid, p.Name, f.key, err)
+			return nil, fmt.Errorf("%w: %s.%s: %w", ErrInvalid, p.Name, f.Key, err)
 		}
 	}
 	if err := o.Validate(); err != nil {
@@ -188,17 +184,17 @@ func strict(c *mapstructure.DecoderConfig) {
 // answer sets each field of fs, the keys of the options v, that has an answer tag to the value of
 // that answer of a. It returns an error that wraps [ErrDefect] for a field whose answer tag names
 // no answer, and for a field whose type the answer does not convert to.
-func answer(v reflect.Value, fs []field, a *language.Answers) error {
+func answer(v reflect.Value, fs []Field, a *language.Answers) error {
 	for _, f := range fs {
-		if f.answer == "" {
+		if f.Answer == "" {
 			continue
 		}
 		value, ok := answerOf(&f, a)
 		if !ok {
 			return fmt.Errorf("%w: the field %s of %s states the answer %q, which ergon init does not have as a %s",
-				ErrDefect, f.key, v.Type(), f.answer, f.typ)
+				ErrDefect, f.Key, v.Type(), f.Answer, f.Type)
 		}
-		v.FieldByIndex(f.index).Set(value)
+		v.FieldByIndex(f.Index).Set(value)
 	}
 	return nil
 }
@@ -207,22 +203,22 @@ func answer(v reflect.Value, fs []field, a *language.Answers) error {
 // options v of the section name, that has an answer tag and whose value, which the section states,
 // is neither the answer of a nor the answer of previous. It returns nil for a nil previous. Each
 // answer tag of fs names an answer that converts to its field, as [answer] checked.
-func consistent(v reflect.Value, fs []field, previous, a *language.Answers, name string) error {
+func consistent(v reflect.Value, fs []Field, previous, a *language.Answers, name string) error {
 	if previous == nil {
 		return nil
 	}
 	for _, f := range fs {
-		if f.answer == "" {
+		if f.Answer == "" {
 			continue
 		}
-		stated := v.FieldByIndex(f.index).Interface()
+		stated := v.FieldByIndex(f.Index).Interface()
 		current, _ := answerOf(&f, a)
 		recorded, _ := answerOf(&f, previous)
 		if reflect.DeepEqual(stated, current.Interface()) || reflect.DeepEqual(stated, recorded.Interface()) {
 			continue
 		}
 		return fmt.Errorf("%w: %s.%s %q, which ergon init sync --%s sets, differs from the answer %q of ergon init",
-			ErrInvalid, name, f.key, fmt.Sprint(stated), f.answer, fmt.Sprint(current.Interface()))
+			ErrInvalid, name, f.Key, fmt.Sprint(stated), f.Answer, fmt.Sprint(current.Interface()))
 	}
 	return nil
 }
@@ -230,16 +226,16 @@ func consistent(v reflect.Value, fs []field, previous, a *language.Answers, name
 // answerOf returns the answer of a that the answer tag of f names, converted to the type of f. It
 // reports false for a tag that names no answer, and for an answer that does not convert to the type
 // of f.
-func answerOf(f *field, a *language.Answers) (reflect.Value, bool) {
+func answerOf(f *Field, a *language.Answers) (reflect.Value, bool) {
 	answers := reflect.ValueOf(a).Elem()
 	i := slices.IndexFunc(reflect.VisibleFields(answers.Type()), func(g reflect.StructField) bool {
 		name, _, _ := strings.Cut(g.Tag.Get("json"), ",")
-		return name == f.answer
+		return name == f.Answer
 	})
-	if i < 0 || !answers.Field(i).Type().ConvertibleTo(f.typ) {
+	if i < 0 || !answers.Field(i).Type().ConvertibleTo(f.Type) {
 		return reflect.Value{}, false
 	}
-	return answers.Field(i).Convert(f.typ), true
+	return answers.Field(i).Convert(f.Type), true
 }
 
 // stated returns the value of v as .ergon.yaml states it: an empty list or map of the type of v for

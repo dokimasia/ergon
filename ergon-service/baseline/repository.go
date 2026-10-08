@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"go.dokimi.dev/ergon/core/language"
+	"go.dokimi.dev/ergon/core/version"
 	"go.dokimi.dev/ergon/core/workspace"
 	"go.dokimi.dev/ergon/service/baseline/lock"
 	"go.dokimi.dev/ergon/service/baseline/options"
@@ -54,7 +55,30 @@ var (
 	// ErrUnknownSection is the error of [Repository.Options] for a section that no producer of the
 	// repository with options has.
 	ErrUnknownSection = errors.New("baseline: no producer of the repository has the section")
+
+	// ErrNewerLock is the error of every command but New for a lock that a newer release of ergon
+	// wrote than the running one. Its text contains both releases.
+	ErrNewerLock = errors.New("baseline: the lock is of a newer release of ergon")
 )
+
+// ConflictError is the error of a command for the managed files that it leaves, because they were
+// edited by hand or exist with other content. It wraps [ErrConflict], and every error of a command
+// that wraps ErrConflict is one.
+type ConflictError struct {
+	// Paths are the paths of the managed files that the command left: the files that it would write,
+	// in the order of their paths, and then the files that it would remove.
+	Paths []string
+}
+
+// Error returns the text of ErrConflict and the paths, separated by commas.
+func (e *ConflictError) Error() string {
+	return ErrConflict.Error() + ": " + strings.Join(e.Paths, ", ")
+}
+
+// Unwrap returns ErrConflict.
+func (*ConflictError) Unwrap() error {
+	return ErrConflict
+}
 
 // Options are the options of the commands that write.
 type Options struct {
@@ -275,7 +299,7 @@ func (r *Repository) Sync(update func(*language.Answers), opts Options) ([]Chang
 	if err != nil || len(p.conflicts) == 0 {
 		return changes, err
 	}
-	return changes, fmt.Errorf("%w: %s", ErrConflict, strings.Join(p.conflicts, ", "))
+	return changes, &ConflictError{Paths: p.conflicts}
 }
 
 // Check returns the managed files that differ from the rendering of the installed ergon for the
@@ -340,7 +364,7 @@ func (r *Repository) change(previous *lock.Lock, a *language.Answers, opts Optio
 		return nil, err
 	}
 	if len(p.conflicts) > 0 {
-		return nil, fmt.Errorf("%w: %s", ErrConflict, strings.Join(p.conflicts, ", "))
+		return nil, &ConflictError{Paths: p.conflicts}
 	}
 	return r.apply(&p, &next)
 }
@@ -486,7 +510,7 @@ func (r *Repository) render(units []render.Unit, a *language.Answers, previous *
 		}
 		rend.files = append(rend.files, target{File: f})
 	}
-	if err := r.applyLocal(rend.files); err != nil {
+	if err := r.applyLocal(rend.files, units); err != nil {
 		return resolved{}, err
 	}
 	return resolved{rendering: rend, record: res.Record}, nil
@@ -555,8 +579,12 @@ func (r *Repository) apply(p *plan, next *lock.Lock) ([]Change, error) {
 }
 
 // readLock returns the lock of the repository. It returns an error that wraps
-// [ErrNotInitialized] for a repository without one, and [lock.ErrInvalid] for a lock that does not
-// parse.
+// [ErrNotInitialized] for a repository without one, [lock.ErrInvalid] for a lock that does not
+// parse, and [ErrNewerLock] for a lock that a newer release of ergon wrote than the running one.
+//
+// A build of ergon without a release, whose version is dev, orders against no release. The running
+// build reads every lock, and a lock that such a build wrote parses as the version 0.0.0, below every
+// release of ergon.
 func (r *Repository) readLock() (lock.Lock, error) {
 	data, ok, err := r.read(lock.Path)
 	if err != nil {
@@ -565,5 +593,20 @@ func (r *Repository) readLock() (lock.Lock, error) {
 	if !ok {
 		return lock.Lock{}, ErrNotInitialized
 	}
-	return lock.Decode(data)
+	l, err := lock.Decode(data)
+	if err != nil {
+		return lock.Lock{}, err
+	}
+	running, err := version.Parse(r.version)
+	wrote, _ := version.Parse(l.Ergon)
+	if err == nil && wrote.Compare(running) > 0 {
+		return lock.Lock{}, fmt.Errorf(
+			"%w: ergon %s wrote the lock, and this is ergon %s, so install ergon %s or later",
+			ErrNewerLock,
+			l.Ergon,
+			r.version,
+			l.Ergon,
+		)
+	}
+	return l, nil
 }

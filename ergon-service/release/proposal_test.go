@@ -122,6 +122,22 @@ func TestProposal(t *testing.T) {
 			}, "the calls")
 		})
 
+		t.Run("commits on the branch of the proposal", func(t *testing.T) {
+			t.Parallel()
+			h := &hub{}
+			p := proposal(nil)
+			p.Branch = "ergon-baseline/main"
+			_, err := release.Propose(t.Context(), h, p)
+			assert.NoError(t, err, "Propose")
+			assert.Equal(t, h.calls, []string{
+				"branch " + proposalRepo + " ergon-baseline/main " + commitA,
+				"commit " + proposalRepo + " ergon-baseline/main " + commitA +
+					" Version Packages [a/CHANGELOG.md b/go.mod] -[.changeset/strange-words-combine.md]",
+				"pull " + proposalRepo + " ergon-baseline/main main",
+				"create " + proposalRepo + " ergon-baseline/main main Version Packages Body.",
+			}, "the calls")
+		})
+
 		t.Run("updates the open pull request", func(t *testing.T) {
 			t.Parallel()
 			h := &hub{open: true}
@@ -196,6 +212,7 @@ func TestProposal(t *testing.T) {
 				"the files")
 			expect.That(t, got.Deleted).Equal([]string{"b.md"}, "the removed files")
 			expect.That(t, got.Base).Equal("main", "the base branch")
+			expect.That(t, got.Branch).Equal(proposalBranch, "the branch of the version pull request")
 		})
 
 		t.Run("lists the changed lockfiles of a plan without releases", func(t *testing.T) {
@@ -317,6 +334,27 @@ func TestProposal(t *testing.T) {
 			assert.Contains(t, err.Error(), "read packages/pkg-a/CHANGELOG.md", "the error")
 		})
 	})
+
+	t.Run("ChangedFiles", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("returns the changed files with their content and the removed files", func(t *testing.T) {
+			t.Parallel()
+			root := committed(t, files.Tree{"a.md": files.Text("a\n"), "d/b.md": files.Text("b\n")})
+			assert.NoError(t, os.WriteFile(filepath.Join(root, "a.md"), []byte("changed\n"), versionPerm), "the change")
+			assert.NoError(t, os.Remove(filepath.Join(root, "d", "b.md")), "the removal")
+			changed, deleted, err := release.ChangedFiles(t.Context(), root)
+			assert.NoError(t, err, "ChangedFiles")
+			expect.That(t, changed).Equal(map[string][]byte{"a.md": []byte("changed\n")}, "the changed files")
+			expect.That(t, deleted).Equal([]string{"d/b.md"}, "the removed files")
+		})
+
+		t.Run("returns ErrGit for a directory outside a working tree", func(t *testing.T) {
+			t.Parallel()
+			_, _, err := release.ChangedFiles(t.Context(), t.TempDir())
+			assert.ErrorIs(t, err, vcs.ErrGit, "ChangedFiles")
+		})
+	})
 }
 
 // committed returns a working tree of git with tree in one commit, for the test tb.
@@ -334,7 +372,7 @@ func proposal(files map[string][]byte) *release.Proposal {
 		files = map[string][]byte{"b/go.mod": []byte("module b\n"), "a/CHANGELOG.md": []byte("# a\n")}
 	}
 	return &release.Proposal{
-		Files: files, Repo: proposalRepo, Base: "main", Head: commitA, Title: "Version Packages", Body: "Body.",
-		Deleted: []string{".changeset/strange-words-combine.md"},
+		Files: files, Repo: proposalRepo, Base: "main", Branch: proposalBranch, Head: commitA,
+		Title: "Version Packages", Body: "Body.", Deleted: []string{".changeset/strange-words-combine.md"},
 	}
 }

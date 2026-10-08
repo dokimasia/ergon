@@ -73,9 +73,11 @@ Usage:
 Available Commands:
   add         Add languages to the repository
   check       Report the managed files that differ from the baseline
+  ci          Run the job of the workflow baseline.yml
   new         Write the baseline into a repository without a lock
   remove      Remove languages from the repository
   sync        Bring the managed files to the baseline of this ergon
+  upgrade     Move the repository to the baseline of the newest release of ergon
 
 Global Flags:
       --config file   read the configuration from file (default ".ergon.yaml")
@@ -343,7 +345,7 @@ func TestInit(t *testing.T) {
 		}{
 			{
 				name: "returns 2 for init without a subcommand", args: []string{"init"},
-				stderr: "ergon: cli: init needs a subcommand: add, check, new, remove, sync\n" +
+				stderr: "ergon: cli: init needs a subcommand: add, check, ci, new, remove, sync, upgrade\n" +
 					"Run 'ergon init --help' for usage.\n",
 			},
 			{
@@ -872,16 +874,17 @@ func paths(t *testing.T, dir string) []string {
 	return found
 }
 
-// read returns the content of the file name in dir.
+// read returns the content of the file name in dir, where name is slash-separated.
 func read(t *testing.T, dir, name string) string {
 	t.Helper()
-	data, err := os.ReadFile(filepath.Join(dir, name))
+	data, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(name)))
 	assert.NoError(t, err, "ReadFile of "+name)
 	return string(data)
 }
 
-// write writes content to the file name in dir.
+// write writes content to the file name in dir, where name is slash-separated.
 func write(t *testing.T, dir, name, content string) {
 	t.Helper()
-	assert.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644), "WriteFile of "+name)
+	path := filepath.Join(dir, filepath.FromSlash(name))
+	assert.NoError(t, os.WriteFile(path, []byte(content), 0o644), "WriteFile of "+name)
 }

@@ -34,7 +34,7 @@
     {
       "path": ".github/workflows/baseline.yml",
       "producer": "github",
-      "sha256": "03cfe431365251a53283a5694113ded894713715ad77e563bb86502044fdb926"
+      "sha256": "05472ecab1e1276cd411dc400fa3ea8282a3aa1b9d94e6edda6014c27f3db066"
     },
     {
       "path": ".github/workflows/ci.yml",

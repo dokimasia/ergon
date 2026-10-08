@@ -92,7 +92,7 @@ type Options struct {
 	Linux string `yaml:"linux" doc:"The runner image of the jobs that check text and of the analyses of CodeQL, one of runners."`
 
 	// Make is the release of GNU make that a Windows runner installs.
-	Make option.Version `yaml:"make" doc:"The release of GNU make that the action setup-make installs from Chocolatey on a Windows runner, whose image has no make."`
+	Make option.Version `yaml:"make" source:"chocolatey:make" doc:"The release of GNU make that the action setup-make installs from Chocolatey on a Windows runner, whose image has no make."`
 
 	// CI are the pins of the actions of the GitHub files, and the limit of their jobs.
 	CI option.CI[Actions] `yaml:"ci" doc:"The pins of the actions of the workflows, and the limit in minutes of each job of the GitHub files."`

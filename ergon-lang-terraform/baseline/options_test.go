@@ -140,6 +140,15 @@ func TestOptions(t *testing.T) {
 				assert.ErrorIs(t, err, option.ErrNoAsset, "Asset")
 			})
 		})
+
+		t.Run("Repository", func(t *testing.T) {
+			t.Parallel()
+
+			t.Run("returns the repository of the releases of tflint", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, terraformOptions().Tools.TFLint.Repository(), "terraform-linters/tflint", "Repository")
+			})
+		})
 	})
 }
 

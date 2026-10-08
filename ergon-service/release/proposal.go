@@ -95,6 +95,10 @@ type Proposal struct {
 	// Base is the branch that the pull request merges into, such as main.
 	Base string
 
+	// Branch is the branch of the pull request, such as ergon-release/main, which Propose points at
+	// Head before it commits.
+	Branch string
+
 	// Head is the commit of Base that the version ran on.
 	Head string
 
@@ -110,11 +114,10 @@ type Proposal struct {
 }
 
 // NewProposal returns the version pull request of plan into the branch base, after [Version] wrote
-// plan into the repository at root. Repo, Head and Title are empty, for the caller to set.
+// plan into the repository at root, on the branch ergon-release/<base>. Repo, Head and Title are
+// empty, for the caller to set.
 //
-//   - Files are the files of the working tree that differ from HEAD, with their content, and Deleted
-//     the files that the working tree removed, each relative to root and slash-separated, in the
-//     order of their paths.
+//   - Files and Deleted are the changes of the working tree, as [ChangedFiles] returns them.
 //   - Body is the body of changesets/action v2: an introduction, the heading # Releases, and for each
 //     release above none a heading ## <name>@<version> with the section of the version in the
 //     changelog of the package. The releases of public packages come first, each group from the
@@ -126,7 +129,7 @@ type Proposal struct {
 // It returns the error of git, which wraps [vcs.ErrGit], the error of reading a changed file, and
 // the error of reading a changelog, other than the error of a changelog that does not exist.
 func NewProposal(ctx context.Context, root, base string, g *Graph, plan *Plan) (Proposal, error) {
-	files, deleted, err := changedFiles(ctx, root)
+	files, deleted, err := ChangedFiles(ctx, root)
 	if err != nil {
 		return Proposal{}, err
 	}
@@ -136,7 +139,7 @@ func NewProposal(ctx context.Context, root, base string, g *Graph, plan *Plan) (
 			return Proposal{}, err
 		}
 	}
-	return Proposal{Files: files, Base: base, Body: body, Deleted: deleted}, nil
+	return Proposal{Files: files, Base: base, Branch: ReleaseBranch + base, Body: body, Deleted: deleted}, nil
 }
 
 // section is the part of the body of a version pull request about one release.
@@ -151,45 +154,44 @@ type section struct {
 	highest version.Bump
 }
 
-// Propose opens or updates the version pull request p through f, and returns its number. It points
-// the branch ergon-release/<base> at p.Head, and commits the files of p on it, in commits of at
-// most 6,666,668 bytes of base64 each, so that GitHub accepts each commit within 10 seconds: the
-// files in the order of their paths, a file over the bound in a commit of its own, and the
-// deletions in the first commit, each with p.Title as its message. It then updates the open pull
-// request from the branch into p.Base with p.Title and p.Body, or opens one. It returns the error of
-// f.
+// Propose opens or updates the pull request p through f, and returns its number. It points the
+// branch p.Branch at p.Head, and commits the files of p on it, in commits of at most 6,666,668 bytes
+// of base64 each, so that GitHub accepts each commit within 10 seconds: the files in the order of
+// their paths, a file over the bound in a commit of its own, and the deletions in the first commit,
+// each with p.Title as its message. It then updates the open pull request from the branch into
+// p.Base with p.Title and p.Body, or opens one. It returns the error of f.
 func Propose(ctx context.Context, f Proposer, p *Proposal) (int, error) {
-	branch := ReleaseBranch + p.Base
-	if err := f.SetBranch(ctx, p.Repo, branch, p.Head); err != nil {
+	if err := f.SetBranch(ctx, p.Repo, p.Branch, p.Head); err != nil {
 		return 0, err
 	}
 	head, deleted := p.Head, p.Deleted
 	for _, files := range batches(p.Files) {
-		next, err := f.Commit(ctx, p.Repo, branch, head, p.Title, files, deleted)
+		next, err := f.Commit(ctx, p.Repo, p.Branch, head, p.Title, files, deleted)
 		if err != nil {
 			return 0, err
 		}
 		head, deleted = next, nil
 	}
 	if len(deleted) > 0 {
-		if _, err := f.Commit(ctx, p.Repo, branch, head, p.Title, nil, deleted); err != nil {
+		if _, err := f.Commit(ctx, p.Repo, p.Branch, head, p.Title, nil, deleted); err != nil {
 			return 0, err
 		}
 	}
-	number, open, err := f.PullRequest(ctx, p.Repo, branch, p.Base)
+	number, open, err := f.PullRequest(ctx, p.Repo, p.Branch, p.Base)
 	switch {
 	case err != nil:
 		return 0, err
 	case open:
 		return number, f.UpdatePullRequest(ctx, p.Repo, number, p.Title, p.Body)
 	}
-	return f.CreatePullRequest(ctx, p.Repo, branch, p.Base, p.Title, p.Body)
+	return f.CreatePullRequest(ctx, p.Repo, p.Branch, p.Base, p.Title, p.Body)
 }
 
-// changedFiles returns the files of the working tree at root that differ from HEAD with their
-// content, and the files that the working tree removed, as [NewProposal] states. It returns the
-// error of git and the error of reading a file.
-func changedFiles(ctx context.Context, root string) (map[string][]byte, []string, error) {
+// ChangedFiles returns the files of the working tree at root that differ from HEAD, with their
+// content, and the files that the working tree removed, each relative to root and slash-separated,
+// the removed files in the order of their paths. A [Proposal] commits them. It returns the error of
+// git, which wraps [vcs.ErrGit], and the error of reading a file.
+func ChangedFiles(ctx context.Context, root string) (map[string][]byte, []string, error) {
 	changed, err := vcs.Changed(ctx, root, "HEAD")
 	if err != nil {
 		return nil, nil, err

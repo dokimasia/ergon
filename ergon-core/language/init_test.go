@@ -27,6 +27,15 @@ func TestInit(t *testing.T) {
 		})
 	})
 
+	t.Run("ErrInvalidLocal", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("starts its text with the name of the package", func(t *testing.T) {
+			t.Parallel()
+			assert.HasPrefix(t, language.ErrInvalidLocal.Error(), "language: ", "the text of ErrInvalidLocal")
+		})
+	})
+
 	t.Run("Repository", func(t *testing.T) {
 		t.Parallel()
 

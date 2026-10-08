@@ -1,0 +1,46 @@
+# Copyright Dokimasia B.V. 2026
+# SPDX-License-Identifier: MIT
+
+# The weekly update of the baseline of ergon init. update-baseline moves each pin of the baselines
+# of ergon's producers to its newest release that is at least seven days old and of the same major
+# version, and opens the change as a pull request on the branch ergon-update/<base>. The workflow is
+# no managed file of ergon init.
+
+name: Update the baseline
+
+on:
+  schedule:
+    - cron: "47 4 * * 1"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+# Every command runs in bash.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  update:
+    name: Update the baseline
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.work
+          cache-dependency-path: "**/go.sum"
+      - name: Update the pins of the baseline
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: go run ./internal/cmd/update-baseline -propose

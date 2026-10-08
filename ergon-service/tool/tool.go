@@ -138,8 +138,30 @@ func (r *Runner) Run(ctx context.Context, section string, o language.Options, na
 	if err != nil {
 		return 0, err
 	}
+	return r.start(ctx, section+"."+name, program, slices.Concat(prefix, args))
+}
+
+// RunRelease installs the release binary rel of the tool name into the cache, unless the cache has
+// it, and runs it with args in the directory Dir, as [Runner.Run] runs a release binary of a
+// section, such as a release of ergon that an upgrade of ergon starts. It returns the exit status of
+// the program. It returns an error that wraps [ErrInstall] for a release that does not install, and
+// the error of a program that does not start. A program that runs and fails returns its exit status
+// and no error.
+func (r *Runner) RunRelease(ctx context.Context, name string, rel option.Release, args []string) (int, error) {
+	program, err := r.release(ctx, rel, name)
+	if err != nil {
+		return 0, err
+	}
+	return r.start(ctx, name, program, args)
+}
+
+// start runs program with args in the directory Dir until ctx ends, and starts it again after 10 ms
+// for ETXTBSY, as [Runner.Run] states. It returns the exit status of the program, and the error of a
+// program that does not start, which names the tool.
+func (r *Runner) start(ctx context.Context, tool, program string, args []string) (int, error) {
+	var err error
 	for {
-		cmd := exec.CommandContext(ctx, program, slices.Concat(prefix, args)...)
+		cmd := exec.CommandContext(ctx, program, args...)
 		cmd.Dir, cmd.Env = r.Dir, r.Env
 		cmd.Stdin, cmd.Stdout, cmd.Stderr = r.Stdin, r.Stdout, r.Stderr
 		err = cmd.Run()
@@ -152,7 +174,7 @@ func (r *Runner) Run(ctx context.Context, section string, o language.Options, na
 		return exit.ExitCode(), nil
 	}
 	if err != nil {
-		return 0, fmt.Errorf("tool: run %s.%s: %w", section, name, err)
+		return 0, fmt.Errorf("tool: run %s: %w", tool, err)
 	}
 	return 0, nil
 }

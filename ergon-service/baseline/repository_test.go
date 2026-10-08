@@ -65,6 +65,9 @@ const (
 // version is the version of ergon that the locks of the cases record.
 const version = "1.2.3"
 
+// development is the version of a build of ergon without a release.
+const development = "dev"
+
 // workflowContent is the managed YAML file of common: a comment, a scalar, a map and a list.
 const workflowContent = "# managed\nname: ci\njobs:\n  common:\n    steps:\n      - run: make\n"
 
@@ -407,6 +410,16 @@ func TestRepository(t *testing.T) {
 			assert.False(t, exists(t, root, lockPath), "the lock after the conflict")
 		})
 
+		t.Run("returns a ConflictError with the path of a managed file with other content", func(t *testing.T) {
+			t.Parallel()
+			root := directory(t)
+			put(t, root, license, "Copyright someone else\n")
+			_, err := repository(t, root).New(answers(), baseline.Options{})
+			c := assert.ErrorAs[*baseline.ConflictError](t, err, "New")
+			assert.Equal(t, c.Paths, []string{license}, "the paths of the conflict")
+			assert.Equal(t, err.Error(), baseline.ErrConflict.Error()+": "+license, "the error")
+		})
+
 		t.Run("overwrites a managed file with other content with Force", func(t *testing.T) {
 			t.Parallel()
 			root := directory(t)
@@ -711,6 +724,16 @@ func TestRepository(t *testing.T) {
 			assert.Equal(t, content(t, root, ignore), "# edited by hand\n", "the edited .gitignore")
 		})
 
+		t.Run("returns a ConflictError with the paths of the edited files", func(t *testing.T) {
+			t.Parallel()
+			r, root := initialized(t)
+			put(t, root, ignore, "# edited by hand\n")
+			put(t, root, license, "Copyright someone else\n")
+			_, err := r.Sync(func(a *language.Answers) { a.Owner = "Other B.V." }, baseline.Options{})
+			c := assert.ErrorAs[*baseline.ConflictError](t, err, "Sync")
+			assert.Equal(t, c.Paths, []string{ignore, license}, "the paths of the conflict")
+		})
+
 		t.Run("overwrites an edited file with Force", func(t *testing.T) {
 			t.Parallel()
 			r, root := initialized(t)
@@ -762,6 +785,14 @@ func TestRepository(t *testing.T) {
 			assert.ErrorIs(t, err, baseline.ErrNotInitialized, "Check")
 		})
 
+		t.Run("returns ErrInvalid of the lock for a lock that does not parse", func(t *testing.T) {
+			t.Parallel()
+			r, root := initialized(t)
+			put(t, root, lockPath, "not JSON\n")
+			_, err := r.Check()
+			assert.ErrorIs(t, err, lock.ErrInvalid, "Check")
+		})
+
 		t.Run("returns ErrInvalid of the options for .ergon.yaml that the producers do not accept", func(t *testing.T) {
 			t.Parallel()
 			r, root := initialized(t)
@@ -789,6 +820,30 @@ func TestRepository(t *testing.T) {
 			assert.NoError(t, err, "Open")
 			_, err = r.Check()
 			assert.ErrorIs(t, err, baseline.ErrUnsupported, "Check")
+		})
+
+		releases := []struct {
+			name    string
+			wrote   string
+			running string
+		}{
+			{name: "reads a lock of an earlier release of ergon", wrote: version, running: "1.3.0"},
+			{name: "reads a lock of a release for a build without a release", wrote: version, running: development},
+			{name: "reads a lock of a build without a release", wrote: development, running: version},
+		}
+		for _, tt := range releases {
+			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+				_, err := released(t, tt.wrote, tt.running).Check()
+				assert.NoError(t, err, "Check")
+			})
+		}
+
+		t.Run("returns ErrNewerLock with both releases for a lock of a newer release of ergon", func(t *testing.T) {
+			t.Parallel()
+			_, err := released(t, version, "1.2.2").Check()
+			assert.ErrorIs(t, err, baseline.ErrNewerLock, "Check")
+			assert.Contains(t, err.Error(), "ergon 1.2.3 wrote the lock, and this is ergon 1.2.2", "the error")
 		})
 	})
 
@@ -974,6 +1029,20 @@ func initialized(t *testing.T) (*baseline.Repository, *os.Root) {
 	_, err := r.New(answers(), baseline.Options{})
 	assert.NoError(t, err, "New of the repository")
 	return r, root
+}
+
+// released returns the repository of the cases for the release running of ergon, after New with the
+// answers of the cases by the release wrote.
+func released(t *testing.T, wrote, running string) *baseline.Repository {
+	t.Helper()
+	root := directory(t)
+	r, err := baseline.Open(root, catalog(t), wrote, common("hello"))
+	assert.NoError(t, err, "Open of the release that writes the lock")
+	_, err = r.New(answers(), baseline.Options{})
+	assert.NoError(t, err, "New of the repository")
+	r, err = baseline.Open(root, catalog(t), running, common("hello"))
+	assert.NoError(t, err, "Open of the running release")
+	return r
 }
 
 // owned returns a repository and its directory after New with the answers of the cases, whose base

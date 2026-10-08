@@ -4,6 +4,7 @@
 package options_test
 
 import (
+	"reflect"
 	"testing"
 
 	"go.dokimi.dev/assert"
@@ -75,8 +76,57 @@ type inlineBad struct {
 	noKey `yaml:",inline"`
 }
 
+// word is options whose pointer is no pointer to a struct.
+type word string
+
+// Validate returns nil.
+func (*word) Validate() error {
+	return nil
+}
+
 func TestField(t *testing.T) {
 	t.Parallel()
+
+	t.Run("Fields", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("returns a group before the keys of the struct that it embeds inline", func(t *testing.T) {
+			t.Parallel()
+			got, err := options.Fields(&layout{})
+			assert.NoError(t, err, "Fields")
+			assert.Equal(t, got, []options.Field{
+				{Type: reflect.TypeFor[option.UV](), Key: "tool", Doc: "A release binary.", Index: []int{2}},
+				{Type: reflect.TypeFor[map[option.Platform]string](), Key: "tool.sha256", Index: []int{2, 0, 0}},
+				{Type: reflect.TypeFor[string](), Key: "tool.version", Index: []int{2, 0, 1}},
+			}, "the fields")
+		})
+
+		t.Run("returns the answer of a field with an answer tag", func(t *testing.T) {
+			t.Parallel()
+			got, err := options.Fields(&mood{})
+			assert.NoError(t, err, "Fields")
+			assert.Equal(t, got, []options.Field{
+				{Type: reflect.TypeFor[string](), Key: "mood", Answer: "mood", Index: []int{0}},
+			}, "the fields")
+		})
+
+		defects := []struct {
+			name string
+			give language.Options
+		}{
+			{name: "returns ErrDefect for options that are not a pointer", give: valid{}},
+			{name: "returns ErrDefect for nil options", give: nil},
+			{name: "returns ErrDefect for a pointer to options that are no struct", give: new(word)},
+			{name: "returns ErrDefect for a field without a yaml key", give: &noKey{}},
+		}
+		for _, tt := range defects {
+			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+				_, err := options.Fields(tt.give)
+				assert.ErrorIs(t, err, options.ErrDefect, "Fields")
+			})
+		}
+	})
 
 	t.Run("Resolve", func(t *testing.T) {
 		t.Parallel()

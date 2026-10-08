@@ -22,8 +22,8 @@ const Name = "java"
 //go:embed all:templates
 var templates embed.FS
 
-// tools are the tools of the section java at the baseline: PMD 7.28.0. [Tools.Validate] requires
-// its package.
+// tools are the tools of the section java at the baseline: a release of PMD. [Tools.Validate]
+// requires its package.
 var tools = Tools{PMD: "net.sourceforge.pmd:pmd-java@7.28.0"}
 
 // Producer renders the files of Java: the Gradle init script that lints the Java sources, and the
@@ -46,8 +46,8 @@ func (Producer) Templates() fs.FS {
 	return sub
 }
 
-// Options returns the section java at the baseline: PMD 7.28.0, the gate of lint, test and audit,
-// and ./gradlew test without arguments.
+// Options returns the section java at the baseline: the release of PMD, the gate of lint, test and
+// audit, and ./gradlew test without arguments.
 func (Producer) Options() language.Options {
 	return &Options{
 		Tools: tools,

@@ -9,12 +9,10 @@ import (
 	"fmt"
 	"net/http"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
-	"go.dokimi.dev/ergon/core/option"
 	"go.dokimi.dev/ergon/service/baseline"
 	"go.dokimi.dev/ergon/service/tool"
 )
@@ -78,13 +76,13 @@ func runCommand(ctx context.Context, s *session) *cobra.Command {
 					return err
 				}
 				runner := tool.Runner{
-					Client:   &http.Client{Timeout: downloadTimeout},
+					Client:   &http.Client{Transport: s.transport, Timeout: downloadTimeout},
 					Stdin:    cmd.InOrStdin(),
 					Stdout:   cmd.OutOrStdout(),
 					Stderr:   cmd.ErrOrStderr(),
 					Cache:    filepath.Join(cache, program, "tools"),
 					Dir:      s.dir,
-					Platform: option.Platform(runtime.GOOS + "/" + runtime.GOARCH),
+					Platform: s.platform,
 					Env:      s.env,
 				}
 				s.status, err = runner.Run(ctx, section, o, name, args[1:])

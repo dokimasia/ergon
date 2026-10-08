@@ -123,6 +123,17 @@ func (*unset) Validate() error {
 	return nil
 }
 
+// named is options with the answer name, the first answer of ergon init.
+type named struct {
+	// Name states the answer name.
+	Name string `yaml:"name" answer:"name"`
+}
+
+// Validate returns nil.
+func (*named) Validate() error {
+	return nil
+}
+
 // moodGroup is options with an answer in a group that ergon init does not have.
 type moodGroup struct {
 	// Group contains the answer mood.
@@ -275,6 +286,15 @@ func TestResolve(t *testing.T) {
 				assert.Equal(t, res.Sections[0].Options, language.Options(want), "the options of demo")
 			})
 		}
+
+		t.Run("takes the answer name for a field that states it", func(t *testing.T) {
+			t.Parallel()
+			p := options.Producer{Name: name, Configurable: odd{options: func() language.Options { return &named{} }}}
+			res, err := options.Resolve(nil, nil, nil, answers(), []options.Producer{p}, []string{name})
+			assert.NoError(t, err, "Resolve")
+			assert.Length(t, res.Sections, 1, "the sections")
+			assert.Equal(t, res.Sections[0].Options, language.Options(&named{Name: "demo"}), "the options")
+		})
 
 		t.Run("records an empty list and an empty map for a nil list and a nil map", func(t *testing.T) {
 			t.Parallel()

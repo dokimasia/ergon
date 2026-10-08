@@ -21,14 +21,15 @@
 //   - [Maven]: a Maven artifact, through java -jar
 //   - [Composer]: a Composer package, through Composer
 //   - a [Release]: a release binary, which ergon tool run downloads and checks against the
-//     digest that [Binary] pins for its platform
+//     digest that [Binary] pins for its platform, from the releases of its repository on GitHub
 //
 // A struct tag adds what a tool's package does not state: [ProgramTag] names a program that
 // differs from the package, [RunTag] runs a PyPI package in the environment of the project, and
 // [ClassifierTag] names the classifier of the jar of a Maven artifact.
 //
 // A section names the release of software that is no tool of its own as a [Version], such as the
-// release of GNU make that a Windows runner installs.
+// release of GNU make that a Windows runner installs. Its [SourceTag] states the registry whose
+// releases a baseline update reads for it.
 //
 // # Steps
 //

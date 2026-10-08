@@ -1,7 +1,8 @@
 # Managed by ergon init. Add repository settings to .ergon/local/.github/workflows/baseline.yml and run ergon init sync.
 #
-# A weekly check of the managed files against the newest release of ergon. The job opens an issue
-# when the baseline is outdated and no such issue is open.
+# A weekly upgrade of the managed files to the newest release of ergon. The job installs the ergon
+# of the lock, whose ergon init ci upgrade starts the newest release. That release runs ergon init
+# sync, and opens or updates the pull request of the change on the branch ergon-baseline/<base>.
 
 name: Baseline
 
@@ -18,47 +19,19 @@ concurrency:
 
 jobs:
   baseline:
-    name: Baseline of the newest ergon
+    name: Upgrade to the newest ergon
     runs-on: {{% yaml .Options.Linux %}}
     timeout-minutes: {{% .Options.CI.Timeout %}}
     permissions:
-      contents: read
-      issues: write
+      contents: write
+      pull-requests: write
     steps:
       - uses: {{% .Options.CI.Actions.Checkout %}}
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup-ergon
-        with:
-          version: latest
-      - name: Check the baseline
-        id: check
-        shell: bash
-        run: |
-          if ergon init check > "$RUNNER_TEMP/findings" 2>&1; then
-            echo "outdated=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "outdated=true" >> "$GITHUB_OUTPUT"
-          fi
-      - name: Open an issue
-        if: steps.check.outputs.outdated == 'true'
-        shell: bash
+      - name: Upgrade ergon
         env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          TITLE: The baseline of ergon init is outdated
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
-          open="$(gh issue list --state open --search "in:title \"$TITLE\"" --json number --jq length)"
-          if [ "$open" -gt 0 ]; then
-            exit 0
-          fi
-          {
-            echo "ergon init check of the newest release of ergon reports these files:"
-            echo
-            echo '```'
-            cat "$RUNNER_TEMP/findings"
-            echo '```'
-            echo
-            echo "Run ergon init sync with the newest release, and commit the files and .ergon/init.lock."
-          } > "$RUNNER_TEMP/issue.md"
-          gh issue create --title "$TITLE" --body-file "$RUNNER_TEMP/issue.md"
+          ergon init ci upgrade

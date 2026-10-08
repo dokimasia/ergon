@@ -127,5 +127,14 @@ func TestToolchainOptions(t *testing.T) {
 				assert.ErrorIs(t, err, option.ErrNoAsset, "Asset")
 			})
 		})
+
+		t.Run("Repository", func(t *testing.T) {
+			t.Parallel()
+
+			t.Run("returns the repository of the releases of osv-scanner", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, jvmOptions().Tools.OSVScanner.Repository(), "google/osv-scanner", "Repository")
+			})
+		})
 	})
 }

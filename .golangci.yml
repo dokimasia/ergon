@@ -142,6 +142,9 @@ linters:
             - github.com/apache/skywalking-eyes
             - github.com/sirupsen/logrus
             - github.com/bmatcuk/doublestar/v4
+            # The paths and the pseudo-versions of Go modules, which a baseline update resolves
+            # through a module proxy.
+            - golang.org/x/mod
         # The package licenses is the one package of the repository that imports skywalking-eyes and
         # its logger.
         license-library:

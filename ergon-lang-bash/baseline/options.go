@@ -45,6 +45,9 @@ type Shellcheck struct {
 
 var _ option.Release = Shellcheck{}
 
+// shellcheckRepository is the repository on GitHub whose releases publish shellcheck.
+const shellcheckRepository = "koalaman/shellcheck"
+
 // Validate returns an error that wraps [option.ErrInvalid] for a step of check other than lint.
 // The command checks each option by the Validate method of its type before it calls Validate.
 func (o *Options) Validate() error {
@@ -76,7 +79,7 @@ func (s Shellcheck) Asset(p option.Platform) (option.Asset, error) {
 		return option.Asset{}, fmt.Errorf("%w: shellcheck has no asset for %q", option.ErrNoAsset, p)
 	}
 	name := "shellcheck-v" + s.Version
-	release := "https://github.com/koalaman/shellcheck/releases/download/v" + s.Version + "/" + name
+	release := "https://github.com/" + shellcheckRepository + "/releases/download/v" + s.Version + "/" + name
 	if p.OS() == windows {
 		return option.Asset{URL: release + ".zip", Program: "shellcheck.exe"}, nil
 	}
@@ -84,4 +87,10 @@ func (s Shellcheck) Asset(p option.Platform) (option.Asset, error) {
 		URL:     release + "." + p.OS() + "." + shellcheckArch[p.Arch()] + ".tar.gz",
 		Program: name + "/shellcheck",
 	}, nil
+}
+
+// Repository returns koalaman/shellcheck, the repository on GitHub whose releases publish
+// shellcheck.
+func (Shellcheck) Repository() string {
+	return shellcheckRepository
 }

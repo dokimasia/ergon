@@ -41,10 +41,10 @@ func (Producer) Templates() fs.FS {
 	return sub
 }
 
-// Options returns the section terraform at the baseline: tflint v0.64.0 and uv 0.12.23 with the
-// digests that their releases state, checkov 3.3.23, the root of the repository, the gate of lint,
-// test and audit, setup-terraform v4.0.1, and a limit of 30 minutes for the job check-terraform on
-// every runner and the version of .terraform-version.
+// Options returns the section terraform at the baseline: the releases of tflint and uv with the
+// digests that the releases state, the release of checkov, the root of the repository, the gate of
+// lint, test and audit, the release of setup-terraform, and a limit of 30 minutes for the job
+// check-terraform on every runner and the version of .terraform-version.
 func (Producer) Options() language.Options {
 	return &Options{
 		Tools: Tools{

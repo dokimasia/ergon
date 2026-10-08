@@ -117,7 +117,7 @@ func (b Binary) Validate() error {
 
 // Release is a release binary of a section: a type that embeds [Binary] and states where its
 // release publishes the asset of each platform. ergon tool run downloads the asset of the
-// platform that it runs on.
+// platform that it runs on, and a baseline update reads the releases of the repository.
 type Release interface {
 	// Pin returns the version and the digests of the binary.
 	Pin() Binary
@@ -125,6 +125,10 @@ type Release interface {
 	// Asset returns the asset of p for the version of the pin. It returns an error that wraps
 	// [ErrNoAsset] for a platform whose asset the release does not publish.
 	Asset(p Platform) (Asset, error)
+
+	// Repository returns the repository on GitHub whose releases publish the binary, as
+	// owner/name, such as astral-sh/uv.
+	Repository() string
 }
 
 // UV is the release binary of uv, through which ergon tool run runs the tools of the kind [PyPI]
@@ -134,6 +138,9 @@ type UV struct {
 }
 
 var _ Release = UV{}
+
+// uvRepository is the repository on GitHub whose releases publish uv.
+const uvRepository = "astral-sh/uv"
 
 // uvTargets are the target triples of the assets of uv, by platform.
 var uvTargets = map[Platform]string{
@@ -154,9 +161,14 @@ func (u UV) Asset(p Platform) (Asset, error) {
 	if !ok {
 		return Asset{}, fmt.Errorf("%w: uv has no asset for %q", ErrNoAsset, p)
 	}
-	release := "https://github.com/astral-sh/uv/releases/download/" + u.Version + "/uv-" + target
+	release := "https://github.com/" + uvRepository + "/releases/download/" + u.Version + "/uv-" + target
 	if p.OS() == "windows" {
 		return Asset{URL: release + ".zip", Program: "uv.exe"}, nil
 	}
 	return Asset{URL: release + ".tar.gz", Program: "uv-" + target + "/uv"}, nil
+}
+
+// Repository returns astral-sh/uv, the repository on GitHub whose releases publish uv.
+func (UV) Repository() string {
+	return uvRepository
 }

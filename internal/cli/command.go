@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"net/http"
 	"path/filepath"
 	"strings"
 	"time"
@@ -16,6 +17,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.dokimi.dev/ergon/core/language"
+	"go.dokimi.dev/ergon/core/option"
 )
 
 // The exit statuses of [Run] other than 0, the status of a command that succeeds.
@@ -96,6 +98,14 @@ type Process struct {
 	// tag and the git push of ergon release publish and git-tag.
 	Stderr io.Writer
 
+	// Transport sends the requests of ergon to GitHub, to the module proxy of Go and to the
+	// registries of the tools, such as [net/http.DefaultTransport].
+	Transport http.RoundTripper
+
+	// Platform is the system and the architecture that ergon runs on, such as linux/amd64, whose
+	// release binaries ergon tool run and ergon init upgrade install.
+	Platform option.Platform
+
 	// Args are the arguments that follow the name of the program.
 	Args []string
 
@@ -150,12 +160,22 @@ type session struct {
 	// random is the source of the random digits of the name of a new changeset.
 	random io.Reader
 
+	// transport sends the requests of ergon.
+	transport http.RoundTripper
+
 	// dir is the absolute path of the working directory. It is empty until [session.resolve]
 	// sets it.
 	dir string
 
 	// release is the version of the release of ergon, which the lock of ergon init records.
 	release string
+
+	// platform is the platform that ergon runs on.
+	platform option.Platform
+
+	// args are the arguments of the process, which ergon init upgrade passes to the release that it
+	// starts.
+	args []string
 
 	// env is the environment of the process.
 	env []string
@@ -224,13 +244,16 @@ func command(ctx context.Context, p *Process, register func(*language.Catalog) e
 	*cobra.Command, *session, error,
 ) {
 	s := &session{
-		getwd:    p.Getwd,
-		catalog:  new(language.Catalog),
-		now:      p.Now,
-		cacheDir: p.CacheDir,
-		random:   p.Random,
-		release:  v.Release,
-		env:      p.Env,
+		getwd:     p.Getwd,
+		catalog:   new(language.Catalog),
+		now:       p.Now,
+		cacheDir:  p.CacheDir,
+		random:    p.Random,
+		transport: p.Transport,
+		release:   v.Release,
+		args:      p.Args,
+		env:       p.Env,
+		platform:  p.Platform,
 	}
 	if err := register(s.catalog); err != nil {
 		return nil, nil, err
@@ -269,7 +292,7 @@ func command(ctx context.Context, p *Process, register func(*language.Catalog) e
 	flags.StringVar(&file, configFlag, configFile, "read the configuration from `file`")
 	flags.BoolP(helpFlag, "h", false, "show the help of the command")
 	root.Flags().BoolP(versionFlag, "v", false, "show the version of ergon")
-	root.AddCommand(initCommand(s, names), licenseCommand(ctx, s), releaseCommand(ctx, s), toolCommand(ctx, s))
+	root.AddCommand(initCommand(ctx, s, names), licenseCommand(ctx, s), releaseCommand(ctx, s), toolCommand(ctx, s))
 	return root, s, nil
 }
 

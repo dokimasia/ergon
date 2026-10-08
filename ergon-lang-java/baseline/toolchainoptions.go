@@ -41,6 +41,9 @@ type OSVScanner struct {
 
 var _ option.Release = OSVScanner{}
 
+// osvScannerRepository is the repository on GitHub whose releases publish osv-scanner.
+const osvScannerRepository = "google/osv-scanner"
+
 // ToolchainActions are the pins of the actions of the setup of the jvm toolchain.
 type ToolchainActions struct {
 	// SetupJava installs Java.
@@ -97,6 +100,12 @@ func (s OSVScanner) Asset(p option.Platform) (option.Asset, error) {
 		program += ".exe"
 	}
 	return option.Asset{
-		URL: "https://github.com/google/osv-scanner/releases/download/v" + s.Version + "/" + program,
+		URL: "https://github.com/" + osvScannerRepository + "/releases/download/v" + s.Version + "/" + program,
 	}, nil
+}
+
+// Repository returns google/osv-scanner, the repository on GitHub whose releases publish
+// osv-scanner.
+func (OSVScanner) Repository() string {
+	return osvScannerRepository
 }

@@ -6,11 +6,14 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"net/http"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 	"time"
 
+	"go.dokimi.dev/ergon/core/option"
 	"go.dokimi.dev/ergon/internal/app"
 	"go.dokimi.dev/ergon/internal/buildinfo"
 	"go.dokimi.dev/ergon/internal/cli"
@@ -27,15 +30,17 @@ func run() int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	p := cli.Process{
-		Getwd:    os.Getwd,
-		Now:      time.Now,
-		CacheDir: os.UserCacheDir,
-		Random:   rand.Reader,
-		Stdin:    os.Stdin,
-		Stdout:   os.Stdout,
-		Stderr:   os.Stderr,
-		Args:     os.Args[1:],
-		Env:      os.Environ(),
+		Getwd:     os.Getwd,
+		Now:       time.Now,
+		CacheDir:  os.UserCacheDir,
+		Random:    rand.Reader,
+		Stdin:     os.Stdin,
+		Stdout:    os.Stdout,
+		Stderr:    os.Stderr,
+		Transport: http.DefaultTransport,
+		Platform:  option.Platform(runtime.GOOS + "/" + runtime.GOARCH),
+		Args:      os.Args[1:],
+		Env:       os.Environ(),
 	}
 	return cli.Run(ctx, &p, app.Register, cli.Version{Release: buildinfo.Version(), Full: buildinfo.Full()})
 }
