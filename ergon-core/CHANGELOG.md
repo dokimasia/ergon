@@ -1,5 +1,11 @@
 # go.dokimi.dev/ergon/core
 
+## 0.4.0
+
+### Minor Changes
+
+- c61862c: Add make generate, which runs the generators of every language, and the options generate.command and generate.args to every language section of .ergon.yaml. generate-<language> runs the generators, and verify-generate-<language>, the step generate of check, fails when they change a file. make help lists the targets in groups: Common, each language, and the targets of the repository.
+
 ## 0.3.0
 
 ### Minor Changes

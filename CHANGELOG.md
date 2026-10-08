@@ -1,5 +1,33 @@
 # go.dokimi.dev/ergon
 
+## 0.4.0
+
+### Minor Changes
+
+- 354fe1c: Open the version pull request in version.yml when the run of ci.yml for a push to main passes, and publish in release.yml after ergon release ci verify finds a run of ci.yml that passed on the content of the commit, such as the run of the version pull request. ergon release ci verify replaces ergon release ci wait, so no job waits for another workflow. ergon release ci version skips a commit that is no longer the head of main. A GitHub App in the variable ERGON_APP_CLIENT_ID and the secret ERGON_APP_PRIVATE_KEY opens the version pull request, so its checks run without an approval. Each push to main gets a concurrency group of its own in ci.yml.
+
+### Patch Changes
+
+- Updated dependencies [c61862c]
+- Updated dependencies [12066ae]
+- Updated dependencies [806100c]
+- Updated dependencies [f81caba]
+- Updated dependencies [354fe1c]
+- Updated dependencies [7c5311d]
+  - go.dokimi.dev/ergon/core@0.4.0
+  - go.dokimi.dev/ergon/service@0.4.0
+  - go.dokimi.dev/ergon/lang/bash@0.3.0
+  - go.dokimi.dev/ergon/lang/csharp@0.2.0
+  - go.dokimi.dev/ergon/lang/go@0.3.0
+  - go.dokimi.dev/ergon/lang/java@0.3.0
+  - go.dokimi.dev/ergon/lang/javascript@0.2.0
+  - go.dokimi.dev/ergon/lang/kotlin@0.3.0
+  - go.dokimi.dev/ergon/lang/php@0.3.0
+  - go.dokimi.dev/ergon/lang/python@0.3.0
+  - go.dokimi.dev/ergon/lang/rust@0.3.0
+  - go.dokimi.dev/ergon/lang/terraform@0.3.0
+  - go.dokimi.dev/ergon/lang/typescript@0.2.0
+
 ## 0.3.0
 
 ### Minor Changes
