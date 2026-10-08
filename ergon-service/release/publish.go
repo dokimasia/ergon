@@ -182,6 +182,10 @@ type GitReleaser struct {
 	// tags are the tags of the repository, which Tag reads once.
 	tags map[string]string
 
+	// Terminal is the terminal of git tag and git push, on which the signing program of a tag and
+	// the ssh of the remote prompt for the PIN and the touch of a key. The zero value is none.
+	Terminal vcs.Terminal
+
 	// Root is the root of the repository.
 	Root string
 
@@ -207,22 +211,23 @@ func (r *GitReleaser) Tag(ctx context.Context, name string) (string, bool, error
 }
 
 // Release creates the annotated tag name at commit, with notes as its annotation, or the name for
-// empty notes. It returns the error of git, which wraps [vcs.ErrGit].
+// empty notes, with the terminal of r. It returns the error of git, which wraps [vcs.ErrGit].
 func (r *GitReleaser) Release(ctx context.Context, name, commit, notes string, _ bool) error {
-	if err := vcs.Tag(ctx, r.Root, name, commit, cmp.Or(notes, name)); err != nil {
+	if err := vcs.Tag(ctx, r.Root, r.Terminal, name, commit, cmp.Or(notes, name)); err != nil {
 		return err
 	}
 	r.created = append(r.created, "refs/tags/"+name)
 	return nil
 }
 
-// Finish pushes the tags that Release created to the remote in one atomic push, and pushes nothing
-// when Release created none. It returns the error of git, which wraps [vcs.ErrGit].
+// Finish pushes the tags that Release created to the remote in one atomic push, with the terminal
+// of r, and pushes nothing when Release created none. It returns the error of git, which wraps
+// [vcs.ErrGit].
 func (r *GitReleaser) Finish(ctx context.Context) error {
 	if len(r.created) == 0 {
 		return nil
 	}
-	return vcs.Push(ctx, r.Root, r.Remote, r.created...)
+	return vcs.Push(ctx, r.Root, r.Terminal, r.Remote, r.created...)
 }
 
 // TagForge is the host of a repository that a publish in CI tags and releases through.

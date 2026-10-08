@@ -55,6 +55,9 @@ const firstChangelog = "# " + modulePath + "\n\n## 1.0.0\n\n### Major Changes\n\
 // staleSum is the go.sum of the module b of the cases with a second module.
 const staleSum = "b/go.sum"
 
+// newTag is the mark of git push for a tag that the remote did not have.
+const newTag = "[new tag]"
+
 // The publish plan of the module at 1.0.0 without its tag, and the packages that its publish
 // releases, as the release commands write them.
 const (
@@ -972,9 +975,11 @@ func TestRelease(t *testing.T) {
 			status, stdout, stderr := runRelease(t, dir, nil, "release", "publish")
 			assert.Equal(t, status, statusOK, "the exit status: "+stderr)
 			assert.Equal(t, stdout, "released "+modulePath+"@1.0.0\n", "the standard output")
+			assert.Contains(t, stderr, newTag, "the standard error, which shows the output of git push")
 			assert.Equal(t, vcstest.Git(t, remote, "tag", "--list"), "v1.0.0\n", "the tags of origin")
 			assert.Equal(t, vcstest.Git(t, dir, "tag", "--list", "--format=%(contents)", "v1.0.0"),
-				"### Major Changes\n\n- Release the first version.\n", "the annotation of the tag")
+				"### Major Changes\n\n- Release the first version.\n\n",
+				"the annotation of the tag with its newline, and the newline of git tag --list")
 		})
 
 		t.Run("publish writes the released packages into --output", func(t *testing.T) {
@@ -1102,6 +1107,7 @@ func TestRelease(t *testing.T) {
 			status, stdout, stderr := runRelease(t, dir, nil, "release", "git-tag")
 			assert.Equal(t, status, statusOK, "the exit status: "+stderr)
 			assert.Equal(t, stdout, "released "+modulePath+"@1.0.0\n", "the standard output")
+			assert.Contains(t, stderr, newTag, "the standard error, which shows the output of git push")
 			assert.Equal(t, vcstest.Git(t, remote, "tag", "--list"), "v1.0.0\n", "the tags of origin")
 		})
 

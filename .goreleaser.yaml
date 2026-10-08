@@ -5,7 +5,8 @@
 # of the root module: an archive of the command ergon for each system and architecture that the
 # action setup-ergon of ergon init installs, and checksums.txt, which it checks the archives
 # against. GoReleaser keeps the notes of a GitHub Release that ergon release publish created, and
-# writes the annotation of the tag into a release that it creates.
+# writes the annotation of the tag into a release that it creates: its subject and its body, which
+# leave out the signature of a signed tag.
 
 version: 2
 
@@ -44,4 +45,4 @@ release:
     owner: dokimasia
     name: ergon
   mode: keep-existing
-  header: "{{ .TagContents }}"
+  header: "{{ .TagSubject }}\n\n{{ .TagBody }}"

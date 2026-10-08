@@ -24,6 +24,15 @@ const (
 	commitB = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 )
 
+// The output of git that a terminal of a [release.GitReleaser] receives.
+const (
+	// tagExists is the error of git tag for a tag that the repository has.
+	tagExists = "already exists"
+
+	// newTag is the mark of git push for a tag that the remote did not have.
+	newTag = "[new tag]"
+)
+
 // The errors of a releaser and of a host that fail.
 var (
 	errTag     = errors.New("tag failed")
@@ -318,7 +327,7 @@ func TestPublish(t *testing.T) {
 				"Release")
 			assert.NoError(t, r.Finish(t.Context()), "Finish")
 			assert.Equal(t, vcstest.Git(t, root, "tag", "--list", "--format=%(contents)", "v1.0.0"),
-				"### Minor Changes\n", "the annotation")
+				"### Minor Changes\n\n", "the annotation with its newline, and the newline of git tag --list")
 			assert.Equal(t, vcstest.Git(t, remote, "tag", "--list"), "v1.0.0\n", "the tags of the remote")
 		})
 
@@ -328,8 +337,8 @@ func TestPublish(t *testing.T) {
 			head := strings.TrimSpace(vcstest.Git(t, root, "rev-parse", "HEAD"))
 			r := &release.GitReleaser{Root: root, Remote: "origin"}
 			assert.NoError(t, r.Release(t.Context(), "v1.0.0", head, "", false), "Release")
-			assert.Equal(t, vcstest.Git(t, root, "tag", "--list", "--format=%(contents)", "v1.0.0"), "v1.0.0\n",
-				"the annotation")
+			assert.Equal(t, vcstest.Git(t, root, "tag", "--list", "--format=%(contents)", "v1.0.0"), "v1.0.0\n\n",
+				"the annotation with its newline, and the newline of git tag --list")
 		})
 
 		t.Run("pushes nothing without a release", func(t *testing.T) {
@@ -364,6 +373,28 @@ func TestPublish(t *testing.T) {
 			vcstest.Git(t, root, "tag", "v1.0.0", head)
 			r := &release.GitReleaser{Root: root, Remote: "origin"}
 			assert.ErrorIs(t, r.Release(t.Context(), "v1.0.0", head, "notes", false), vcs.ErrGit, "Release")
+		})
+
+		t.Run("runs git tag with its terminal", func(t *testing.T) {
+			t.Parallel()
+			root, _ := remoteRepository(t)
+			head := strings.TrimSpace(vcstest.Git(t, root, "rev-parse", "HEAD"))
+			vcstest.Git(t, root, "tag", "v1.0.0", head)
+			var stderr strings.Builder
+			r := &release.GitReleaser{Terminal: vcs.Terminal{Stderr: &stderr}, Root: root, Remote: "origin"}
+			assert.ErrorIs(t, r.Release(t.Context(), "v1.0.0", head, "notes", false), vcs.ErrGit, "Release")
+			assert.Contains(t, stderr.String(), tagExists, "the standard error of git tag")
+		})
+
+		t.Run("runs git push with its terminal", func(t *testing.T) {
+			t.Parallel()
+			root, _ := remoteRepository(t)
+			head := strings.TrimSpace(vcstest.Git(t, root, "rev-parse", "HEAD"))
+			var stderr strings.Builder
+			r := &release.GitReleaser{Terminal: vcs.Terminal{Stderr: &stderr}, Root: root, Remote: "origin"}
+			assert.NoError(t, r.Release(t.Context(), "v1.0.0", head, "notes", false), "Release")
+			assert.NoError(t, r.Finish(t.Context()), "Finish")
+			assert.Contains(t, stderr.String(), newTag, "the standard error of git push")
 		})
 	})
 

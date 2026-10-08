@@ -48,7 +48,7 @@ func Snapshot(ctx context.Context, dir string) (string, error) {
 	env := []string{"GIT_INDEX_FILE=" + filepath.Join(tmp, "index")}
 	var tree []byte
 	for _, args := range [][]string{{"add", "--all"}, {"write-tree"}} {
-		if tree, err = runEnv(ctx, dir, env, args...); err != nil {
+		if tree, err = runEnv(ctx, dir, env, Terminal{}, args...); err != nil {
 			return "", err
 		}
 	}

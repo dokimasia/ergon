@@ -409,7 +409,7 @@ func publishCommand(ctx context.Context, s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			releaser, err := s.releaser(r.root, noTag)
+			releaser, err := s.releaser(cmd, r.root, noTag)
 			if err != nil {
 				return err
 			}
@@ -425,7 +425,9 @@ func publishCommand(ctx context.Context, s *session) *cobra.Command {
 }
 
 // gitTagCommand returns ergon release git-tag, which tags each package of the publish plan of the
-// repository with the git of the repository, and pushes the tags.
+// repository with the git of the repository, and pushes the tags. git runs with the standard input
+// and the standard error of the command, on which its programs prompt for the PIN and the touch of
+// a key.
 func gitTagCommand(ctx context.Context, s *session) *cobra.Command {
 	return &cobra.Command{
 		Use:   "git-tag",
@@ -442,7 +444,12 @@ func gitTagCommand(ctx context.Context, s *session) *cobra.Command {
 					chunk[k].Kind = release.KindTagOnly
 				}
 			}
-			return s.publish(ctx, cmd, r, &plan, "", "", &release.GitReleaser{Root: r.root, Remote: remote})
+			releaser := &release.GitReleaser{
+				Terminal: vcs.Terminal{Stdin: cmd.InOrStdin(), Stderr: cmd.ErrOrStderr()},
+				Root:     r.root,
+				Remote:   remote,
+			}
+			return s.publish(ctx, cmd, r, &plan, "", "", releaser)
 		},
 	}
 }
@@ -727,8 +734,10 @@ func (s *session) publish(
 }
 
 // releaser returns the releaser of a publish in the repository at root: none for noTag, the API of
-// GitHub in GitHub Actions, and the git of the repository with the remote origin otherwise.
-func (s *session) releaser(root string, noTag bool) (release.Releaser, error) {
+// GitHub in GitHub Actions, and otherwise the git of the repository with the remote origin and the
+// standard input and the standard error of cmd, on which the programs of git prompt for the PIN and
+// the touch of a key.
+func (s *session) releaser(cmd *cobra.Command, root string, noTag bool) (release.Releaser, error) {
 	switch {
 	case noTag:
 		return untagged{}, nil
@@ -739,7 +748,11 @@ func (s *session) releaser(root string, noTag bool) (release.Releaser, error) {
 		}
 		return release.ForgeReleaser{Forge: client, Repo: repo}, nil
 	}
-	return &release.GitReleaser{Root: root, Remote: remote}, nil
+	return &release.GitReleaser{
+		Terminal: vcs.Terminal{Stdin: cmd.InOrStdin(), Stderr: cmd.ErrOrStderr()},
+		Root:     root,
+		Remote:   remote,
+	}, nil
 }
 
 // host returns the host of GitHub of the environment of s for the links of the changelog of GitHub,

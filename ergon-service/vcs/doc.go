@@ -14,7 +14,8 @@
 //
 // [Head] returns the commit of HEAD, and [AddedBy] the commit that added a file, which names the
 // pull request of a changeset. [Tags] returns the commit of each tag, [Tag] creates an annotated
-// tag, which git signs when tag.gpgSign is set, and [Push] pushes refs in one atomic push.
+// tag, which git signs when tag.gpgSign is set, and [Push] pushes refs in one atomic push. Both run
+// git with a [Terminal], on which a signing program and ssh ask for the PIN and the touch of a key.
 //
 // # Snapshots
 //
@@ -29,7 +30,8 @@
 // # Errors
 //
 // A command that git cannot run, or that git ends with an error, returns an error that wraps
-// [ErrGit] and states the arguments and the standard error of git.
+// [ErrGit] and states the arguments, and the standard error of git unless git wrote it to the
+// Stderr of a [Terminal].
 //
 // # Dependency position
 //

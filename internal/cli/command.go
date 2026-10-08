@@ -84,14 +84,16 @@ type Process struct {
 	// [crypto/rand.Reader].
 	Random io.Reader
 
-	// Stdin is the standard input of a tool that ergon tool run runs, and of the editor of ergon
-	// release add --open.
+	// Stdin is the standard input of a tool that ergon tool run runs, of the editor of ergon release
+	// add --open, and of the git tag and the git push of ergon release publish and git-tag, from which
+	// ssh-keygen reads the PIN of a signing key.
 	Stdin io.Reader
 
 	// Stdout receives the output of a command: the help, the version, and the files it wrote.
 	Stdout io.Writer
 
-	// Stderr receives every error, after the name of the program.
+	// Stderr receives every error, after the name of the program, and the standard error of the git
+	// tag and the git push of ergon release publish and git-tag.
 	Stderr io.Writer
 
 	// Args are the arguments that follow the name of the program.

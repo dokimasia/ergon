@@ -16,8 +16,12 @@ import (
 )
 
 // TestMain runs the tests without the variables and the configuration of git of the environment,
-// so git reads the working trees of the tests alone.
+// so git reads the working trees of the tests alone. git of the cases that sign a tag starts the
+// test binary as its ssh signing program, and TestMain then signs as [sign] does.
 func TestMain(m *testing.M) {
+	if len(os.Args) > 2 && os.Args[1] == signFlag && os.Args[2] == signCommand {
+		os.Exit(sign(os.Args))
+	}
 	vcstest.Isolate()
 	os.Exit(m.Run())
 }
