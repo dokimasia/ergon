@@ -19,8 +19,9 @@ import (
 // ErrInvalidTemplate is the error for templates that a producer declares wrong: a template outside
 // managed/, seeded/ and shared/, a name that does not end in .tmpl, a path that is not relative,
 // clean and slash-separated or that is under .ergon, a template that does not parse, and a path
-// that two producers render, unless each renders a fragment of a shared file. It is a defect of the
-// producer.
+// that two producers render, unless each renders a fragment of a shared file. It is also the error
+// for a file of a [language.Placer] at such a path, or at the path of another file. It is a defect
+// of the producer.
 var ErrInvalidTemplate = errors.New("render: invalid template")
 
 // The delimiters of every template, so the ${{ }} of a workflow and the {{.Dir}} of go list -f in a
@@ -35,6 +36,10 @@ const suffix = ".tmpl"
 
 // reserved is the directory of the lock and the local files, which no producer renders into.
 const reserved = ".ergon/"
+
+// backslash separates the elements of a path on Windows. A path of the repository is
+// slash-separated, so it contains none.
+const backslash = `\`
 
 // Class is how ergon init treats a file that it renders.
 type Class uint8
@@ -121,11 +126,13 @@ type data struct {
 // yaml and steps, and the data .Answers, .Options, .Data and .Contributions, where a key that the
 // data lacks is an error. .Data are the values that a [language.Calculator] computes from a, its
 // options and c, and nil for any other producer. Render skips a template that renders no byte, and
-// joins the fragments of a shared file in the order of units.
+// joins the fragments of a shared file in the order of units. It adds the files of a
+// [language.Placer] as managed files of its unit, after the templates of the unit.
 //
-// It returns an error that wraps [ErrInvalidTemplate] for templates that a producer declares
-// wrong, the error of the Data of a producer, and the error of a template that does not execute,
-// which wraps the error of a function that it calls. Render reads a and c, and modifies neither.
+// It returns an error that wraps [ErrInvalidTemplate] for templates or placed files that a
+// producer declares wrong, the error of the Data or the Files of a producer, and the error of a
+// template that does not execute, which wraps the error of a function that it calls. Render reads a
+// and c, and modifies neither.
 func Render(units []Unit, a *language.Answers, c *workflow.Contribution) ([]File, error) {
 	var files []File
 	for _, u := range units {
@@ -160,8 +167,39 @@ func Render(units []Unit, a *language.Answers, c *workflow.Contribution) ([]File
 		if err != nil {
 			return nil, fmt.Errorf("render: the templates of %s: %w", u.Name, err)
 		}
+		if files, err = place(files, &u, a, c); err != nil {
+			return nil, err
+		}
 	}
 	slices.SortFunc(files, func(a, b File) int { return strings.Compare(a.Path, b.Path) })
+	return files, nil
+}
+
+// place returns files with the files that the producer of u places for a and c, as managed files of
+// u, and files alone for a producer that is no [language.Placer]. It returns the error of Files,
+// and an error that wraps [ErrInvalidTemplate] for a path that is not relative, clean and
+// slash-separated, a path under .ergon, and a path that another file of files has.
+func place(files []File, u *Unit, a *language.Answers, c *workflow.Contribution) ([]File, error) {
+	placer, ok := u.Producer.(language.Placer)
+	if !ok {
+		return files, nil
+	}
+	placed, err := placer.Files(a, u.Options, c)
+	if err != nil {
+		return nil, fmt.Errorf("render: the files of %s: %w", u.Name, err)
+	}
+	for _, p := range placed {
+		clean := fs.ValidPath(p.Path) && p.Path != "." && !strings.Contains(p.Path, backslash)
+		if !clean || strings.HasPrefix(p.Path+"/", reserved) {
+			return nil, fmt.Errorf("%w: %s places %q, which is no clean relative path outside %s",
+				ErrInvalidTemplate, u.Name, p.Path, reserved)
+		}
+		if slices.ContainsFunc(files, func(f File) bool { return f.Path == p.Path }) {
+			return nil, fmt.Errorf("%w: %s places %s, which another file of the rendering has", ErrInvalidTemplate,
+				u.Name, p.Path)
+		}
+		files = append(files, File{Path: p.Path, Producer: u.Name, Content: p.Content, Class: Managed})
+	}
 	return files, nil
 }
 

@@ -2,19 +2,22 @@
 // SPDX-License-Identifier: MIT
 
 // Package baseline is the producer of the license files of ergon init: LICENSE, and NOTICE for
-// Apache-2.0.
+// Apache-2.0, at the root and in each directory under a license of its own.
 //
-// [Producer] renders both files as managed files, from the texts that
+// [Producer] renders the files as managed files, from the texts that
 // [go.dokimi.dev/ergon/service/licenses.Text] returns for the answers of ergon init and the section
 // license of .ergon.yaml. A license text has no comment, so the lock alone records the files. The
-// templates under templates/managed/ write the texts that [Producer.Data] computes.
+// templates under templates/managed/ write the texts that [Producer.Data] computes for the root.
+// [Producer.Files] returns the files of each directory of the section, whose paths no template tree
+// can mirror.
 //
 // # Options
 //
 // The section license of .ergon.yaml is [go.dokimi.dev/ergon/service/licenses.Config]: ergon init
 // writes its owner and its license from the answers, and the repository sets the parameters of
-// BUSL-1.1, the comment styles and the paths without a header. ergon init fails for BUSL-1.1 until
-// the section sets each parameter.
+// BUSL-1.1, the directories under a license of their own, the comment styles and the paths without
+// a header. ergon init fails for BUSL-1.1 until the section sets each parameter, at the root and in
+// each directory.
 //
 // # Workflows
 //

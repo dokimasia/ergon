@@ -48,6 +48,16 @@ func TestConfig(t *testing.T) {
 				name: "returns nil for doublestar globs",
 				give: func(c *licenses.Config) { c.Exclude = []string{"**/*.gen.go", "testdata/**", "{a,b}/*.sql"} },
 			},
+			{
+				name: "returns nil for a directory inside another directory under another license",
+				give: func(c *licenses.Config) {
+					c.Directories = []licenses.Directory{
+						{Path: "enterprise", SPDX: spdx.BUSL11, Parameters: parameters()},
+						{Path: "enterprise/sdk", SPDX: spdx.Apache20},
+						{Path: ".github", SPDX: spdx.MIT},
+					}
+				},
+			},
 		}
 		for _, tt := range valid {
 			t.Run(tt.name, func(t *testing.T) {
@@ -100,6 +110,31 @@ func TestConfig(t *testing.T) {
 				name: "returns ErrInvalid for a glob that does not parse",
 				give: func(c *licenses.Config) { c.Exclude = []string{"[a"} },
 			},
+			{
+				name: "returns ErrInvalid for a directory under a license that ergon does not support",
+				give: func(c *licenses.Config) { c.Directories = []licenses.Directory{{Path: "sdk", SPDX: "GPL-3.0"}} },
+			},
+			{
+				name: "returns ErrInvalid for a directory under BUSL-1.1 without a parameter",
+				give: func(c *licenses.Config) { c.Directories = []licenses.Directory{{Path: "sdk", SPDX: spdx.BUSL11}} },
+			},
+			{
+				name: "returns ErrInvalid for a directory whose parameter spans lines",
+				give: func(c *licenses.Config) {
+					c.Directories = []licenses.Directory{
+						{Path: "sdk", SPDX: spdx.MIT, Parameters: licenses.Parameters{ChangeDate: "2030\n"}},
+					}
+				},
+			},
+			{
+				name: "returns ErrInvalid for a directory that two entries name",
+				give: func(c *licenses.Config) {
+					c.Directories = []licenses.Directory{
+						{Path: "sdk", SPDX: spdx.MIT},
+						{Path: "sdk", SPDX: spdx.Apache20},
+					}
+				},
+			},
 		}
 		for _, tt := range invalid {
 			t.Run(tt.name, func(t *testing.T) {
@@ -109,6 +144,42 @@ func TestConfig(t *testing.T) {
 				assert.ErrorIs(t, c.Validate(), option.ErrInvalid, "Validate")
 			})
 		}
+
+		paths := []struct {
+			name string
+			give string
+		}{
+			{name: "returns ErrInvalid for a directory without a path", give: ""},
+			{name: "returns ErrInvalid for the root as a directory", give: "."},
+			{name: "returns ErrInvalid for an absolute path of a directory", give: "/enterprise"},
+			{name: "returns ErrInvalid for a directory outside the repository", give: "../enterprise"},
+			{name: "returns ErrInvalid for a path of a directory that is not clean", give: "a/./b"},
+			{name: "returns ErrInvalid for a path of a directory with a final slash", give: "enterprise/"},
+			{name: "returns ErrInvalid for a path of a directory with a backslash", give: `sdk\go`},
+			{name: "returns ErrInvalid for a path of a directory that spans lines", give: "sdk\ngo"},
+			{name: "returns ErrInvalid for a glob in place of a directory", give: "sdk/*"},
+			{name: "returns ErrInvalid for the repository of git as a directory", give: ".git"},
+			{name: "returns ErrInvalid for a directory in the directory of ergon", give: ".ergon/local"},
+		}
+		for _, tt := range paths {
+			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+				c := config()
+				c.Directories = []licenses.Directory{{Path: tt.give, SPDX: spdx.MIT}}
+				err := c.Validate()
+				assert.ErrorIs(t, err, option.ErrInvalid, "Validate")
+				assert.Contains(t, err.Error(), "directories", "the error")
+			})
+		}
+
+		t.Run("names the directory of a parameter that BUSL-1.1 requires", func(t *testing.T) {
+			t.Parallel()
+			c := config()
+			c.Directories = []licenses.Directory{{Path: "enterprise", SPDX: spdx.BUSL11}}
+			err := c.Validate()
+			assert.ErrorIs(t, err, option.ErrInvalid, "Validate")
+			assert.Contains(t, err.Error(), "in the directory enterprise", "the error")
+		})
 
 		t.Run("names every empty parameter of BUSL-1.1", func(t *testing.T) {
 			t.Parallel()

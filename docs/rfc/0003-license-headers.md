@@ -4,7 +4,7 @@ title: Licenses
 author: Roy Klopper
 status: Accepted
 created: 2026-09-24
-updated: 2026-10-07
+updated: 2026-10-08
 discussion: none
 supersedes: none
 superseded-by: none
@@ -20,7 +20,7 @@ produces-adr: tbd
 
 ## Summary
 
-ergon supports 44 licenses by their SPDX identifiers: the licenses for software of GitHub's license list, and BUSL-1.1. `core/spdx` declares the identifiers. `service/licenses` renders the text of each license, and its producer contributes `LICENSE` to `ergon init`, with a `NOTICE` for Apache-2.0.
+ergon supports 44 licenses by their SPDX identifiers: the licenses for software of GitHub's license list, and BUSL-1.1. `core/spdx` declares the identifiers. `service/licenses` renders the text of each license, and its producer contributes `LICENSE` to `ergon init`, with a `NOTICE` for Apache-2.0. A directory of a repository can have a license of its own, with its own `LICENSE`.
 
 `ergon license fix` adds and updates the copyright and SPDX header of every file that has a comment syntax. `ergon license check` verifies the headers and exits 1 on a missing, outdated or conflicting one. ergon builds the command on apache/skywalking-eyes v0.9.0, whose packages `pkg/header` and `pkg/comments` generate, match and insert headers for 76 comment-bearing languages. ergon supplies the parts the library gets wrong:
 
@@ -133,6 +133,14 @@ license:
     additional-use-grant: ""
     change-date: ""
     change-license: ""
+  directories:
+    - path: enterprise
+      spdx: BUSL-1.1
+      parameters:
+        licensed-work: Stealth Enterprise
+        additional-use-grant: None
+        change-date: "2030-01-01"
+        change-license: Apache-2.0
   styles:
     ".sql": none
   exclude:
@@ -147,11 +155,37 @@ license:
 - `spdx` is one of the identifiers of [Licenses](#licenses).
 - ergon renders the header as `Copyright <owner> <year>` and `SPDX-License-Identifier: <spdx>`, which is the current go-license template.
 - `parameters` are the parameters of BUSL-1.1, and every other license ignores them.
+- `directories` lists the directories under a license of their own, as [Directories](#directories) specifies. Its baseline value is the empty list.
 - `styles` maps an extension or a base name to one of skywalking-eyes' style identifiers, such as `DoubleSlash`, `Hashtag` or `Semicolon`, or to `none`. A mapping replaces every other rule of ergon for that key.
 - `exclude` takes doublestar globs.
 - `ci.timeout` is the limit in minutes of the job `license` of `ci.yml`. The job runs no action of its own, so `ci.actions` is empty.
 
 The section is the options of the license producer: the struct `Config` of `service/licenses`, which a strict decode reads. A key that the struct does not have is an error, as it is in every section of `.ergon.yaml`.
+
+### Directories
+
+A directory of the repository can have a license of its own, such as a part of the code under BUSL-1.1 in a repository under MIT. Each entry of `directories` names a directory and its license:
+
+| Key | Value |
+|---|---|
+| `path` | The directory, relative to the root of the repository and slash-separated, such as `enterprise` or `sdk/go` |
+| `spdx` | One of the identifiers of [Licenses](#licenses) |
+| `parameters` | The parameters of BUSL-1.1 for the directory, which every other license ignores |
+
+- The header of a file states the license of the deepest directory of `directories` that contains the file. Every other file states the license of the section.
+- Every header states the owner of the section, so a repository has one copyright holder.
+- The license producer renders a `LICENSE` in each directory, and a `NOTICE` for Apache-2.0, with the fields that [Licenses](#licenses) fills from the answers of `ergon init`.
+- The entries are options of the section, not answers of `ergon init`. The lock records their baseline value, the empty list, and `ergon init sync --license` changes the license of the section alone.
+
+A license text is a file in a directory, so an entry names a directory and not a glob. The zip of a Go module takes the `LICENSE` of the module's directory, and the `LICENSE` of the repository root only for a module without one. A module in a listed directory carries the license of that directory.
+
+`Config.Validate` returns an error that names the path for each of these entries:
+
+- a path that is empty, spans lines, starts with `/` or `..`, is not clean, is `.`, has a backslash, or has a glob character: `*`, `?`, `[` or `{`
+- a path in `.git` or `.ergon`, where ergon does not write a license file
+- a path that two entries name
+- an identifier outside [Licenses](#licenses)
+- for BUSL-1.1, an empty parameter, which the error names with every other empty one
 
 ### Changing the license
 
@@ -166,6 +200,8 @@ ergon: options: invalid .ergon.yaml: license.spdx "Apache-2.0", which ergon init
 ```
 
 `ergon init sync` with that flag and the value of the key records the new answer. While `sync` changes an answer, the key may still state the answer that the lock records. `ergon init new` writes its answers over the keys of an existing section.
+
+The license of a directory is an option of the section. After a change of its `spdx` in `.ergon.yaml`, `ergon init sync` renders the `LICENSE` of the directory again, and `ergon license check` reports each header in the directory that states the earlier license as `outdated`. After an entry is removed, `ergon init sync` removes the `LICENSE` and the `NOTICE` of its directory.
 
 ### The library's part and ergon's part
 
@@ -217,6 +253,10 @@ type Config struct {
 	// Parameters are the parameters of BUSL-1.1.
 	Parameters Parameters
 
+	// Directories are the directories of the repository under a license of
+	// their own.
+	Directories []Directory
+
 	// Styles maps an extension or a base name to a skywalking-eyes style
 	// identifier, or to "none" to leave the file without a header.
 	Styles map[string]string
@@ -235,6 +275,19 @@ type Parameters struct {
 	AdditionalUseGrant string
 	ChangeDate         string
 	ChangeLicense      string
+}
+
+// Directory is a directory of the repository under a license of its own.
+type Directory struct {
+	// Path is the directory, relative to the repository and
+	// slash-separated, such as "enterprise".
+	Path string
+
+	// SPDX is one of the identifiers of core/spdx.
+	SPDX spdx.ID
+
+	// Parameters are the parameters of BUSL-1.1 for the directory.
+	Parameters Parameters
 }
 
 // Holder is what the fields of a license text name.
@@ -298,9 +351,9 @@ func Fix(ctx context.Context, root string, c *Config, year int) (Report, error)
 `Check` and `Fix` run these steps:
 
 1. Set `logger.Log` to discard, once per process. Resolve the style of each file from `c.Styles`, then none for a license file, then ergon's overrides, then the library's table, each by the base name and then by the longest extension.
-2. Build a `header.ConfigHeader` whose `License.Content` is the rendered header and whose pattern is `Copyright <owner> \d{4}(?:\s*[-,]\s*\d{4})*\s+SPDX-License-Identifier: <spdx>(?:\s|$)`, normalized by `NormalizedPattern`.
+2. Build a `header.ConfigHeader` for the license of the section and for the license of each directory of `c.Directories`. Its `License.Content` is the rendered header, and its pattern is `Copyright <owner> \d{4}(?:\s*[-,]\s*\d{4})*\s+SPDX-License-Identifier: <spdx>(?:\s|$)`, normalized by `NormalizedPattern`.
 3. List the files with `git ls-files --cached --others --exclude-standard`, and drop the excluded files, the changesets, the changelogs, the generated files, the files without a style and every path that is no regular file. A changeset is a Markdown file directly in `.changeset` other than its `README.md`. A changelog is a file named `CHANGELOG.md`. A file is generated when its first line contains `Code generated … DO NOT EDIT` or `Managed by ergon init`.
-4. Normalize each file with `license.NormalizeHeader`, and match the pattern.
+4. Normalize each file with `license.NormalizeHeader`, and match the pattern of its license: the license of the deepest directory of `c.Directories` that contains the file, or the license of the section.
 5. For each failing file, `Fix` looks for an existing header block in the file's style, after its preamble: the first comment block with a copyright line or an SPDX tag, among the comment blocks and blank lines before the first other line. It removes a block whose lines are all copyright lines, SPDX tags or empty comment lines, and keeps its years. It reports a block with any other line as a conflict and leaves the file unchanged. It then inserts the text of `header.GenerateLicenseHeader` after the preamble of the style, as the library inserts it, in one write.
 
 `logger.Log` is a package-level variable of the library, so ergon sets it to discard every message, once per process. ergon resolves the styles from a table of its own and changes no table of the library.
@@ -335,13 +388,15 @@ Three of these cases occur in the repositories today. `treesitter/oracles/csharp
 
 The license producer is a base producer of `ergon init`, beside the producers of the common files and the GitHub files. It renders `LICENSE` as a managed file. For Apache-2.0 it also renders `NOTICE`. Its options are the `license` section. Its templates call `licenses.Text`. Its job `license` in the workflow of the gate runs `ergon license check`.
 
+The producer also renders the `LICENSE` of each entry of `directories`, and its `NOTICE` for Apache-2.0, as managed files. The options state the paths of those files, which no template tree can mirror, so the producer renders them through the role `Placer` of RFC-0004.
+
 ### Packages
 
 | Package | Contains | Imports |
 |---|---|---|
 | `ergon-core/spdx` | `ID`, the 44 identifiers and `ID.Valid` | the standard library |
-| `ergon-service/licenses` | `Config`, `Text` and the texts of the 44 licenses, `Check`, `Fix`, the table of styles with the overrides, and the header-block removal | `core/*`, `service/vcs`, skywalking-eyes `assets`, `pkg/comments`, `pkg/header`, `pkg/license` and `pkg/logger`, logrus, `github.com/bmatcuk/doublestar/v4` |
-| `ergon-service/licenses/baseline` | The license producer of `ergon init` | `core/*`, `service/licenses` |
+| `ergon-service/licenses` | `Config` and `Directory`, `Text` and the texts of the 44 licenses, `Check`, `Fix`, the table of styles with the overrides, and the header-block removal | `core/*`, `service/vcs`, skywalking-eyes `assets`, `pkg/comments`, `pkg/header`, `pkg/license` and `pkg/logger`, logrus, `github.com/bmatcuk/doublestar/v4` |
+| `ergon-service/licenses/baseline` | The license producer of `ergon init`, with the license files of the directories | `core/*`, `service/licenses` |
 
 The name of the directory differs from `LICENSE` in more than its case. The go command adds the `LICENSE` of the repository to the zip of a module in a directory without one, and it refuses a zip with two paths whose names differ in case alone, such as `license/` and `LICENSE`.
 
@@ -394,6 +449,24 @@ The texts and templates of the SPDX License List 3.29.0 cover its 708 current li
 
 **Why not:** the header depends on the section `license`, so the release command would read the configuration of another command, and a version pull request would contain the work of two commands. A changelog lists the summaries of the changesets, which ergon license skips for the same reason.
 
+### G. Globs in place of directories
+
+`directories` would take doublestar globs, as `exclude` does.
+
+**Why not:** a license text is a file in a directory, and the zip of a Go module takes the `LICENSE` of the module's directory. A glob can select a part of a directory, and no `LICENSE` can then state the license of that directory.
+
+### H. `REUSE.toml` and `LICENSES/`
+
+REUSE 3.3 associates licenses with paths through a `REUSE.toml` in any directory, and the closest file that covers a path decides. It keeps every license text in `LICENSES/<id>.txt` at the root of the project.
+
+**Why not:** the zip of a Go module reads `LICENSE`, not `LICENSES/`, so a module in a directory of another license would carry the license of the root. `REUSE.toml` also annotates the files without a comment syntax, which [Unresolved and future work](#unresolved-and-future-work) leaves out.
+
+### I. A second `ergon init` in the directory
+
+ergon's commands work on the repository of the nearest parent with `.ergon/init.lock`, so a directory with a lock of its own would have a `license` section of its own.
+
+**Why not:** `ergon init` renders every common file and every GitHub file there, such as a second Makefile and a second `.github/`. `ergon license check` at the root still checks the directory's files against the license of the root.
+
 ## Drawbacks
 
 - ergon depends on a v0.x library whose API may change. ergon pins v0.9.0, and each upgrade needs the six-repository run again.
@@ -406,6 +479,8 @@ The texts and templates of the SPDX License List 3.29.0 cover its 708 current li
 - The texts follow GitHub's formatting, which differs in places from the text of a license's author: GitHub's Apache License 2.0 lacks the blank line that opens the text at apache.org.
 - A Markdown file that opens with a thematic break `---` and has a second one reads as front matter, so its header follows the second break.
 - A file that the repository copies from another project gets a header that names the repository's owner, unless `license.exclude` names the file. In treesitter, `ergon license fix` put that header on the 11 queries that the repository vendors from its grammars. `fix` also replaces a header of the other project whose lines are copyright lines and SPDX tags alone.
+- A repository has one copyright holder. A directory whose code another holder owns needs an entry of `license.exclude`, as a file that the repository copies from another project does.
+- `ergon init` writes the `LICENSE` of an entry of `directories` also when the directory does not exist, so a misspelled path creates a directory that contains a `LICENSE` alone.
 
 ## Unresolved and future work
 
@@ -423,6 +498,7 @@ The texts and templates of the SPDX License List 3.29.0 cover its 708 current li
 | `header.CheckFile`, `header.Fix`, `header.InsertComment` | `pkg/header/check.go`, `pkg/header/fix.go`, v0.9.0 |
 | `comments.OverrideLanguageCommentStyle`, the map lookup | `pkg/comments/config.go`, v0.9.0 |
 | `logger.Log` set to stdout | `pkg/logger/log.go:30-33`, v0.9.0 |
+| A list of header configurations, each with its license and its paths | `pkg/config/config.go`, the configuration `V2`, and `pkg/header/config.go`, v0.9.0 |
 | The library's literal year check, declined | https://github.com/apache/skywalking/issues/10223 |
 | go-license v1.50.0, Go files only | https://github.com/palantir/go-license/blob/v1.50.0/golicense/golicense.go |
 | hawkeye v7.2.0 | https://github.com/fast/hawkeye/blob/v7.2.0/hawkeye/src/engine/analyze.rs |

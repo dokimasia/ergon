@@ -4,7 +4,7 @@ title: Repository initialization
 author: Roy Klopper
 status: Accepted
 created: 2026-10-05
-updated: 2026-10-07
+updated: 2026-10-08
 discussion: none
 supersedes: none
 superseded-by: none
@@ -296,6 +296,8 @@ One engine in `service/baseline/render` executes the templates of every producer
 - The function `words` writes a list as words of the shell, escaped for make. `make` escapes a value for make, `yaml` quotes a scalar of YAML, and `steps` writes the steps of a job of a workflow, so `ci.yml` and `release.yml` write a step the same way.
 - The engine skips a template that renders zero bytes, as `NOTICE` does for every license but Apache-2.0.
 
+A producer whose options state the paths of its files renders those files through the role `Placer`, beside its templates. The license producer renders the `LICENSE` of each directory of `license.directories` this way, as RFC-0003 specifies. The engine adds each placed file to the rendering as a managed file of its producer. It rejects a path that is not relative, clean and slash-separated, a path under `.ergon/`, and a path that another file of the rendering has.
+
 A test renders every template of every producer with its options at the baseline. It checks that each file parses in its format, that no line ends in whitespace, and that each file ends with one newline, which the hooks of `.pre-commit-config.yaml` require.
 
 ### Settings
@@ -410,6 +412,7 @@ license:
     additional-use-grant: ""
     change-date: ""
     change-license: ""
+  directories: []
   styles: {}
   exclude: []
   ci:
@@ -740,7 +743,7 @@ Each ergon release embeds the baseline value of every option, among them the ver
 
 | Package | Contains | Imports |
 |---|---|---|
-| `core/language/init.go` | The roles `Producer`, `Calculator`, `Configurable` and `Contributor`, `Options`, `Answers` with `Validate`, `Repository`, and the path of `.ergon.yaml` | `core/spdx`, `core/workflow`, `core/workspace` |
+| `core/language/init.go` | The roles `Producer`, `Calculator`, `Configurable`, `Contributor` and `Placer`, `File`, `Options`, `Answers` with `Validate`, `Repository`, and the path of `.ergon.yaml` | `core/spdx`, `core/workflow`, `core/workspace` |
 | `core/language/catalog.go` | The roles of a toolchain and of a language, and `ToolchainRole` and `Role`, which select one | `core/workspace` |
 | `core/option` | The kinds of tool, with `Binary`, `Release` and `UV`, the step options `Run`, `Fuzz`, `Bench`, `Mutate`, `Audit` and `Threshold`, `Check`, `Step`, `Severity`, `Paths`, `Version`, and `CI` with its forms for the runners and the versions, each with `Validate` | `core/workflow` |
 | `core/workflow` | `Job`, `Setup`, `Step`, `Action`, `CodeQL`, `Update` and `Contribution`: a producer's part of the workflows | the standard library |
@@ -749,7 +752,7 @@ Each ergon release embeds the baseline value of every option, among them the ver
 | `ergon-service/baseline/lock` | The format of `.ergon/init.lock` | `core/*` |
 | `ergon-service/baseline/options` | The sections of `.ergon.yaml`: the resolution against the record and the answers of the lock, the strict decode into the struct of a producer, its `Validate`, and the sections with the comments of the `doc` tags | `core/*`, viper and mapstructure for the decode, go.yaml.in/yaml/v3 for the writer |
 | `ergon-service/baseline/overlay` | The local files: the merge of YAML and the appended text | `core/*`, go.yaml.in/yaml/v3 |
-| `ergon-service/baseline/render` | The engine of the templates, the classes from the template tree, the collection of the contributions, and the join of fragments | `core/*` |
+| `ergon-service/baseline/render` | The engine of the templates, the classes from the template tree, the files of a `Placer`, the collection of the contributions, and the join of fragments | `core/*` |
 | `ergon-service/baseline/common` | The producer of the common files | `core/*`, `service/release` for the branch of the version pull request |
 | `ergon-service/baseline/github` | The producer of the GitHub files, which renders the contributions of every producer | `core/*` |
 | `ergon-service/licenses/baseline` | The producer of the license files, as RFC-0003 specifies | `core/*`, `service/licenses` |
@@ -803,6 +806,25 @@ type Contributor interface {
 	// Contribution returns the producer's part of the workflows for o.
 	Contribution(o Options) workflow.Contribution
 }
+
+// Placer is a producer that renders managed files at paths that its
+// options state, beside the files of its templates.
+type Placer interface {
+	// Files returns the files of the producer for the answers a, its
+	// options o and the contributions c. It reads no file and runs no
+	// command, as Data does.
+	Files(a *Answers, o Options, c *workflow.Contribution) ([]File, error)
+}
+
+// File is a managed file that a Placer renders.
+type File struct {
+	// Path is the path of the file in the repository: relative, clean and
+	// slash-separated.
+	Path string
+
+	// Content is the content of the file.
+	Content []byte
+}
 ```
 
 ### Failure handling
@@ -821,6 +843,7 @@ type Contributor interface {
 | `sync` meets an edited file | Every other outdated file is rewritten. The edited file is unchanged | Move the edit into the local file, then run `sync --force` |
 | `remove` meets an edited file | Nothing removed | The same |
 | A template reads a key that its data does not have | Nothing written | A defect of ergon, which the test of every template prevents |
+| A producer places a file at a path that is not relative and clean, under `.ergon/`, or of another file | Nothing written | A defect of ergon, which the tests of the producer prevent |
 | `ergon tool run` names a section or a tool that the repository does not have | Nothing run, exit 2 | The error lists the tools of the section |
 | `ergon tool run` in a directory without `.ergon/init.lock` in it or a parent | Nothing run, exit 1 | Run the command in the repository, or run `ergon init new` |
 | A release binary has no digest for the platform | Nothing installed, exit 1 | Add the digest of the platform's asset to the section |

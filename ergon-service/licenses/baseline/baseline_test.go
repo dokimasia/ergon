@@ -5,9 +5,12 @@ package baseline_test
 
 import (
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"go.dokimi.dev/assert"
+	"go.dokimi.dev/assert/files"
 	"go.dokimi.dev/assert/golden"
 	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/core/option"
@@ -15,11 +18,27 @@ import (
 	"go.dokimi.dev/ergon/core/workflow"
 	"go.dokimi.dev/ergon/service/baseline"
 	"go.dokimi.dev/ergon/service/baseline/baselinetest"
+	"go.dokimi.dev/ergon/service/licenses"
 	licensebaseline "go.dokimi.dev/ergon/service/licenses/baseline"
 )
 
 // name pins the name of the producer of the license files.
 const name = "license"
+
+// The key of the directories in the section license that ergon init new writes, and the same key
+// with the directory sdk under Apache-2.0.
+const (
+	noDirectories = "  directories: []\n"
+	sdkDirectory  = "  directories:\n    - path: sdk\n      spdx: Apache-2.0\n"
+)
+
+// busl are the parameters of BUSL-1.1 of the cases.
+var busl = licenses.Parameters{
+	LicensedWork:       "demo 1.0",
+	AdditionalUseGrant: "None",
+	ChangeDate:         "2030-01-01",
+	ChangeLicense:      "Apache-2.0",
+}
 
 func TestBaseline(t *testing.T) {
 	t.Parallel()
@@ -91,6 +110,76 @@ func TestBaseline(t *testing.T) {
 			})
 		})
 
+		t.Run("Files", func(t *testing.T) {
+			t.Parallel()
+
+			t.Run("returns the LICENSE of each directory and the NOTICE of one under Apache-2.0", func(t *testing.T) {
+				t.Parallel()
+				a := baselinetest.Answers()
+				c := section(a)
+				c.Directories = []licenses.Directory{
+					{Path: "enterprise", SPDX: spdx.BUSL11, Parameters: busl},
+					{Path: "sdk/go", SPDX: spdx.Apache20},
+				}
+				got, err := licensebaseline.Producer{}.Files(a, c, &workflow.Contribution{})
+				assert.NoError(t, err, "Files")
+				h := licenses.Holder{Owner: a.Owner, Name: a.Name, Repository: string(a.Repository), Year: a.Year}
+				enterprise, _, err := licenses.Text(&licenses.Config{SPDX: spdx.BUSL11, Parameters: busl}, h)
+				assert.NoError(t, err, "Text of BUSL-1.1")
+				sdk, notice, err := licenses.Text(&licenses.Config{SPDX: spdx.Apache20}, h)
+				assert.NoError(t, err, "Text of Apache-2.0")
+				assert.Equal(t, got, []language.File{
+					{Path: "enterprise/LICENSE", Content: enterprise},
+					{Path: "sdk/go/LICENSE", Content: sdk},
+					{Path: "sdk/go/NOTICE", Content: notice},
+				}, "the files")
+			})
+
+			t.Run("returns no file for options of another type", func(t *testing.T) {
+				t.Parallel()
+				got, err := licensebaseline.Producer{}.Files(baselinetest.Answers(), nil, &workflow.Contribution{})
+				assert.NoError(t, err, "Files")
+				assert.Empty(t, got, "the files")
+			})
+
+			t.Run("returns ErrInvalid for a directory under BUSL-1.1 without its parameters", func(t *testing.T) {
+				t.Parallel()
+				a := baselinetest.Answers()
+				c := section(a)
+				c.Directories = []licenses.Directory{{Path: "enterprise", SPDX: spdx.BUSL11}}
+				_, err := licensebaseline.Producer{}.Files(a, c, &workflow.Contribution{})
+				assert.ErrorIs(t, err, option.ErrInvalid, "Files")
+			})
+
+			t.Run("writes the files of a directory that .ergon.yaml lists, which the lock records", func(t *testing.T) {
+				t.Parallel()
+				dir := t.TempDir()
+				root, err := os.OpenRoot(dir)
+				assert.NoError(t, err, "OpenRoot")
+				t.Cleanup(func() { _ = root.Close() })
+				r, err := baseline.Open(root, new(language.Catalog), baselinetest.Version, producer())
+				assert.NoError(t, err, "Open")
+				a := baselinetest.Answers()
+				_, err = r.New(a, baseline.Options{})
+				assert.NoError(t, err, "New")
+				config, err := os.ReadFile(filepath.Join(dir, language.Config))
+				assert.NoError(t, err, "ReadFile of .ergon.yaml")
+				assert.Contains(t, string(config), noDirectories, "the section license of ergon init new")
+				listed := strings.Replace(string(config), noDirectories, sdkDirectory, 1)
+				assert.NoError(t, os.WriteFile(filepath.Join(dir, language.Config), []byte(listed), 0o644), "WriteFile")
+				_, err = r.Sync(nil, baseline.Options{})
+				assert.NoError(t, err, "Sync")
+				h := licenses.Holder{Owner: a.Owner, Name: a.Name, Repository: string(a.Repository), Year: a.Year}
+				text, notice, err := licenses.Text(&licenses.Config{SPDX: spdx.Apache20}, h)
+				assert.NoError(t, err, "Text of Apache-2.0")
+				files.HasContent(t, filepath.Join(dir, "sdk", "LICENSE"), string(text), "the LICENSE of sdk")
+				files.HasContent(t, filepath.Join(dir, "sdk", "NOTICE"), string(notice), "the NOTICE of sdk")
+				findings, err := r.Check()
+				assert.NoError(t, err, "Check")
+				assert.Empty(t, findings, "the findings of Check")
+			})
+		})
+
 		t.Run("Contribution", func(t *testing.T) {
 			t.Parallel()
 
@@ -130,4 +219,12 @@ func TestBaseline(t *testing.T) {
 // producer returns the producer of the license files as a base producer.
 func producer() baseline.Producer {
 	return baseline.Producer{Name: licensebaseline.Name, Producer: licensebaseline.Producer{}}
+}
+
+// section returns the section license at the baseline with the owner and the license of a, as
+// ergon init writes it.
+func section(a *language.Answers) *licenses.Config {
+	c, _ := licensebaseline.Producer{}.Options().(*licenses.Config)
+	c.Owner, c.SPDX = a.Owner, a.License
+	return c
 }

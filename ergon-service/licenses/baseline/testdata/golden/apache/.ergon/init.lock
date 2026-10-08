@@ -14,6 +14,7 @@
   ],
   "settings": {
     "license.ci.timeout": 10,
+    "license.directories": [],
     "license.exclude": [],
     "license.parameters.additional-use-grant": "",
     "license.parameters.change-date": "",

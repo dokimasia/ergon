@@ -11,6 +11,7 @@ import (
 
 	"go.dokimi.dev/assert"
 	"go.dokimi.dev/assert/files"
+	"go.dokimi.dev/ergon/core/spdx"
 	"go.dokimi.dev/ergon/service/licenses"
 	"go.dokimi.dev/ergon/service/vcs"
 	"go.dokimi.dev/ergon/service/vcs/vcstest"
@@ -18,6 +19,13 @@ import (
 
 // windows is the system of Windows, which has no mode that denies the owner access to a file.
 const windows = "windows"
+
+// The headers of a Go file of Dokimasia B.V. in 2026 under the licenses of the directories of the
+// cases, with the blank line after each.
+const (
+	busl   = "// Copyright Dokimasia B.V. 2026\n// SPDX-License-Identifier: BUSL-1.1\n\n"
+	apache = "// Copyright Dokimasia B.V. 2026\n// SPDX-License-Identifier: Apache-2.0\n\n"
+)
 
 // mark is the byte-order mark of UTF-8.
 var mark = string([]byte{0xef, 0xbb, 0xbf})
@@ -47,6 +55,28 @@ func TestHeader(t *testing.T) {
 			report, err := licenses.Check(t.Context(), dir, config())
 			assert.NoError(t, err, "Check")
 			assert.Equal(t, report, licenses.Report{Checked: 3}, "the report")
+		})
+
+		t.Run("returns no finding for the header of the license of the deepest directory", func(t *testing.T) {
+			t.Parallel()
+			dir := vcstest.Repository(t, files.Tree{
+				"a.go":                files.Text(slashes + "package a\n"),
+				"enterprise/b.go":     files.Text(busl + "package b\n"),
+				"enterprise/sdk/c.go": files.Text(apache + "package c\n"),
+				"enterprises/d.go":    files.Text(slashes + "package d\n"),
+			})
+			report, err := licenses.Check(t.Context(), dir, directories())
+			assert.NoError(t, err, "Check")
+			assert.Equal(t, report, licenses.Report{Checked: 4}, "the report")
+		})
+
+		t.Run("returns Outdated for a file of a directory with the header of the section", func(t *testing.T) {
+			t.Parallel()
+			dir := vcstest.Repository(t, files.Tree{"enterprise/b.go": files.Text(slashes + "package b\n")})
+			report, err := licenses.Check(t.Context(), dir, directories())
+			assert.NoError(t, err, "Check")
+			assert.Equal(t, report.Findings, []licenses.Finding{{Path: "enterprise/b.go", Kind: licenses.Outdated}},
+				"the findings")
 		})
 
 		t.Run("returns the findings sorted by path", func(t *testing.T) {
@@ -220,6 +250,20 @@ func TestHeader(t *testing.T) {
 			assert.Equal(t, again, licenses.Report{Checked: 4}, "the report of Check")
 		})
 
+		t.Run("writes the header of the license of the deepest directory of each file", func(t *testing.T) {
+			t.Parallel()
+			dir := vcstest.Repository(t, files.Tree{
+				"enterprise/b.go":     files.Text("package b\n"),
+				"enterprise/sdk/c.go": files.Text(slashes + "package c\n"),
+			})
+			_, err := licenses.Fix(t.Context(), dir, directories(), 2026)
+			assert.NoError(t, err, "Fix")
+			files.Contains(t, os.DirFS(dir), files.Tree{
+				"enterprise/b.go":     files.Text(busl + "package b\n"),
+				"enterprise/sdk/c.go": files.Text(apache + "package c\n"),
+			}, "the fixed files")
+		})
+
 		t.Run("leaves a file whose header matches", func(t *testing.T) {
 			t.Parallel()
 			dir := vcstest.Repository(t, files.Tree{"main.go": files.Text(slashes + "package main\n")})
@@ -289,4 +333,16 @@ func TestHeader(t *testing.T) {
 			assert.ErrorIs(t, err, fs.ErrPermission, "Fix")
 		})
 	})
+}
+
+// directories returns the configuration of the cases with two directories: enterprise under
+// BUSL-1.1, and enterprise/sdk under Apache-2.0, which the configuration lists after the directory
+// that contains it.
+func directories() *licenses.Config {
+	c := config()
+	c.Directories = []licenses.Directory{
+		{Path: "enterprise", SPDX: spdx.BUSL11, Parameters: parameters()},
+		{Path: "enterprise/sdk", SPDX: spdx.Apache20},
+	}
+	return c
 }

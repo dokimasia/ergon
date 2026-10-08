@@ -27,6 +27,7 @@ import (
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/sirupsen/logrus"
 	"go.dokimi.dev/ergon/core/changeset"
+	"go.dokimi.dev/ergon/core/spdx"
 	"go.dokimi.dev/ergon/service/vcs"
 )
 
@@ -98,10 +99,35 @@ var silence = sync.OnceFunc(func() {
 	logger.Log.SetLevel(logrus.PanicLevel)
 })
 
+// license is the header of one license of a run.
+type license struct {
+	// pattern matches a normalized file whose header states the owner of the run and the license,
+	// with any year, list of years or range of years.
+	pattern *regexp.Regexp
+
+	// content is the text of the header, with the owner and the year as the placeholders of the
+	// library.
+	content string
+}
+
+// directory is a directory of [Config.Directories], with the header of its license.
+type directory struct {
+	// header is the header of the license of the directory.
+	header *license
+
+	// prefix is the path of the directory with a final slash, which the path of each of its files
+	// starts with.
+	prefix string
+}
+
 // file is a file that the configuration gives a header.
 type file struct {
 	// style is the comment style of the header.
 	style comments.CommentStyle
+
+	// header is the header of the license of the file: the license of the deepest directory that
+	// contains it, or of the section.
+	header *license
 
 	// after is the compiled preamble of the style, or nil.
 	after *regexp.Regexp
@@ -122,6 +148,28 @@ type file struct {
 	bom bool
 }
 
+// inspect returns what is wrong with the header of f, and the number of the line of a conflict, or
+// the empty kind for a file whose header matches the header of its license. A file that the content
+// sniffer of net/http does not read as text, as the library skips it, is unsupported. A file whose
+// header does not match is a conflict when its header has a line that is no header text, outdated
+// when it has a header, and missing otherwise.
+func (f *file) inspect() (Kind, int) {
+	if !strings.HasPrefix(http.DetectContentType(f.content), "text/") {
+		return Unsupported, 0
+	}
+	if f.header.pattern.MatchString(lcs.NormalizeHeader(string(f.content))) {
+		return "", 0
+	}
+	b, ok := find(f.content, &f.style, f.after)
+	if !ok {
+		return Missing, 0
+	}
+	if b.conflict > 0 {
+		return Conflict, b.conflict
+	}
+	return Outdated, 0
+}
+
 // run is a check or a fix of the headers of a repository.
 type run struct {
 	// c is the configuration.
@@ -130,16 +178,15 @@ type run struct {
 	// t is the table of the comment styles.
 	t *table
 
-	// pattern matches a normalized file whose header states the owner and the license of c, with
-	// any year, list of years or range of years.
-	pattern *regexp.Regexp
+	// section is the header of the license of the section.
+	section *license
 
 	// root is the directory of the repository.
 	root string
 
-	// content is the text of the header, with the owner and the year as the placeholders of the
-	// library.
-	content string
+	// directories are the directories of c, each with the header of its license, the deepest
+	// first, so the first that contains a file is the deepest.
+	directories []directory
 
 	// report is what the run found.
 	report Report
@@ -154,8 +201,9 @@ type run struct {
 // changelog is a file named CHANGELOG.md in any directory: ergon release version creates it
 // without a header, and adds an entry to it for each release. A header matches when the file,
 // normalized as the library normalizes a header, states Copyright <owner> <years> and
-// SPDX-License-Identifier: <spdx>, with any year, list of years or range of years. Check writes
-// nothing.
+// SPDX-License-Identifier: <spdx>, with any year, list of years or range of years. <spdx> is the
+// license of the deepest directory of [Config.Directories] that contains the file, or the license
+// of c. Check writes nothing.
 //
 // It returns an error that wraps [vcs.ErrGit] for a root outside a working tree of git and for a
 // ctx that ends before git lists the files, and the error of a file that does not read. ctx bounds
@@ -163,7 +211,7 @@ type run struct {
 func Check(ctx context.Context, root string, c *Config) (Report, error) {
 	r := start(root, c)
 	err := r.walk(ctx, func(f *file) error {
-		if kind, line := r.inspect(f); kind != "" {
+		if kind, line := f.inspect(); kind != "" {
 			r.report.Findings = append(r.report.Findings, Finding{Path: f.path, Kind: kind, Line: line})
 		}
 		return nil
@@ -171,19 +219,19 @@ func Check(ctx context.Context, root string, c *Config) (Report, error) {
 	return r.report, err
 }
 
-// Fix adds the header of c to each file that [Check] reports missing, and replaces the header of
-// each file that it reports outdated, in one write per file. A new header states year. A replaced
-// header keeps its years, and states year when it states none. Fix keeps the preamble of the
-// style, such as a shebang line, and the byte-order mark of UTF-8 before the header, and it keeps
-// the mode of each file. It returns the report of the files that it wrote and of the files that it
-// leaves: the conflicts and the unsupported files.
+// Fix adds the header of the license of each file that [Check] reports missing, and replaces the
+// header of each file that it reports outdated, in one write per file. A new header states year. A
+// replaced header keeps its years, and states year when it states none. Fix keeps the preamble of
+// the style, such as a shebang line, and the byte-order mark of UTF-8 before the header, and it
+// keeps the mode of each file. It returns the report of the files that it wrote and of the files
+// that it leaves: the conflicts and the unsupported files.
 //
 // It returns the errors of Check, and the error of a file that does not write. A file that Fix
 // wrote before an error keeps its new header.
 func Fix(ctx context.Context, root string, c *Config, year int) (Report, error) {
 	r := start(root, c)
 	err := r.walk(ctx, func(f *file) error {
-		kind, line := r.inspect(f)
+		kind, line := f.inspect()
 		if kind == "" {
 			return nil
 		}
@@ -200,20 +248,27 @@ func Fix(ctx context.Context, root string, c *Config, year int) (Report, error) 
 	return r.report, err
 }
 
-// start returns a run of c over the repository at root, with the logger of the library silenced.
+// start returns a run of c over the repository at root, with the logger of the library silenced. It
+// builds the header of the license of c and of the license of each directory of c, and orders the
+// directories of c by the length of their paths, the longest first.
 func start(root string, c *Config) *run {
 	silence()
-	pattern := header.ConfigHeader{License: header.LicenseConfig{
-		Pattern: `Copyright ` + regexp.QuoteMeta(c.Owner) + ` \d{4}(?:\s*[-,]\s*\d{4})*\s+SPDX-License-Identifier: ` +
-			regexp.QuoteMeta(string(c.SPDX)) + `(?:\s|$)`,
-	}}
-	return &run{
-		c:       c,
-		t:       styles(),
-		pattern: pattern.NormalizedPattern(),
-		root:    root,
-		content: "Copyright [owner] [year]\nSPDX-License-Identifier: " + string(c.SPDX),
+	headerOf := func(id spdx.ID) *license {
+		owner, spdxID := regexp.QuoteMeta(c.Owner), regexp.QuoteMeta(string(id))
+		pattern := header.ConfigHeader{License: header.LicenseConfig{
+			Pattern: `Copyright ` + owner + ` \d{4}(?:\s*[-,]\s*\d{4})*\s+SPDX-License-Identifier: ` + spdxID + `(?:\s|$)`,
+		}}
+		return &license{
+			pattern: pattern.NormalizedPattern(),
+			content: "Copyright [owner] [year]\nSPDX-License-Identifier: " + string(id),
+		}
 	}
+	r := &run{c: c, t: styles(), section: headerOf(c.SPDX), root: root}
+	for _, d := range c.Directories {
+		r.directories = append(r.directories, directory{header: headerOf(d.SPDX), prefix: d.Path + "/"})
+	}
+	slices.SortStableFunc(r.directories, func(a, b directory) int { return len(b.prefix) - len(a.prefix) })
+	return r
 }
 
 // walk calls visit for each file of the repository that the configuration gives a header, in the
@@ -283,6 +338,7 @@ func (r *run) open(p string) (*file, bool, error) {
 	}
 	f := &file{
 		style:   style,
+		header:  r.section,
 		after:   r.t.after[style.ID],
 		path:    p,
 		name:    name,
@@ -290,35 +346,17 @@ func (r *run) open(p string) (*file, bool, error) {
 		mode:    info.Mode(),
 		bom:     marked,
 	}
+	if i := slices.IndexFunc(r.directories, func(d directory) bool { return strings.HasPrefix(p, d.prefix) }); i >= 0 {
+		f.header = r.directories[i].header
+	}
 	return f, true, nil
 }
 
-// inspect returns what is wrong with the header of f, and the number of the line of a conflict, or
-// the empty kind for a file whose header matches. A file that the content sniffer of net/http does
-// not read as text, as the library skips it, is unsupported. A file whose header does not match is
-// a conflict when its header has a line that is no header text, outdated when it has a header, and
-// missing otherwise.
-func (r *run) inspect(f *file) (Kind, int) {
-	if !strings.HasPrefix(http.DetectContentType(f.content), "text/") {
-		return Unsupported, 0
-	}
-	if r.pattern.MatchString(lcs.NormalizeHeader(string(f.content))) {
-		return "", 0
-	}
-	b, ok := find(f.content, &f.style, f.after)
-	if !ok {
-		return Missing, 0
-	}
-	if b.conflict > 0 {
-		return Conflict, b.conflict
-	}
-	return Outdated, 0
-}
-
-// fix writes the header of the run into f, which has no header or an outdated one, in one write. It
-// removes an outdated header and keeps its years, renders the header in the style of f with the
-// library, and inserts it after the preamble of the style, as the library inserts it. A new header
-// states year. fix keeps the byte-order mark and the mode of f. It returns the error of the write.
+// fix writes the header of the license of f into f, which has no header or an outdated one, in one
+// write. It removes an outdated header and keeps its years, renders the header in the style of f
+// with the library, and inserts it after the preamble of the style, as the library inserts it. A new
+// header states year. fix keeps the byte-order mark and the mode of f. It returns the error of the
+// write.
 func (r *run) fix(f *file, year int) error {
 	stated := strconv.Itoa(year)
 	content := f.content
@@ -329,7 +367,7 @@ func (r *run) fix(f *file, year int) error {
 		content = slices.Concat(content[:b.start], content[b.end:])
 	}
 	cfg := header.ConfigHeader{License: header.LicenseConfig{
-		Content:        r.content,
+		Content:        f.header.content,
 		CopyrightOwner: r.c.Owner,
 		CopyrightYear:  stated,
 	}}

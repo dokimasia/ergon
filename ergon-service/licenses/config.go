@@ -5,6 +5,7 @@ package licenses
 
 import (
 	"fmt"
+	"io/fs"
 	"maps"
 	"slices"
 	"strings"
@@ -16,6 +17,18 @@ import (
 
 // none is the value of [Config.Styles] for a file type without a header.
 const none = "none"
+
+// The characters that a path of [Directory] does not contain: the line breaks, the separator of
+// Windows, and the characters of a pattern of doublestar, because a directory is no glob.
+const (
+	breaks    = "\r\n"
+	backslash = `\`
+	pattern   = "*?[{"
+)
+
+// unlicensed are the directories in which ergon writes no license file: the repository of git, and
+// the lock and the local files of ergon init.
+var unlicensed = []string{".git", ".ergon"}
 
 // Parameters are the parameters of BUSL-1.1, which its LICENSE states before its terms. The owner
 // of [Config] is the Licensor. Every other license ignores them.
@@ -34,10 +47,28 @@ type Parameters struct {
 	ChangeLicense string `yaml:"change-license" doc:"The Change License of BUSL-1.1, the license that applies on the Change Date, such as GPL-2.0-or-later."`
 }
 
+// Directory is a directory of the repository under a license of its own. The header of a file of
+// the directory states its license, and the producer of the license files of ergon init renders its
+// LICENSE, with a NOTICE for Apache-2.0. A file takes the license of the deepest directory of
+// [Config.Directories] that contains it.
+type Directory struct {
+	// Path is the directory, relative to the root of the repository and slash-separated, such as
+	// enterprise or sdk/go.
+	Path string `yaml:"path"`
+
+	// SPDX is the identifier of the license of the directory, such as BUSL-1.1.
+	SPDX spdx.ID `yaml:"spdx"`
+
+	// Parameters are the parameters of BUSL-1.1 for the directory. Every other license ignores
+	// them, and the section omits them where every parameter is empty.
+	Parameters Parameters `yaml:"parameters,omitempty"`
+}
+
 // Config is the section license of .ergon.yaml: the owner and the license of the headers and of the
-// license files, the parameters of BUSL-1.1, the comment styles, the files without a header, and
-// the limit of the job license of ci.yml. ergon init writes Owner and SPDX from its answers, and a
-// value that differs from the answer fails every command that reads the section.
+// license files, the parameters of BUSL-1.1, the directories under a license of their own, the
+// comment styles, the files without a header, and the limit of the job license of ci.yml. ergon
+// init writes Owner and SPDX from its answers, and a value that differs from the answer fails every
+// command that reads the section.
 type Config struct {
 	// Owner is the copyright holder, such as "Dokimasia B.V.".
 	Owner string `yaml:"owner" answer:"owner" doc:"The copyright holder of the headers and of the license files. ergon init writes it from --owner, and ergon init sync --owner changes it."`
@@ -47,6 +78,9 @@ type Config struct {
 
 	// Parameters are the parameters of BUSL-1.1.
 	Parameters Parameters `yaml:"parameters" doc:"The parameters of BUSL-1.1, which LICENSE states before its terms. Every other license ignores them."`
+
+	// Directories are the directories of the repository under a license of their own.
+	Directories []Directory `yaml:"directories" doc:"The directories under a license of their own: the path of each, relative and slash-separated, its SPDX identifier, and its parameters of BUSL-1.1. A file states the license of the deepest directory that contains it, and each directory gets its LICENSE, with a NOTICE for Apache-2.0."`
 
 	// Styles maps an extension, such as .sql, or a base name, such as Dockerfile, to the comment
 	// style of its header, or to none for a file without a header.
@@ -66,6 +100,7 @@ type Config struct {
 //   - an SPDX that is not an identifier of [spdx.IDs]
 //   - a parameter that spans lines, and for BUSL-1.1 a parameter that is empty, which the error
 //     names with every other empty one
+//   - a directory that is not valid, as [Directory] states its rules, which the error names
 //   - a key of Styles that is empty, spans lines or has a slash, and a style that is neither a
 //     comment style of skywalking-eyes or of ergon nor none
 //   - a glob of Exclude that is empty, spans lines or is not a pattern of doublestar
@@ -81,6 +116,11 @@ func (c *Config) Validate() error {
 	}
 	if err := c.Parameters.check(c.SPDX); err != nil {
 		return err
+	}
+	for i := range c.Directories {
+		if err := c.Directories[i].check(c.Directories[:i]); err != nil {
+			return err
+		}
 	}
 	t := styles()
 	for _, key := range slices.Sorted(maps.Keys(c.Styles)) {
@@ -100,6 +140,35 @@ func (c *Config) Validate() error {
 		if glob == "" || strings.ContainsAny(glob, "\r\n") || !doublestar.ValidatePattern(glob) {
 			return fmt.Errorf("%w: exclude %q, which is not a doublestar glob on one line", option.ErrInvalid, glob)
 		}
+	}
+	return nil
+}
+
+// check returns an error that wraps [option.ErrInvalid] for a directory that a header and a
+// LICENSE cannot state, and names its path:
+//
+//   - a path that is empty, spans lines, starts with / or .., is not clean, is ., has a backslash
+//     or a character of a glob, or is in .git or .ergon
+//   - a path of one of earlier, the directories before d
+//   - an SPDX that is not an identifier of [spdx.IDs]
+//   - a parameter that spans lines, and for BUSL-1.1 a parameter that is empty
+func (d *Directory) check(earlier []Directory) error {
+	p := d.Path
+	inside := fs.ValidPath(p) && p != "." && !strings.ContainsAny(p, breaks+backslash+pattern)
+	within := func(dir string) bool { return p == dir || strings.HasPrefix(p, dir+"/") }
+	if !inside || slices.ContainsFunc(unlicensed, within) {
+		return fmt.Errorf("%w: directories %q, which is not a clean relative path of a directory outside .git and "+
+			".ergon", option.ErrInvalid, p)
+	}
+	if slices.ContainsFunc(earlier, func(e Directory) bool { return e.Path == p }) {
+		return fmt.Errorf("%w: directories %q, which two entries name", option.ErrInvalid, p)
+	}
+	if !d.SPDX.Valid() {
+		return fmt.Errorf("%w: directories %q: spdx %q, which is not the identifier of a license of ergon",
+			option.ErrInvalid, p, d.SPDX)
+	}
+	if err := d.Parameters.check(d.SPDX); err != nil {
+		return fmt.Errorf("%w, in the directory %s", err, p)
 	}
 	return nil
 }

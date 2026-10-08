@@ -4,7 +4,7 @@ title: Module boundaries
 author: Roy Klopper
 status: Accepted
 created: 2026-09-24
-updated: 2026-10-07
+updated: 2026-10-08
 discussion: none
 supersedes: none
 superseded-by: none
@@ -206,6 +206,7 @@ The roles of `init` divide the files of a repository by concern, as RFC-0004 spe
 - `Calculator` returns the values that the templates of a producer read beyond the answers, the options and the contributions, such as the text of a license.
 - `Configurable` returns a producer's options, which are a struct in the producer's own package. The struct composes the option types of `core/option`, adds the options that only its concern has, and validates them with its own rules.
 - `Contributor` returns the jobs, the setup of its toolchain in a release, the CodeQL analysis and the Dependabot updates of a producer as data. The GitHub producer renders them into the workflows.
+- `Placer` returns the managed files of a producer whose options state their paths, such as the `LICENSE` of each directory that the section `license` lists.
 
 A producer configures its own concern alone. A section of `.ergon.yaml` names the tools, the actions and the runtime versions of its own producer, and never those of another ecosystem. The section `github` configures the platform, and the section `go` configures the setup of Go in CI. A tool that runs in the gate of a language other than its own is a release binary, which the tool runner of `service/tool` installs without the toolchain that built it.
 

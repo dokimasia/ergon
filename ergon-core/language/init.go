@@ -133,3 +133,24 @@ type Contributor interface {
 	// that is not [Configurable].
 	Contribution(o Options) workflow.Contribution
 }
+
+// Placer is a producer that renders managed files at paths that its options state, beside the
+// files of its templates, such as the LICENSE of each directory that the section license lists. A
+// template tree cannot mirror a path that an option states.
+type Placer interface {
+	// Files returns the files of the producer for the answers a, its options o, nil for a producer
+	// that is not [Configurable], and the contributions c of every producer to the workflows. Files
+	// reads no file and runs no command, as [Calculator.Data] does, and it modifies none of a, o and
+	// c. It returns an error for answers or options that the producer cannot render.
+	Files(a *Answers, o Options, c *workflow.Contribution) ([]File, error)
+}
+
+// File is a managed file that a [Placer] renders.
+type File struct {
+	// Path is the path of the file in the repository: relative, clean and slash-separated, such as
+	// enterprise/LICENSE.
+	Path string
+
+	// Content is the content of the file.
+	Content []byte
+}

@@ -17,6 +17,10 @@
 // the data lacks is an error. Render skips a template that renders no byte, and joins the fragments
 // of a shared file in the order of the units.
 //
+// A [go.dokimi.dev/ergon/core/language.Placer] renders managed files at paths that its options
+// state, such as the LICENSE of a directory, which no template tree can mirror. Render adds them as
+// managed files of their unit, after the templates of the unit.
+//
 // # Functions
 //
 //   - words writes a list as words of the shell, escaped for make.
@@ -28,10 +32,10 @@
 //
 // # Errors
 //
-// Templates that a producer declares wrong return an error that wraps [ErrInvalidTemplate], and a
-// contribution that a producer declares wrong an error that wraps [ErrInvalidContribution]. Both
-// are defects of the producer. A template that does not execute returns its error, which wraps the
-// error of a function that it calls.
+// Templates and placed files that a producer declares wrong return an error that wraps
+// [ErrInvalidTemplate], and a contribution that a producer declares wrong an error that wraps
+// [ErrInvalidContribution]. Both are defects of the producer. A template that does not execute
+// returns its error, which wraps the error of a function that it calls.
 //
 // # Dependency position
 //

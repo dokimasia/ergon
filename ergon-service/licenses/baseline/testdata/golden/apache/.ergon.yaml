@@ -17,6 +17,10 @@ license:
     # The Change License of BUSL-1.1, the license that applies on the Change Date, such as
     # GPL-2.0-or-later.
     change-license: ""
+  # The directories under a license of their own: the path of each, relative and slash-separated,
+  # its SPDX identifier, and its parameters of BUSL-1.1. A file states the license of the deepest
+  # directory that contains it, and each directory gets its LICENSE, with a NOTICE for Apache-2.0.
+  directories: []
   # The comment style of the header of each extension, such as .sql, or base name, such as
   # Dockerfile: a style of skywalking-eyes, such as DoubleSlash, Hashtag or Semicolon, or none for
   # no header. A key here replaces the style that ergon resolves.

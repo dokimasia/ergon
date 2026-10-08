@@ -9,8 +9,9 @@
 // differ in case alone.
 //
 // [Config] is the section license of .ergon.yaml: the owner and the license, the parameters of
-// BUSL-1.1, the comment styles, the files without a header, and the limit of the job license of
-// ci.yml. The producer of the license files of ergon init declares it as its options.
+// BUSL-1.1, each [Directory] under a license of its own, the comment styles, the files without a
+// header, and the limit of the job license of ci.yml. The producer of the license files of ergon
+// init declares it as its options.
 //
 // # Texts
 //
@@ -27,6 +28,9 @@
 //
 //	Copyright <owner> <years>
 //	SPDX-License-Identifier: <spdx>
+//
+// <spdx> is the license of the deepest directory of [Config.Directories] that contains the file,
+// or the license of the section for every other file.
 //
 // The commands work on the files that git tracks or would track, as git ls-files lists them, and
 // skip the files that the configuration excludes, the changesets of .changeset, whose body is the

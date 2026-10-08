@@ -5,7 +5,9 @@ package baseline
 
 import (
 	"embed"
+	"fmt"
 	"io/fs"
+	"path"
 
 	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/core/workflow"
@@ -15,6 +17,12 @@ import (
 // Name is the name of the producer of the license files in the lock, and of its section of
 // .ergon.yaml.
 const Name = "license"
+
+// The names of the license files of a directory, as the templates name them at the root.
+const (
+	licenseFile = "LICENSE"
+	noticeFile  = "NOTICE"
+)
 
 // templates are the templates of the license files, under managed/.
 //
@@ -30,8 +38,9 @@ type texts struct {
 	Notice string
 }
 
-// Producer renders the license files of a repository: LICENSE, and NOTICE for Apache-2.0. Its zero
-// value is ready to use, and it is safe for concurrent use.
+// Producer renders the license files of a repository: LICENSE, and NOTICE for Apache-2.0, at the
+// root and in each directory of the section license. Its zero value is ready to use, and it is safe
+// for concurrent use.
 type Producer struct{}
 
 var (
@@ -39,6 +48,7 @@ var (
 	_ language.Configurable = Producer{}
 	_ language.Calculator   = Producer{}
 	_ language.Contributor  = Producer{}
+	_ language.Placer       = Producer{}
 )
 
 // Templates returns the templates of the license files: LICENSE and NOTICE under managed/. The
@@ -49,9 +59,9 @@ func (Producer) Templates() fs.FS {
 	return sub
 }
 
-// Options returns the section license at the baseline: no parameter of BUSL-1.1, no comment style,
-// no excluded path, and a limit of 10 minutes for the job license. ergon init writes the owner and
-// the license from its answers.
+// Options returns the section license at the baseline: no parameter of BUSL-1.1, no directory, no
+// comment style, no excluded path, and a limit of 10 minutes for the job license. ergon init writes
+// the owner and the license from its answers.
 func (Producer) Options() language.Options {
 	c := &licenses.Config{}
 	c.CI.Timeout = 10
@@ -74,6 +84,29 @@ func (Producer) Data(a *language.Answers, o language.Options, _ *workflow.Contri
 		return nil, err
 	}
 	return texts{Text: string(text), Notice: string(notice)}, nil
+}
+
+// Files returns the LICENSE of each directory of the section license, and its NOTICE for
+// Apache-2.0, as [licenses.Text] renders them for the license and the parameters of the directory,
+// with the owner of the section and the name, the repository and the year of a. It takes the
+// options at the baseline, which list no directory, when o is not the section license. It returns
+// the error of licenses.Text, such as the error for BUSL-1.1 with an empty parameter, with the path
+// of the directory.
+func (Producer) Files(a *language.Answers, o language.Options, _ *workflow.Contribution) ([]language.File, error) {
+	c := own(o, a)
+	h := licenses.Holder{Owner: c.Owner, Name: a.Name, Repository: string(a.Repository), Year: a.Year}
+	files := make([]language.File, 0, len(c.Directories))
+	for _, d := range c.Directories {
+		text, notice, err := licenses.Text(&licenses.Config{SPDX: d.SPDX, Parameters: d.Parameters}, h)
+		if err != nil {
+			return nil, fmt.Errorf("baseline: the license of the directory %s: %w", d.Path, err)
+		}
+		files = append(files, language.File{Path: path.Join(d.Path, licenseFile), Content: text})
+		if notice != nil {
+			files = append(files, language.File{Path: path.Join(d.Path, noticeFile), Content: notice})
+		}
+	}
+	return files, nil
 }
 
 // Contribution returns the job license of ci.yml for o, and for the options at the baseline when o

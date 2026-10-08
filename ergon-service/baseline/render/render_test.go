@@ -24,6 +24,12 @@ var errData = errors.New("data: the options do not render")
 // errFault is the error of an Open that a failing file system fails.
 var errFault = errors.New("fault: injected")
 
+// errPlace is the error of the files of a placer of the cases.
+var errPlace = errors.New("place: the options name no directory")
+
+// placed is the content of each file that a placer of the cases places.
+const placed = "placed\n"
+
 // fixture is a producer of the cases: its templates, and the data or the error that Data returns.
 type fixture struct {
 	// templates are the templates of the producer.
@@ -76,6 +82,29 @@ type plain struct {
 // Templates returns p.templates.
 func (p plain) Templates() fs.FS {
 	return p.templates
+}
+
+// placer is a producer of the cases that places files: its templates, and the files or the error
+// that Files returns.
+type placer struct {
+	// templates are the templates of the producer.
+	templates fs.FS
+
+	// err is the error that Files returns.
+	err error
+
+	// files are the files that Files returns.
+	files []language.File
+}
+
+// Templates returns p.templates.
+func (p placer) Templates() fs.FS {
+	return p.templates
+}
+
+// Files returns p.files and p.err, whatever the answers, the options and the contributions.
+func (p placer) Files(*language.Answers, language.Options, *workflow.Contribution) ([]language.File, error) {
+	return p.files, p.err
 }
 
 // options are the options of the producers of the cases.
@@ -230,11 +259,36 @@ func TestRender(t *testing.T) {
 			assert.Equal(t, string(files[0].Content), "none\n", "the rendering")
 		})
 
+		t.Run("adds the files of a placer as managed files of its producer", func(t *testing.T) {
+			t.Parallel()
+			u := render.Unit{Name: "license", Producer: placer{
+				templates: fstest.MapFS{"managed/LICENSE.tmpl": {Data: []byte("MIT\n")}},
+				files: []language.File{
+					{Path: "enterprise/LICENSE", Content: []byte(placed)},
+					{Path: "sdk/go/NOTICE", Content: []byte(placed)},
+				},
+			}}
+			files, err := render.Render([]render.Unit{u}, answers(), &workflow.Contribution{})
+			assert.NoError(t, err, "Render")
+			assert.Equal(t, files, []render.File{
+				{Path: "LICENSE", Producer: "license", Content: []byte("MIT\n"), Class: render.Managed},
+				{Path: "enterprise/LICENSE", Producer: "license", Content: []byte(placed), Class: render.Managed},
+				{Path: "sdk/go/NOTICE", Producer: "license", Content: []byte(placed), Class: render.Managed},
+			}, "the files")
+		})
+
 		t.Run("returns the error of the data of a producer", func(t *testing.T) {
 			t.Parallel()
 			u := render.Unit{Name: "go", Producer: fixture{err: errData, templates: fstest.MapFS{}}}
 			_, err := render.Render([]render.Unit{u}, answers(), &workflow.Contribution{})
 			assert.ErrorIs(t, err, errData, "Render")
+		})
+
+		t.Run("returns the error of the files of a placer", func(t *testing.T) {
+			t.Parallel()
+			u := render.Unit{Name: "license", Producer: placer{err: errPlace, templates: fstest.MapFS{}}}
+			_, err := render.Render([]render.Unit{u}, answers(), &workflow.Contribution{})
+			assert.ErrorIs(t, err, errPlace, "Render")
 		})
 
 		t.Run("returns the error of a template that does not execute", func(t *testing.T) {
@@ -306,6 +360,48 @@ func TestRender(t *testing.T) {
 					unit("go", fstest.MapFS{"managed/Makefile.tmpl": {Data: []byte("b\n")}}),
 				},
 			},
+			{
+				name:  "returns ErrInvalidTemplate for a placed file without a path",
+				units: []render.Unit{placing("license", "")},
+			},
+			{
+				name:  "returns ErrInvalidTemplate for a placed file at an absolute path",
+				units: []render.Unit{placing("license", "/LICENSE")},
+			},
+			{
+				name:  "returns ErrInvalidTemplate for a placed file at a path that is not clean",
+				units: []render.Unit{placing("license", "a/../LICENSE")},
+			},
+			{
+				name:  "returns ErrInvalidTemplate for a placed file at the root directory",
+				units: []render.Unit{placing("license", ".")},
+			},
+			{
+				name:  "returns ErrInvalidTemplate for a placed file at a path with a backslash",
+				units: []render.Unit{placing("license", `a\LICENSE`)},
+			},
+			{
+				name:  "returns ErrInvalidTemplate for a placed file under .ergon",
+				units: []render.Unit{placing("license", ".ergon/LICENSE")},
+			},
+			{
+				name:  "returns ErrInvalidTemplate for two placed files at one path",
+				units: []render.Unit{placing("license", "a/LICENSE", "a/LICENSE")},
+			},
+			{
+				name: "returns ErrInvalidTemplate for a placed file at the path of a template of an earlier unit",
+				units: []render.Unit{
+					unit("common", fstest.MapFS{"managed/a/LICENSE.tmpl": {Data: []byte("a\n")}}),
+					placing("license", "a/LICENSE"),
+				},
+			},
+			{
+				name: "returns ErrInvalidTemplate for a template at the path of a placed file of an earlier unit",
+				units: []render.Unit{
+					placing("license", "a/LICENSE"),
+					unit("common", fstest.MapFS{"managed/a/LICENSE.tmpl": {Data: []byte("a\n")}}),
+				},
+			},
 		}
 		for _, tt := range invalid {
 			t.Run(tt.name, func(t *testing.T) {
@@ -320,6 +416,16 @@ func TestRender(t *testing.T) {
 // unit returns a unit of the cases without options and data, whose templates are templates.
 func unit(name string, templates fs.FS) render.Unit {
 	return render.Unit{Name: name, Producer: fixture{templates: templates}}
+}
+
+// placing returns a unit of the cases without templates, whose producer places a file of the
+// content placed at each of paths.
+func placing(name string, paths ...string) render.Unit {
+	files := make([]language.File, 0, len(paths))
+	for _, p := range paths {
+		files = append(files, language.File{Path: p, Content: []byte(placed)})
+	}
+	return render.Unit{Name: name, Producer: placer{templates: fstest.MapFS{}, files: files}}
 }
 
 // answers returns the answers of the cases.

@@ -22,6 +22,8 @@
 //   - A [Contributor] returns its part of the workflows as a
 //     [go.dokimi.dev/ergon/core/workflow.Contribution], which the producer of the GitHub files
 //     renders.
+//   - A [Placer] returns each [File] whose path its options state, such as the LICENSE of a
+//     directory, which no template tree can mirror.
 //
 // A producer configures its own concern alone: a section names the tools, the actions and the
 // runtime versions of its own producer, and never those of another ecosystem.

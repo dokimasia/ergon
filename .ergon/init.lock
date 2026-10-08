@@ -198,6 +198,7 @@
     "go.tools.golangci-lint": "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0",
     "go.tools.govulncheck": "golang.org/x/vuln/cmd/govulncheck@v1.8.0",
     "license.ci.timeout": 10,
+    "license.directories": [],
     "license.exclude": [],
     "license.parameters.additional-use-grant": "",
     "license.parameters.change-date": "",
