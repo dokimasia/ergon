@@ -91,11 +91,18 @@ func (c Check) Validate() error {
 }
 
 // Only returns an error that wraps [ErrInvalid] for the first step of c that is not one of
-// allowed: the steps that the producer of the section has. A producer's Validate calls it.
+// allowed: the steps that the producer of the section has. A producer's Validate calls it for the
+// key check.
 func (c Check) Only(allowed ...Step) error {
-	for _, s := range c {
+	return only("check", c, allowed)
+}
+
+// only returns an error that wraps [ErrInvalid] for the first step of steps, the steps of key, that
+// is not one of allowed.
+func only(key string, steps, allowed []Step) error {
+	for _, s := range steps {
 		if !slices.Contains(allowed, s) {
-			return fmt.Errorf("%w: check names %s, which is no step of the section", ErrInvalid, s)
+			return fmt.Errorf("%w: %s names %s, which is no step of the section", ErrInvalid, key, s)
 		}
 	}
 	return nil

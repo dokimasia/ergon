@@ -37,7 +37,8 @@
 // options of a step are [Run], [Generate], [Fuzz], [Bench], [Mutate], [Audit] or [Threshold].
 // [Paths] states what the targets work on. The step generate has two targets: generate-<section>
 // runs the command of [Generate], and verify-generate-<section>, which the gate runs, fails when
-// the command changes a file.
+// the command changes a file. [Nightly] maps the steps that run on a schedule, each in a job of its
+// own, to the limit of that job.
 //
 // # CI
 //
