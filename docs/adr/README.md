@@ -20,3 +20,5 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 | [0009](0009-release-dependents-by-resolution.md) | Dependent releases by consumer resolution | Accepted |
 | [0010](0010-release-waits-for-ci.md) | The release workflow waits for the CI run of its commit | Accepted |
 | [0011](0011-pins-through-the-baseline.md) | Repositories receive their pins through the baseline | Accepted |
+| [0012](0012-seeded-files-with-license-headers.md) | ergon init writes the license header into the files it seeds | Proposed |
+| [0013](0013-go-modules-through-the-version-list.md) | The resolver finds the module of a Go package through @v/list | Proposed |
