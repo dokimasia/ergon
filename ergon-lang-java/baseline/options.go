@@ -49,7 +49,8 @@ func (o *Options) Validate() error {
 }
 
 // Contribution returns the part of Java of the workflows: the job check-java, which runs make
-// check-java with the setup of the jvm toolchain, on its runners and versions. The jvm toolchain
+// check-java with the setup of the jvm toolchain, on its runners and versions. The job keeps PMD and
+// osv-scanner, which ergon tool run installs, in the cache of GitHub Actions. The jvm toolchain
 // contributes the CodeQL analysis and the updates that Java shares with Kotlin.
 func (*Options) Contribution() workflow.Contribution {
 	return workflow.Contribution{
@@ -58,6 +59,7 @@ func (*Options) Contribution() workflow.Contribution {
 			Name:        "Java",
 			Toolchain:   ToolchainName,
 			Permissions: map[string]string{"contents": "read"},
+			Tools:       true,
 			Steps:       []workflow.Step{{Name: "Check Java", Run: []string{"make check-java"}}},
 		}},
 	}

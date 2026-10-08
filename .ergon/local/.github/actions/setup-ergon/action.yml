@@ -3,7 +3,9 @@
 
 # The repository of ergon runs the ergon of its own source in every job, so the gate checks the
 # managed files against the baseline that the same commit renders. The version source skips the
-# installation of a release, and the steps below build ergon from the checkout.
+# installation of a release, and the steps below build ergon from the checkout. A job that set up
+# the Go of go.work before this action builds ergon with that Go, so the job restores the cache of
+# setup-go once.
 
 inputs:
   version:
@@ -11,8 +13,17 @@ inputs:
 
 runs:
   steps:
-    - name: Set up Go
+    - name: Find the Go of go.work
+      id: go
       if: inputs.version == 'source'
+      shell: bash
+      run: |
+        want="go$(awk '$1 == "go" { print $2; exit }' go.work)"
+        if [ "$(GOTOOLCHAIN=local go env GOVERSION 2>/dev/null)" = "$want" ]; then
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+        fi
+    - name: Set up Go
+      if: inputs.version == 'source' && steps.go.outputs.ready != 'true'
       uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
       with:
         go-version-file: go.work

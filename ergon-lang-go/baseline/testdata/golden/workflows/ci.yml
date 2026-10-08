@@ -3,7 +3,9 @@
 # The gate of the repository, with the jobs that each producer of ergon init contributes. A check
 # of text runs on the Linux runner of the section github of .ergon.yaml, and every other job on a
 # matrix of runners. A job that sets up a toolchain runs its steps once the repository has the
-# files of the toolchain. release.yml calls the gate before it publishes a release.
+# files of the toolchain, and sets the toolchain up before ergon. A job that runs tools keeps the
+# tools of ergon in the cache of GitHub Actions. release.yml calls the gate before it publishes a
+# release.
 
 name: CI
 
@@ -59,8 +61,6 @@ jobs:
           persist-credentials: false
       - if: "hashFiles('**/go.mod') != ''"
         uses: ./.github/actions/setup-make
-      - if: "hashFiles('**/go.mod') != ''"
-        uses: ./.github/actions/setup-ergon
       - name: Require go.work
         if: "hashFiles('**/go.mod') != '' && (hashFiles('go.work') == '')"
         run: |
@@ -72,6 +72,14 @@ jobs:
         with:
           cache-dependency-path: "**/go.sum"
           go-version-file: go.work
+      - if: "hashFiles('**/go.mod') != ''"
+        uses: ./.github/actions/setup-ergon
+      - name: Keep the tools of ergon
+        if: "hashFiles('**/go.mod') != ''"
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          key: "ergon-tools-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ hashFiles('.ergon.yaml', '.ergon/init.lock') }}"
+          path: "${{ runner.os == 'Windows' && '~/AppData/Local/ergon/tools' || runner.os == 'macOS' && '~/Library/Caches/ergon/tools' || '~/.cache/ergon/tools' }}"
       - name: Check Go
         if: "hashFiles('**/go.mod') != ''"
         run: |

@@ -39,8 +39,8 @@
     {
       "path": ".github/actions/setup-ergon/action.yml",
       "producer": "github",
-      "local": "4ec23f6b9ff2696ad8632a95ae9dfb201f815bb148938d55cca343912594bccf",
-      "sha256": "271d356b616d88d977a37a886b6ee800e94fd0c3132ff38260de04ee97b9e500"
+      "local": "62da4a61efa6a87252b0cc310b08dc267270d2455efbdbb348acf7986cb457e5",
+      "sha256": "e0233ca181d966ccb2e1dcb933825af5a7912210d709d2955a5f71881b6f1f60"
     },
     {
       "path": ".github/actions/setup-make/action.yml",
@@ -60,7 +60,7 @@
     {
       "path": ".github/workflows/ci.yml",
       "producer": "github",
-      "sha256": "e7ee3568568b3dd564478324bf5a72b8961a2c71bf6242fd23a504793ed4f2a9"
+      "sha256": "dc539af7d5b6bd1dbf2cf71205b66b4b8266accba6a7ebb8bf3515709771f666"
     },
     {
       "path": ".github/workflows/codeql.yml",
@@ -71,7 +71,7 @@
       "path": ".github/workflows/release.yml",
       "producer": "github",
       "local": "121ece7023c9ef7234dfb630f4b006cee8401af33f76233c848fb987ce5484c6",
-      "sha256": "337d956de083906b49786cfe87c8da69d028651d9022d5cd83a3b242d68d9b1e"
+      "sha256": "b7b3ef9d8c4b1a67c2a59344d66bd568b264971770c8067a69ae500c493799e0"
     },
     {
       "path": ".github/workflows/security.yml",
@@ -127,6 +127,9 @@
       "windows/amd64": "e8f90d08616ab8cd987b2dbef7ae0ee7fd1cb43c97f5a1ad171e8a56d1bd2f3d"
     },
     "common.tools.commitlint.version": "0.12.0",
+    "github.ci.actions.cache.commit": "55cc8345863c7cc4c66a329aec7e433d2d1c52a9",
+    "github.ci.actions.cache.release": "v6.1.0",
+    "github.ci.actions.cache.uses": "actions/cache",
     "github.ci.actions.checkout.commit": "3d3c42e5aac5ba805825da76410c181273ba90b1",
     "github.ci.actions.checkout.release": "v7.0.1",
     "github.ci.actions.checkout.uses": "actions/checkout",

@@ -74,6 +74,7 @@ func TestOptions(t *testing.T) {
 					Name:        "Java",
 					Toolchain:   "jvm",
 					Permissions: map[string]string{"contents": "read"},
+					Tools:       true,
 					Steps:       []workflow.Step{{Name: "Check Java", Run: []string{"make check-java"}}},
 				}},
 			}, "the contribution")

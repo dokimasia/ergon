@@ -44,6 +44,7 @@ func TestOptions(t *testing.T) {
 				Name:        "Bash",
 				Permissions: map[string]string{"contents": "read"},
 				Setup:       &workflow.Setup{Runners: option.Runners{}, Timeout: 30},
+				Tools:       true,
 				Steps:       []workflow.Step{{Name: "Check Bash", Run: []string{"make check-bash"}}},
 			}}}, "the contribution")
 		})

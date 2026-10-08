@@ -52,8 +52,9 @@ func (o *Options) Validate() error {
 }
 
 // Contribution returns the part of Kotlin of the workflows: the job check-kotlin, which runs make
-// check-kotlin with the setup of the jvm toolchain, on its runners and versions. The jvm toolchain
-// contributes the CodeQL analysis and the updates that Kotlin shares with Java.
+// check-kotlin with the setup of the jvm toolchain, on its runners and versions. The job keeps
+// ktlint and osv-scanner, which ergon tool run installs, in the cache of GitHub Actions. The jvm
+// toolchain contributes the CodeQL analysis and the updates that Kotlin shares with Java.
 func (*Options) Contribution() workflow.Contribution {
 	return workflow.Contribution{
 		Jobs: []workflow.Job{{
@@ -61,6 +62,7 @@ func (*Options) Contribution() workflow.Contribution {
 			Name:        "Kotlin",
 			Toolchain:   string(java.Toolchain),
 			Permissions: map[string]string{"contents": "read"},
+			Tools:       true,
 			Steps:       []workflow.Step{{Name: "Check Kotlin", Run: []string{"make check-kotlin"}}},
 		}},
 	}

@@ -47,6 +47,7 @@ func TestOptions(t *testing.T) {
 						Versions: []string{},
 						Timeout:  30,
 					},
+					Tools: true,
 					Steps: []workflow.Step{{Name: "Check Python", Run: []string{"make check-python"}}},
 				}},
 				CodeQL: []workflow.CodeQL{

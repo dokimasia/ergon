@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"go.dokimi.dev/assert"
+	"go.dokimi.dev/assert/expect"
 	"go.dokimi.dev/ergon/core/option"
 	"go.dokimi.dev/ergon/core/workflow"
 	"go.dokimi.dev/ergon/service/baseline/github"
@@ -14,6 +15,15 @@ import (
 
 // The runners of the section github at the baseline.
 var runners = option.Runners{"ubuntu-26.04", "macos-26", "windows-2025"}
+
+// The step that keeps the tools of ergon in the cache: its name, the tool directory of ergon on each
+// system, and the key of a job without and with the runtime versions of a matrix.
+const (
+	toolsName       = "Keep the tools of ergon"
+	toolsPath       = "${{ runner.os == 'Windows' && '~/AppData/Local/ergon/tools' || runner.os == 'macOS' && '~/Library/Caches/ergon/tools' || '~/.cache/ergon/tools' }}"
+	toolsKey        = "ergon-tools-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ hashFiles('.ergon.yaml', '.ergon/init.lock') }}"
+	toolsVersionKey = "ergon-tools-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ matrix.version }}-${{ hashFiles('.ergon.yaml', '.ergon/init.lock') }}"
+)
 
 func TestOptions(t *testing.T) {
 	t.Parallel()
@@ -114,11 +124,52 @@ func TestOptions(t *testing.T) {
 				Env:      map[string]string{"A": "1"},
 				Runners:  []string{"macos-26"},
 				Versions: []string{"1.0"},
-				Steps:    []workflow.Step{setup, check},
+				Setup:    []workflow.Step{setup},
+				Steps:    []workflow.Step{check},
 				Timeout:  20,
 				Make:     true,
 				Ergon:    true,
 			}}, "the jobs")
+		})
+
+		t.Run("keeps the tools of ergon in the cache before the steps of a job that runs tools", func(t *testing.T) {
+			t.Parallel()
+			check := workflow.Step{Run: []string{"make check-alpha"}}
+			c := workflow.Contribution{Jobs: []workflow.Job{{
+				ID:    "check-alpha",
+				Name:  "Alpha",
+				Setup: &workflow.Setup{Timeout: 20},
+				Tools: true,
+				Steps: []workflow.Step{check},
+			}}}
+			o := baselineOptions()
+			got, err := o.Jobs(&c)
+			assert.NoError(t, err, "Jobs")
+			assert.Length(t, got, 1, "the jobs")
+			assert.Equal(t, got[0].Steps, []workflow.Step{
+				{
+					Name: toolsName,
+					Uses: o.CI.Actions.Cache,
+					With: map[string]string{"path": toolsPath, "key": toolsKey},
+				},
+				check,
+			}, "the steps")
+		})
+
+		t.Run("keys the cache of the tools of ergon by the runtime version of a matrix", func(t *testing.T) {
+			t.Parallel()
+			c := workflow.Contribution{Jobs: []workflow.Job{{
+				ID:    "check-alpha",
+				Name:  "Alpha",
+				Setup: &workflow.Setup{Versions: []string{"1.0", "2.0"}, Timeout: 20},
+				Tools: true,
+				Steps: []workflow.Step{{Run: []string{"make check-alpha"}}},
+			}}}
+			got, err := baselineOptions().Jobs(&c)
+			assert.NoError(t, err, "Jobs")
+			assert.Length(t, got, 1, "the jobs")
+			assert.NotEmpty(t, got[0].Steps, "the steps")
+			assert.Equal(t, got[0].Steps[0].With["key"], toolsVersionKey, "the key of the cache")
 		})
 
 		t.Run("returns a job whose setup lists no runner on every runner", func(t *testing.T) {
@@ -152,10 +203,27 @@ func TestOptions(t *testing.T) {
 			assert.NoError(t, err, "Jobs")
 			assert.Length(t, got, 1, "the jobs")
 			assert.Equal(t, got[0].Guard, "hashFiles('alpha.lock') != ''", "the guard")
+			assert.Equal(t, got[0].Setup, []workflow.Step{{If: "hashFiles('alpha.lock') != ''", Uses: setupAlpha}},
+				"the setup steps")
 			assert.Equal(t, got[0].Steps, []workflow.Step{
-				{If: "hashFiles('alpha.lock') != ''", Uses: setupAlpha},
 				{If: "hashFiles('alpha.lock') != '' && (success())", Run: []string{"make check-alpha"}},
 			}, "the steps")
+		})
+
+		t.Run("guards the setup that the jobs of two languages share once for each job", func(t *testing.T) {
+			t.Parallel()
+			shared := &workflow.Setup{Files: "alpha.lock", Steps: []workflow.Step{{Uses: setupAlpha}}, Timeout: 20}
+			c := workflow.Contribution{Jobs: []workflow.Job{
+				{ID: "check-alpha", Name: "Alpha", Setup: shared, Steps: []workflow.Step{{Run: []string{"make a"}}}},
+				{ID: "check-beta", Name: "Beta", Setup: shared, Steps: []workflow.Step{{Run: []string{"make b"}}}},
+			}}
+			got, err := baselineOptions().Jobs(&c)
+			assert.NoError(t, err, "Jobs")
+			assert.Length(t, got, 2, "the jobs")
+			guard := []workflow.Step{{If: "hashFiles('alpha.lock') != ''", Uses: setupAlpha}}
+			expect.Equal(t, got[0].Setup, guard, "the setup steps of check-alpha")
+			expect.Equal(t, got[1].Setup, guard, "the setup steps of check-beta")
+			expect.Empty(t, shared.Steps[0].If, "the condition of the shared setup step")
 		})
 
 		t.Run("leaves the contribution unchanged", func(t *testing.T) {
@@ -193,8 +261,8 @@ func baselineOptions() *github.Options {
 	return o
 }
 
-// guarded returns a new contribution of a job whose setup states files, and whose steps have a
-// condition and none.
+// guarded returns a new contribution of a job that runs tools, whose setup states files, and whose
+// steps have a condition and none.
 func guarded() workflow.Contribution {
 	return workflow.Contribution{Jobs: []workflow.Job{{
 		ID:   "check-alpha",
@@ -204,6 +272,7 @@ func guarded() workflow.Contribution {
 			Steps:   []workflow.Step{{Uses: setupAlpha}},
 			Timeout: 20,
 		},
+		Tools: true,
 		Steps: []workflow.Step{{If: "success()", Run: []string{"make check-alpha"}}, {Run: []string{"true"}}},
 	}}}
 }

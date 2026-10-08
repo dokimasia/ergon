@@ -74,6 +74,7 @@ func TestOptions(t *testing.T) {
 					Name:        "Kotlin",
 					Toolchain:   "jvm",
 					Permissions: map[string]string{"contents": "read"},
+					Tools:       true,
 					Steps:       []workflow.Step{{Name: "Check Kotlin", Run: []string{"make check-kotlin"}}},
 				}},
 			}, "the contribution")

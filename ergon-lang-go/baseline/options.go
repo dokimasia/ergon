@@ -102,7 +102,8 @@ func (o *Options) Validate() error {
 //   - The job check-go runs make check-go on the runners and the versions of Go of o, once the
 //     repository has a go.mod. It fails a repository with a go.mod and without go.work, because the
 //     targets run in the modules of go.work. setup-go installs the version of go.work, or the
-//     version of the matrix where o lists versions, and caches the modules by every go.sum.
+//     version of the matrix where o lists versions, and caches the modules by every go.sum. The job
+//     keeps the tools of the section, which ergon tool run installs, in the cache of GitHub Actions.
 //   - The release steps install the version of go.work with setup-go in the jobs version and pack of
 //     release.yml, once the repository has go.work, for the go mod tidy of a release.
 //   - The CodeQL analysis of go builds the modules with autobuild, once the repository has go.work.
@@ -135,6 +136,7 @@ func (o *Options) Contribution() workflow.Contribution {
 				},
 				Timeout: o.CI.Timeout,
 			},
+			Tools: true,
 			Steps: []workflow.Step{{Name: "Check Go", Run: []string{"make check-go"}}},
 		}},
 		Release: []workflow.Step{{

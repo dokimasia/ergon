@@ -3,8 +3,8 @@
 # The release flow of the packages of the repository on every push to main. The job select-mode
 # chooses the next job. While main has changesets, the job version opens or updates the version
 # pull request. After the merge of that pull request, the jobs ci, pack and publish release each
-# package of the publish plan. The jobs version and pack set up the toolchains of the repository,
-# which refresh the lockfiles and build the artifacts.
+# package of the publish plan. The jobs version and pack set up the toolchains of the repository
+# before ergon, which refresh the lockfiles and build the artifacts.
 
 name: Release
 
@@ -62,13 +62,13 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: ./.github/actions/setup-ergon
       - name: Set up Go
         if: "hashFiles('go.work') != ''"
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           cache-dependency-path: "**/go.sum"
           go-version-file: go.work
+      - uses: ./.github/actions/setup-ergon
       - name: Open the version pull request
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -95,13 +95,13 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: ./.github/actions/setup-ergon
       - name: Set up Go
         if: "hashFiles('go.work') != ''"
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           cache-dependency-path: "**/go.sum"
           go-version-file: go.work
+      - uses: ./.github/actions/setup-ergon
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: publish-plan

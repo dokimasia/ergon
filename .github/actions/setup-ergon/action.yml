@@ -57,8 +57,17 @@ runs:
           echo "$dir" >> "$GITHUB_PATH"
         fi
         ./ergon --version
-    - name: Set up Go
+    - name: Find the Go of go.work
+      id: go
       if: inputs.version == 'source'
+      shell: bash
+      run: |
+        want="go$(awk '$1 == "go" { print $2; exit }' go.work)"
+        if [ "$(GOTOOLCHAIN=local go env GOVERSION 2>/dev/null)" = "$want" ]; then
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+        fi
+    - name: Set up Go
+      if: inputs.version == 'source' && steps.go.outputs.ready != 'true'
       uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
       with:
         go-version-file: go.work

@@ -64,7 +64,8 @@ func (o *Options) Validate() error {
 //
 //   - The job check-python runs make check-python on the runners of o, once the repository has
 //     pyproject.toml. uv installs the Python of pyproject.toml, or the version of the matrix through
-//     UV_PYTHON where o lists versions.
+//     UV_PYTHON where o lists versions. The job keeps uv, which ergon tool run installs, in the
+//     cache of GitHub Actions.
 //   - The CodeQL analysis of python reads the sources without a build.
 //   - Dependabot updates uv.lock.
 func (o *Options) Contribution() workflow.Contribution {
@@ -84,6 +85,7 @@ func (o *Options) Contribution() workflow.Contribution {
 				Env:      env,
 				Timeout:  o.CI.Timeout,
 			},
+			Tools: true,
 			Steps: []workflow.Step{{Name: "Check Python", Run: []string{"make check-python"}}},
 		}},
 		CodeQL: []workflow.CodeQL{

@@ -3,7 +3,9 @@
 # The gate of the repository, with the jobs that each producer of ergon init contributes. A check
 # of text runs on the Linux runner of the section github of .ergon.yaml, and every other job on a
 # matrix of runners. A job that sets up a toolchain runs its steps once the repository has the
-# files of the toolchain. release.yml calls the gate before it publishes a release.
+# files of the toolchain, and sets the toolchain up before ergon. A job that runs tools keeps the
+# tools of ergon in the cache of GitHub Actions. release.yml calls the gate before it publishes a
+# release.
 
 name: CI
 
@@ -59,13 +61,13 @@ jobs:
           persist-credentials: false
       - if: "hashFiles('global.json') != ''"
         uses: ./.github/actions/setup-make
-      - if: "hashFiles('global.json') != ''"
-        uses: ./.github/actions/setup-ergon
       - name: Set up .NET
         if: "hashFiles('global.json') != ''"
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
+      - if: "hashFiles('global.json') != ''"
+        uses: ./.github/actions/setup-ergon
       - name: "Check C#"
         if: "hashFiles('global.json') != ''"
         run: |

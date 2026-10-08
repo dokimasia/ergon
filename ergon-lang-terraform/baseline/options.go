@@ -79,7 +79,8 @@ func (o *Options) Validate() error {
 //   - The job check-terraform runs make check-terraform on the runners of o, once the repository has
 //     .terraform-version. setup-terraform installs the version of .terraform-version, which a step
 //     reads, or the version of the matrix where o lists versions, without its wrapper of the
-//     commands.
+//     commands. The job keeps tflint and uv, which ergon tool run installs, in the cache of GitHub
+//     Actions.
 //   - Dependabot updates the providers and the modules of every directory.
 //
 // CodeQL analyzes no Terraform.
@@ -103,6 +104,7 @@ func (o *Options) Contribution() workflow.Contribution {
 				Steps:    install,
 				Timeout:  o.CI.Timeout,
 			},
+			Tools: true,
 			Steps: []workflow.Step{{Name: "Check Terraform", Run: []string{"make check-terraform"}}},
 		}},
 		Updates: []workflow.Update{{Ecosystem: "terraform", Directories: []string{"/", "/**/*"}}},

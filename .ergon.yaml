@@ -73,6 +73,12 @@ github:
         uses: actions/download-artifact
         commit: 9000827ccba6bdab643e8b6fd33ac0654aef8333
         release: v8.0.2
+      # The action that restores the tool directory of ergon before the steps of each job of ci.yml
+      # that runs tools, and saves it after a run that succeeds.
+      cache:
+        uses: actions/cache
+        commit: 55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        release: v6.1.0
     timeout: 15
 license:
   # The copyright holder of the headers and of the license files. ergon init writes it from --owner,

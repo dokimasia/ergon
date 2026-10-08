@@ -87,6 +87,7 @@ func TestOptions(t *testing.T) {
 							},
 							Timeout: 30,
 						},
+						Tools: true,
 						Steps: []workflow.Step{{Name: "Check Go", Run: []string{"make check-go"}}},
 					}},
 					Release: []workflow.Step{{

@@ -3,7 +3,9 @@
 # The gate of the repository, with the jobs that each producer of ergon init contributes. A check
 # of text runs on the Linux runner of the section github of .ergon.yaml, and every other job on a
 # matrix of runners. A job that sets up a toolchain runs its steps once the repository has the
-# files of the toolchain. release.yml calls the gate before it publishes a release.
+# files of the toolchain, and sets the toolchain up before ergon. A job that runs tools keeps the
+# tools of ergon in the cache of GitHub Actions. release.yml calls the gate before it publishes a
+# release.
 
 name: CI
 
@@ -59,14 +61,20 @@ jobs:
           persist-credentials: false
       - if: "hashFiles('.java-version') != ''"
         uses: ./.github/actions/setup-make
-      - if: "hashFiles('.java-version') != ''"
-        uses: ./.github/actions/setup-ergon
       - name: Set up Java
         if: "hashFiles('.java-version') != ''"
         uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
           java-version-file: .java-version
+      - if: "hashFiles('.java-version') != ''"
+        uses: ./.github/actions/setup-ergon
+      - name: Keep the tools of ergon
+        if: "hashFiles('.java-version') != ''"
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          key: "ergon-tools-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ hashFiles('.ergon.yaml', '.ergon/init.lock') }}"
+          path: "${{ runner.os == 'Windows' && '~/AppData/Local/ergon/tools' || runner.os == 'macOS' && '~/Library/Caches/ergon/tools' || '~/.cache/ergon/tools' }}"
       - name: Check Java
         if: "hashFiles('.java-version') != ''"
         run: |

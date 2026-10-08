@@ -18,9 +18,21 @@ const (
 	versionSuffix = " (${{ matrix.os }}, ${{ matrix.version }})"
 )
 
+// The step that keeps the tool directory of ergon in the cache of GitHub Actions, in a job that
+// runs tools: its name, the directory, which is ergon/tools in the cache directory of the user on
+// each system, as os.UserCacheDir returns it, and its key without and with the runtime version of
+// a matrix. The key changes with each version of a tool or of ergon, which .ergon.yaml and the
+// lock state.
+const (
+	toolsStep       = "Keep the tools of ergon"
+	toolsPath       = "${{ runner.os == 'Windows' && '~/AppData/Local/ergon/tools' || runner.os == 'macOS' && '~/Library/Caches/ergon/tools' || '~/.cache/ergon/tools' }}"
+	toolsKey        = "ergon-tools-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ hashFiles('.ergon.yaml', '.ergon/init.lock') }}"
+	toolsVersionKey = "ergon-tools-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ matrix.version }}-${{ hashFiles('.ergon.yaml', '.ergon/init.lock') }}"
+)
+
 // Job is a job of ci.yml as its template renders it: the values of a [workflow.Job] that the
-// section github, the job's setup and the checkout determine. The template renders the checkout,
-// the installation of GNU make and the installation of ergon before Steps.
+// section github, the job's setup and the checkout determine. The template renders the checkout and
+// the installation of GNU make before Setup, and the installation of ergon between Setup and Steps.
 type Job struct {
 	// ID is the key of the job in the workflow, such as check-go.
 	ID string
@@ -50,7 +62,12 @@ type Job struct {
 	// Versions are the runtime versions of the job's matrix, or nil.
 	Versions []string
 
-	// Steps are the setup steps and the steps of the job, each with Guard before its own condition.
+	// Setup are the setup steps of the job, each with Guard before its own condition, which run
+	// before the installation of ergon.
+	Setup []workflow.Step
+
+	// Steps are the steps of the job, each with Guard before its own condition: the step that keeps
+	// the tools of ergon in the cache for a job that runs tools, then the steps of the job.
 	Steps []workflow.Step
 
 	// Timeout is the limit of the job in minutes.
@@ -100,6 +117,9 @@ type Actions struct {
 
 	// DownloadArtifact receives a file of an earlier job of release.yml.
 	DownloadArtifact workflow.Action `yaml:"download-artifact" doc:"The action that downloads the publish plan in the job pack, and the artifacts in the job publish of release.yml."`
+
+	// Cache keeps the tools of ergon of a job between its runs.
+	Cache workflow.Action `yaml:"cache" doc:"The action that restores the tool directory of ergon before the steps of each job of ci.yml that runs tools, and saves it after a run that succeeds."`
 }
 
 // Validate returns an error that wraps [option.ErrInvalid] for no runner, and for a Linux that
@@ -120,9 +140,12 @@ func (o *Options) Validate() error {
 //   - A check of text runs on the runner Linux, without a matrix.
 //   - A job with a setup runs on the runners of its setup, or on every runner of o when the setup
 //     lists none, and on the versions of its setup. It takes the timeout and the environment of its
-//     setup, runs the setup steps before its own, and installs GNU make and ergon. A setup that
-//     states files guards every step after the checkout.
+//     setup, runs the setup steps before the installation of ergon, and installs GNU make and
+//     ergon. A setup that states files guards every step after the checkout.
 //   - Any other job runs on every runner of o, and installs ergon when it runs ergon.
+//   - A job that runs tools keeps the tool directory of ergon in the cache with the action Cache,
+//     in a step before its own steps. The key of the cache names the runtime version of a matrix
+//     with versions.
 //
 // It returns an error that wraps [option.ErrInvalid] for a job that runs on a runner that Runners
 // does not list. Jobs reads c and does not modify it: a guarded step is a copy. A Job shares its
@@ -150,12 +173,24 @@ func (o *Options) Jobs(c *workflow.Contribution) ([]Job, error) {
 			}
 			job.Versions = s.Versions
 			job.Env = s.Env
-			job.Steps = slices.Concat(s.Steps, j.Steps)
+			job.Setup = s.Steps
 			job.Timeout = s.Timeout
 			job.Make, job.Ergon = true, true
 			if s.Files != "" {
 				job.Guard = "hashFiles('" + s.Files + "') != ''"
 			}
+		}
+		if j.Tools {
+			key := toolsKey
+			if len(job.Versions) > 0 {
+				key = toolsVersionKey
+			}
+			tools := workflow.Step{
+				Name: toolsStep,
+				Uses: o.CI.Actions.Cache,
+				With: map[string]string{"path": toolsPath, "key": key},
+			}
+			job.Steps = slices.Concat([]workflow.Step{tools}, j.Steps)
 		}
 		for _, r := range job.Runners {
 			if !slices.Contains(o.Runners, r) {
@@ -168,15 +203,18 @@ func (o *Options) Jobs(c *workflow.Contribution) ([]Job, error) {
 		} else if job.Runners != nil {
 			job.Name += runnerSuffix
 		}
-		// A guard comes with a setup, whose steps are a new slice of copies, so the conditions change
-		// no step of c.
+		// A guard comes with a setup. The guarded steps are copies, so the conditions change no step
+		// of c, and no step of a setup that the jobs of two languages share.
 		if job.Guard != "" {
-			for k := range job.Steps {
-				step := &job.Steps[k]
-				if step.If == "" {
-					step.If = job.Guard
-				} else {
-					step.If = job.Guard + " && (" + step.If + ")"
+			job.Setup, job.Steps = slices.Clone(job.Setup), slices.Clone(job.Steps)
+			for _, steps := range [][]workflow.Step{job.Setup, job.Steps} {
+				for k := range steps {
+					step := &steps[k]
+					if step.If == "" {
+						step.If = job.Guard
+					} else {
+						step.If = job.Guard + " && (" + step.If + ")"
+					}
 				}
 			}
 		}

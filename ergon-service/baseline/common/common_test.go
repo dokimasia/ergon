@@ -98,6 +98,7 @@ func TestCommon(t *testing.T) {
 						Permissions: read,
 						History:     true,
 						Ergon:       true,
+						Tools:       true,
 						Steps: []workflow.Step{{
 							Name: "Check the commit messages",
 							Env: map[string]string{

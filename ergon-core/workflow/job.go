@@ -51,8 +51,9 @@ type Setup struct {
 	// Env are the environment variables of the job, by name.
 	Env map[string]string
 
-	// Steps are the steps that install the toolchain, after the checkout, the installation of GNU
-	// make and the installation of ergon.
+	// Steps are the steps that install the toolchain, after the checkout and the installation of GNU
+	// make, and before the installation of ergon, so an ergon that a repository builds from its own
+	// source builds with the toolchain of the job.
 	Steps []Step
 
 	// Timeout is the limit of the job in minutes.
@@ -96,8 +97,9 @@ func (s *Setup) Validate() error {
 }
 
 // Job is a job of ci.yml. The producer of the GitHub files renders every job from one skeleton:
-// the checkout, then the installation of GNU make for a job with a setup, the installation of
-// ergon for a job that runs it, the setup steps, and the steps of the job.
+// the checkout, then the installation of GNU make for a job with a setup, the setup steps, the
+// installation of ergon for a job that runs it, the cache of the tools of ergon for a job with
+// Tools, and the steps of the job.
 //
 // A job runs in one of three ways:
 //
@@ -144,6 +146,11 @@ type Job struct {
 	// Ergon reports that the job runs ergon, whose release the lock names. A job with a setup runs
 	// it through the targets of the Makefile, whatever Ergon states.
 	Ergon bool
+
+	// Tools reports that the steps run a tool that ergon tool run installs into the tool directory
+	// of ergon, such as a Go module or a release binary. The job keeps that directory in the cache
+	// of GitHub Actions between its runs. A job with Tools runs ergon, through its setup or Ergon.
+	Tools bool
 }
 
 // Validate returns an error that wraps [ErrInvalidJob] for the first value of j that a workflow
@@ -154,6 +161,7 @@ type Job struct {
 //   - a Toolchain that is not a lowercase letter followed by lowercase letters and digits
 //   - more than one of Setup, Toolchain and Text
 //   - a Timeout other than 0 for a job with a setup, and below 1 for any other job
+//   - Tools for a job that runs no ergon: a job without a setup whose Ergon is false
 //   - a setup that is not valid, as [Setup.Validate] states
 //   - a scope of the permissions that is not lowercase letters and '-', or an access other than
 //     read, write and none
@@ -178,6 +186,9 @@ func (j *Job) Validate() error {
 	if (setup && j.Timeout != 0) || (!setup && j.Timeout < 1) {
 		return fmt.Errorf("%w: %s has the timeout %d, which a job with a setup leaves 0 and any other job sets "+
 			"to at least a minute", ErrInvalidJob, j.ID, j.Timeout)
+	}
+	if j.Tools && !setup && !j.Ergon {
+		return fmt.Errorf("%w: %s runs tools of ergon without a setup and without ergon", ErrInvalidJob, j.ID)
 	}
 	if j.Setup != nil {
 		if err := j.Setup.Validate(); err != nil {

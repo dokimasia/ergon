@@ -4,7 +4,7 @@ title: Release
 author: Roy Klopper
 status: Accepted
 created: 2026-09-24
-updated: 2026-10-07
+updated: 2026-10-08
 discussion: none
 supersedes: none
 superseded-by: none
@@ -499,7 +499,7 @@ ergon init renders the workflow `release.yml` among the GitHub files, as RFC-000
 | publish | `contents: write` | `ergon release publish` | `published`, and `published-packages`, a JSON list of names and versions |
 
 - select-mode returns `version` while `.changeset` has changesets or a lockfile records the earlier content of a package of the publish plan, `publish` for a publish plan with an entry, and `none` otherwise. version runs for `version`, and ci, pack and publish run in that order for `publish`.
-- A producer contributes its release steps to the workflows, as it contributes its jobs. The jobs version and pack run them after the installation of ergon, so the version job has the lockfile tool of every language of the repository.
+- A producer contributes its release steps to the workflows, as it contributes its jobs. The jobs version and pack run them before the installation of ergon, so the version job has the lockfile tool of every language of the repository. A repository that builds ergon from its own source builds it with the toolchain of those steps.
 - The job publish requests `id-token: write` and runs in the environment `release` when a toolchain of the repository publishes to a registry, as the section Credentials states. The toolchain of Go publishes by its tags, without a token of OIDC or an environment.
 - `ci version` first points `ergon-release/<base>` at the base commit through the REST refs endpoint. It then commits with the GraphQL mutation `createCommitOnBranch`, passing `expectedHeadOid`, and opens the pull request or updates the open one. GitHub's schema states that commits made with this mutation are signed by GitHub and marked verified. A repository that runs the job sets "Allow GitHub Actions to create and approve pull requests", because `GITHUB_TOKEN` cannot open a pull request without it.
 - GitHub ends a request after 10 seconds, and ergon's version commit includes lockfiles. `ci version` therefore splits a change whose base64 payload exceeds 6,666,668 bytes into several commits on the branch, each within that bound. The measurements on a scratch branch, with a user token, are in the following table.
@@ -561,12 +561,12 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: ./.github/actions/setup-ergon
       - name: Set up Go
         if: "hashFiles('go.work') != ''"
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.work
+      - uses: ./.github/actions/setup-ergon
       - env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |

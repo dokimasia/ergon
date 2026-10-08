@@ -122,6 +122,7 @@ func TestOptions(t *testing.T) {
 						}},
 						Timeout: 30,
 					},
+					Tools: true,
 					Steps: []workflow.Step{{Name: "Check PHP", Run: []string{"make check-php"}}},
 				}},
 				Updates: []workflow.Update{{Ecosystem: "composer", Directories: []string{"/"}}},

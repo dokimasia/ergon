@@ -39,7 +39,7 @@
     {
       "path": ".github/workflows/ci.yml",
       "producer": "github",
-      "sha256": "c1c65d45fee33742f9d7942e0df91c5e8594bc845d876d487a26d86348ced9e6"
+      "sha256": "30f611d8908d94b3cbfc5a54af5817c59a912c78661953357582f0db5b771920"
     },
     {
       "path": ".github/workflows/codeql.yml",
@@ -49,7 +49,7 @@
     {
       "path": ".github/workflows/release.yml",
       "producer": "github",
-      "sha256": "e6339f6953a930e9e8c33d7de389d42ff82aa88c1a9759220ea95a66b952bc88"
+      "sha256": "0fc93410384029ebdcd03bf2ec9f0e57bba5b90e2814d0acf0283ce32248cb0f"
     },
     {
       "path": ".github/workflows/security.yml",
@@ -58,6 +58,9 @@
     }
   ],
   "settings": {
+    "github.ci.actions.cache.commit": "55cc8345863c7cc4c66a329aec7e433d2d1c52a9",
+    "github.ci.actions.cache.release": "v6.1.0",
+    "github.ci.actions.cache.uses": "actions/cache",
     "github.ci.actions.checkout.commit": "3d3c42e5aac5ba805825da76410c181273ba90b1",
     "github.ci.actions.checkout.release": "v7.0.1",
     "github.ci.actions.checkout.uses": "actions/checkout",

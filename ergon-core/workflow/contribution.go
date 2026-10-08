@@ -20,7 +20,7 @@ type Contribution struct {
 
 	// Release are the steps that set up the toolchain of the producer in the jobs version and pack
 	// of release.yml, which refresh the lockfiles of a release and build its artifacts. They run on
-	// the Linux runner of the section github, after the installation of ergon, in the order of the
+	// the Linux runner of the section github, before the installation of ergon, in the order of the
 	// producers.
 	Release []Step
 

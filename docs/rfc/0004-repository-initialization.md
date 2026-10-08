@@ -153,7 +153,7 @@ The workflows:
 | `security.yml` | `pull_request`, `push` to `main`, weekly | `codeql-<language>` for each CodeQL analysis that a producer contributes, `dependency-review` on pull requests, `scorecard` weekly | `security-events: write` on the CodeQL jobs and `scorecard`, `id-token: write` on `scorecard`, `contents: read` elsewhere |
 | `baseline.yml` | Weekly, `workflow_dispatch` | Installs the newest ergon release, runs `ergon init check`, and opens an issue when the baseline is outdated and no such issue is open | `contents: read`, `issues: write` |
 
-`setup-ergon` downloads `ergon_<version>_<os>_<arch>.tar.gz` and `checksums.txt` from the release `v<version>` of github.com/dokimasia/ergon, where `<os>` is `linux`, `darwin` or `windows` and `<arch>` is `amd64` or `arm64`. Every release of ergon publishes these assets. Every job that runs a target of the Makefile installs ergon, because the targets run their tools through `ergon tool run`. The input `version` names another release, or `latest` for the newest one. With the version `source`, the action skips the installation of a release, and a repository that builds ergon from its own source installs it in a step of its local file of the action. ergon's own repository does that, so its gate checks its managed files against the baseline of the same commit.
+`setup-ergon` downloads `ergon_<version>_<os>_<arch>.tar.gz` and `checksums.txt` from the release `v<version>` of github.com/dokimasia/ergon, where `<os>` is `linux`, `darwin` or `windows` and `<arch>` is `amd64` or `arm64`. Every release of ergon publishes these assets. Every job that runs a target of the Makefile installs ergon, because the targets run their tools through `ergon tool run`. The input `version` names another release, or `latest` for the newest one. With the version `source`, the action skips the installation of a release, and a repository that builds ergon from its own source installs it in a step of its local file of the action. ergon's own repository does that, so its gate checks its managed files against the baseline of the same commit. Its local file sets up Go only where the job has not set it up, so a job of Go restores the cache of `actions/setup-go` once.
 
 Every workflow follows these rules:
 
@@ -167,10 +167,11 @@ Every workflow follows these rules:
 - Every job specifies its runner image with a version, never a `-latest` label.
 - Each job runs on the runners that `ci.runners` of its producer lists. An empty list selects every runner of the section `github`: `ubuntu-26.04`, `macos-26` and `windows-2025` at the baseline. The job of a language runs without `fail-fast`. A job that checks text, such as `docs`, `commits` and `baseline`, and every job of `release.yml` run on the runner of `github.linux`. `baseline` checks text, because the managed `.gitattributes` checks out every text file with LF on every system.
 - Each `check-<language>` job runs `make check-<language>`, so CI and a local run execute the same commands. The step runs in `bash`, which is Git Bash on Windows, after `setup-make`.
+- A job whose steps run tools keeps the tool directory of ergon in the cache of GitHub Actions, as [Tools](#tools) specifies.
 
 ### Jobs
 
-The GitHub producer renders every job of `ci.yml` from one skeleton: the checkout, `setup-make` on a Windows runner, `setup-ergon`, the setup steps of the job's producer, and the job's command. A producer returns its jobs through the `Contributor` role as values of `workflow.Job`: the name, the runners, the matrix of runtime versions, the setup steps, the command and the permissions. It returns its CodeQL analysis, its Dependabot updates and the steps that set up its toolchain in a release the same way. No toolchain appears in the GitHub producer. The GitHub producer rejects a job whose runners its section does not list.
+The GitHub producer renders every job of `ci.yml` from one skeleton: the checkout, `setup-make` on a Windows runner, the setup steps of the job's producer, `setup-ergon`, the cache of the tools of ergon for a job that runs tools, and the job's command. The setup steps come before `setup-ergon`, so a repository that builds ergon from its own source builds it with the toolchain that the job set up. A producer returns its jobs through the `Contributor` role as values of `workflow.Job`: the name, the runners, the matrix of runtime versions, the setup steps, the command, the permissions, and whether the command runs tools. It returns its CodeQL analysis, its Dependabot updates and the steps that set up its toolchain in a release the same way. No toolchain appears in the GitHub producer. The GitHub producer rejects a job whose runners its section does not list.
 
 A language's job and its CodeQL analysis run once the repository has the file that pins the language's toolchain:
 
@@ -188,7 +189,7 @@ A language's job and its CodeQL analysis run once the repository has the file th
 
 The job of Go fails in a repository that has a `go.mod` and no `go.work`, because the targets of Go run in the modules of `go.work`. It is skipped in a repository without a `go.mod`.
 
-The jobs version and pack of `release.yml` run the release steps of every producer after `setup-ergon`, each once the repository has the pin file of its toolchain. Go contributes `actions/setup-go` at the version of `go.work`, for the `go mod tidy` of a release.
+The jobs version and pack of `release.yml` run the release steps of every producer before `setup-ergon`, each once the repository has the pin file of its toolchain. Go contributes `actions/setup-go` at the version of `go.work`, for the `go mod tidy` of a release.
 
 ### Language contributions
 
@@ -403,6 +404,10 @@ github:
         uses: actions/download-artifact
         commit: 9000827ccba6bdab643e8b6fd33ac0654aef8333
         release: v8.0.2
+      cache:
+        uses: actions/cache
+        commit: 55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        release: v6.1.0
     timeout: 15
 license:
   owner: Example B.V.
@@ -658,7 +663,7 @@ A tool whose integration names its package accepts another version and rejects a
 - `kotlin.tools.ktlint`, because `ergon tool run` runs the jar of `com.pinterest.ktlint:ktlint-cli` with the classifier `all`, which contains ktlint and its dependencies.
 - The four tools of `php`, because the targets run the programs of PHPStan and PHP-CS-Fixer with the flags of those programs, and the extension installer of PHPStan loads phpstan-strict-rules.
 
-The actions of the workflows are options of the producers whose jobs run them: the checkout, the actions of `security.yml` and the artifact actions of `release.yml` in `github`, markdownlint in `common`, and the setup of each toolchain in its section. Dependabot cannot update `.ergon.yaml`, so `dependabot.yml` updates no action.
+The actions of the workflows are options of the producers whose jobs run them: the checkout, the cache of the tools of ergon, the actions of `security.yml` and the artifact actions of `release.yml` in `github`, markdownlint in `common`, and the setup of each toolchain in its section. Dependabot cannot update `.ergon.yaml`, so `dependabot.yml` updates no action.
 
 Only Go has the steps `race`, `fuzz`, `bench`, `mutate` and `generate`. A fuzzer or a benchmark harness in another language is a dependency of the repository's own build, such as criterion, JMH or pytest-benchmark, and `init` renders no build file. A language gains `mutate` with its engine of the dokimi addon, and dokimi-mutate-go is the only one.
 
@@ -676,6 +681,14 @@ Only Go has the steps `race`, `fuzz`, `bench`, `mutate` and `generate`. A fuzzer
 - The command exits with the exit status of the tool. It exits 1 with an error when the tool cannot be installed, and 2 for a section of no producer of the repository or a tool that the section does not name.
 
 The release binaries of the baseline are commitlint v0.12.0 in `common`, osv-scanner v2.6.0 in `jvm`, tflint v0.64.0 in `terraform`, shellcheck v0.11.0 in `bash`, and uv 0.12.23 in `python` and `terraform`. Each release publishes an asset for linux/amd64, darwin/arm64 and windows/amd64. The releases of commitlint, osv-scanner, tflint and uv publish a checksum file beside the assets. The release of shellcheck publishes none, so the baseline pins the digests of the assets themselves.
+
+A job of `ci.yml` whose steps run tools restores the tool directory of ergon from the cache of GitHub Actions before its steps, with `actions/cache`, and saves the directory after a run that succeeds:
+
+- The directory is `ergon/tools` in the cache directory of the user: `~/.cache` on Linux, `~/Library/Caches` on macOS and `~/AppData/Local` on Windows.
+- The key is the system, the architecture, the job, the runtime version of the job's matrix, and the digest of `.ergon.yaml` and `.ergon/init.lock`. A changed version of a tool or of ergon changes the key, so the job installs its tools again.
+- A producer marks each job whose steps run a tool that `ergon tool run` installs into the directory. These are the job `commits` and the check jobs of Go, Python, Rust, Terraform, Bash, PHP, Java and Kotlin. JavaScript and TypeScript run their tools through npx, which keeps its own cache, and C# runs none.
+
+Without the cache, the first lint of each Go job of ergon's own repository built golangci-lint from 203 downloaded modules on 2026-10-08. That lint took 57 s on Linux, 69 s on macOS and 104 s on Windows, against 4 to 15 s for the lint of each other module.
 
 ### Several languages in one repository
 
@@ -928,6 +941,7 @@ The workflows would pin each action as a constant of the ergon release, and Depe
 - The Gradle init script adds PMD's configuration to the build, so a build that locks its dependencies in strict mode writes the lock of that configuration with the init script.
 - `ergon tool run` installs the Composer packages of PHP, which Composer checks against no checksum, into a project that allows the plugins of its packages.
 - A template that reads a key its data lacks fails when it renders, not when it compiles. The test that renders every template of every producer is the check.
+- The cache of CI keeps a tool that a toolchain built, such as a Go module that `go install` built, until a version of a tool or of ergon changes. A later minor release of Go in `go.work` then runs a golangci-lint that the earlier release built, and golangci-lint refuses a Go version newer than the one that built it.
 
 ## Unresolved and future work
 
@@ -956,6 +970,7 @@ The workflows would pin each action as a constant of the ergon release, and Depe
 | NuGet's audit of packages | https://learn.microsoft.com/nuget/concepts/auditing-packages |
 | npm audit and composer audit | https://docs.npmjs.com/cli/commands/npm-audit, https://getcomposer.org/doc/03-cli.md#audit |
 | golangci-lint | https://golangci-lint.run, v2.14.0 |
+| golangci-lint refuses a Go version newer than the one that built it | `pkg/goutil/version.go` of golangci-lint v2.14.0 |
 | benchstat | https://pkg.go.dev/golang.org/x/perf/cmd/benchstat, golang.org/x/perf v0.0.0-20260929162123-406019bb8b68 |
 | dokimi-mutate-go | https://github.com/dokimasia/mutate-go, go.dokimi.dev/mutate v0.0.0-20261006212535-719083ce3457 |
 | ruff and mypy | https://docs.astral.sh/ruff/, 0.16.10, and https://mypy.readthedocs.io, 2.4.0 |
@@ -966,6 +981,7 @@ The workflows would pin each action as a constant of the ergon release, and Depe
 | ktlint | https://pinterest.github.io/ktlint/, 1.8.0 |
 | PHPStan, its extension installer and PHP-CS-Fixer | https://phpstan.org, 2.2.17, https://github.com/phpstan/extension-installer, 1.4.3, and https://cs.symfony.com, 3.95.27 |
 | tflint | https://github.com/terraform-linters/tflint, v0.64.0 |
+| The cache of GitHub Actions, which saves after a job that succeeds | https://github.com/actions/cache, v6.1.0, `action.yml` |
 | The delimiters of `text/template` | https://pkg.go.dev/text/template#Template.Delims |
 | The analyzers of Go and their multichecker | https://pkg.go.dev/golang.org/x/tools/go/analysis/multichecker |
 | Typed options of a tool in its language backend | Pants, `src/python/pants/backend/go/lint/golangci_lint/subsystem.py` |

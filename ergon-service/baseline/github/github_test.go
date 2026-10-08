@@ -249,9 +249,9 @@ func toolchain() workflow.Contribution {
 	}
 }
 
-// languages returns the contribution of the language alpha of the cases: a check on the setup of
-// the toolchain tool, a check on a setup of its own, a check of text, and a job without a setup
-// whose steps have each key of a step.
+// languages returns the contribution of the language alpha of the cases: a check that runs tools on
+// the setup of the toolchain tool, a check on a setup of its own, a check of text that runs tools,
+// and a job without a setup whose steps have each key of a step.
 func languages() workflow.Contribution {
 	return workflow.Contribution{Jobs: []workflow.Job{
 		{
@@ -259,6 +259,7 @@ func languages() workflow.Contribution {
 			Name:        "Alpha",
 			Toolchain:   "tool",
 			Permissions: read,
+			Tools:       true,
 			Steps: []workflow.Step{{
 				Name: "Check alpha",
 				If:   "github.event_name != 'schedule'",
@@ -280,6 +281,7 @@ func languages() workflow.Contribution {
 			Timeout: 3,
 			History: true,
 			Ergon:   true,
+			Tools:   true,
 			Steps: []workflow.Step{
 				{Env: map[string]string{"BASE": "main"}, Run: []string{"ergon tool run tool.lint"}},
 			},

@@ -15,12 +15,13 @@
 //
 //   - ci.yml is the gate on every pull request, on the merge queue and on main, and the workflow
 //     that release.yml calls before a publish. It renders each job of the contributions from one
-//     skeleton: the checkout, the installation of GNU make and of ergon, the setup steps, and the
-//     steps of the job, as [Options.Jobs] states.
+//     skeleton: the checkout, the installation of GNU make, the setup steps, the installation of
+//     ergon, the cache of the tools of ergon for a job that runs tools, and the steps of the job,
+//     as [Options.Jobs] states.
 //   - release.yml runs the release flow of ergon release ci on every push to main. The job
 //     select-mode chooses the next job. The job version opens or updates the version pull request.
 //     After its merge, the jobs ci, pack and publish release each package of the publish plan. The
-//     jobs version and pack run the release steps of the contributions after the installation of
+//     jobs version and pack run the release steps of the contributions before the installation of
 //     ergon.
 //   - security.yml runs the dependency review on a pull request, the OpenSSF Scorecard weekly, and
 //     a job codeql-<language> for each CodeQL analysis of the contributions, which calls
@@ -30,6 +31,12 @@
 //   - dependabot.yml updates the package manager of each update of the contributions weekly, with
 //     the minor and patch updates of each directory in one pull request and each major update in a
 //     pull request of its own. A repository without an update has no dependabot.yml.
+//
+// The setup steps of a job come before the installation of ergon, so a repository that builds ergon
+// from its own source builds it with the toolchain of the job. A job whose steps run tools restores
+// the tool directory of ergon from the cache of GitHub Actions, and saves it after a run that
+// succeeds, under a key of the system, the architecture, the job, the runtime version of its matrix
+// and the digest of .ergon.yaml and the lock.
 //
 // Every workflow grants no permission at its top level, and each job grants only the scopes that
 // it needs. Every action is pinned to the commit of a release, with the release in a comment.

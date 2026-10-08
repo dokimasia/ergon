@@ -72,6 +72,7 @@ func TestOptions(t *testing.T) {
 						},
 						Timeout: 30,
 					},
+					Tools: true,
 					Steps: []workflow.Step{{Name: "Check Terraform", Run: []string{"make check-terraform"}}},
 				}},
 				Updates: []workflow.Update{{Ecosystem: "terraform", Directories: []string{"/", "/**/*"}}},

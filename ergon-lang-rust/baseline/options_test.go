@@ -59,6 +59,7 @@ func TestOptions(t *testing.T) {
 						}},
 						Timeout: 30,
 					},
+					Tools: true,
 					Steps: []workflow.Step{{Name: "Check Rust", Run: []string{"make check-rust"}}},
 				}},
 				CodeQL: []workflow.CodeQL{

@@ -128,6 +128,14 @@ func TestJob(t *testing.T) {
 				name: "returns nil for a job on every runner with a timeout",
 				give: func(j *workflow.Job) { j.Setup, j.Timeout, j.Ergon = nil, 15, true },
 			},
+			{
+				name: "returns nil for a job with a setup that runs tools",
+				give: func(j *workflow.Job) { j.Tools = true },
+			},
+			{
+				name: "returns nil for a check of text that runs ergon and its tools",
+				give: func(j *workflow.Job) { j.Setup, j.Text, j.Timeout, j.Ergon, j.Tools = nil, true, 10, true, true },
+			},
 		}
 		for _, tt := range valid {
 			t.Run(tt.name, func(t *testing.T) {
@@ -178,6 +186,10 @@ func TestJob(t *testing.T) {
 			{
 				name: "returns ErrInvalidJob for no timeout of a job without a setup",
 				give: func(j *workflow.Job) { j.Setup, j.Text = nil, true },
+			},
+			{
+				name: "returns ErrInvalidJob for tools of a job without a setup that does not run ergon",
+				give: func(j *workflow.Job) { j.Setup, j.Text, j.Timeout, j.Tools = nil, true, 10, true },
 			},
 			{
 				name: "returns ErrInvalidJob for a setup that is not valid",
