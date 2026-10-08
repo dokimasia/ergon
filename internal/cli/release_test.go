@@ -24,6 +24,7 @@ import (
 	"go.dokimi.dev/assert/files"
 	"go.dokimi.dev/ergon/internal/app"
 	"go.dokimi.dev/ergon/internal/cli"
+	"go.dokimi.dev/ergon/service/release"
 	"go.dokimi.dev/ergon/service/vcs/vcstest"
 )
 
@@ -262,8 +263,9 @@ Global Flags:
 `
 
 // ciHelp is the help of ergon release ci, pinned because a person reads it.
-const ciHelp = `ergon release ci runs the steps of the jobs of the release workflow in GitHub
-Actions, and writes their outputs into the file of GITHUB_OUTPUT.
+const ciHelp = `ergon release ci runs the steps of the jobs of the release workflows and of the
+first job of ci.yml in GitHub Actions, and writes their outputs into the file
+of GITHUB_OUTPUT.
 
 Usage:
   ergon release ci [flags]
@@ -271,6 +273,7 @@ Usage:
 
 Available Commands:
   select-mode Choose the job that the release workflow runs
+  skip        Decide whether a CI run skips its jobs
   verify      Verify that a CI run passed on the content of the commit
   version     Write the release and open the version pull request
 
@@ -303,16 +306,41 @@ Global Flags:
 const ciVersionHelp = `ergon release ci version writes the release plan of the changesets as ergon
 release version does. It then commits the changes on the branch
 ergon-release/<base> through the API of GitHub, which signs the commits, and
-opens or updates the version pull request into the base branch. Without
-changesets it proposes the lockfiles that ergon release version rewrites, and
-otherwise changes nothing. It skips a commit of HEAD that is no longer the head
-of the base branch, and leaves the pull request to the run of the newer head.
+opens or updates the version pull request into the base branch. It marks the
+head of the branch with the status ergon/version, with which ergon release ci
+skip recognises the version commit. Without changesets it proposes the
+lockfiles that ergon release version rewrites, and otherwise changes nothing.
+It skips a commit of HEAD that is no longer the head of the base branch, and
+leaves the pull request to the run of the newer head.
 
 Usage:
   ergon release ci version [flags]
 
 Flags:
       --title title   the title of the pull request and its commits (default "chore: version packages")
+
+Global Flags:
+      --config file   read the configuration from file (default ".ergon.yaml")
+  -h, --help          show the help of the command
+`
+
+// ciSkipHelp is the help of ergon release ci skip, pinned because a person reads it.
+const ciSkipHelp = `ergon release ci skip writes the output skip of the first job of ci.yml: true
+when a passed run of the workflow --workflow already covers the content of the
+checkout, and false otherwise, through the API of GitHub. A run of a push skips
+when a run passed on its content, as ergon release ci verify finds it. A run
+skips when its commit is a version commit, which ergon release ci version marks
+with the status ergon/version, and a run passed on the parent of that commit.
+--commit names the head of a pull request, whose checkout merges it into its
+base. Without GITHUB_TOKEN or GITHUB_REPOSITORY, and on an error of GitHub, it
+writes a warning and false, so that the run tests the commit.
+
+Usage:
+  ergon release ci skip [flags]
+
+Flags:
+      --commit sha      test the commit sha, such as the head of a pull request
+      --workflow file   find a passed run of the workflow file (default "ci.yml")
 
 Global Flags:
       --config file   read the configuration from file (default ".ergon.yaml")
@@ -341,17 +369,20 @@ Global Flags:
 // commands read, which every release case sets to an empty value before its own.
 var releaseVariables = []string{
 	"GITHUB_TOKEN", "GITHUB_REPOSITORY", "GITHUB_API_URL", "GITHUB_GRAPHQL_URL", "GITHUB_SERVER_URL",
-	"GITHUB_OUTPUT", "GITHUB_ACTIONS", "VISUAL", "EDITOR",
+	"GITHUB_OUTPUT", "GITHUB_ACTIONS", "GITHUB_RUN_ID", "VISUAL", "EDITOR",
 }
 
 // errRandom is the error of a source of random digits that fails.
 var errRandom = errors.New("random: failed")
 
 // hub is a fake API of GitHub for the release cases. It responds as GitHub does for a repository
-// whose branch main points at head, without the branch of the version pull request, without tags and
-// without pull requests, and makes each commit as hubCommit with the tree hubTree. It responds with
-// runs to a request for the runs of a workflow, and with the status 500 to a request whose method
-// and path start with fail. It is safe for concurrent use, as the goroutines of a server use it.
+// whose branch main points at head, without the branch of the version pull request until a request
+// creates it, without tags and without pull requests, and makes each commit as hubCommit, whose
+// branch then points at it. Every commit has the tree tree, hubTree when tree is empty, and the
+// parent parent, none when parent is empty. The commit marked has the status ergon/version in the
+// state success, and no other commit has a status. It responds with runs to a request for the runs
+// of a workflow, and with the status 500 to a request whose method and path start with fail. It is
+// safe for concurrent use, as the goroutines of a server use it.
 type hub struct {
 	// fail is the start of the method and the path of the requests that fail, or empty for none.
 	fail string
@@ -362,6 +393,15 @@ type hub struct {
 	// runs is the body of the response to a request for the runs of a workflow.
 	runs string
 
+	// tree is the tree of every commit, or empty for hubTree.
+	tree string
+
+	// parent is the first parent of every commit, or empty for none.
+	parent string
+
+	// marked is the commit with the status ergon/version, or empty for none.
+	marked string
+
 	// requests are the method and the path with the query of each request, in their order.
 	requests []string
 
@@ -371,7 +411,13 @@ type hub struct {
 	// pulls are the bodies of the pull requests that the requests open, in their order.
 	pulls []string
 
-	// mu guards requests, graphql and pulls.
+	// branches are the names of the branches that the requests created.
+	branches []string
+
+	// statuses are the bodies of the statuses that the requests set, in their order.
+	statuses []string
+
+	// mu guards requests, graphql, pulls, branches and statuses.
 	mu sync.Mutex
 }
 
@@ -392,6 +438,19 @@ func (h *hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_ = json.Unmarshal(body, &pull)
 		h.pulls = append(h.pulls, pull.Body)
 	}
+	if r.Method == http.MethodPost && strings.Contains(r.URL.Path, "/statuses/") {
+		h.statuses = append(h.statuses, string(body))
+	}
+	if r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/git/refs") {
+		var ref struct {
+			Ref string `json:"ref"`
+		}
+		_ = json.Unmarshal(body, &ref)
+		h.branches = append(h.branches, strings.TrimPrefix(ref.Ref, "refs/heads/"))
+	}
+	created := slices.ContainsFunc(h.branches, func(name string) bool {
+		return strings.HasSuffix(r.URL.Path, "/git/ref/heads/"+name)
+	})
 	h.mu.Unlock()
 	w.Header().Set("Content-Type", "application/json")
 	switch {
@@ -400,11 +459,15 @@ func (h *hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.WriteString(w, `{"message":"failed"}`)
 	case r.Method == http.MethodGet && h.head != "" && strings.HasSuffix(r.URL.Path, "/git/ref/heads/main"):
 		_, _ = io.WriteString(w, `{"ref":"refs/heads/main","object":{"type":"commit","sha":"`+h.head+`"}}`)
+	case r.Method == http.MethodGet && created:
+		_, _ = io.WriteString(w, `{"object":{"type":"commit","sha":"`+hubCommit+`"}}`)
 	case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/git/ref/"):
 		w.WriteHeader(http.StatusNotFound)
 		_, _ = io.WriteString(w, `{"message":"Not Found"}`)
 	case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/git/commits/"):
-		_, _ = io.WriteString(w, `{"tree":{"sha":"`+hubTree+`"}}`)
+		_, _ = io.WriteString(w, h.commit())
+	case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/status"):
+		_, _ = io.WriteString(w, h.status(r.URL.Path))
 	case r.URL.Path == graphqlPath:
 		_, _ = io.WriteString(w, `{"data":{"createCommitOnBranch":{"commit":{"oid":"`+hubCommit+`"}}}}`)
 	case strings.Contains(r.URL.Path, "/actions/workflows/"):
@@ -415,6 +478,30 @@ func (h *hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusCreated)
 		_, _ = io.WriteString(w, `{"number":7}`)
 	}
+}
+
+// commit returns the body of the response to a request for a commit of the Git database: the tree
+// and the parent of every commit of h.
+func (h *hub) commit() string {
+	tree := h.tree
+	if tree == "" {
+		tree = hubTree
+	}
+	parents := ""
+	if h.parent != "" {
+		parents = `{"sha":"` + h.parent + `"}`
+	}
+	return `{"tree":{"sha":"` + tree + `"},"parents":[` + parents + `]}`
+}
+
+// status returns the body of the response to a request for the combined status of a commit at
+// path: the status ergon/version in the state success for the commit h.marked, and no status for
+// any other commit.
+func (h *hub) status(path string) string {
+	if h.marked != "" && strings.HasSuffix(path, "/commits/"+h.marked+"/status") {
+		return `{"state":"success","statuses":[{"state":"success","context":"` + release.VersionStatus + `"}]}`
+	}
+	return `{"state":"pending","statuses":[]}`
 }
 
 // start serves h for the test t, and returns the variables of GitHub Actions that point the release
@@ -448,6 +535,13 @@ func (h *hub) opened() []string {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	return slices.Clone(h.pulls)
+}
+
+// marks returns the bodies of the statuses that the requests to h set, in their order.
+func (h *hub) marks() []string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return slices.Clone(h.statuses)
 }
 
 func TestRelease(t *testing.T) {
@@ -503,6 +597,10 @@ func TestRelease(t *testing.T) {
 				name: "writes the help of release ci verify", args: []string{"release", "ci", "verify", "--help"},
 				stdout: ciVerifyHelp,
 			},
+			{
+				name: "writes the help of release ci skip", args: []string{"release", "ci", "skip", "--help"},
+				stdout: ciSkipHelp,
+			},
 		}
 		for _, tt := range help {
 			t.Run(tt.name, func(t *testing.T) {
@@ -528,7 +626,7 @@ func TestRelease(t *testing.T) {
 			{
 				name: "returns 2 for release ci without a subcommand",
 				args: []string{"release", "ci"},
-				stderr: "ergon: cli: ci needs a subcommand: select-mode, verify, version\n" +
+				stderr: "ergon: cli: ci needs a subcommand: select-mode, skip, verify, version\n" +
 					"Run 'ergon release ci --help' for usage.\n",
 			},
 			{
@@ -1276,8 +1374,8 @@ func TestRelease(t *testing.T) {
 			env["GITHUB_OUTPUT"] = output
 			status, stdout, stderr := runRelease(t, dir, env, "release", "ci", "version")
 			assert.Equal(t, status, statusOK, "the exit status: "+stderr)
-			assert.Equal(t, stdout, "wrote "+changelogPath+"\nremoved "+changesetPath+"\npull request 7\n",
-				"the standard output")
+			assert.Equal(t, stdout, "wrote "+changelogPath+"\nremoved "+changesetPath+"\npull request 7\nmarked "+
+				hubCommit+" as the version of "+head+"\n", "the standard output")
 			files.HasContent(t, output, "pull-request-number=7\n", "the outputs")
 			assert.Equal(t, h.calls(), []string{
 				"GET /repos/" + hubRepo + "/git/ref/heads/main",
@@ -1286,7 +1384,12 @@ func TestRelease(t *testing.T) {
 				"POST " + graphqlPath,
 				"GET /repos/" + hubRepo + "/pulls?base=main&head=o%3Aergon-release%2Fmain&state=open",
 				"POST /repos/" + hubRepo + "/pulls",
+				"GET /repos/" + hubRepo + "/git/ref/heads/ergon-release/main",
+				"POST /repos/" + hubRepo + "/statuses/" + hubCommit,
 			}, "the requests to GitHub")
+			assert.Equal(t, h.marks(), []string{`{"state":"success","context":"` + release.VersionStatus +
+				`","description":"The version of ` + head + ` that ergon release ci version wrote."}`},
+				"the status of the version commit, without the page of a run outside GitHub Actions")
 			commits := h.commits()
 			assert.Length(t, commits, 1, "the commits")
 			var request struct {
@@ -1336,7 +1439,8 @@ func TestRelease(t *testing.T) {
 			h := &hub{head: strings.TrimSpace(vcstest.Git(t, dir, "rev-parse", "HEAD"))}
 			status, stdout, stderr := runRelease(t, dir, h.start(t), "release", "ci", "version")
 			assert.Equal(t, status, statusOK, "the exit status: "+stderr)
-			assert.Equal(t, stdout, "wrote "+staleSum+"\npull request 7\n", "the standard output")
+			assert.Equal(t, stdout, "wrote "+staleSum+"\npull request 7\nmarked "+hubCommit+" as the version of "+
+				h.head+"\n", "the standard output")
 			commits := h.commits()
 			assert.Length(t, commits, 1, "the commits")
 			assert.Contains(t, commits[0], `"path":"`+staleSum+`"`, "the lockfile of the commit")
@@ -1358,6 +1462,33 @@ func TestRelease(t *testing.T) {
 			files.Absent(t, output, "the outputs, which name no pull request")
 			assert.Equal(t, h.calls(), []string{"GET /repos/" + hubRepo + "/git/ref/heads/main"},
 				"the requests to GitHub, which change nothing")
+		})
+
+		t.Run("ci version marks the version commit with the page of its run", func(t *testing.T) {
+			t.Parallel()
+			dir := goModule(t, gitConfig, nil)
+			write(t, dir, changesetPath, changesetText)
+			head := vcstest.Commit(t, dir, "add a changeset")
+			h := &hub{head: head}
+			env := h.start(t)
+			env["GITHUB_RUN_ID"] = "42"
+			status, _, stderr := runRelease(t, dir, env, "release", "ci", "version")
+			assert.Equal(t, status, statusOK, "the exit status: "+stderr)
+			marks := h.marks()
+			assert.Length(t, marks, 1, "the statuses")
+			assert.Contains(t, marks[0], `"target_url":"`+env["GITHUB_SERVER_URL"]+"/"+hubRepo+"/actions/runs/42"+`"`,
+				"the page of the status")
+		})
+
+		t.Run("ci version returns the error of the status of the version commit", func(t *testing.T) {
+			t.Parallel()
+			dir := goModule(t, gitConfig, nil)
+			write(t, dir, changesetPath, changesetText)
+			head := vcstest.Commit(t, dir, "add a changeset")
+			h := &hub{head: head, fail: "POST /repos/" + hubRepo + "/statuses/"}
+			status, _, stderr := runRelease(t, dir, h.start(t), "release", "ci", "version")
+			assert.Equal(t, status, statusFailure, "the exit status")
+			assert.HasPrefix(t, stderr, "ergon: forge: GitHub failed: POST ", "the standard error")
 		})
 
 		t.Run("ci version returns 1 without GITHUB_REPOSITORY", func(t *testing.T) {
@@ -1439,6 +1570,96 @@ func TestRelease(t *testing.T) {
 			status, _, stderr := runRelease(t, dir, h.start(t), "release", "ci", "version")
 			assert.Equal(t, status, statusFailure, "the exit status")
 			assert.HasPrefix(t, stderr, "ergon: forge: GitHub failed: GET ", "the standard error")
+		})
+
+		t.Run("ci skip writes true for a push whose content passed", func(t *testing.T) {
+			t.Parallel()
+			dir := goModule(t, gitConfig, nil)
+			head := strings.TrimSpace(vcstest.Git(t, dir, "rev-parse", "HEAD"))
+			h := &hub{runs: passedRun}
+			env := h.start(t)
+			output := filepath.Join(t.TempDir(), "output")
+			env["GITHUB_OUTPUT"] = output
+			status, stdout, stderr := runRelease(t, dir, env, "release", "ci", "skip")
+			assert.Equal(t, status, statusOK, "the exit status: "+stderr)
+			assert.Equal(t, stdout, "skip: "+runPage+" covers the content of "+head+"\n", "the standard output")
+			files.HasContent(t, output, "skip=true\n", "the outputs")
+			assert.Equal(t, h.calls(), []string{
+				"GET /repos/" + hubRepo + "/actions/workflows/ci.yml/runs?head_sha=" + head + "&per_page=1&status=success",
+			}, "the requests to GitHub")
+		})
+
+		t.Run("ci skip writes false for a push without a passed run", func(t *testing.T) {
+			t.Parallel()
+			dir := goModule(t, gitConfig, nil)
+			head := strings.TrimSpace(vcstest.Git(t, dir, "rev-parse", "HEAD"))
+			h := &hub{runs: noRun}
+			env := h.start(t)
+			output := filepath.Join(t.TempDir(), "output")
+			env["GITHUB_OUTPUT"] = output
+			status, stdout, stderr := runRelease(t, dir, env, "release", "ci", "skip")
+			assert.Equal(t, status, statusOK, "the exit status: "+stderr)
+			assert.Equal(t, stdout, "test: no passed run of ci.yml covers the content of "+head+"\n",
+				"the standard output")
+			files.HasContent(t, output, "skip=false\n", "the outputs")
+			assert.Equal(t, h.calls(), []string{
+				"GET /repos/" + hubRepo + "/actions/workflows/ci.yml/runs?head_sha=" + head + "&per_page=1&status=success",
+				"GET /repos/" + hubRepo + "/git/commits/" + head,
+				"GET /repos/" + hubRepo + "/commits/" + head + "/pulls",
+				"GET /repos/" + hubRepo + "/commits/" + head + "/pulls",
+				"GET /repos/" + hubRepo + "/commits/" + head + "/status?per_page=100",
+			}, "the requests to GitHub")
+		})
+
+		t.Run("ci skip writes true for the version commit of a pull request of --commit", func(t *testing.T) {
+			t.Parallel()
+			dir := goModule(t, gitConfig, nil)
+			tree := strings.TrimSpace(vcstest.Git(t, dir, "log", "-1", "--format=%T", "HEAD"))
+			h := &hub{runs: passedRun, marked: laterCommit, tree: tree, parent: hubCommit}
+			env := h.start(t)
+			output := filepath.Join(t.TempDir(), "output")
+			env["GITHUB_OUTPUT"] = output
+			status, stdout, stderr := runRelease(t, dir, env, "release", "ci", "skip", "--commit", laterCommit)
+			assert.Equal(t, status, statusOK, "the exit status: "+stderr)
+			assert.Equal(t, stdout, "skip: "+runPage+" covers the content of "+laterCommit+"\n", "the standard output")
+			files.HasContent(t, output, "skip=true\n", "the outputs")
+			assert.Equal(t, h.calls(), []string{
+				"GET /repos/" + hubRepo + "/commits/" + laterCommit + "/status?per_page=100",
+				"GET /repos/" + hubRepo + "/git/commits/" + laterCommit,
+				"GET /repos/" + hubRepo + "/git/commits/" + laterCommit,
+				"GET /repos/" + hubRepo + "/actions/workflows/ci.yml/runs?head_sha=" + hubCommit +
+					"&per_page=1&status=success",
+			}, "the requests to GitHub, which read no run of the merge that the pull request checks out")
+		})
+
+		t.Run("ci skip writes false and a warning without GITHUB_REPOSITORY", func(t *testing.T) {
+			t.Parallel()
+			dir := goModule(t, gitConfig, nil)
+			head := strings.TrimSpace(vcstest.Git(t, dir, "rev-parse", "HEAD"))
+			status, stdout, stderr := runRelease(t, dir, nil, "release", "ci", "skip")
+			assert.Equal(t, status, statusOK, "the exit status")
+			assert.Equal(t, stdout, "test: no passed run of ci.yml covers the content of "+head+"\n",
+				"the standard output")
+			assert.Equal(t, stderr, "ergon: warning: cli: set GITHUB_REPOSITORY to the repository on GitHub, as "+
+				"owner/name, so the run tests "+head+"\n", "the standard error")
+		})
+
+		t.Run("ci skip writes false and a warning for an error of GitHub", func(t *testing.T) {
+			t.Parallel()
+			h := &hub{fail: "GET /repos/" + hubRepo + "/actions/"}
+			status, stdout, stderr := runRelease(t, goModule(t, gitConfig, nil), h.start(t), "release", "ci", "skip")
+			assert.Equal(t, status, statusOK, "the exit status")
+			assert.HasPrefix(t, stdout, "test: ", "the standard output")
+			assert.HasPrefix(t, stderr, "ergon: warning: forge: GitHub failed: GET ", "the standard error")
+		})
+
+		t.Run("ci skip returns 1 outside a working tree of git", func(t *testing.T) {
+			t.Parallel()
+			h := &hub{runs: passedRun}
+			status, _, stderr := runRelease(t, t.TempDir(), h.start(t), "release", "ci", "skip")
+			assert.Equal(t, status, statusFailure, "the exit status")
+			assert.HasPrefix(t, stderr, "ergon: vcs: git failed: ", "the standard error")
+			assert.Empty(t, h.calls(), "the requests to GitHub")
 		})
 
 		t.Run("ci verify writes the page of a run of ci.yml that passed on the commit", func(t *testing.T) {

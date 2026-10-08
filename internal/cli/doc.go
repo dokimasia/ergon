@@ -26,7 +26,8 @@
 //     .ergon.yaml.
 //   - ergon release plans, writes and publishes the releases of the packages of the repository
 //     with [go.dokimi.dev/ergon/service/release]. Its subcommands ci select-mode, ci verify and ci
-//     version run the jobs of the release workflows through [go.dokimi.dev/ergon/service/forge].
+//     version run the jobs of the release workflows, and ci skip the first job of ci.yml, through
+//     [go.dokimi.dev/ergon/service/forge].
 //   - ergon tool run installs and runs a tool of a section of .ergon.yaml with
 //     [go.dokimi.dev/ergon/service/tool], in the working directory, and exits with the exit status
 //     of the tool.

@@ -44,6 +44,7 @@ const (
 	openFlag     = "open"
 	titleFlag    = "title"
 	workflowFlag = "workflow"
+	commitFlag   = "commit"
 )
 
 // The variables of the environment that the release commands read, as GitHub Actions sets them, and
@@ -56,18 +57,24 @@ const (
 	serverEnv     = "GITHUB_SERVER_URL"
 	outputEnv     = "GITHUB_OUTPUT"
 	actionsEnv    = "GITHUB_ACTIONS"
+	runIDEnv      = "GITHUB_RUN_ID"
 	visualEnv     = "VISUAL"
 	editorEnv     = "EDITOR"
 )
 
 // The outputs of the release commands in GitHub Actions, as changesets/action names the outputs
-// mode, published and published-packages.
+// mode, published and published-packages, and the output skip of the first job of ci.yml.
 const (
 	modeOutput      = "mode"
 	publishedOutput = "published"
 	packagesOutput  = "published-packages"
 	pullOutput      = "pull-request-number"
+	skipOutput      = "skip"
 )
+
+// runsPath is the path of the pages of the runs of a repository on the host, between the repository
+// and the number of a run.
+const runsPath = "/actions/runs/"
 
 // apiTimeout bounds a request to the API of GitHub.
 const apiTimeout = time.Minute
@@ -160,8 +167,9 @@ refuses a plan whose lockfiles record other content of its packages than the
 working tree.`
 
 	ciShort = "Run the jobs of the release workflow"
-	ciLong  = `ergon release ci runs the steps of the jobs of the release workflow in GitHub
-Actions, and writes their outputs into the file of GITHUB_OUTPUT.`
+	ciLong  = `ergon release ci runs the steps of the jobs of the release workflows and of the
+first job of ci.yml in GitHub Actions, and writes their outputs into the file
+of GITHUB_OUTPUT.`
 
 	selectModeShort = "Choose the job that the release workflow runs"
 	selectModeLong  = `ergon release ci select-mode writes the mode of the release workflow: version
@@ -174,10 +182,23 @@ publish plan into a file for the job publish.`
 	ciVersionLong  = `ergon release ci version writes the release plan of the changesets as ergon
 release version does. It then commits the changes on the branch
 ergon-release/<base> through the API of GitHub, which signs the commits, and
-opens or updates the version pull request into the base branch. Without
-changesets it proposes the lockfiles that ergon release version rewrites, and
-otherwise changes nothing. It skips a commit of HEAD that is no longer the head
-of the base branch, and leaves the pull request to the run of the newer head.`
+opens or updates the version pull request into the base branch. It marks the
+head of the branch with the status ergon/version, with which ergon release ci
+skip recognises the version commit. Without changesets it proposes the
+lockfiles that ergon release version rewrites, and otherwise changes nothing.
+It skips a commit of HEAD that is no longer the head of the base branch, and
+leaves the pull request to the run of the newer head.`
+
+	ciSkipShort = "Decide whether a CI run skips its jobs"
+	ciSkipLong  = `ergon release ci skip writes the output skip of the first job of ci.yml: true
+when a passed run of the workflow --workflow already covers the content of the
+checkout, and false otherwise, through the API of GitHub. A run of a push skips
+when a run passed on its content, as ergon release ci verify finds it. A run
+skips when its commit is a version commit, which ergon release ci version marks
+with the status ergon/version, and a run passed on the parent of that commit.
+--commit names the head of a pull request, whose checkout merges it into its
+base. Without GITHUB_TOKEN or GITHUB_REPOSITORY, and on an error of GitHub, it
+writes a warning and false, so that the run tests the commit.`
 
 	ciVerifyShort = "Verify that a CI run passed on the content of the commit"
 	ciVerifyLong  = `ergon release ci verify finds a run of the workflow --workflow that passed on the
@@ -220,7 +241,8 @@ func (untagged) Finish(context.Context) error {
 // releaseCommand returns ergon release with its subcommands, which work on the repository of the
 // working directory of s under ctx.
 func releaseCommand(ctx context.Context, s *session) *cobra.Command {
-	ci := group(s, "ci", ciShort, ciLong, selectModeCommand(ctx, s), ciVerifyCommand(ctx, s), ciVersionCommand(ctx, s))
+	ci := group(s, "ci", ciShort, ciLong, selectModeCommand(ctx, s), ciSkipCommand(ctx, s), ciVerifyCommand(ctx, s),
+		ciVersionCommand(ctx, s))
 	return group(s, "release", releaseShort, releaseLong, changesetCommand(ctx, s), statusCommand(ctx, s),
 		versionCommand(ctx, s), publishPlanCommand(ctx, s), packCommand(ctx, s), publishCommand(ctx, s),
 		gitTagCommand(ctx, s), ci)
@@ -510,10 +532,11 @@ func selectModeCommand(ctx context.Context, s *session) *cobra.Command {
 }
 
 // ciVersionCommand returns ergon release ci version, which writes the release plan as ergon
-// release version does, and proposes it with [release.Propose] through the API of GitHub. For a
-// repository without changesets it proposes the lockfiles that [release.Lock] rewrites, and nothing
-// when it rewrites none. For the [release.ErrMoved] of Propose it writes that it skipped the commit,
-// and returns no error.
+// release version does, and proposes it with [release.Propose] through the API of GitHub. It then
+// marks the head of the branch of the proposal with [release.MarkVersion], with the page of the run
+// of GITHUB_RUN_ID. For a repository without changesets it proposes the lockfiles that
+// [release.Lock] rewrites, and nothing when it rewrites none. For the [release.ErrMoved] of Propose
+// it writes that it skipped the commit, and returns no error.
 func ciVersionCommand(ctx context.Context, s *session) *cobra.Command {
 	var title string
 	cmd := &cobra.Command{
@@ -552,10 +575,56 @@ func ciVersionCommand(ctx context.Context, s *session) *cobra.Command {
 				return err
 			}
 			fmt.Fprintf(cmd.OutOrStdout(), "pull request %d\n", number)
+			target := ""
+			if run := s.getenv(runIDEnv); run != "" {
+				target = client.Server() + "/" + repo + runsPath + run
+			}
+			marked, err := release.MarkVersion(ctx, client, &p, target)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "marked %s as the version of %s\n", marked, head)
 			return s.output(pullOutput, strconv.Itoa(number))
 		},
 	}
 	cmd.Flags().StringVar(&title, titleFlag, defaultTitle, "the `title` of the pull request and its commits")
+	return cmd
+}
+
+// ciSkipCommand returns ergon release ci skip, which writes the output skip: true when a passed run
+// of the workflow of --workflow covers the content of the checkout, as [release.Skip.Tested]
+// decides for the commit of --commit, HEAD by default, and false otherwise. For an environment
+// without GitHub and for an error of GitHub it writes a warning and false, so that the run tests the
+// commit. It returns the error of git and of the output.
+func ciSkipCommand(ctx context.Context, s *session) *cobra.Command {
+	var workflow, commit string
+	cmd := &cobra.Command{
+		Use:   "skip",
+		Short: ciSkipShort,
+		Long:  ciSkipLong,
+		Args:  usage(cobra.NoArgs),
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			head, tree, err := vcs.HeadTree(ctx, s.root())
+			if err != nil {
+				return err
+			}
+			if commit == "" {
+				commit = head
+			}
+			page, tested, err := s.tested(ctx, workflow, head, tree, commit)
+			if err != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "%s: warning: %v, so the run tests %s\n", program, err, commit)
+			}
+			if tested {
+				fmt.Fprintf(cmd.OutOrStdout(), "skip: %s covers the content of %s\n", page, commit)
+			} else {
+				fmt.Fprintf(cmd.OutOrStdout(), "test: no passed run of %s covers the content of %s\n", workflow, commit)
+			}
+			return s.output(skipOutput, strconv.FormatBool(tested))
+		},
+	}
+	cmd.Flags().StringVar(&workflow, workflowFlag, defaultWorkflow, "find a passed run of the workflow `file`")
+	cmd.Flags().StringVar(&commit, commitFlag, "", "test the commit `sha`, such as the head of a pull request")
 	return cmd
 }
 
@@ -825,6 +894,18 @@ func (s *session) host() (release.Host, error) {
 		return release.Host{}, err
 	}
 	return release.Host{Forge: client, Repo: repo, Server: client.Server()}, nil
+}
+
+// tested returns the page of a passed run of workflow that covers the content of a run of the gate,
+// and reports whether one does, as [release.Skip.Tested] decides it for head, tree and commit
+// through the client of GitHub of s. It returns the error of [session.forge] and of Tested.
+func (s *session) tested(ctx context.Context, workflow, head, tree, commit string) (string, bool, error) {
+	client, repo, err := s.forge()
+	if err != nil {
+		return "", false, err
+	}
+	skip := release.Skip{Forge: client, Repo: repo, Workflow: workflow}
+	return skip.Tested(ctx, head, tree, commit)
 }
 
 // forge returns the client of GitHub of the environment of s and the repository of

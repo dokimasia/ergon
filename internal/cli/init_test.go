@@ -40,6 +40,9 @@ const (
 	licensePath = "LICENSE"
 )
 
+// resultJob is the job of ci.yml that reads the results of the other jobs, and checks out nothing.
+const resultJob = "result"
+
 // conflict is the start of the error of a command that leaves a managed file that was edited by
 // hand or exists with other content.
 const conflict = "ergon: baseline: managed files edited by hand or existing with other content: "
@@ -772,6 +775,12 @@ func TestInit(t *testing.T) {
 				}
 				for id, job := range w.Jobs {
 					jobs[id] = true
+					if gate && id == resultJob {
+						// The job reads the results of the other jobs alone.
+						assert.Empty(t, job.Permissions, "the permissions of "+id)
+						assert.Length(t, job.Steps, 1, "the steps of "+id)
+						continue
+					}
 					assert.NotEmpty(t, job.Permissions, "the permissions of "+id)
 					if job.Uses != "" {
 						continue
