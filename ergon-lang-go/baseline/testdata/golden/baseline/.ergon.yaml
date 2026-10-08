@@ -12,7 +12,7 @@ go:
     dokimi-mutate-go: go.dokimi.dev/mutate/cmd/dokimi-mutate-go@v0.0.0-20261006212535-719083ce3457
     # The analyzers of lint-go: errorprefix, which reports an error whose text does not start with
     # the name of its package, and skipexpiry, which reports a skipped test whose date has passed.
-    ergon-go-vet: go.dokimi.dev/ergon/lang/go/cmd/ergon-go-vet@v0.1.0
+    ergon-go-vet: go.dokimi.dev/ergon/lang/go/cmd/ergon-go-vet@v0.2.1
   # The package patterns that each target of Go passes in every module of go.work.
   paths: [./...]
   # The steps that check-go runs, in order: lint, test, race, fuzz, bench, mutate, generate or

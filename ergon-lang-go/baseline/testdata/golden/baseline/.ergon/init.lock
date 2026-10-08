@@ -73,7 +73,7 @@
     ],
     "go.tools.benchstat": "golang.org/x/perf/cmd/benchstat@v0.0.0-20260929162123-406019bb8b68",
     "go.tools.dokimi-mutate-go": "go.dokimi.dev/mutate/cmd/dokimi-mutate-go@v0.0.0-20261006212535-719083ce3457",
-    "go.tools.ergon-go-vet": "go.dokimi.dev/ergon/lang/go/cmd/ergon-go-vet@v0.1.0",
+    "go.tools.ergon-go-vet": "go.dokimi.dev/ergon/lang/go/cmd/ergon-go-vet@v0.2.1",
     "go.tools.golangci-lint": "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0",
     "go.tools.govulncheck": "golang.org/x/vuln/cmd/govulncheck@v1.8.0"
   },

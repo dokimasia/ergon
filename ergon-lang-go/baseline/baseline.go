@@ -53,7 +53,7 @@ func (Producer) Options() language.Options {
 			Govulncheck:    "golang.org/x/vuln/cmd/govulncheck@v1.8.0",
 			Benchstat:      "golang.org/x/perf/cmd/benchstat@v0.0.0-20260929162123-406019bb8b68",
 			DokimiMutateGo: "go.dokimi.dev/mutate/cmd/dokimi-mutate-go@v0.0.0-20261006212535-719083ce3457",
-			ErgonGoVet:     "go.dokimi.dev/ergon/lang/go/cmd/ergon-go-vet@v0.1.0",
+			ErgonGoVet:     "go.dokimi.dev/ergon/lang/go/cmd/ergon-go-vet@v0.2.1",
 		},
 		Paths:    option.Paths{"./..."},
 		Check:    option.Check{option.StepLint, option.StepTest, option.StepRace, option.StepAudit},
