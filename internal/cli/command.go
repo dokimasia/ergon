@@ -312,7 +312,8 @@ func list(words []string) string {
 		case line == indent:
 			line += w
 		case len(line)+1+len(w) > helpWidth:
-			b.WriteString(line + "\n")
+			b.WriteString(line)
+			b.WriteString("\n")
 			line = indent + w
 		default:
 			line += " " + w

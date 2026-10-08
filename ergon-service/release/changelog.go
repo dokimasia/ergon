@@ -500,7 +500,10 @@ func renderSection(level version.Bump, lines []string) string {
 			continue
 		}
 		if b.Len() == 0 {
-			b.WriteString("### " + strings.ToUpper(string(level[:1])) + string(level[1:]) + " Changes")
+			b.WriteString("### ")
+			b.WriteString(strings.ToUpper(string(level[:1])))
+			b.WriteString(string(level[1:]))
+			b.WriteString(" Changes")
 		}
 		breaks += len(line) - len(strings.TrimLeft(line, "\n"))
 		b.WriteString(strings.Repeat("\n", min(max(breaks, 1), 2)))

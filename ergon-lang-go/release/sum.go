@@ -75,7 +75,8 @@ func readSums(root string, m *goworkspace.Module) ([]sum, error) {
 func formatSums(sums []sum) []byte {
 	var b strings.Builder
 	for _, s := range sums {
-		b.WriteString(s.String() + "\n")
+		b.WriteString(s.String())
+		b.WriteString("\n")
 	}
 	return []byte(b.String())
 }

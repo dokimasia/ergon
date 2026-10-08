@@ -254,10 +254,16 @@ func proposalBody(root, base string, g *Graph, plan *Plan) (string, error) {
 	head := fmt.Sprintf(proposalIntro, base) + "\n" + releasesHeading
 	var full, short strings.Builder
 	full.WriteString(head)
-	short.WriteString(head + "\n" + omittedChangelogs)
+	short.WriteString(head)
+	short.WriteString("\n" + omittedChangelogs)
 	for _, s := range slices.Concat(byLevel(public), byLevel(private)) {
-		full.WriteString("\n" + s.heading + "\n\n" + s.changelog)
-		short.WriteString("\n" + s.heading + "\n\n")
+		full.WriteString("\n")
+		full.WriteString(s.heading)
+		full.WriteString("\n\n")
+		full.WriteString(s.changelog)
+		short.WriteString("\n")
+		short.WriteString(s.heading)
+		short.WriteString("\n\n")
 	}
 	for _, body := range []string{full.String(), short.String()} {
 		if len(body) <= maxBody {

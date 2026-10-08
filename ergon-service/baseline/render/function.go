@@ -143,13 +143,20 @@ func steps(list any) (string, error) {
 		s := &all[k]
 		lead := "- "
 		key := func(name, value string) {
-			b.WriteString("\n" + stepIndent + lead + name + ":" + value)
+			b.WriteString("\n" + stepIndent)
+			b.WriteString(lead)
+			b.WriteString(name)
+			b.WriteString(":")
+			b.WriteString(value)
 			lead = "  "
 		}
 		values := func(name string, m map[string]string) {
 			key(name, "")
 			for _, k := range slices.Sorted(maps.Keys(m)) {
-				b.WriteString("\n" + valueIndent + k + ": " + plain(m[k]))
+				b.WriteString("\n" + valueIndent)
+				b.WriteString(k)
+				b.WriteString(": ")
+				b.WriteString(plain(m[k]))
 			}
 		}
 		if s.Name != "" {
@@ -173,7 +180,8 @@ func steps(list any) (string, error) {
 		if len(s.Run) > 0 {
 			key("run", " |")
 			for _, line := range s.Run {
-				b.WriteString("\n" + valueIndent + line)
+				b.WriteString("\n" + valueIndent)
+				b.WriteString(line)
 			}
 		}
 	}
