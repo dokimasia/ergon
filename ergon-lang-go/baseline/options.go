@@ -4,6 +4,8 @@
 package baseline
 
 import (
+	"strings"
+
 	"go.dokimi.dev/ergon/core/option"
 	"go.dokimi.dev/ergon/core/workflow"
 )
@@ -15,11 +17,17 @@ const (
 	modules   = "**/go.mod"
 )
 
+// setupName is the name of the step that installs Go in each job of Go.
+const setupName = "Set up Go"
+
 // steps are the steps of the gate of Go, which the key check of the section names.
 var steps = []option.Step{
 	option.StepLint, option.StepTest, option.StepRace, option.StepFuzz, option.StepBench, option.StepMutate,
 	option.StepGenerate, option.StepAudit,
 }
+
+// nightly are the steps of Go that are too long for each push, which the key nightly names.
+var nightly = []option.Step{option.StepFuzz, option.StepBench, option.StepMutate}
 
 // Options are the options of the section go of .ergon.yaml.
 type Options struct {
@@ -31,6 +39,9 @@ type Options struct {
 
 	// Check are the steps of check-go.
 	Check option.Check `yaml:"check" doc:"The steps that check-go runs, in order: lint, test, race, fuzz, bench, mutate, generate or audit."`
+
+	// Nightly are the steps that nightly.yml runs, with the limit of each.
+	Nightly option.Nightly `yaml:"nightly" doc:"The steps that nightly.yml runs on its schedule, fuzz, bench or mutate, each in a job of its own on Linux, mapped to the limit of that job in minutes."`
 
 	// Lint are the options of lint-go.
 	Lint Lint `yaml:"lint" doc:"The options of lint-go, which runs golangci-lint with the rules of .golangci.yml and ergon-go-vet in every module."`
@@ -92,10 +103,14 @@ type Actions struct {
 }
 
 // Validate returns an error that wraps [option.ErrInvalid] for a step of check that Go does not
-// have, and for the step generate without a command. The command checks each option by the
-// Validate method of its type before it calls Validate.
+// have, for the step generate without a command, and for a step of nightly other than fuzz, bench
+// and mutate. The command checks each option by the Validate method of its type before it calls
+// Validate.
 func (o *Options) Validate() error {
 	if err := o.Check.Only(steps...); err != nil {
+		return err
+	}
+	if err := o.Nightly.Only(nightly...); err != nil {
 		return err
 	}
 	return o.Generate.CheckStep(o.Check)
@@ -108,6 +123,9 @@ func (o *Options) Validate() error {
 //     targets run in the modules of go.work. setup-go installs the version of go.work, or the
 //     version of the matrix where o lists versions, and caches the modules by every go.sum. The job
 //     keeps the tools of the section, which ergon tool run installs, in the cache of GitHub Actions.
+//   - The job <step>-go of nightly.yml runs make <step>-go for each step of nightly, in the order of
+//     the targets, on the Linux runner of the section github and the version of go.work, with the
+//     limit that nightly states for the step. It sets up Go as check-go does.
 //   - The release steps install the version of go.work with setup-go in the jobs version and pack of
 //     release.yml, once the repository has go.work, for the go mod tidy of a release.
 //   - The CodeQL analysis of go builds the modules with autobuild, once the repository has go.work.
@@ -118,33 +136,51 @@ func (o *Options) Contribution() workflow.Contribution {
 	if len(o.CI.Versions) > 0 {
 		with = map[string]string{"go-version": "${{ matrix.version }}", "cache-dependency-path": "**/go.sum"}
 	}
+	require := workflow.Step{
+		Name: "Require go.work",
+		If:   "hashFiles('" + workspace + "') == ''",
+		Run: []string{
+			`echo "::error::The targets of Go run in the modules of go.work, which the repository lacks."`,
+			"exit 1",
+		},
+	}
+	read := map[string]string{"contents": "read"}
+	nightly := o.Nightly.Steps()
+	scheduled := make([]workflow.Job, 0, len(nightly))
+	for _, s := range nightly {
+		target := s.Target(Name)
+		name := strings.ToUpper(string(s[:1])) + string(s[1:]) + " Go"
+		scheduled = append(scheduled, workflow.Job{
+			ID:          target,
+			Name:        name,
+			Permissions: read,
+			Setup: &workflow.Setup{
+				Files:   modules,
+				Steps:   []workflow.Step{require, {Name: setupName, Uses: o.CI.Actions.SetupGo, With: pinned}},
+				Timeout: o.Nightly[s],
+			},
+			Tools: true,
+			Steps: []workflow.Step{{Name: name, Run: []string{"make " + target}}},
+		})
+	}
 	return workflow.Contribution{
 		Jobs: []workflow.Job{{
 			ID:          "check-go",
 			Name:        "Go",
-			Permissions: map[string]string{"contents": "read"},
+			Permissions: read,
 			Setup: &workflow.Setup{
 				Files:    modules,
 				Runners:  o.CI.Runners,
 				Versions: o.CI.Versions,
-				Steps: []workflow.Step{
-					{
-						Name: "Require go.work",
-						If:   "hashFiles('" + workspace + "') == ''",
-						Run: []string{
-							`echo "::error::The targets of Go run in the modules of go.work, which the repository lacks."`,
-							"exit 1",
-						},
-					},
-					{Name: "Set up Go", Uses: o.CI.Actions.SetupGo, With: with},
-				},
-				Timeout: o.CI.Timeout,
+				Steps:    []workflow.Step{require, {Name: setupName, Uses: o.CI.Actions.SetupGo, With: with}},
+				Timeout:  o.CI.Timeout,
 			},
 			Tools: true,
 			Steps: []workflow.Step{{Name: "Check Go", Run: []string{"make check-go"}}},
 		}},
+		Nightly: scheduled,
 		Release: []workflow.Step{{
-			Name: "Set up Go",
+			Name: setupName,
 			If:   "hashFiles('" + workspace + "') != ''",
 			Uses: o.CI.Actions.SetupGo,
 			With: pinned,

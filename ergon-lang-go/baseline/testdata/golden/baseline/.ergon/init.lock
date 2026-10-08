@@ -61,6 +61,11 @@
     "go.mutate.args": [],
     "go.mutate.timeout": "0s",
     "go.mutate.workers": 1,
+    "go.nightly": {
+      "bench": 45,
+      "fuzz": 120,
+      "mutate": 60
+    },
     "go.paths": [
       "./..."
     ],

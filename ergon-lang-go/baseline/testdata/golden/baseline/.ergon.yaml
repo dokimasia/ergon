@@ -18,6 +18,12 @@ go:
   # The steps that check-go runs, in order: lint, test, race, fuzz, bench, mutate, generate or
   # audit.
   check: [lint, test, race, audit]
+  # The steps that nightly.yml runs on its schedule, fuzz, bench or mutate, each in a job of its own
+  # on Linux, mapped to the limit of that job in minutes.
+  nightly:
+    bench: 45
+    fuzz: 120
+    mutate: 60
   # The options of lint-go, which runs golangci-lint with the rules of .golangci.yml and
   # ergon-go-vet in every module.
   lint:

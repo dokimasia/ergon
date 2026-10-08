@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"go.dokimi.dev/assert"
+	"go.dokimi.dev/assert/expect"
 	"go.dokimi.dev/ergon/core/option"
 	"go.dokimi.dev/ergon/core/workflow"
 	"go.dokimi.dev/ergon/lang/go/baseline"
@@ -64,6 +65,15 @@ func TestOptions(t *testing.T) {
 			o.Generate = option.Generate{}
 			assert.ErrorIs(t, o.Validate(), option.ErrInvalid, "Validate")
 		})
+
+		t.Run("returns ErrInvalid for a nightly step other than fuzz, bench and mutate", func(t *testing.T) {
+			t.Parallel()
+			o := goOptions()
+			o.Nightly = option.Nightly{option.StepFuzz: 120, option.StepRace: 30}
+			err := o.Validate()
+			assert.ErrorIs(t, err, option.ErrInvalid, "Validate")
+			assert.Contains(t, err.Error(), "nightly names race", "the error")
+		})
 	})
 
 	t.Run("Contribution", func(t *testing.T) {
@@ -98,6 +108,11 @@ func TestOptions(t *testing.T) {
 						Tools: true,
 						Steps: []workflow.Step{{Name: "Check Go", Run: []string{"make check-go"}}},
 					}},
+					Nightly: []workflow.Job{
+						nightlyJob("fuzz-go", "Fuzz Go", 120),
+						nightlyJob("bench-go", "Bench Go", 45),
+						nightlyJob("mutate-go", "Mutate Go", 60),
+					},
 					Release: []workflow.Step{{
 						Name: "Set up Go",
 						If:   "hashFiles('go.work') != ''",
@@ -132,6 +147,25 @@ func TestOptions(t *testing.T) {
 			}, "the inputs of setup-go")
 		})
 
+		t.Run("sets up the version of go.work in each nightly job for versions of the options", func(t *testing.T) {
+			t.Parallel()
+			o := goOptions()
+			o.CI.Runners = option.Runners{"macos-26"}
+			o.CI.Versions = []string{"1.27", "1.26"}
+			got := o.Contribution().Nightly
+			assert.Length(t, got, 3, "the nightly jobs")
+			for _, j := range got {
+				expect.Equal(t, j, nightlyJob(j.ID, j.Name, j.Setup.Timeout), "the nightly job "+j.ID)
+			}
+		})
+
+		t.Run("returns no nightly job for a nightly without steps", func(t *testing.T) {
+			t.Parallel()
+			o := goOptions()
+			o.Nightly = option.Nightly{}
+			assert.Empty(t, o.Contribution().Nightly, "the nightly jobs")
+		})
+
 		t.Run("sets up the version of go.work in a release for versions of the options", func(t *testing.T) {
 			t.Parallel()
 			o := goOptions()
@@ -144,6 +178,30 @@ func TestOptions(t *testing.T) {
 			}, "the inputs of setup-go")
 		})
 	})
+}
+
+// nightlyJob returns the nightly job id of Go named name, which runs make id on the version of
+// go.work, with a limit of minutes.
+func nightlyJob(id, name string, minutes int) workflow.Job {
+	return workflow.Job{
+		ID:          id,
+		Name:        name,
+		Permissions: map[string]string{"contents": "read"},
+		Setup: &workflow.Setup{
+			Files: "**/go.mod",
+			Steps: []workflow.Step{
+				requireWork,
+				{
+					Name: "Set up Go",
+					Uses: setupGo,
+					With: map[string]string{"go-version-file": "go.work", "cache-dependency-path": "**/go.sum"},
+				},
+			},
+			Timeout: minutes,
+		},
+		Tools: true,
+		Steps: []workflow.Step{{Name: name, Run: []string{"make " + id}}},
+	}
 }
 
 // goOptions returns new options of the section go at the baseline.
