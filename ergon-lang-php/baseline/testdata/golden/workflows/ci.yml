@@ -8,6 +8,11 @@
 # the run of a push to main passes, and release.yml publishes a commit only when a run of the gate
 # passed on its content. A new run of a pull request cancels its earlier run, and every other run
 # has a concurrency group of its own.
+#
+# The job skip runs first. Every other job skips when a passed run already covers the content of
+# the run: a push whose content passed, such as the merge of a pull request whose run passed, and a
+# version commit whose parent passed, which version.yml marks with the status ergon/version. The
+# job result passes when every job passed or skipped, so it is the one check that a branch requires.
 
 name: CI
 
@@ -29,8 +34,34 @@ defaults:
     shell: bash
 
 jobs:
+  skip:
+    name: Skip a tested commit
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+      statuses: read
+    outputs:
+      skip: ${{ steps.skip.outputs.skip }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-ergon
+      - name: Find a passed run that covers the content
+        id: skip
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          ergon release ci skip --commit "$COMMIT"
+
   baseline:
     name: Baseline
+    needs: skip
+    if: "needs.skip.outputs.skip != 'true'"
     runs-on: ubuntu-26.04
     timeout-minutes: 15
     permissions:
@@ -46,6 +77,8 @@ jobs:
 
   check-php:
     name: "PHP (${{ matrix.os }})"
+    needs: skip
+    if: "needs.skip.outputs.skip != 'true'"
     strategy:
       fail-fast: false
       matrix:
@@ -77,3 +110,15 @@ jobs:
         if: "hashFiles('.php-version') != ''"
         run: |
           make check-php
+
+  result:
+    name: Result
+    if: always()
+    needs: [skip, baseline, check-php]
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    permissions: {}
+    steps:
+      - name: Require every job to pass or to skip
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1

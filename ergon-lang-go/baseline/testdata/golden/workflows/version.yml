@@ -2,10 +2,12 @@
 #
 # The version pull request of the packages of the repository. When the run of ci.yml for a push to
 # main succeeds, the job version writes the release plan of the changesets of that commit, and opens
-# or updates the version pull request. It skips a commit that is no longer the head of main. The job
-# sets up the toolchains of the repository before ergon, which refresh the lockfiles. A repository
-# with the variable ERGON_APP_CLIENT_ID and the secret ERGON_APP_PRIVATE_KEY of a GitHub App opens
-# the pull request with a token of the App, so the runs of its checks start without an approval.
+# or updates the version pull request. It marks the commit of the pull request with the status
+# ergon/version, so the runs of ci.yml on that commit and on its merge skip their jobs. It skips a
+# commit that is no longer the head of main. The job sets up the toolchains of the repository before
+# ergon, which refresh the lockfiles. A repository with the variable ERGON_APP_CLIENT_ID and the
+# secret ERGON_APP_PRIVATE_KEY of a GitHub App opens the pull request with a token of the App, so
+# the runs of its checks start without an approval.
 
 name: Version
 
@@ -35,6 +37,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      statuses: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -50,6 +53,7 @@ jobs:
           private-key: ${{ secrets.ERGON_APP_PRIVATE_KEY }}
           permission-contents: write
           permission-pull-requests: write
+          permission-statuses: write
       - name: Set up Go
         if: "hashFiles('go.work') != ''"
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
