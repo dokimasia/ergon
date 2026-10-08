@@ -105,3 +105,22 @@ func (c *Client) Tree(ctx context.Context, repo, sha string) (string, error) {
 	}
 	return commit.Tree.SHA, nil
 }
+
+// Parent returns the first parent of the commit sha of repo, and reports whether the commit has a
+// parent. The first parent of a merge commit is the commit of the branch that it merged into. It
+// returns an error that wraps [ErrGitHub] for a request that fails, such as for a commit that repo
+// does not have.
+func (c *Client) Parent(ctx context.Context, repo, sha string) (string, bool, error) {
+	var commit struct {
+		Parents []struct {
+			SHA string `json:"sha"`
+		} `json:"parents"`
+	}
+	if _, err := c.rest(ctx, http.MethodGet, "/repos/"+repo+"/git/commits/"+sha, nil, &commit); err != nil {
+		return "", false, err
+	}
+	if len(commit.Parents) == 0 {
+		return "", false, nil
+	}
+	return commit.Parents[0].SHA, true, nil
+}

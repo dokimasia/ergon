@@ -77,4 +77,42 @@ func TestCommit(t *testing.T) {
 			assert.ErrorIs(t, err, forge.ErrGitHub, "Tree")
 		})
 	})
+
+	t.Run("Parent", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("returns the first parent of a merge commit", func(t *testing.T) {
+			t.Parallel()
+			c, _ := serve(t, map[string][]response{
+				"GET /repos/" + repo + "/git/commits/" + commitC: {{
+					body: `{"sha":"` + commitC + `","tree":{"sha":"` + treeA + `"},` +
+						`"parents":[{"sha":"` + commitA + `"},{"sha":"` + commitB + `"}]}`,
+				}},
+			})
+			parent, ok, err := c.Parent(t.Context(), repo, commitC)
+			assert.NoError(t, err, "Parent")
+			assert.True(t, ok, "whether the commit has a parent")
+			assert.Equal(t, parent, commitA, "the parent")
+		})
+
+		t.Run("reports false for a commit without a parent", func(t *testing.T) {
+			t.Parallel()
+			c, _ := serve(t, map[string][]response{
+				"GET /repos/" + repo + "/git/commits/" + commitA: {
+					{body: `{"sha":"` + commitA + `","tree":{"sha":"` + treeA + `"},"parents":[]}`},
+				},
+			})
+			parent, ok, err := c.Parent(t.Context(), repo, commitA)
+			assert.NoError(t, err, "Parent")
+			assert.False(t, ok, "whether the commit has a parent")
+			assert.Empty(t, parent, "the parent")
+		})
+
+		t.Run("returns ErrGitHub for a commit that the repository does not have", func(t *testing.T) {
+			t.Parallel()
+			c, _ := serve(t, map[string][]response{})
+			_, _, err := c.Parent(t.Context(), repo, commitA)
+			assert.ErrorIs(t, err, forge.ErrGitHub, "Parent")
+		})
+	})
 }
