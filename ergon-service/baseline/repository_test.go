@@ -392,6 +392,18 @@ func TestRepository(t *testing.T) {
 			assert.ErrorIs(t, err, baseline.ErrInitialized, "a second New")
 		})
 
+		t.Run("returns ErrDevelopmentBuild for a build without a release", func(t *testing.T) {
+			t.Parallel()
+			root := directory(t)
+			r, err := baseline.Open(root, catalog(t), development, common("hello"))
+			assert.NoError(t, err, "Open")
+			_, err = r.New(answers(), baseline.Options{})
+			assert.ErrorIs(t, err, baseline.ErrDevelopmentBuild, "New")
+			assert.Contains(t, err.Error(), "this is ergon dev", "the error")
+			_, err = root.Stat(lockPath)
+			assert.ErrorIs(t, err, fs.ErrNotExist, "the lock after New")
+		})
+
 		t.Run("returns ErrInvalid of the lock for a lock that does not parse", func(t *testing.T) {
 			t.Parallel()
 			r, root := initialized(t)
@@ -596,6 +608,14 @@ func TestRepository(t *testing.T) {
 				"the .ergon.yaml")
 		})
 
+		t.Run("returns ErrDevelopmentBuild for a lock of a release and a build without a release", func(t *testing.T) {
+			t.Parallel()
+			r, root := releasedAt(t, version, development)
+			_, err := r.Remove([]workspace.Language{alpha})
+			assert.ErrorIs(t, err, baseline.ErrDevelopmentBuild, "Remove of alpha")
+			assert.Equal(t, content(t, root, alphaCfg), "alpha\n", "the file of alpha after Remove")
+		})
+
 		t.Run("keeps the files of a shared toolchain while one of its languages remains", func(t *testing.T) {
 			t.Parallel()
 			r, root := sharedRepository(t)
@@ -663,6 +683,25 @@ func TestRepository(t *testing.T) {
 			changes, err := r.Sync(nil, baseline.Options{})
 			assert.NoError(t, err, "Sync")
 			assert.Empty(t, changes, "the changes of Sync")
+		})
+
+		t.Run("returns ErrDevelopmentBuild for a lock of a release and a build without a release", func(t *testing.T) {
+			t.Parallel()
+			r, root := releasedAt(t, version, development)
+			before := content(t, root, lockPath)
+			_, err := r.Sync(nil, baseline.Options{})
+			assert.ErrorIs(t, err, baseline.ErrDevelopmentBuild, "Sync")
+			assert.Equal(t, content(t, root, lockPath), before, "the lock after Sync")
+		})
+
+		t.Run("keeps the lock of a build without a release", func(t *testing.T) {
+			t.Parallel()
+			r, root := releasedAt(t, development, development)
+			_, err := r.Sync(nil, baseline.Options{})
+			assert.NoError(t, err, "Sync")
+			l, err := lock.Decode([]byte(content(t, root, lockPath)))
+			assert.NoError(t, err, "Decode of the lock")
+			assert.Equal(t, l.Ergon, development, "the version of the lock")
 		})
 
 		t.Run("writes a missing managed file", func(t *testing.T) {
@@ -1032,17 +1071,28 @@ func initialized(t *testing.T) (*baseline.Repository, *os.Root) {
 }
 
 // released returns the repository of the cases for the release running of ergon, after New with the
-// answers of the cases by the release wrote.
+// answers of the cases, with a lock that records wrote.
 func released(t *testing.T, wrote, running string) *baseline.Repository {
 	t.Helper()
-	root := directory(t)
-	r, err := baseline.Open(root, catalog(t), wrote, common("hello"))
-	assert.NoError(t, err, "Open of the release that writes the lock")
-	_, err = r.New(answers(), baseline.Options{})
-	assert.NoError(t, err, "New of the repository")
-	r, err = baseline.Open(root, catalog(t), running, common("hello"))
-	assert.NoError(t, err, "Open of the running release")
+	r, _ := releasedAt(t, wrote, running)
 	return r
+}
+
+// releasedAt returns what released returns, and the directory of the repository. A release writes
+// the lock, and a lock of a build without a release takes that build's version in its field ergon,
+// because such a build writes no new lock.
+func releasedAt(t *testing.T, wrote, running string) (*baseline.Repository, *os.Root) {
+	t.Helper()
+	root := directory(t)
+	_, err := repository(t, root).New(answers(), baseline.Options{})
+	assert.NoError(t, err, "New of the repository")
+	l, err := lock.Decode([]byte(content(t, root, lockPath)))
+	assert.NoError(t, err, "Decode of the lock")
+	l.Ergon = wrote
+	put(t, root, lockPath, string(l.Encode()))
+	r, err := baseline.Open(root, catalog(t), running, common("hello"))
+	assert.NoError(t, err, "Open of the running release")
+	return r, root
 }
 
 // owned returns a repository and its directory after New with the answers of the cases, whose base

@@ -100,8 +100,8 @@ status it returns.
 
 The newest release runs ergon init sync, and then prints each pin of
 .ergon.yaml whose version differs from the baseline. A build of ergon without a
-release runs the upgrade itself, and a release refuses a lock that such a build
-wrote.
+release runs the upgrade itself, and refuses a lock that a release wrote. A
+release refuses a lock that such a build wrote.
 
 Usage:
   ergon init upgrade [flags]
@@ -452,13 +452,6 @@ func TestUpgrade(t *testing.T) {
 				env:      map[string]string{upgradeEnv: newest},
 				want:     "wrote " + licensePath + "\n",
 			},
-			{
-				name:     "upgrades the repository itself in a build without a release",
-				version:  dev,
-				versions: []string{"v1.2.3", "v" + newest, "v" + later},
-				args:     []string{"--major"},
-				want:     "wrote " + licensePath + "\nwrote " + lockPath + "\n",
-			},
 		}
 		for _, tt := range syncs {
 			t.Run(tt.name, func(t *testing.T) {
@@ -475,17 +468,20 @@ func TestUpgrade(t *testing.T) {
 			})
 		}
 
+		t.Run("returns 1 for a lock of a release in a build without a release", func(t *testing.T) {
+			t.Parallel()
+			env := released(t, &upstream{versions: []string{"v1.2.3", "v" + newest, "v" + later}}, native)
+			dir := initialized(t)
+			status, stdout, stderr := upgrade(t.Context(), t, dev, dir, env, "init", "upgrade", "--major")
+			assert.Equal(t, status, statusFailure, "the exit status")
+			expect.Empty(t, stdout, "the standard output")
+			expect.HasPrefix(t, stderr,
+				"ergon: baseline: a build of ergon without a release writes no lock of a release", "the standard error")
+		})
+
 		t.Run("upgrades a repository with the lock of a build without a release in such a build", func(t *testing.T) {
 			t.Parallel()
-			dir := t.TempDir()
-			status, _, stderr := upgrade(
-				t.Context(),
-				t,
-				dev,
-				dir,
-				nil,
-				slices.Concat([]string{"init", "new"}, required)...)
-			assert.Equal(t, status, statusOK, "the exit status of init new: "+stderr)
+			dir := developed(t)
 			assert.NoError(t, os.Remove(filepath.Join(dir, licensePath)), "Remove of the LICENSE")
 			status, stdout, stderr := upgrade(t.Context(), t, dev, dir, nil, "init", "upgrade")
 			assert.Equal(t, status, statusOK, "the exit status: "+stderr)
@@ -496,7 +492,8 @@ func TestUpgrade(t *testing.T) {
 			t.Parallel()
 			dir := initialized(t)
 			write(t, dir, ".ergon.yaml", strings.Replace(read(t, dir, ".ergon.yaml"), "release: v7.0.1", overridden, 1))
-			status, stdout, stderr := upgrade(t.Context(), t, dev, dir, nil, "init", "upgrade")
+			status, stdout, stderr := upgrade(t.Context(), t, version, dir, map[string]string{upgradeEnv: newest},
+				"init", "upgrade")
 			assert.Equal(t, status, statusOK, "the exit status: "+stderr)
 			assert.HasSuffix(t, stdout, "override github.ci.actions.checkout v7.0.0, the baseline is v7.0.1\n",
 				"the output of the upgrade")
@@ -517,16 +514,8 @@ func TestUpgrade(t *testing.T) {
 
 		t.Run("returns 1 for a lock that a build without a release wrote", func(t *testing.T) {
 			t.Parallel()
-			dir := t.TempDir()
+			dir := developed(t)
 			status, _, stderr := upgrade(
-				t.Context(),
-				t,
-				dev,
-				dir,
-				nil,
-				slices.Concat([]string{"init", "new"}, required)...)
-			assert.Equal(t, status, statusOK, "the exit status of init new: "+stderr)
-			status, _, stderr = upgrade(
 				t.Context(),
 				t,
 				version,
@@ -931,6 +920,18 @@ func registerGamma(c *language.Catalog) error {
 	}
 	return language.Register(c, language.Declaration{Name: gamma, Toolchain: tool},
 		unsourced{producer(gamma, "gamma.txt")})
+}
+
+// developed returns a new repository whose lock records the version of a build of ergon without a
+// release. A release writes the lock, because such a build writes no new lock, and the version in
+// the lock is then replaced.
+func developed(t *testing.T) string {
+	t.Helper()
+	dir := initialized(t)
+	recorded := `"ergon": "` + version.Release + `"`
+	write(t, dir, lockPath, strings.Replace(read(t, dir, lockPath), recorded, `"ergon": "`+dev.Release+`"`, 1))
+	assert.Contains(t, read(t, dir, lockPath), `"ergon": "`+dev.Release+`"`, "the lock")
+	return dir
 }
 
 // released serves u for the test t with the archive of ergon of platform, and with the checksums.txt

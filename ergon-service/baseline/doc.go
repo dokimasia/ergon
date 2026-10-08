@@ -23,7 +23,8 @@
 //
 // Every command but New reads the lock first, and fails for a lock that a newer release of ergon
 // wrote than the running one. A build of ergon without a release, whose version is dev, orders
-// against no release.
+// against no release. Such a build writes only over a lock that such a build wrote, because a CI
+// job installs the release that the lock names. New, Add, Remove and Sync fail for it otherwise.
 //
 // # Classes
 //
@@ -45,9 +46,9 @@
 // # Errors
 //
 // The sentinels classify the errors of the commands: [ErrInvalidOpen], [ErrInitialized],
-// [ErrNotInitialized], [ErrNewerLock], [ErrUnknownLanguage], [ErrLanguagePresent],
-// [ErrLanguageAbsent], [ErrUnsupported], [ErrConflict], [ErrInvalidFile], [ErrUnmanagedLocal] and
-// [ErrUnknownSection], each of which starts with "baseline: ". A [ConflictError] wraps ErrConflict
+// [ErrNotInitialized], [ErrNewerLock], [ErrDevelopmentBuild], [ErrUnknownLanguage],
+// [ErrLanguagePresent], [ErrLanguageAbsent], [ErrUnsupported], [ErrConflict], [ErrInvalidFile],
+// [ErrUnmanagedLocal] and [ErrUnknownSection], each of which starts with "baseline: ". A [ConflictError] wraps ErrConflict
 // and lists the managed files that a command left. A command also returns the errors of the
 // packages of its steps, such as [go.dokimi.dev/ergon/service/baseline/options.ErrInvalid] for
 // .ergon.yaml that the producers do not accept or whose answers contradict the lock, and

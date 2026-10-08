@@ -103,8 +103,8 @@ status it returns.
 
 The newest release runs ergon init sync, and then prints each pin of
 .ergon.yaml whose version differs from the baseline. A build of ergon without a
-release runs the upgrade itself, and a release refuses a lock that such a build
-wrote.`
+release runs the upgrade itself, and refuses a lock that a release wrote. A
+release refuses a lock that such a build wrote.`
 
 	initCIShort = "Run the job of the workflow baseline.yml"
 	initCILong  = `ergon init ci runs the job of the workflow baseline.yml in GitHub Actions.`

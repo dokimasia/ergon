@@ -59,6 +59,11 @@ var (
 	// ErrNewerLock is the error of every command but New for a lock that a newer release of ergon
 	// wrote than the running one. Its text contains both releases.
 	ErrNewerLock = errors.New("baseline: the lock is of a newer release of ergon")
+
+	// ErrDevelopmentBuild is the error of every command that writes a lock, for a build of ergon
+	// without a release that would write a new lock or a lock that a release wrote. The lock would
+	// name a version that no release has, so a CI job could not install it.
+	ErrDevelopmentBuild = errors.New("baseline: a build of ergon without a release writes no lock of a release")
 )
 
 // ConflictError is the error of a command for the managed files that it leaves, because they were
@@ -192,9 +197,13 @@ func Open(fsys FS, catalog *language.Catalog, version string, base ...Producer) 
 // [lock.ErrInvalid] for a lock that does not parse, [language.ErrInvalidAnswer] for answers that no
 // producer can render, [options.ErrInvalid] for an existing .ergon.yaml that the producers do not
 // accept, the error of a producer, and an error that wraps [ErrConflict] for a managed file that
-// exists with other content, unless opts.Force overwrites it. New writes nothing when it returns an
-// error before its first write. It reads a and does not modify it.
+// exists with other content, unless opts.Force overwrites it. It returns an error that wraps
+// [ErrDevelopmentBuild] for a build of ergon without a release, before it reads the lock. New writes
+// nothing when it returns an error before its first write. It reads a and does not modify it.
 func (r *Repository) New(a *language.Answers, opts Options) ([]Change, error) {
+	if err := r.writable(nil); err != nil {
+		return nil, err
+	}
 	data, ok, err := r.read(lock.Path)
 	if err != nil {
 		return nil, err
@@ -215,10 +224,10 @@ func (r *Repository) New(a *language.Answers, opts Options) ([]Change, error) {
 // It returns an error that wraps [ErrNotInitialized] for a repository without a lock,
 // [ErrLanguagePresent] for a language that the answers already have, [options.ErrInvalid] for
 // .ergon.yaml that the producers do not accept, and [ErrConflict] for a managed file that it would
-// change and that was edited by hand, unless opts.Force overwrites it. Add writes nothing when it
-// returns an error before its first write.
+// change and that was edited by hand, unless opts.Force overwrites it, and the errors of
+// [Repository.writableLock]. Add writes nothing when it returns an error before its first write.
 func (r *Repository) Add(languages []workspace.Language, opts Options) ([]Change, error) {
-	l, err := r.readLock()
+	l, err := r.writableLock()
 	if err != nil {
 		return nil, err
 	}
@@ -239,10 +248,11 @@ func (r *Repository) Add(languages []workspace.Language, opts Options) ([]Change
 // It returns an error that wraps [ErrNotInitialized] for a repository without a lock,
 // [ErrUnknownLanguage] for a language that the catalog does not have, [ErrLanguageAbsent] for a
 // language that the answers do not have, [options.ErrInvalid] for .ergon.yaml that the producers do
-// not accept, and [ErrConflict] for a managed file that it would change or remove and that was
-// edited by hand. Remove writes nothing when it returns an error before its first write.
+// not accept, [ErrConflict] for a managed file that it would change or remove and that was edited by
+// hand, and the errors of [Repository.writableLock]. Remove writes nothing when it returns an error
+// before its first write.
 func (r *Repository) Remove(languages []workspace.Language) ([]Change, error) {
-	l, err := r.readLock()
+	l, err := r.writableLock()
 	if err != nil {
 		return nil, err
 	}
@@ -276,9 +286,9 @@ func (r *Repository) Remove(languages []workspace.Language) ([]Change, error) {
 // that wraps [ErrConflict]. It returns an error that wraps [ErrNotInitialized] for a repository
 // without a lock, [language.ErrInvalidAnswer] for answers that no producer can render,
 // [options.ErrInvalid] for .ergon.yaml that the producers do not accept or whose key of an answer
-// has another value, and the error of a producer.
+// has another value, the error of a producer, and the errors of [Repository.writableLock].
 func (r *Repository) Sync(update func(*language.Answers), opts Options) ([]Change, error) {
-	l, err := r.readLock()
+	l, err := r.writableLock()
 	if err != nil {
 		return nil, err
 	}
@@ -582,6 +592,35 @@ func (r *Repository) apply(p *plan, next *lock.Lock) ([]Change, error) {
 // [ErrNotInitialized] for a repository without one, [lock.ErrInvalid] for a lock that does not
 // parse, and [ErrNewerLock] for a lock that a newer release of ergon wrote than the running one.
 //
+// writableLock returns the lock of the repository, as [Repository.readLock] does, for a command
+// that rewrites it. It returns the errors of readLock, and an error that wraps [ErrDevelopmentBuild]
+// for a lock of a release in a build of ergon without a release.
+func (r *Repository) writableLock() (lock.Lock, error) {
+	l, err := r.readLock()
+	if err != nil {
+		return lock.Lock{}, err
+	}
+	if err := r.writable(&l); err != nil {
+		return lock.Lock{}, err
+	}
+	return l, nil
+}
+
+// writable returns nil when the running ergon may write a lock over prev, the lock of the
+// repository, which is nil for a repository without one. A release writes every lock. A build
+// without a release, whose version no release has, writes only over a lock that such a build wrote,
+// as in a repository that builds ergon from its own source. It returns an error that wraps
+// [ErrDevelopmentBuild] for a new lock and for a lock of a release.
+func (r *Repository) writable(prev *lock.Lock) error {
+	if _, err := version.Parse(r.version); err == nil {
+		return nil
+	}
+	if prev != nil && prev.Ergon == r.version {
+		return nil
+	}
+	return fmt.Errorf("%w: this is ergon %s, so run a release of ergon", ErrDevelopmentBuild, r.version)
+}
+
 // A build of ergon without a release, whose version is dev, orders against no release. The running
 // build reads every lock, and a lock that such a build wrote parses as the version 0.0.0, below every
 // release of ergon.
