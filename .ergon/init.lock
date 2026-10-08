@@ -97,7 +97,7 @@
     {
       "path": ".pre-commit-config.yaml",
       "producer": "common",
-      "sha256": "c8bf69a0af4d6336be2eb6865a8e8cab50787c05115f1f9dd1ebf87aadd4e3e8"
+      "sha256": "f1aec7a0c17c2e16396477ced27ef8867d57f607394d8bf571edc0cf58ed3da7"
     },
     {
       "path": "CODE_OF_CONDUCT.md",
