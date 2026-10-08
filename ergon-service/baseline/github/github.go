@@ -36,11 +36,6 @@ var templates embed.FS
 type Workflows struct {
 	// Jobs are the jobs of ci.yml, as [Options.Jobs] returns them.
 	Jobs []Job
-
-	// Wait is the limit in minutes of the job wait of release.yml, which waits for the run of
-	// ci.yml: the longest limit of a job of Jobs plus the limit of the section github, for the time
-	// that the jobs of ci.yml wait for a runner.
-	Wait int
 }
 
 // Producer renders the GitHub files of a repository: the workflows, the actions that install ergon
@@ -67,8 +62,8 @@ func (Producer) Templates() fs.FS {
 // Options returns the options of the GitHub files at the baseline: the runners ubuntu-26.04,
 // macos-26 and windows-2025, ubuntu-26.04 for the checks of text, the release of GNU make, the
 // releases of actions/checkout, github/codeql-action, actions/dependency-review-action,
-// ossf/scorecard-action, actions/upload-artifact, actions/download-artifact and actions/cache, and a
-// limit of 15 minutes for each job.
+// ossf/scorecard-action, actions/upload-artifact, actions/download-artifact, actions/cache and
+// actions/create-github-app-token, and a limit of 15 minutes for each job.
 func (Producer) Options() language.Options {
 	return &Options{
 		Runners: option.Runners{"ubuntu-26.04", "macos-26", "windows-2025"},
@@ -111,6 +106,11 @@ func (Producer) Options() language.Options {
 					Commit:  "55cc8345863c7cc4c66a329aec7e433d2d1c52a9",
 					Release: "v6.1.0",
 				},
+				CreateGitHubAppToken: workflow.Action{
+					Uses:    "actions/create-github-app-token",
+					Commit:  "bcd2ba49218906704ab6c1aa796996da409d3eb1",
+					Release: "v3.2.0",
+				},
 			},
 			Timeout: 15,
 		},
@@ -118,20 +118,14 @@ func (Producer) Options() language.Options {
 }
 
 // Data returns the [Workflows] of c for o, and for the options at the baseline when o is not the
-// options of the GitHub files: the jobs of c, as [Options.Jobs] returns them, and the limit of the
-// job wait. It returns the error of Options.Jobs for a job whose runners the section does not list.
+// options of the GitHub files: the jobs of c, as [Options.Jobs] returns them. It returns the error
+// of Options.Jobs for a job whose runners the section does not list.
 func (Producer) Data(_ *language.Answers, o language.Options, c *workflow.Contribution) (any, error) {
-	opts := own(o)
-	jobs, err := opts.Jobs(c)
+	jobs, err := own(o).Jobs(c)
 	if err != nil {
 		return nil, err
 	}
-	w := Workflows{Jobs: jobs}
-	for k := range jobs {
-		w.Wait = max(w.Wait, jobs[k].Timeout)
-	}
-	w.Wait += opts.CI.Timeout
-	return w, nil
+	return Workflows{Jobs: jobs}, nil
 }
 
 // Contribution returns the job baseline of ci.yml for o, and for the options at the baseline when o

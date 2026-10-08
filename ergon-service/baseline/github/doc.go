@@ -17,11 +17,15 @@
 //     job of the contributions from one skeleton: the checkout, the installation of GNU make, the
 //     setup steps, the installation of ergon, the cache of the tools of ergon for a job that runs
 //     tools, and the steps of the job, as [Options.Jobs] states.
-//   - release.yml runs the release flow of ergon release ci on every push to main. The job
-//     select-mode chooses the next job. The job wait lets that job run only after the run of ci.yml
-//     for the push succeeds, within the limit that [Workflows] states. The job version opens or
-//     updates the version pull request. After its merge, the jobs pack and publish release each
-//     package of the publish plan. The jobs version and pack run the release steps of the
+//   - version.yml opens or updates the version pull request when the run of ci.yml for a push to
+//     main succeeds, from the commit of that run, through ergon release ci version. With the
+//     variable ERGON_APP_CLIENT_ID and the secret ERGON_APP_PRIVATE_KEY of a GitHub App, it opens
+//     the pull request with a token of the App, whose events start the runs of the checks.
+//   - release.yml publishes on every push to main. The job select-mode chooses the next job. The
+//     job verify lets the publish run only when a run of ci.yml passed on the content of the commit,
+//     through ergon release ci verify. The jobs pack and publish then release each package of the
+//     publish plan.
+//   - The job version of version.yml and the job pack of release.yml run the release steps of the
 //     contributions before the installation of ergon.
 //   - security.yml runs the dependency review on a pull request, the OpenSSF Scorecard weekly, and
 //     a job codeql-<language> for each CodeQL analysis of the contributions, which calls
@@ -40,9 +44,15 @@
 //
 // Every workflow grants no permission at its top level, and each job grants only the scopes that
 // it needs. Every action is pinned to the commit of a release, with the release in a comment.
-// actions/checkout runs with persist-credentials set to false. A workflow that a push or a pull
-// request triggers groups its runs by workflow and ref, and cancels a superseded run on a pull
-// request only.
+// actions/checkout runs with persist-credentials set to false. The concurrency groups of the
+// workflows are these:
+//
+//   - ci.yml cancels a superseded run of a pull request, and gives each run of a push or a merge
+//     group a group of its own, so the run of a push never waits for the run of an earlier push.
+//   - security.yml groups its runs by workflow and ref, and cancels a superseded run of a pull
+//     request.
+//   - release.yml and baseline.yml group their runs by workflow and ref, and version.yml by the
+//     branch of the run of ci.yml that triggered it. These three cancel no run.
 //
 // # Options
 //

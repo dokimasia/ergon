@@ -6,6 +6,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"net/http"
@@ -422,8 +423,9 @@ func (u *updater) changed(ctx context.Context, g *release.Graph, config *release
 
 // propose commits the changes of the working tree on the branch ergon-update/<base> through the API
 // of GitHub, on the commit where the run started, and opens or updates the pull request into base.
-// It writes the number of the pull request. It returns an error for an environment without the
-// repository, and the errors of git, of reading a file and of GitHub.
+// It writes the number of the pull request, or that it skipped the commit when base moved past it,
+// which [release.ErrMoved] reports. It returns an error for an environment without the repository,
+// and the errors of git, of reading a file and of GitHub.
 func (u *updater) propose(ctx context.Context, base string) error {
 	repo := u.p.getenv(repositoryEnv)
 	if repo == "" {
@@ -438,6 +440,10 @@ func (u *updater) propose(ctx context.Context, base string) error {
 		Body: u.body(), Deleted: deleted,
 	}
 	number, err := release.Propose(ctx, u.client, &p)
+	if errors.Is(err, release.ErrMoved) {
+		fmt.Fprintf(u.p.stdout, "skipped %s, which is no longer the head of %s\n", u.head, base)
+		return nil
+	}
 	if err != nil {
 		return err
 	}

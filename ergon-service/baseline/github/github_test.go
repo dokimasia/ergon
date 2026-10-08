@@ -28,6 +28,7 @@ const name = "github"
 const (
 	ciPath         = ".github/workflows/ci.yml"
 	releasePath    = ".github/workflows/release.yml"
+	versionPath    = ".github/workflows/version.yml"
 	securityPath   = ".github/workflows/security.yml"
 	dependabotPath = ".github/dependabot.yml"
 )
@@ -92,7 +93,7 @@ func TestGithub(t *testing.T) {
 						baseline.Producer{Name: "alpha", Producer: part{contribution: languages()}},
 					)
 					baselinetest.Hygiene(t, dir)
-					for _, file := range []string{ciPath, releasePath, securityPath, dependabotPath} {
+					for _, file := range []string{ciPath, releasePath, versionPath, securityPath, dependabotPath} {
 						got, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(file)))
 						assert.NoError(t, err, "ReadFile of "+file)
 						golden.Match(t, path.Join("contributions", path.Base(file)), got, golden.ShouldUpdate())
@@ -136,21 +137,6 @@ func TestGithub(t *testing.T) {
 				assert.True(t, ok, "the data is a Workflows")
 				assert.Equal(t, w.Jobs, want, "the jobs")
 			})
-
-			t.Run(
-				"returns a limit of wait that adds the limit of the section to the longest limit of a job",
-				func(t *testing.T) {
-					t.Parallel()
-					o, _ := github.Producer{}.Options().(*github.Options)
-					o.CI.Timeout = 25
-					c := languages()
-					got, err := github.Producer{}.Data(baselinetest.Answers(), o, &c)
-					assert.NoError(t, err, "Data")
-					w, ok := got.(github.Workflows)
-					assert.True(t, ok, "the data is a Workflows")
-					assert.Equal(t, w.Wait, 30, "the limit of wait, which is the 5 minutes of check-beta plus 25")
-				},
-			)
 
 			t.Run("returns the data of the options at the baseline for options of another type", func(t *testing.T) {
 				t.Parallel()

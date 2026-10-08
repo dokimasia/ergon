@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/base64"
 	"maps"
+	"net/http"
 	"slices"
 	"strings"
 )
@@ -89,4 +90,18 @@ func (c *Client) Commit(
 		return "", err
 	}
 	return data.CreateCommitOnBranch.Commit.OID, nil
+}
+
+// Tree returns the tree of the commit sha of repo. It returns an error that wraps [ErrGitHub] for a
+// request that fails, such as for a commit that repo does not have.
+func (c *Client) Tree(ctx context.Context, repo, sha string) (string, error) {
+	var commit struct {
+		Tree struct {
+			SHA string `json:"sha"`
+		} `json:"tree"`
+	}
+	if _, err := c.rest(ctx, http.MethodGet, "/repos/"+repo+"/git/commits/"+sha, nil, &commit); err != nil {
+		return "", err
+	}
+	return commit.Tree.SHA, nil
 }

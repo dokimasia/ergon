@@ -54,4 +54,27 @@ func TestCommit(t *testing.T) {
 			assert.Contains(t, err.Error(), "Expected branch to point to", "the error")
 		})
 	})
+
+	t.Run("Tree", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("returns the tree of the commit", func(t *testing.T) {
+			t.Parallel()
+			c, _ := serve(t, map[string][]response{
+				"GET /repos/" + repo + "/git/commits/" + commitA: {
+					{body: `{"sha":"` + commitA + `","tree":{"sha":"` + treeA + `"},"parents":[]}`},
+				},
+			})
+			tree, err := c.Tree(t.Context(), repo, commitA)
+			assert.NoError(t, err, "Tree")
+			assert.Equal(t, tree, treeA, "the tree")
+		})
+
+		t.Run("returns ErrGitHub for a commit that the repository does not have", func(t *testing.T) {
+			t.Parallel()
+			c, _ := serve(t, map[string][]response{})
+			_, err := c.Tree(t.Context(), repo, commitA)
+			assert.ErrorIs(t, err, forge.ErrGitHub, "Tree")
+		})
+	})
 }

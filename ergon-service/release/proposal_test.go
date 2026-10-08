@@ -36,13 +36,17 @@ const dirPerm fs.FileMode = 0o755
 var errHub = errors.New("host failed")
 
 // hub is a [release.Proposer] that records its calls, each as a line, and has the pull request open
-// when open is set. It returns failAt from the call whose line starts with failOn.
+// when open is set. The head of the base is moved, or commitA for an empty moved. It returns failAt
+// from the call whose line starts with failOn.
 type hub struct {
 	// failAt is the error of the call that failOn names.
 	failAt error
 
 	// failOn is the start of the line of the call that fails.
 	failOn string
+
+	// moved is the head of the base, or empty for commitA.
+	moved string
 
 	// calls are the calls, each as a line.
 	calls []string
@@ -63,6 +67,15 @@ func (h *hub) record(call string) error {
 		return h.failAt
 	}
 	return nil
+}
+
+// Branch records the read of a branch, and returns the head of the base.
+func (h *hub) Branch(_ context.Context, repo, name string) (string, bool, error) {
+	head := h.moved
+	if head == "" {
+		head = commitA
+	}
+	return head, true, h.record("head " + repo + " " + name)
 }
 
 // SetBranch records the branch.
@@ -114,6 +127,7 @@ func TestProposal(t *testing.T) {
 			assert.NoError(t, err, "Propose")
 			assert.Equal(t, number, 8, "the number of the pull request")
 			assert.Equal(t, h.calls, []string{
+				"head " + proposalRepo + " main",
 				"branch " + proposalRepo + " " + proposalBranch + " " + commitA,
 				"commit " + proposalRepo + " " + proposalBranch + " " + commitA +
 					" Version Packages [a/CHANGELOG.md b/go.mod] -[.changeset/strange-words-combine.md]",
@@ -130,6 +144,7 @@ func TestProposal(t *testing.T) {
 			_, err := release.Propose(t.Context(), h, p)
 			assert.NoError(t, err, "Propose")
 			assert.Equal(t, h.calls, []string{
+				"head " + proposalRepo + " main",
 				"branch " + proposalRepo + " ergon-baseline/main " + commitA,
 				"commit " + proposalRepo + " ergon-baseline/main " + commitA +
 					" Version Packages [a/CHANGELOG.md b/go.mod] -[.changeset/strange-words-combine.md]",
@@ -154,7 +169,7 @@ func TestProposal(t *testing.T) {
 			p := proposal(map[string][]byte{"a/lock": large, "b/lock": large, "c/lock": []byte("c\n")})
 			_, err := release.Propose(t.Context(), h, p)
 			assert.NoError(t, err, "Propose")
-			assert.Equal(t, h.calls[1:3], []string{
+			assert.Equal(t, h.calls[2:4], []string{
 				"commit " + proposalRepo + " " + proposalBranch + " " + commitA +
 					" Version Packages [a/lock] -[.changeset/strange-words-combine.md]",
 				"commit " + proposalRepo + " " + proposalBranch + " 111 Version Packages [b/lock c/lock] -[]",
@@ -168,8 +183,18 @@ func TestProposal(t *testing.T) {
 			p.Files = nil
 			_, err := release.Propose(t.Context(), h, p)
 			assert.NoError(t, err, "Propose")
-			assert.Equal(t, h.calls[1], "commit "+proposalRepo+" "+proposalBranch+" "+commitA+
+			assert.Equal(t, h.calls[2], "commit "+proposalRepo+" "+proposalBranch+" "+commitA+
 				" Version Packages [] -[.changeset/strange-words-combine.md]", "the commit")
+		})
+
+		t.Run("returns ErrMoved for a base whose head is another commit", func(t *testing.T) {
+			t.Parallel()
+			h := &hub{moved: commitB}
+			_, err := release.Propose(t.Context(), h, proposal(nil))
+			assert.ErrorIs(t, err, release.ErrMoved, "Propose")
+			assert.Equal(t, err.Error(), "release: the base branch moved: the head of main is "+commitB+
+				", and the proposal is of "+commitA, "the error")
+			assert.Equal(t, h.calls, []string{"head " + proposalRepo + " main"}, "the calls, which change nothing")
 		})
 
 		failures := []struct {
@@ -177,6 +202,7 @@ func TestProposal(t *testing.T) {
 			failOn string
 			files  bool
 		}{
+			{name: "returns the error of the head of the base", failOn: "head", files: true},
 			{name: "returns the error of the branch", failOn: "branch", files: true},
 			{name: "returns the error of a commit of files", failOn: "commit", files: true},
 			{name: "returns the error of a commit of deletions", failOn: "commit"},

@@ -9,29 +9,27 @@ import (
 	"net/url"
 )
 
-// Run returns the newest run of the workflow file of repo, such as ci.yml, for the commit sha and
-// the event, such as push: its status, such as in_progress or completed, its conclusion, such as
-// success, and the address of its page. The conclusion is empty until the run completes, and every
-// result is empty for a commit without such a run. It returns an error that wraps [ErrGitHub] for a
-// request that fails, such as for a workflow that repo does not have.
-func (c *Client) Run(
-	ctx context.Context,
-	repo, workflow, sha, event string,
-) (status, conclusion, page string, err error) {
-	query := url.Values{"head_sha": {sha}, "event": {event}, "per_page": {"1"}}
+// success is the conclusion of a run whose jobs passed, which the runs of [Client.Passed] have.
+const success = "success"
+
+// Passed returns the address of the page of the newest run of the workflow file of repo, such as
+// ci.yml, for the commit sha that completed with the conclusion success, and reports whether such a
+// run exists. A run of any event counts, such as push, pull_request or merge_group. It returns an
+// error that wraps [ErrGitHub] for a request that fails, such as for a workflow that repo does not
+// have.
+func (c *Client) Passed(ctx context.Context, repo, workflow, sha string) (string, bool, error) {
+	query := url.Values{"head_sha": {sha}, "status": {success}, "per_page": {"1"}}
 	var runs struct {
 		Runs []struct {
-			Status     string `json:"status"`
-			Conclusion string `json:"conclusion"`
-			Page       string `json:"html_url"`
+			Page string `json:"html_url"`
 		} `json:"workflow_runs"`
 	}
 	path := "/repos/" + repo + "/actions/workflows/" + url.PathEscape(workflow) + "/runs?" + query.Encode()
 	if _, err := c.rest(ctx, http.MethodGet, path, nil, &runs); err != nil {
-		return "", "", "", err
+		return "", false, err
 	}
 	if len(runs.Runs) == 0 {
-		return "", "", "", nil
+		return "", false, nil
 	}
-	return runs.Runs[0].Status, runs.Runs[0].Conclusion, runs.Runs[0].Page, nil
+	return runs.Runs[0].Page, true, nil
 }

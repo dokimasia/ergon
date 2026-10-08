@@ -18,9 +18,10 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 | [0007](0007-toolchains-and-languages.md) | Toolchains and languages are separate catalog entries | Accepted, superseded in part by ADR-0008 |
 | [0008](0008-toolchains-in-language-modules.md) | The npm and Gradle toolchains are in the JavaScript and Java modules | Accepted |
 | [0009](0009-release-dependents-by-resolution.md) | Dependent releases by consumer resolution | Accepted |
-| [0010](0010-release-waits-for-ci.md) | The release workflow waits for the CI run of its commit | Accepted |
+| [0010](0010-release-waits-for-ci.md) | The release workflow waits for the CI run of its commit | Superseded by ADR-0016 |
 | [0011](0011-pins-through-the-baseline.md) | Repositories receive their pins through the baseline | Accepted |
 | [0012](0012-seeded-files-with-license-headers.md) | ergon init writes the license header into the files it seeds | Proposed |
 | [0013](0013-go-modules-through-the-version-list.md) | The resolver finds the module of a Go package through @v/list | Proposed |
 | [0014](0014-lint-and-test-before-a-commit.md) | The hooks lint and test each commit, and run the gate before each push | Accepted, superseded in part by ADR-0015 |
 | [0015](0015-hook-targets-in-ergon-yaml.md) | The targets of the hooks are options of .ergon.yaml | Accepted |
+| [0016](0016-version-pull-request-gates-the-release.md) | The CI run of the version pull request is the gate of a release | Accepted |

@@ -51,8 +51,10 @@
 // each toolchain applies to the manifests of its packages. It restores every path that it changed
 // when a step fails. [NewProposal] collects the files that a version wrote into a version pull
 // request on the branch ergon-release/<base>, and [Propose] opens or updates the pull request of a
-// [Proposal] on its branch through a [Proposer]. [ChangedFiles] returns the changes of the working
-// tree that a proposal commits, so another command proposes its own changes the same way.
+// [Proposal] on its branch through a [Proposer]. Propose returns an error that wraps [ErrMoved] for a
+// proposal of a commit that is no longer the head of its base. [ChangedFiles] returns the changes of
+// the working tree that a proposal commits, so another command proposes its own changes the same
+// way.
 //
 // # Publishing
 //
@@ -74,18 +76,20 @@
 //
 // # The gate
 //
-// The release workflow versions and publishes a commit only after the run of its gate for the push
-// of the commit succeeds. [Gate.Wait] reads that run through a [RunForge] until it completes, and
-// returns an error that wraps [ErrGate] for a run without success and for a commit without a run.
+// The CI run of the version pull request is the gate of a release. The publish of a commit requires
+// a run of the gate that passed on its content: a run of the commit itself, or a run of the head of
+// a pull request that merged the commit with the same tree. [Gate.Verify] reads those runs once
+// through a [GateForge], and returns an error that wraps [ErrGate] when none passed.
 //
 // # Errors
 //
 // Each error of the package wraps one of [ErrPackages], [ErrConfig], [ErrChangeset],
-// [ErrChangelog], [ErrPublishPlan], [ErrTag], [ErrStale] and [ErrGate], and names the package, the
-// key, the file, the tag or the run that caused it, or is [ErrNoChangesets]. The package also
-// returns the error of git, which wraps [go.dokimi.dev/ergon/service/vcs.ErrGit], the error of the
-// file system with its path, and the error of a toolchain role, of a [Forge], a [Proposer], a
-// [Releaser], a [RunForge] or of [go.dokimi.dev/ergon/core/version].
+// [ErrChangelog], [ErrPublishPlan], [ErrTag], [ErrStale], [ErrMoved] and [ErrGate], and names the
+// package, the key, the file, the tag, the branch or the commit that caused it, or is
+// [ErrNoChangesets]. The package also returns the error of git, which wraps
+// [go.dokimi.dev/ergon/service/vcs.ErrGit], the error of the file system with its path, and the
+// error of a toolchain role, of a [Forge], a [Proposer], a [Releaser], a [GateForge] or of
+// [go.dokimi.dev/ergon/core/version].
 //
 // # Concurrency
 //

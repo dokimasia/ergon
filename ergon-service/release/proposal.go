@@ -59,9 +59,17 @@ const (
 	lockfilesHeading = "# Lockfiles"
 )
 
-// Proposer is the host of a repository that a version pull request needs: its branch, signed
-// commits on the branch, and the pull request.
+// ErrMoved is the error of [Propose] for a base branch whose head is no longer the commit of the
+// proposal. The run for the newer head proposes that commit instead.
+var ErrMoved = errors.New("release: the base branch moved")
+
+// Proposer is the host of a repository that a version pull request needs: the head of its base,
+// its branch, signed commits on the branch, and the pull request.
 type Proposer interface {
+	// Branch returns the commit of the branch name of repo, and reports whether repo has the
+	// branch.
+	Branch(ctx context.Context, repo, name string) (string, bool, error)
+
 	// SetBranch points the branch name of repo at the commit sha, and creates a missing branch.
 	SetBranch(ctx context.Context, repo, name, sha string) error
 
@@ -154,13 +162,18 @@ type section struct {
 	highest version.Bump
 }
 
-// Propose opens or updates the pull request p through f, and returns its number. It points the
-// branch p.Branch at p.Head, and commits the files of p on it, in commits of at most 6,666,668 bytes
-// of base64 each, so that GitHub accepts each commit within 10 seconds: the files in the order of
-// their paths, a file over the bound in a commit of its own, and the deletions in the first commit,
-// each with p.Title as its message. It then updates the open pull request from the branch into
-// p.Base with p.Title and p.Body, or opens one. It returns the error of f.
+// Propose opens or updates the pull request p through f, and returns its number. It first reads
+// the head of p.Base, and returns an error that wraps [ErrMoved] and changes nothing when that head
+// is not p.Head. It then points the branch p.Branch at p.Head, and commits the files of p on it, in
+// commits of at most 6,666,668 bytes of base64 each, so that GitHub accepts each commit within 10
+// seconds: the files in the order of their paths, a file over the bound in a commit of its own, and
+// the deletions in the first commit, each with p.Title as its message. It then updates the open
+// pull request from the branch into p.Base with p.Title and p.Body, or opens one. It returns the
+// error of f.
 func Propose(ctx context.Context, f Proposer, p *Proposal) (int, error) {
+	if err := moved(ctx, f, p); err != nil {
+		return 0, err
+	}
 	if err := f.SetBranch(ctx, p.Repo, p.Branch, p.Head); err != nil {
 		return 0, err
 	}
@@ -185,6 +198,19 @@ func Propose(ctx context.Context, f Proposer, p *Proposal) (int, error) {
 		return number, f.UpdatePullRequest(ctx, p.Repo, number, p.Title, p.Body)
 	}
 	return f.CreatePullRequest(ctx, p.Repo, p.Branch, p.Base, p.Title, p.Body)
+}
+
+// moved reads the head of p.Base through f, and returns an error that wraps [ErrMoved] when that
+// head is not p.Head. It returns the error of f.
+func moved(ctx context.Context, f Proposer, p *Proposal) error {
+	base, _, err := f.Branch(ctx, p.Repo, p.Base)
+	if err != nil {
+		return err
+	}
+	if base != p.Head {
+		return fmt.Errorf("%w: the head of %s is %s, and the proposal is of %s", ErrMoved, p.Base, base, p.Head)
+	}
+	return nil
 }
 
 // ChangedFiles returns the files of the working tree at root that differ from HEAD, with their

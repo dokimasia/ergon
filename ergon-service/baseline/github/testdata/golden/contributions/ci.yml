@@ -4,8 +4,10 @@
 # of text runs on the Linux runner of the section github of .ergon.yaml, and every other job on a
 # matrix of runners. A job that sets up a toolchain runs its steps once the repository has the
 # files of the toolchain, and sets the toolchain up before ergon. A job that runs tools keeps the
-# tools of ergon in the cache of GitHub Actions. The jobs of release.yml version and publish a
-# commit of main only after the run of the gate for its push succeeds.
+# tools of ergon in the cache of GitHub Actions. version.yml opens the version pull request after
+# the run of a push to main passes, and release.yml publishes a commit only when a run of the gate
+# passed on its content. A new run of a pull request cancels its earlier run, and every other run
+# has a concurrency group of its own.
 
 name: CI
 
@@ -18,7 +20,7 @@ on:
 permissions: {}
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # Every command runs in bash, which is Git Bash on Windows.

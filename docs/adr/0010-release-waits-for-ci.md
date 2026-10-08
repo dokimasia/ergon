@@ -1,10 +1,10 @@
 ---
 adr: 0010
 title: The release workflow waits for the CI run of its commit
-status: Accepted
+status: Superseded
 date: 2026-10-08
 supersedes: ADR-0006, in part
-superseded-by: none
+superseded-by: ADR-0016
 rfc: RFC-0002
 ---
 
@@ -17,7 +17,7 @@ rfc: RFC-0002
 
 ## Status
 
-Accepted
+Superseded by ADR-0016
 
 ## Context
 

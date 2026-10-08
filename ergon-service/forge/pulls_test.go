@@ -16,6 +16,7 @@ const (
 	openRoute   = "GET /repos/" + repo + "/pulls?base=main&head=dokimasia%3Aergon-release%2Fmain&state=open"
 	createRoute = "POST /repos/" + repo + "/pulls"
 	updateRoute = "PATCH /repos/" + repo + "/pulls/7"
+	headsRoute  = "GET /repos/" + repo + "/commits/" + commitA + "/pulls"
 )
 
 func TestPulls(t *testing.T) {
@@ -81,6 +82,36 @@ func TestPulls(t *testing.T) {
 			c, _ := serve(t, map[string][]response{createRoute: {failure}})
 			_, err := c.CreatePullRequest(t.Context(), repo, "ergon-release/main", "main", "Version Packages", "Body.")
 			assert.ErrorIs(t, err, forge.ErrGitHub, "CreatePullRequest")
+		})
+	})
+
+	t.Run("PullHeads", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("returns the head commit of each pull request of the commit in the order of GitHub", func(t *testing.T) {
+			t.Parallel()
+			c, _ := serve(t, map[string][]response{headsRoute: {{
+				body: `[{"number":6,"head":{"ref":"ergon-release/main","sha":"` + commitB + `"}},` +
+					`{"number":4,"head":{"ref":"fix","sha":"` + commitC + `"}}]`,
+			}}})
+			heads, err := c.PullHeads(t.Context(), repo, commitA)
+			assert.NoError(t, err, "PullHeads")
+			assert.Equal(t, heads, []string{commitB, commitC}, "the heads")
+		})
+
+		t.Run("returns no head for a commit without a pull request", func(t *testing.T) {
+			t.Parallel()
+			c, _ := serve(t, map[string][]response{headsRoute: {{body: `[]`}}})
+			heads, err := c.PullHeads(t.Context(), repo, commitA)
+			assert.NoError(t, err, "PullHeads")
+			assert.Empty(t, heads, "the heads")
+		})
+
+		t.Run("returns the error of the request", func(t *testing.T) {
+			t.Parallel()
+			c, _ := serve(t, map[string][]response{headsRoute: {failure}})
+			_, err := c.PullHeads(t.Context(), repo, commitA)
+			assert.ErrorIs(t, err, forge.ErrGitHub, "PullHeads")
 		})
 	})
 

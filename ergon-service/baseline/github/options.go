@@ -120,6 +120,9 @@ type Actions struct {
 
 	// Cache keeps the tools of ergon of a job between its runs.
 	Cache workflow.Action `yaml:"cache" doc:"The action that restores the tool directory of ergon before the steps of each job of ci.yml that runs tools, and saves it after a run that succeeds."`
+
+	// CreateGitHubAppToken creates the token of a GitHub App that opens the version pull request.
+	CreateGitHubAppToken workflow.Action `yaml:"create-github-app-token" doc:"The action that creates a token of the GitHub App of the variable ERGON_APP_CLIENT_ID and the secret ERGON_APP_PRIVATE_KEY in version.yml, whose pull request then runs its checks without an approval."`
 }
 
 // Validate returns an error that wraps [option.ErrInvalid] for no runner, and for a Linux that

@@ -72,15 +72,6 @@ const (
 // apiTimeout bounds a request to the API of GitHub.
 const apiTimeout = time.Minute
 
-// The times of ergon release ci wait.
-const (
-	// readInterval is the time between two reads of the run of the gate.
-	readInterval = 15 * time.Second
-
-	// appearTime is the time that GitHub may take to create the run of the gate for a push.
-	appearTime = 5 * time.Minute
-)
-
 // remote is the remote that ergon release publish and ergon release git-tag push the tags of a
 // workstation to.
 const remote = "origin"
@@ -92,6 +83,10 @@ const outputPerm fs.FileMode = 0o644
 // changeset.
 const uncoveredHint = "add a changeset with ergon release add, or with --empty for a change that releases nothing"
 
+// skippedLine is the line of a command that proposes a pull request for the commit of HEAD, and
+// skips it because the base branch, the second argument, moved past the commit, the first.
+const skippedLine = "skipped %s, which is no longer the head of %s\n"
+
 // The defaults of the flags of the release commands.
 const (
 	// defaultTitle is the title of a version pull request and the message of its commits, which
@@ -101,7 +96,7 @@ const (
 	// defaultPackDir is the directory of the artifacts of ergon release pack and publish.
 	defaultPackDir = "dist"
 
-	// defaultWorkflow is the workflow of the gate, whose run ergon release ci wait waits for.
+	// defaultWorkflow is the workflow of the gate, whose passed run ergon release ci verify finds.
 	defaultWorkflow = "ci.yml"
 )
 
@@ -181,13 +176,15 @@ release version does. It then commits the changes on the branch
 ergon-release/<base> through the API of GitHub, which signs the commits, and
 opens or updates the version pull request into the base branch. Without
 changesets it proposes the lockfiles that ergon release version rewrites, and
-otherwise changes nothing.`
+otherwise changes nothing. It skips a commit of HEAD that is no longer the head
+of the base branch, and leaves the pull request to the run of the newer head.`
 
-	ciWaitShort = "Wait for the CI run of the commit to pass"
-	ciWaitLong  = `ergon release ci wait waits for the run of the workflow --workflow for the push
-of the commit of HEAD. It reads the run through the API of GitHub every 15
-seconds, and gives GitHub 5 minutes to create the run. The exit status is 1
-unless the run completes with the conclusion success.`
+	ciVerifyShort = "Verify that a CI run passed on the content of the commit"
+	ciVerifyLong  = `ergon release ci verify finds a run of the workflow --workflow that passed on the
+content of the commit of HEAD, through the API of GitHub: a run of the commit
+itself, such as the run of its push or of its merge group, or a run of the head
+of a pull request that merged the commit with the same tree. It reads each run
+once and waits for none. The exit status is 1 without such a run.`
 )
 
 // releaseRepository is a repository that a release command works on.
@@ -223,7 +220,7 @@ func (untagged) Finish(context.Context) error {
 // releaseCommand returns ergon release with its subcommands, which work on the repository of the
 // working directory of s under ctx.
 func releaseCommand(ctx context.Context, s *session) *cobra.Command {
-	ci := group(s, "ci", ciShort, ciLong, selectModeCommand(ctx, s), ciVersionCommand(ctx, s), ciWaitCommand(ctx, s))
+	ci := group(s, "ci", ciShort, ciLong, selectModeCommand(ctx, s), ciVerifyCommand(ctx, s), ciVersionCommand(ctx, s))
 	return group(s, "release", releaseShort, releaseLong, changesetCommand(ctx, s), statusCommand(ctx, s),
 		versionCommand(ctx, s), publishPlanCommand(ctx, s), packCommand(ctx, s), publishCommand(ctx, s),
 		gitTagCommand(ctx, s), ci)
@@ -515,7 +512,8 @@ func selectModeCommand(ctx context.Context, s *session) *cobra.Command {
 // ciVersionCommand returns ergon release ci version, which writes the release plan as ergon
 // release version does, and proposes it with [release.Propose] through the API of GitHub. For a
 // repository without changesets it proposes the lockfiles that [release.Lock] rewrites, and nothing
-// when it rewrites none.
+// when it rewrites none. For the [release.ErrMoved] of Propose it writes that it skipped the commit,
+// and returns no error.
 func ciVersionCommand(ctx context.Context, s *session) *cobra.Command {
 	var title string
 	cmd := &cobra.Command{
@@ -546,6 +544,10 @@ func ciVersionCommand(ctx context.Context, s *session) *cobra.Command {
 			}
 			p.Repo, p.Head, p.Title = repo, head, title
 			number, err := release.Propose(ctx, client, &p)
+			if errors.Is(err, release.ErrMoved) {
+				fmt.Fprintf(cmd.OutOrStdout(), skippedLine, head, p.Base)
+				return nil
+			}
 			if err != nil {
 				return err
 			}
@@ -557,16 +559,15 @@ func ciVersionCommand(ctx context.Context, s *session) *cobra.Command {
 	return cmd
 }
 
-// ciWaitCommand returns ergon release ci wait, which waits with [release.Gate] for the run of the
-// workflow of --workflow for the push of the commit of HEAD, and writes the page of a run that
-// succeeds. It returns the error of [release.Gate.Wait], which wraps [release.ErrGate] for a run
-// without success.
-func ciWaitCommand(ctx context.Context, s *session) *cobra.Command {
+// ciVerifyCommand returns ergon release ci verify, which finds with [release.Gate] a run of the
+// workflow of --workflow that passed on the content of the commit of HEAD, and writes its page. It
+// returns the error of [release.Gate.Verify], which wraps [release.ErrGate] when no run passed.
+func ciVerifyCommand(ctx context.Context, s *session) *cobra.Command {
 	var workflow string
 	cmd := &cobra.Command{
-		Use:   "wait",
-		Short: ciWaitShort,
-		Long:  ciWaitLong,
+		Use:   "verify",
+		Short: ciVerifyShort,
+		Long:  ciVerifyLong,
 		Args:  usage(cobra.NoArgs),
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			client, repo, err := s.forge()
@@ -577,10 +578,8 @@ func ciWaitCommand(ctx context.Context, s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			gate := release.Gate{
-				Forge: client, Repo: repo, Workflow: workflow, Interval: readInterval, Appear: appearTime,
-			}
-			page, err := gate.Wait(ctx, head)
+			gate := release.Gate{Forge: client, Repo: repo, Workflow: workflow}
+			page, err := gate.Verify(ctx, head)
 			if err != nil {
 				return err
 			}
@@ -588,7 +587,7 @@ func ciWaitCommand(ctx context.Context, s *session) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&workflow, workflowFlag, defaultWorkflow, "wait for the run of the workflow `file`")
+	cmd.Flags().StringVar(&workflow, workflowFlag, defaultWorkflow, "find a passed run of the workflow `file`")
 	return cmd
 }
 

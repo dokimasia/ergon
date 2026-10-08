@@ -11,11 +11,13 @@ import (
 	"go.dokimi.dev/ergon/service/forge"
 )
 
-// The commits and the tag object of the cases.
+// The commits, the tag object and the tree of the cases.
 const (
 	commitA   = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	commitB   = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+	commitC   = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
 	tagObject = "cccccccccccccccccccccccccccccccccccccccc"
+	treeA     = "dddddddddddddddddddddddddddddddddddddddd"
 )
 
 // The routes of the refs of the cases.

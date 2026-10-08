@@ -60,6 +60,26 @@ func (c *Client) CreatePullRequest(ctx context.Context, repo, head, base, title,
 	return created.Number, nil
 }
 
+// PullHeads returns the head commit of each pull request of repo that GitHub associates with the
+// commit sha, in the order of GitHub. For a commit of the default branch these are the pull
+// requests whose merge brought it there. It returns an error that wraps [ErrGitHub] for a request
+// that fails.
+func (c *Client) PullHeads(ctx context.Context, repo, sha string) ([]string, error) {
+	var pulls []struct {
+		Head struct {
+			SHA string `json:"sha"`
+		} `json:"head"`
+	}
+	if _, err := c.rest(ctx, http.MethodGet, "/repos/"+repo+"/commits/"+sha+"/pulls", nil, &pulls); err != nil {
+		return nil, err
+	}
+	heads := make([]string, 0, len(pulls))
+	for _, p := range pulls {
+		heads = append(heads, p.Head.SHA)
+	}
+	return heads, nil
+}
+
 // UpdatePullRequest sets the title and the Markdown body of the pull request number of repo. It
 // returns an error that wraps [ErrGitHub] for a request that fails.
 func (c *Client) UpdatePullRequest(ctx context.Context, repo string, n int, title, body string) error {

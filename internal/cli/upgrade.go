@@ -186,7 +186,8 @@ func upgradeCommand(ctx context.Context, s *session) *cobra.Command {
 
 // ciUpgradeCommand returns ergon init ci upgrade, which upgrades the repository of s as ergon init
 // upgrade does under ctx, and proposes the change through the API of GitHub: a changeset without
-// packages, and the pull request from ergon-baseline/<base> into the base branch. It returns the
+// packages, and the pull request from ergon-baseline/<base> into the base branch. For the
+// [release.ErrMoved] of the proposal it writes that it skipped the commit of HEAD. It returns the
 // errors of the environment, of the upgrade and of the proposal, and the error of a sync that left a
 // managed file, which wraps [baseline.ErrConflict], after it proposed the change.
 func ciUpgradeCommand(ctx context.Context, s *session) *cobra.Command {
@@ -243,6 +244,10 @@ func ciUpgradeCommand(ctx context.Context, s *session) *cobra.Command {
 				Title: upgradeTitle + s.release, Body: upgradeBody(s.release, &u), Deleted: deleted,
 			}
 			number, err := release.Propose(ctx, client, &p)
+			if errors.Is(err, release.ErrMoved) {
+				fmt.Fprintf(out, skippedLine, head, base)
+				return synced
+			}
 			if err != nil {
 				return err
 			}

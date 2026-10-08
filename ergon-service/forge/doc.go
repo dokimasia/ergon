@@ -3,8 +3,9 @@
 
 // Package forge is the GitHub client of ergon: the links of a commit and of a pull request for the
 // changelog of GitHub, the branch, the signed commits and the pull request of a version pull
-// request, the tags and the releases of a publish, the run of a workflow that a release waits for,
-// and the releases of a repository with the digests of their assets for a baseline update.
+// request, the tags and the releases of a publish, the passed runs of a workflow, the trees of
+// commits and the heads of pull requests that a publish verifies, and the releases of a repository
+// with the digests of their assets for a baseline update.
 //
 // # Requests
 //

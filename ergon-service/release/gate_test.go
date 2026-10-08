@@ -7,152 +7,190 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 
 	"go.dokimi.dev/assert"
 	"go.dokimi.dev/ergon/service/release"
 )
 
-// The repository, the workflow, the event, the commit and the page of the run of the cases.
+// The repository and the workflow of the gates of the cases.
 const (
 	gateRepo     = "dokimasia/ergon"
 	gateWorkflow = "ci.yml"
-	gateEvent    = "push"
-	gateSHA      = "0749c74e25cc9171f23944f676f42168839ddc0e"
-	gatePage     = "https://github.com/dokimasia/ergon/actions/runs/37769836521"
 )
 
-// The statuses and the conclusions of a run of the cases, as GitHub states them.
+// The commits of the cases: the commit that a publish verifies, the head of the pull request that
+// merged it, and the head of another pull request of the commit.
 const (
-	completedStatus   = "completed"
-	inProgressStatus  = "in_progress"
-	successConclusion = "success"
-	failureConclusion = "failure"
+	gateSHA   = "0749c74e25cc9171f23944f676f42168839ddc0e"
+	headSHA   = "a8f03f8a8f03f8a8f03f8a8f03f8a8f03f8a8f03"
+	otherHead = "ca02a08ca02a08ca02a08ca02a08ca02a08ca02a"
 )
 
-// The intervals of the gates of the cases: one between two reads, and the time that GitHub may take
-// to create a run, which is three intervals.
+// The trees of the commits of the cases: the tree of the commit, and another tree.
 const (
-	readInterval = time.Millisecond
-	appearTime   = 3 * time.Millisecond
+	gateTree  = "fc9f3dacda8a546eeed499c6cdc2722f653e4993"
+	otherTree = "1111111111111111111111111111111111111111"
 )
 
-// errRuns is the error of the forge of the cases that fails.
-var errRuns = errors.New("runs failed")
+// The pages of the runs of the cases.
+const (
+	gatePage  = "https://github.com/dokimasia/ergon/actions/runs/37769836521"
+	headPage  = "https://github.com/dokimasia/ergon/actions/runs/37821856662"
+	otherPage = "https://github.com/dokimasia/ergon/actions/runs/37809885040"
+)
 
-// run is the result of one read of a run.
-type run struct {
-	// status, conclusion and page are the status, the conclusion and the page of the run.
-	status, conclusion, page string
+// errForge is the error of the forge of the cases that fails.
+var errForge = errors.New("forge failed")
 
-	// err is the error of the read, or nil.
-	err error
-}
+// gateForge is a [release.GateForge] over maps: the page of the passed run of each commit, the tree
+// of each commit, and the heads of the pull requests of each commit. It records each read as a line,
+// and returns errForge from the read whose number is failAt.
+type gateForge struct {
+	// passed are the pages of the passed runs, by commit.
+	passed map[string]string
 
-// runForge is a [release.RunForge] that returns the next result of runs on each read, and the last
-// one again after the list ends. It records each read, and calls cancel on the first read when
-// cancel is not nil.
-type runForge struct {
-	// runs are the results of the reads, in their order.
-	runs []run
+	// trees are the trees, by commit.
+	trees map[string]string
 
-	// reads are the arguments of each read, each as one line.
+	// heads are the heads of the pull requests, by commit.
+	heads map[string][]string
+
+	// reads are the reads, each as a line, in their order.
 	reads []string
 
-	// cancel ends the context of the case on the first read, or is nil.
-	cancel context.CancelFunc
+	// failAt is the number of the read that fails, from 1, or 0 for none.
+	failAt int
 }
 
-var _ release.RunForge = (*runForge)(nil)
+var _ release.GateForge = (*gateForge)(nil)
 
-// Run records its arguments and returns the next result of f.
-func (f *runForge) Run(_ context.Context, repo, workflow, sha, event string) (string, string, string, error) {
-	f.reads = append(f.reads, repo+" "+workflow+" "+sha+" "+event)
-	if f.cancel != nil {
-		f.cancel()
+// read records line and returns errForge when it is the read failAt.
+func (f *gateForge) read(line string) error {
+	f.reads = append(f.reads, line)
+	if len(f.reads) == f.failAt {
+		return errForge
 	}
-	r := f.runs[min(len(f.reads), len(f.runs))-1]
-	return r.status, r.conclusion, r.page, r.err
+	return nil
+}
+
+// Passed returns the page of the passed run of sha.
+func (f *gateForge) Passed(_ context.Context, repo, workflow, sha string) (string, bool, error) {
+	if err := f.read("passed " + repo + " " + workflow + " " + sha); err != nil {
+		return "", false, err
+	}
+	page, ok := f.passed[sha]
+	return page, ok, nil
+}
+
+// Tree returns the tree of sha.
+func (f *gateForge) Tree(_ context.Context, repo, sha string) (string, error) {
+	if err := f.read("tree " + repo + " " + sha); err != nil {
+		return "", err
+	}
+	return f.trees[sha], nil
+}
+
+// PullHeads returns the heads of the pull requests of sha.
+func (f *gateForge) PullHeads(_ context.Context, repo, sha string) ([]string, error) {
+	if err := f.read("heads " + repo + " " + sha); err != nil {
+		return nil, err
+	}
+	return f.heads[sha], nil
 }
 
 func TestGate(t *testing.T) {
 	t.Parallel()
 
-	t.Run("Wait", func(t *testing.T) {
+	t.Run("Verify", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("returns the page of a run that completes with success", func(t *testing.T) {
+		t.Run("returns the page of a run of the commit that passed", func(t *testing.T) {
 			t.Parallel()
-			f := &runForge{runs: []run{
-				{status: inProgressStatus, page: gatePage},
-				{status: completedStatus, conclusion: successConclusion, page: gatePage},
-			}}
-			page, err := gate(f).Wait(t.Context(), gateSHA)
-			assert.NoError(t, err, "Wait")
+			f := &gateForge{passed: map[string]string{gateSHA: gatePage}}
+			page, err := gate(f).Verify(t.Context(), gateSHA)
+			assert.NoError(t, err, "Verify")
 			assert.Equal(t, page, gatePage, "the page")
-			read := gateRepo + " " + gateWorkflow + " " + gateSHA + " " + gateEvent
-			assert.Equal(t, f.reads, []string{read, read}, "the reads of the run of the push")
+			assert.Equal(t, f.reads, []string{"passed " + gateRepo + " " + gateWorkflow + " " + gateSHA}, "the reads")
 		})
 
-		t.Run("waits for a run that GitHub creates within the time to appear", func(t *testing.T) {
+		t.Run("returns the page of a passed run of a pull request head with the same tree", func(t *testing.T) {
 			t.Parallel()
-			f := &runForge{
-				runs: []run{{}, {}, {status: completedStatus, conclusion: successConclusion, page: gatePage}},
-			}
-			page, err := gate(f).Wait(t.Context(), gateSHA)
-			assert.NoError(t, err, "Wait")
-			assert.Equal(t, page, gatePage, "the page")
+			f := merged()
+			page, err := gate(f).Verify(t.Context(), gateSHA)
+			assert.NoError(t, err, "Verify")
+			assert.Equal(t, page, headPage, "the page")
+			assert.Equal(t, f.reads, []string{
+				"passed " + gateRepo + " " + gateWorkflow + " " + gateSHA,
+				"tree " + gateRepo + " " + gateSHA,
+				"heads " + gateRepo + " " + gateSHA,
+				"tree " + gateRepo + " " + headSHA,
+				"passed " + gateRepo + " " + gateWorkflow + " " + headSHA,
+			}, "the reads")
 		})
 
-		t.Run("waits for a run that runs longer than the time to appear", func(t *testing.T) {
+		t.Run("skips the head of a pull request with another tree", func(t *testing.T) {
 			t.Parallel()
-			running := run{status: inProgressStatus, page: gatePage}
-			f := &runForge{runs: []run{
-				running, running, running, running, running,
-				{status: completedStatus, conclusion: successConclusion, page: gatePage},
-			}}
-			page, err := gate(f).Wait(t.Context(), gateSHA)
-			assert.NoError(t, err, "Wait")
-			assert.Equal(t, page, gatePage, "the page")
+			f := merged()
+			f.heads[gateSHA] = []string{otherHead, headSHA}
+			f.trees[otherHead] = otherTree
+			f.passed[otherHead] = otherPage
+			page, err := gate(f).Verify(t.Context(), gateSHA)
+			assert.NoError(t, err, "Verify")
+			assert.Equal(t, page, headPage, "the page")
+			assert.NotContains(t, f.reads, "passed "+gateRepo+" "+gateWorkflow+" "+otherHead,
+				"the reads, which skip the runs of a head with another tree")
 		})
 
-		t.Run("returns ErrGate for a run that completes with another conclusion", func(t *testing.T) {
+		t.Run("returns ErrGate for a pull request whose head has no run that passed", func(t *testing.T) {
 			t.Parallel()
-			f := &runForge{runs: []run{{status: completedStatus, conclusion: failureConclusion, page: gatePage}}}
-			page, err := gate(f).Wait(t.Context(), gateSHA)
-			assert.ErrorIs(t, err, release.ErrGate, "Wait")
-			assert.Contains(t, err.Error(), "the conclusion "+failureConclusion+": "+gatePage, "the error")
-			assert.Equal(t, page, gatePage, "the page")
+			f := merged()
+			delete(f.passed, headSHA)
+			_, err := gate(f).Verify(t.Context(), gateSHA)
+			assert.ErrorIs(t, err, release.ErrGate, "Verify")
+			assert.Equal(t, err.Error(), "release: the gate did not pass: no run of "+gateWorkflow+
+				" passed on the content of "+gateSHA+", so rerun this job after the run of "+gateWorkflow+
+				" for its push passes", "the error")
 		})
 
-		t.Run("returns ErrGate for a commit without a run after the time to appear", func(t *testing.T) {
+		t.Run("returns ErrGate for a commit without a pull request", func(t *testing.T) {
 			t.Parallel()
-			f := &runForge{runs: []run{{}}}
-			_, err := gate(f).Wait(t.Context(), gateSHA)
-			assert.ErrorIs(t, err, release.ErrGate, "Wait")
-			assert.Length(t, f.reads, 4, "the reads at 0, 1, 2 and 3 intervals")
+			f := &gateForge{trees: map[string]string{gateSHA: gateTree}}
+			_, err := gate(f).Verify(t.Context(), gateSHA)
+			assert.ErrorIs(t, err, release.ErrGate, "Verify")
 		})
 
-		t.Run("returns the error of the forge", func(t *testing.T) {
-			t.Parallel()
-			f := &runForge{runs: []run{{err: errRuns}}}
-			_, err := gate(f).Wait(t.Context(), gateSHA)
-			assert.ErrorIs(t, err, errRuns, "Wait")
-		})
-
-		t.Run("returns the error of a context that ends during the wait", func(t *testing.T) {
-			t.Parallel()
-			ctx, cancel := context.WithCancel(t.Context())
-			f := &runForge{runs: []run{{status: inProgressStatus, page: gatePage}}, cancel: cancel}
-			g := gate(f)
-			g.Interval = time.Hour
-			_, err := g.Wait(ctx, gateSHA)
-			assert.ErrorIs(t, err, context.Canceled, "Wait")
-		})
+		// The reads of a commit that a pull request merged, in their order.
+		failures := []string{
+			"returns the error of the runs of the commit",
+			"returns the error of the tree of the commit",
+			"returns the error of the pull requests of the commit",
+			"returns the error of the tree of a head",
+			"returns the error of the runs of a head",
+		}
+		for n, name := range failures {
+			t.Run(name, func(t *testing.T) {
+				t.Parallel()
+				f := merged()
+				f.failAt = n + 1
+				_, err := gate(f).Verify(t.Context(), gateSHA)
+				assert.ErrorIs(t, err, errForge, "Verify")
+				assert.Length(t, f.reads, n+1, "the reads up to the one that fails")
+			})
+		}
 	})
 }
 
 // gate returns the gate of the cases on f.
-func gate(f *runForge) *release.Gate {
-	return &release.Gate{Forge: f, Repo: gateRepo, Workflow: gateWorkflow, Interval: readInterval, Appear: appearTime}
+func gate(f *gateForge) *release.Gate {
+	return &release.Gate{Forge: f, Repo: gateRepo, Workflow: gateWorkflow}
+}
+
+// merged returns the forge of a commit that a pull request merged: the commit has no run that
+// passed, and the head of the pull request has the tree of the commit and a run that passed.
+func merged() *gateForge {
+	return &gateForge{
+		passed: map[string]string{headSHA: headPage},
+		trees:  map[string]string{gateSHA: gateTree, headSHA: gateTree},
+		heads:  map[string][]string{gateSHA: {headSHA}},
+	}
 }

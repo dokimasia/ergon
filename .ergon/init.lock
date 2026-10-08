@@ -60,7 +60,7 @@
     {
       "path": ".github/workflows/ci.yml",
       "producer": "github",
-      "sha256": "13569995b79a3c61ab81a07032b3d6f887ffeeb53719b8d4ac3f67b746a2c68c"
+      "sha256": "840e9079c51b4542dcbb4fd6846199d58ab133a3bf5a90c3f47dd19e7f3f15c1"
     },
     {
       "path": ".github/workflows/codeql.yml",
@@ -71,12 +71,17 @@
       "path": ".github/workflows/release.yml",
       "producer": "github",
       "local": "121ece7023c9ef7234dfb630f4b006cee8401af33f76233c848fb987ce5484c6",
-      "sha256": "911cf34addd6853abac5e217f4a09cf9ba00da1599961d21cdc6e59e6d364df8"
+      "sha256": "618960498a00809a56bcf12e0984d62827bb36d3e227777ecb84d3da3eea795b"
     },
     {
       "path": ".github/workflows/security.yml",
       "producer": "github",
       "sha256": "623fd26152fc68d822fcf30ffb781d146bd8efb3a94d3ec0ed709b5c2a67f45b"
+    },
+    {
+      "path": ".github/workflows/version.yml",
+      "producer": "github",
+      "sha256": "a25a2fa73be231c2aab3d7fa707ba603547347c24c9c292565558289703084bb"
     },
     {
       "path": ".gitignore",
@@ -144,6 +149,9 @@
     "github.ci.actions.codeql.commit": "2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2",
     "github.ci.actions.codeql.release": "v4.38.2",
     "github.ci.actions.codeql.uses": "github/codeql-action",
+    "github.ci.actions.create-github-app-token.commit": "bcd2ba49218906704ab6c1aa796996da409d3eb1",
+    "github.ci.actions.create-github-app-token.release": "v3.2.0",
+    "github.ci.actions.create-github-app-token.uses": "actions/create-github-app-token",
     "github.ci.actions.dependency-review.commit": "a1d282b36b6f3519aa1f3fc636f609c47dddb294",
     "github.ci.actions.dependency-review.release": "v5.0.0",
     "github.ci.actions.dependency-review.uses": "actions/dependency-review-action",

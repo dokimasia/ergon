@@ -106,12 +106,14 @@ const (
 // config is the configuration of the release of the cases.
 const config = `{"changelog": "@changesets/cli/changelog", "commit": false}` + "\n"
 
-// The repository on GitHub of the cases, the path of its API of GraphQL, and the commit that each
-// commit of the fake API makes.
+// The repository on GitHub of the cases, the path of its API of GraphQL, the commit that each
+// commit of the fake API makes, and a commit that the branch main of a case points at after a later
+// push.
 const (
 	hubRepo     = "o/r"
 	graphqlPath = "/graphql"
 	hubCommit   = "c0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ff"
+	laterCommit = "1a7e21a7e21a7e21a7e21a7e21a7e21a7e21a7e2"
 )
 
 // updated is the summary of the changeset that moves the linters of the toolchain tool and of the
@@ -296,14 +298,17 @@ func (p *proxy) paths() []string {
 	return slices.Clone(p.requests)
 }
 
-// hub is a fake API of GitHub. It responds as GitHub does for a repository without the branch of the
-// pull request and without pull requests: it creates the branch, makes each commit as hubCommit and
-// opens the pull request 7. It responds to a request whose method and path start with fail with the
-// status 500. It records the requests, the bodies of the requests of GraphQL and the bodies of the
-// pull requests that it opens, and is safe for concurrent use.
+// hub is a fake API of GitHub. It responds as GitHub does for a repository whose branch main points
+// at head, without the branch of the pull request and without pull requests: it creates the branch,
+// makes each commit as hubCommit and opens the pull request 7. It responds to a request whose method
+// and path start with fail with the status 500. It records the requests, the bodies of the requests
+// of GraphQL and the bodies of the pull requests that it opens, and is safe for concurrent use.
 type hub struct {
 	// fail is the start of the method and the path of the requests that fail, or empty for none.
 	fail string
+
+	// head is the commit of the branch main.
+	head string
 
 	// requests are the method and the path with the query of each request, in their order.
 	requests []string
@@ -341,6 +346,8 @@ func (h *hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case h.fail != "" && strings.HasPrefix(call, h.fail):
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = io.WriteString(w, `{"message":"failed"}`)
+	case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/git/ref/heads/main"):
+		_, _ = io.WriteString(w, `{"ref":"refs/heads/main","object":{"type":"commit","sha":"`+h.head+`"}}`)
 	case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/git/ref/"):
 		w.WriteHeader(http.StatusNotFound)
 		_, _ = io.WriteString(w, `{"message":"Not Found"}`)
@@ -576,6 +583,7 @@ func TestUpdate(t *testing.T) {
 			expect.HasSuffix(t, stdout, "wrote "+changesetFile+"\npull request 7\n", "the standard output")
 			expect.Empty(t, stderr, "the standard error")
 			assert.Equal(t, fx.hub.calls(), []string{
+				"GET /repos/" + hubRepo + "/git/ref/heads/main",
 				"GET /repos/" + hubRepo + "/git/ref/heads/ergon-update/main",
 				"POST /repos/" + hubRepo + "/git/refs",
 				"POST " + graphqlPath,
@@ -593,6 +601,18 @@ func TestUpdate(t *testing.T) {
 				Contains(`"path":"`+lockFile+`"`, "the lock in the commit").
 				Contains(`"path":"`+changesetFile+`"`, "the changeset in the commit")
 			expect.Equal(t, fx.hub.opened(), []string{proposed}, "the bodies of the pull requests")
+		})
+
+		t.Run("skips a commit that is no longer the head of main with propose", func(t *testing.T) {
+			t.Parallel()
+			fx := newFixture(t)
+			fx.hub.head = laterCommit
+			stdout, _, err := fx.updateWith(&options{minAge: defaultMinAge, propose: true})
+			assert.NoError(t, err, "update")
+			expect.HasSuffix(t, stdout, "wrote "+changesetFile+"\nskipped "+fx.head+
+				", which is no longer the head of main\n", "the standard output")
+			expect.Equal(t, fx.hub.calls(), []string{"GET /repos/" + hubRepo + "/git/ref/heads/main"},
+				"the requests to GitHub, which change nothing")
 		})
 
 		t.Run("takes the release of a later major version with major", func(t *testing.T) {
@@ -893,7 +913,7 @@ func newFixture(t *testing.T) *fixture {
 	fx := &fixture{
 		t:     t,
 		proxy: &proxy{routes: releases()},
-		hub:   &hub{},
+		hub:   &hub{head: head},
 		root:  root,
 		head:  head,
 		listing: []string{

@@ -689,15 +689,16 @@ func TestUpgrade(t *testing.T) {
 
 		t.Run("proposes the synced files and a changeset on the branch ergon-baseline/main", func(t *testing.T) {
 			t.Parallel()
-			h := &hub{}
 			dir := committed(t, register, func(dir string) {
 				assert.NoError(t, os.Remove(filepath.Join(dir, licensePath)), "Remove of the LICENSE")
 			})
+			h := &hub{head: strings.TrimSpace(vcstest.Git(t, dir, "rev-parse", "HEAD"))}
 			status, stdout, stderr := upgrade(t.Context(), t, version, dir, h.start(t), "init", "ci", "upgrade")
 			assert.Equal(t, status, statusOK, "the exit status: "+stderr)
 			assert.Equal(t, stdout, "wrote "+licensePath+"\nwrote "+changesetOfUpgrade+"\npull request 7\n",
 				"the standard output")
 			assert.Equal(t, h.calls(), []string{
+				"GET /repos/" + hubRepo + "/git/ref/heads/main",
 				"GET /repos/" + hubRepo + "/git/ref/heads/ergon-baseline/main",
 				"POST /repos/" + hubRepo + "/git/refs",
 				"POST " + graphqlPath,
@@ -712,9 +713,37 @@ func TestUpgrade(t *testing.T) {
 			expect.Equal(t, h.opened(), []string{proposedFiles}, "the bodies of the pull requests")
 		})
 
+		t.Run("skips a commit that is no longer the head of the base branch", func(t *testing.T) {
+			t.Parallel()
+			dir := committed(t, register, func(dir string) {
+				assert.NoError(t, os.Remove(filepath.Join(dir, licensePath)), "Remove of the LICENSE")
+			})
+			head := strings.TrimSpace(vcstest.Git(t, dir, "rev-parse", "HEAD"))
+			h := &hub{head: laterCommit}
+			status, stdout, stderr := upgrade(t.Context(), t, version, dir, h.start(t), "init", "ci", "upgrade")
+			assert.Equal(t, status, statusOK, "the exit status: "+stderr)
+			assert.Equal(t, stdout, "wrote "+licensePath+"\nwrote "+changesetOfUpgrade+"\nskipped "+head+
+				", which is no longer the head of main\n", "the standard output")
+			assert.Equal(t, h.calls(), []string{"GET /repos/" + hubRepo + "/git/ref/heads/main"},
+				"the requests to GitHub, which change nothing")
+		})
+
+		t.Run("returns the conflict of the sync when the base branch moved past the commit", func(t *testing.T) {
+			t.Parallel()
+			dir := committed(t, register, func(dir string) {
+				assert.NoError(t, os.Remove(filepath.Join(dir, licensePath)), "Remove of the LICENSE")
+				write(t, dir, ignorePath, "edited\n")
+			})
+			h := &hub{head: laterCommit}
+			status, stdout, stderr := upgrade(t.Context(), t, version, dir, h.start(t), "init", "ci", "upgrade")
+			assert.Equal(t, status, statusFailure, "the exit status")
+			expect.HasPrefix(t, stderr, conflict+ignorePath, "the standard error")
+			expect.Contains(t, stdout, ", which is no longer the head of main\n", "the standard output")
+			expect.Empty(t, h.opened(), "the pull requests")
+		})
+
 		t.Run("lists the overrides and the conflicts in the pull request", func(t *testing.T) {
 			t.Parallel()
-			h := &hub{}
 			dir := committed(t, register, func(dir string) {
 				write(
 					t,
@@ -727,6 +756,7 @@ func TestUpgrade(t *testing.T) {
 				assert.NoError(t, os.Remove(filepath.Join(dir, licensePath)), "Remove of the LICENSE")
 				write(t, dir, ignorePath, "edited\n")
 			})
+			h := &hub{head: strings.TrimSpace(vcstest.Git(t, dir, "rev-parse", "HEAD"))}
 			status, _, stderr := upgrade(t.Context(), t, version, dir, h.start(t), "init", "ci", "upgrade")
 			assert.Equal(t, status, statusFailure, "the exit status")
 			expect.HasPrefix(t, stderr, conflict+ignorePath, "the standard error")
@@ -865,9 +895,12 @@ func TestUpgrade(t *testing.T) {
 		for _, tt := range ci {
 			t.Run(tt.name, func(t *testing.T) {
 				t.Parallel()
-				h := &hub{fail: "POST /repos/" + hubRepo + "/git/refs"}
-				env := h.start(t)
 				dir := committed(t, register, nil)
+				h := &hub{
+					fail: "POST /repos/" + hubRepo + "/git/refs",
+					head: strings.TrimSpace(vcstest.Git(t, dir, "rev-parse", "HEAD")),
+				}
+				env := h.start(t)
 				tt.change(t, dir, env)
 				status, _, stderr := upgrade(t.Context(), t, version, dir, env, "init", "ci", "upgrade")
 				assert.Equal(t, status, statusFailure, "the exit status")
