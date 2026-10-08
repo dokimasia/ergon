@@ -39,19 +39,6 @@ repos:
         entry: make lint
         language: system
         pass_filenames: false
-      - id: test
-        name: make test
-        entry: make test
-        language: system
-        pass_filenames: false
-
-      # Each push runs the targets of the Makefile that common.hooks.pre-push of .ergon.yaml lists.
-      - id: check
-        name: make check
-        entry: make check
-        language: system
-        pass_filenames: false
-        stages: [pre-push]
 
       # The commit message, against .commitlint.yaml. ergon installs the commitlint of the section
       # common of .ergon.yaml, and checks its archive against the digest of the section.

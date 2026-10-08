@@ -5,9 +5,11 @@ package common_test
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"go.dokimi.dev/assert"
+	"go.dokimi.dev/assert/files"
 	"go.dokimi.dev/assert/golden"
 	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/core/workflow"
@@ -19,6 +21,9 @@ import (
 // name pins the name of the producer of the common files.
 const name = "common"
 
+// preCommitConfig is the configuration of pre-commit that the common files render.
+const preCommitConfig = ".pre-commit-config.yaml"
+
 // markdownlint is the pin of the action of markdownlint at the baseline.
 var markdownlint = workflow.Action{
 	Uses:    "DavidAnson/markdownlint-cli2-action",
@@ -28,6 +33,22 @@ var markdownlint = workflow.Action{
 
 // read is the permission of the jobs of the common files.
 var read = map[string]string{"contents": "read"}
+
+// hooked is the producer of the common files whose options at the baseline have the hooks of its
+// field.
+type hooked struct {
+	common.Producer
+
+	// hooks are the hooks of the options.
+	hooks common.Hooks
+}
+
+// Options returns the options of the common files at the baseline, with the hooks of h.
+func (h hooked) Options() language.Options {
+	o, _ := h.Producer.Options().(*common.Options)
+	o.Hooks = h.hooks
+	return o
+}
 
 func TestCommon(t *testing.T) {
 	t.Parallel()
@@ -53,10 +74,60 @@ func TestCommon(t *testing.T) {
 				baselinetest.Hygiene(t, dir)
 				golden.MatchTree(t, "baseline", os.DirFS(dir), golden.ShouldUpdate())
 			})
+
+			hooks := []struct {
+				name   string
+				golden string
+				give   common.Hooks
+			}{
+				{
+					name:   "renders a hook for each target of each stage in the order of the options",
+					golden: "targets.yaml",
+					give: common.Hooks{
+						PreCommit: common.Targets{common.TargetFmt, common.TargetLint, common.TargetTest},
+						PrePush:   common.Targets{common.TargetLint, common.TargetCheck},
+					},
+				},
+				{
+					name:   "renders no hook of a stage without targets",
+					golden: "none.yaml",
+					give:   common.Hooks{},
+				},
+				{
+					name:   "renders the hooks of the stage pre-push alone",
+					golden: "pre-push.yaml",
+					give:   common.Hooks{PrePush: common.Targets{common.TargetCheck}},
+				},
+				{
+					name:   "renders the hooks of the stage pre-commit alone",
+					golden: "pre-commit.yaml",
+					give:   common.Hooks{PreCommit: common.Targets{common.TargetLint}},
+				},
+			}
+			for _, tt := range hooks {
+				t.Run(tt.name, func(t *testing.T) {
+					t.Parallel()
+					p := baseline.Producer{Name: common.Name, Producer: hooked{hooks: tt.give}}
+					dir := baselinetest.New(t, new(language.Catalog), baselinetest.Answers(), p)
+					baselinetest.Hygiene(t, dir)
+					got := files.Read(t, filepath.Join(dir, preCommitConfig))
+					golden.MatchAt(t, filepath.Join("testdata", "golden", "hooks", tt.golden), []byte(got),
+						golden.ShouldUpdate())
+				})
+			}
 		})
 
 		t.Run("Options", func(t *testing.T) {
 			t.Parallel()
+
+			t.Run("returns the hooks lint and test before a commit and check before a push", func(t *testing.T) {
+				t.Parallel()
+				o, _ := common.Producer{}.Options().(*common.Options)
+				assert.Equal(t, o.Hooks, common.Hooks{
+					PreCommit: common.Targets{common.TargetLint, common.TargetTest},
+					PrePush:   common.Targets{common.TargetCheck},
+				}, "the hooks")
+			})
 
 			t.Run("returns a new value on each call", func(t *testing.T) {
 				t.Parallel()

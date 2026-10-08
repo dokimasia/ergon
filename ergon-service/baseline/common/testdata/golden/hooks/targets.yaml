@@ -34,6 +34,11 @@ repos:
     hooks:
       # Each commit runs the targets of the Makefile that common.hooks.pre-commit of .ergon.yaml
       # lists.
+      - id: fmt
+        name: make fmt
+        entry: make fmt
+        language: system
+        pass_filenames: false
       - id: lint
         name: make lint
         entry: make lint
@@ -46,6 +51,12 @@ repos:
         pass_filenames: false
 
       # Each push runs the targets of the Makefile that common.hooks.pre-push of .ergon.yaml lists.
+      - id: lint
+        name: make lint
+        entry: make lint
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
       - id: check
         name: make check
         entry: make check

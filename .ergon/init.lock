@@ -97,7 +97,7 @@
     {
       "path": ".pre-commit-config.yaml",
       "producer": "common",
-      "sha256": "f1aec7a0c17c2e16396477ced27ef8867d57f607394d8bf571edc0cf58ed3da7"
+      "sha256": "8768894c14bfb5c186c82619793914a242df2e1ab16e375d0f100e20dee424d6"
     },
     {
       "path": "CODE_OF_CONDUCT.md",
@@ -121,6 +121,13 @@
     "common.ci.actions.markdownlint.release": "v24.2.0",
     "common.ci.actions.markdownlint.uses": "DavidAnson/markdownlint-cli2-action",
     "common.ci.timeout": 10,
+    "common.hooks.pre-commit": [
+      "lint",
+      "test"
+    ],
+    "common.hooks.pre-push": [
+      "check"
+    ],
     "common.pre-commit-hooks": "v6.0.0",
     "common.tools.commitlint.sha256": {
       "darwin/arm64": "35f25a55947031db016177ac0211d479c1fca21ccb87b368b6a429629524436c",

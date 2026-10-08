@@ -15,6 +15,13 @@ common:
   # The release of github.com/pre-commit/pre-commit-hooks, whose hooks check the hygiene of the
   # files before each commit.
   pre-commit-hooks: v6.0.0
+  # The targets of the Makefile that the hooks of .pre-commit-config.yaml run, at each stage of git.
+  # An empty list turns the hooks of its stage off.
+  hooks:
+    # The targets that run before each commit, in order: fmt, lint, test, audit or check.
+    pre-commit: [lint, test]
+    # The targets that run before each push, in order: fmt, lint, test, audit or check.
+    pre-push: [check]
   # The pins of the actions of the jobs docs and commits of ci.yml, and the limit of each job in
   # minutes.
   ci:

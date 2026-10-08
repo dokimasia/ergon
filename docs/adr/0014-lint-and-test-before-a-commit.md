@@ -4,7 +4,7 @@ title: The hooks lint and test each commit, and run the gate before each push
 status: Accepted
 date: 2026-10-08
 supersedes: none
-superseded-by: none
+superseded-by: ADR-0015, in part
 rfc: RFC-0004
 ---
 

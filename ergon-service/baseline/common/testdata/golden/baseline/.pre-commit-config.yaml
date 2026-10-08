@@ -32,21 +32,20 @@ repos:
 
   - repo: local
     hooks:
-      # The linters of every language, before each commit.
+      # Each commit runs the targets of the Makefile that common.hooks.pre-commit of .ergon.yaml
+      # lists.
       - id: lint
         name: make lint
         entry: make lint
         language: system
         pass_filenames: false
-
-      # The tests of every language, before each commit.
       - id: test
         name: make test
         entry: make test
         language: system
         pass_filenames: false
 
-      # The gate of the repository, as CI runs it, before each push.
+      # Each push runs the targets of the Makefile that common.hooks.pre-push of .ergon.yaml lists.
       - id: check
         name: make check
         entry: make check

@@ -13,9 +13,16 @@
 // # Options
 //
 // The section common of .ergon.yaml, [Options], names the release of commitlint, the release of
-// pre-commit-hooks, the pin of the action of markdownlint, and the limit of the jobs of the common
-// files. commitlint is a release binary: ergon tool run installs it and checks its archive against
-// the digest of the platform.
+// pre-commit-hooks, the targets of the hooks, the pin of the action of markdownlint, and the limit
+// of the jobs of the common files. commitlint is a release binary: ergon tool run installs it and
+// checks its archive against the digest of the platform.
+//
+// # Hooks
+//
+// [Hooks] lists the aggregate targets of the Makefile, each a [Target], that the hooks of
+// .pre-commit-config.yaml run before each commit and before each push. The template renders one
+// hook for each target of each stage, whose id is the target, in the order of the list. A stage
+// with no target has no hook.
 //
 // # Workflows
 //

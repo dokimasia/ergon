@@ -44,8 +44,9 @@ func (Producer) Templates() fs.FS {
 }
 
 // Options returns the options of the common files at the baseline: the release of commitlint with
-// the digests that it states, the releases of pre-commit-hooks and markdownlint-cli2-action, and a
-// limit of 10 minutes for each job.
+// the digests that it states, the releases of pre-commit-hooks and markdownlint-cli2-action, the
+// hooks lint and test before each commit and check before each push, and a limit of 10 minutes for
+// each job.
 func (Producer) Options() language.Options {
 	return &Options{
 		Tools: Tools{Commitlint: Commitlint{Binary: option.Binary{
@@ -57,6 +58,7 @@ func (Producer) Options() language.Options {
 			Version: "0.12.0",
 		}}},
 		PreCommitHooks: "v6.0.0",
+		Hooks:          Hooks{PreCommit: Targets{TargetLint, TargetTest}, PrePush: Targets{TargetCheck}},
 		CI: option.CI[Actions]{
 			Actions: Actions{Markdownlint: workflow.Action{
 				Uses:    "DavidAnson/markdownlint-cli2-action",

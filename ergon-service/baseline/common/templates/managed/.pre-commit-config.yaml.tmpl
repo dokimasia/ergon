@@ -32,28 +32,28 @@ repos:
 
   - repo: local
     hooks:
-      # The linters of every language, before each commit.
-      - id: lint
-        name: make lint
-        entry: make lint
+{{%- with .Options.Hooks.PreCommit %}}
+      # Each commit runs the targets of the Makefile that common.hooks.pre-commit of .ergon.yaml
+      # lists.
+{{%- range . %}}
+      - id: {{% yaml . %}}
+        name: make {{% . %}}
+        entry: make {{% . %}}
         language: system
         pass_filenames: false
-
-      # The tests of every language, before each commit.
-      - id: test
-        name: make test
-        entry: make test
-        language: system
-        pass_filenames: false
-
-      # The gate of the repository, as CI runs it, before each push.
-      - id: check
-        name: make check
-        entry: make check
+{{%- end %}}
+{{% end %}}
+{{%- with .Options.Hooks.PrePush %}}
+      # Each push runs the targets of the Makefile that common.hooks.pre-push of .ergon.yaml lists.
+{{%- range . %}}
+      - id: {{% yaml . %}}
+        name: make {{% . %}}
+        entry: make {{% . %}}
         language: system
         pass_filenames: false
         stages: [pre-push]
-
+{{%- end %}}
+{{% end %}}
       # The commit message, against .commitlint.yaml. ergon installs the commitlint of the section
       # common of .ergon.yaml, and checks its archive against the digest of the section.
       - id: commitlint

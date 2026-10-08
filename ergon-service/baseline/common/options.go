@@ -21,6 +21,9 @@ type Options struct {
 	// PreCommitHooks is the release of github.com/pre-commit/pre-commit-hooks.
 	PreCommitHooks option.Version `yaml:"pre-commit-hooks" source:"github:pre-commit/pre-commit-hooks" doc:"The release of github.com/pre-commit/pre-commit-hooks, whose hooks check the hygiene of the files before each commit."`
 
+	// Hooks are the targets of the Makefile that the hooks of .pre-commit-config.yaml run.
+	Hooks Hooks `yaml:"hooks" doc:"The targets of the Makefile that the hooks of .pre-commit-config.yaml run, at each stage of git. An empty list turns the hooks of its stage off."`
+
 	// CI are the pins of the actions of the jobs docs and commits, and their limit.
 	CI option.CI[Actions] `yaml:"ci" doc:"The pins of the actions of the jobs docs and commits of ci.yml, and the limit of each job in minutes."`
 }
