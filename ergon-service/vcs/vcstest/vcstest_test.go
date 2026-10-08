@@ -34,6 +34,16 @@ func TestVcstestEnv(t *testing.T) {
 			assert.Equal(t, os.Getenv("GIT_CONFIG_GLOBAL"), os.DevNull, "GIT_CONFIG_GLOBAL")
 			assert.Equal(t, os.Getenv("GIT_CONFIG_NOSYSTEM"), "1", "GIT_CONFIG_NOSYSTEM")
 		})
+
+		t.Run("turns off the automatic maintenance that a commit starts in the background", func(t *testing.T) {
+			vcstest.Isolate()
+			dir := vcstest.Repository(t, files.Tree{"a.txt": files.Text("a\n")})
+			assert.Equal(t, strings.TrimSpace(vcstest.Git(t, dir, "config", "maintenance.auto")), "false",
+				"the configuration of the automatic maintenance")
+			t.Setenv("GIT_TRACE", "1")
+			trace := vcstest.Git(t, dir, "commit", "--quiet", "--allow-empty", "--message", "first")
+			assert.NotContains(t, trace, "maintenance", "the commands that the commit starts")
+		})
 	})
 }
 

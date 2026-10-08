@@ -16,10 +16,17 @@ import (
 // prefix starts the name of every variable of the environment that git reads.
 const prefix = "GIT_"
 
+// maintenance is the key of the configuration of git that turns the automatic maintenance on or
+// off, which [Isolate] sets to false.
+const maintenance = "maintenance.auto"
+
 // Isolate removes every variable of the environment whose name starts with GIT_, and then sets
 // GIT_CONFIG_GLOBAL to the null device and GIT_CONFIG_NOSYSTEM to 1, so git reads no configuration
-// of the user or of the system. A TestMain calls it before m.Run, while no test runs: it changes the
-// environment of the process, which is not safe for concurrent use.
+// of the user or of the system. It also sets maintenance.auto to false through GIT_CONFIG_COUNT,
+// GIT_CONFIG_KEY_0 and GIT_CONFIG_VALUE_0, so no command of git starts the automatic maintenance,
+// whose process runs in the background after the command returns. A TestMain calls Isolate before
+// m.Run, while no test runs: it changes the environment of the process, which is not safe for
+// concurrent use.
 func Isolate() {
 	for _, kv := range os.Environ() {
 		if name, _, _ := strings.Cut(kv, "="); strings.HasPrefix(name, prefix) {
@@ -28,6 +35,9 @@ func Isolate() {
 	}
 	_ = os.Setenv(prefix+"CONFIG_GLOBAL", os.DevNull)
 	_ = os.Setenv(prefix+"CONFIG_NOSYSTEM", "1")
+	_ = os.Setenv(prefix+"CONFIG_COUNT", "1")
+	_ = os.Setenv(prefix+"CONFIG_KEY_0", maintenance)
+	_ = os.Setenv(prefix+"CONFIG_VALUE_0", "false")
 }
 
 // Repository returns a new working tree of git in a directory of the test, with the files of tree,
