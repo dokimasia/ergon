@@ -24,5 +24,6 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 | [0013](0013-go-modules-through-the-version-list.md) | The resolver finds the module of a Go package through @v/list | Proposed |
 | [0014](0014-lint-and-test-before-a-commit.md) | The hooks lint and test each commit, and run the gate before each push | Accepted, superseded in part by ADR-0015 |
 | [0015](0015-hook-targets-in-ergon-yaml.md) | The targets of the hooks are options of .ergon.yaml | Accepted |
-| [0016](0016-version-pull-request-gates-the-release.md) | The CI run of the version pull request is the gate of a release | Accepted |
+| [0016](0016-version-pull-request-gates-the-release.md) | The CI run of the version pull request is the gate of a release | Accepted, superseded in part by ADR-0018 |
 | [0017](0017-generate-and-help-groups.md) | make generate runs the generators of every language, and make help groups the targets | Accepted |
+| [0018](0018-ci-skips-tested-content.md) | ci.yml skips its jobs on content that already passed | Accepted |

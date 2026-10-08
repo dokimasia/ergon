@@ -4,7 +4,7 @@ title: The CI run of the version pull request is the gate of a release
 status: Accepted
 date: 2026-10-08
 supersedes: ADR-0010
-superseded-by: none
+superseded-by: ADR-0018, in part
 rfc: RFC-0002
 ---
 
