@@ -81,14 +81,21 @@
 // a pull request that merged the commit with the same tree. [Gate.Verify] reads those runs once
 // through a [GateForge], and returns an error that wraps [ErrGate] when none passed.
 //
+// A run of the gate skips its jobs when a passed run already covers its content. [Skip.Tested]
+// decides it through a [SkipForge]: a push whose content passed, as Gate.Verify finds it, and a
+// version commit whose first parent passed. [MarkVersion] marks the commit of a version pull request
+// with the status [VersionStatus], so that its runs and the runs of its merge skip their jobs.
+//
 // # Errors
 //
 // Each error of the package wraps one of [ErrPackages], [ErrConfig], [ErrChangeset],
 // [ErrChangelog], [ErrPublishPlan], [ErrTag], [ErrStale], [ErrMoved] and [ErrGate], and names the
 // package, the key, the file, the tag, the branch or the commit that caused it, or is
-// [ErrNoChangesets]. The package also returns the error of git, which wraps
+// [ErrNoChangesets]. [MarkVersion] returns an error that names the branch of a version pull request
+// that does not exist. The package also returns the error of git, which wraps
 // [go.dokimi.dev/ergon/service/vcs.ErrGit], the error of the file system with its path, and the
-// error of a toolchain role, of a [Forge], a [Proposer], a [Releaser], a [GateForge] or of
+// error of a toolchain role, of a [Forge], a [Proposer], a [Releaser], a [GateForge], a [SkipForge],
+// a [Marker] or of
 // [go.dokimi.dev/ergon/core/version].
 //
 // # Concurrency

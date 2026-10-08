@@ -42,9 +42,10 @@ const (
 // errForge is the error of the forge of the cases that fails.
 var errForge = errors.New("forge failed")
 
-// gateForge is a [release.GateForge] over maps: the page of the passed run of each commit, the tree
-// of each commit, and the heads of the pull requests of each commit. It records each read as a line,
-// and returns errForge from the read whose number is failAt.
+// gateForge is a [release.SkipForge] over maps: the page of the passed run of each commit, the tree
+// of each commit, the heads of the pull requests of each commit, the state of the status
+// [release.VersionStatus] of each commit, and the first parent of each commit. It records each read
+// as a line, and returns errForge from the read whose number is failAt.
 type gateForge struct {
 	// passed are the pages of the passed runs, by commit.
 	passed map[string]string
@@ -55,6 +56,12 @@ type gateForge struct {
 	// heads are the heads of the pull requests, by commit.
 	heads map[string][]string
 
+	// statuses are the states of the status release.VersionStatus, by commit.
+	statuses map[string]string
+
+	// parents are the first parents, by commit.
+	parents map[string]string
+
 	// reads are the reads, each as a line, in their order.
 	reads []string
 
@@ -62,7 +69,7 @@ type gateForge struct {
 	failAt int
 }
 
-var _ release.GateForge = (*gateForge)(nil)
+var _ release.SkipForge = (*gateForge)(nil)
 
 // read records line and returns errForge when it is the read failAt.
 func (f *gateForge) read(line string) error {
@@ -96,6 +103,25 @@ func (f *gateForge) PullHeads(_ context.Context, repo, sha string) ([]string, er
 		return nil, err
 	}
 	return f.heads[sha], nil
+}
+
+// Status returns the state of the status name of sha, which the forge has for
+// release.VersionStatus alone.
+func (f *gateForge) Status(_ context.Context, repo, sha, name string) (string, bool, error) {
+	if err := f.read("status " + repo + " " + sha + " " + name); err != nil {
+		return "", false, err
+	}
+	state, ok := f.statuses[sha]
+	return state, ok, nil
+}
+
+// Parent returns the first parent of sha.
+func (f *gateForge) Parent(_ context.Context, repo, sha string) (string, bool, error) {
+	if err := f.read("parent " + repo + " " + sha); err != nil {
+		return "", false, err
+	}
+	parent, ok := f.parents[sha]
+	return parent, ok, nil
 }
 
 func TestGate(t *testing.T) {
