@@ -30,9 +30,10 @@
 //
 // The commands work on the files that git tracks or would track, as git ls-files lists them, and
 // skip the files that the configuration excludes, the changesets of .changeset, whose body is the
-// entry of the changelogs, the files that a tool generated or that ergon init manages, and the
-// files without a comment style. A header matches with any year, list of years or range of years,
-// so a header of 2026 matches in 2027.
+// entry of the changelogs, the changelogs CHANGELOG.md, which ergon release version creates without
+// a header, the files that a tool generated or that ergon init manages, and the files without a
+// comment style. A header matches with any year, list of years or range of years, so a header of
+// 2026 matches in 2027.
 //
 // # skywalking-eyes
 //

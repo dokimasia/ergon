@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"strings"
 
+	"go.dokimi.dev/ergon/core/changeset"
 	"go.dokimi.dev/ergon/core/version"
 	"go.dokimi.dev/ergon/core/workspace"
 )
@@ -23,7 +24,7 @@ const Toolchain workspace.Toolchain = "go"
 
 // ChangelogFile is the changelog of a module, in the directory of the module. Its headings record
 // the versions of the module.
-const ChangelogFile = "CHANGELOG.md"
+const ChangelogFile = changeset.Changelog
 
 // versionHeading matches a heading of a changelog that names a version, such as ## 1.2.0, with the
 // version in its first group.

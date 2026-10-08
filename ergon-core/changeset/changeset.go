@@ -22,6 +22,10 @@ const Ext = ".md"
 // Readme is the file of [Dir] that has the extension of a changeset and is none.
 const Readme = "README.md"
 
+// Changelog is the name of the changelog of a package, in the directory of the package, into which
+// a release writes the summaries of its changesets.
+const Changelog = "CHANGELOG.md"
+
 // fence is the line that opens and closes the front matter.
 const fence = "---"
 

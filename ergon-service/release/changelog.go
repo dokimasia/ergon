@@ -21,7 +21,7 @@ import (
 )
 
 // ChangelogFile is the name of the changelog of a package, in the directory of the package.
-const ChangelogFile = "CHANGELOG.md"
+const ChangelogFile = changeset.Changelog
 
 // defaultServer is the address of GitHub when GITHUB_SERVER_URL is empty.
 const defaultServer = "https://github.com"

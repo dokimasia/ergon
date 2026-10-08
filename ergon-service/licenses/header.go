@@ -76,9 +76,10 @@ type Report struct {
 	// Checked is the number of files that the configuration gives a header.
 	Checked int `json:"checked"`
 
-	// Skipped is the number of files without a header: the excluded files, the changesets, the files
-	// that a tool generated or that ergon init manages, the files without a comment style, and the
-	// paths that are no regular file, such as a link or a tracked file that the working tree deleted.
+	// Skipped is the number of files without a header: the excluded files, the changesets and the
+	// changelogs, the files that a tool generated or that ergon init manages, the files without a
+	// comment style, and the paths that are no regular file, such as a link or a tracked file that
+	// the working tree deleted.
 	Skipped int `json:"skipped"`
 }
 
@@ -146,11 +147,13 @@ type run struct {
 
 // Check returns the report of the files of the working tree of root whose header does not match c:
 // each file that git tracks, or would track, and that has a comment style, as [Config.Styles] and
-// the table of skywalking-eyes resolve it. It skips a file that c excludes, a changeset, a file
-// that a tool generated or that ergon init manages, and a file without a comment style. A changeset
-// is a Markdown file of .changeset other than its README.md: its front matter opens the file and
-// its body is the entry of the changelogs, so a header has no place in it. A header matches when
-// the file, normalized as the library normalizes a header, states Copyright <owner> <years> and
+// the table of skywalking-eyes resolve it. It skips a file that c excludes, a changeset, a
+// changelog, a file that a tool generated or that ergon init manages, and a file without a comment
+// style. A changeset is a Markdown file of .changeset other than its README.md: its front matter
+// opens the file and its body is the entry of the changelogs, so a header has no place in it. A
+// changelog is a file named CHANGELOG.md in any directory: ergon release version creates it
+// without a header, and adds an entry to it for each release. A header matches when the file,
+// normalized as the library normalizes a header, states Copyright <owner> <years> and
 // SPDX-License-Identifier: <spdx>, with any year, list of years or range of years. Check writes
 // nothing.
 //
@@ -239,14 +242,14 @@ func (r *run) walk(ctx context.Context, visit func(*file) error) error {
 }
 
 // open returns the file at p, a path of the repository, and reports whether the configuration
-// gives it a header: a regular file that c does not exclude, that is no changeset, that has a
-// comment style, and whose first line has no marker of a generated or a managed file. A tracked
-// file that the working tree deleted has none. It returns the error of a path that does not stat,
-// other than a missing one, and of a file that does not read.
+// gives it a header: a regular file that c does not exclude, that is no changeset and no changelog,
+// that has a comment style, and whose first line has no marker of a generated or a managed file. A
+// tracked file that the working tree deleted has none. It returns the error of a path that does
+// not stat, other than a missing one, and of a file that does not read.
 func (r *run) open(p string) (*file, bool, error) {
 	dir, base := path.Split(p)
 	excluded := (dir == changeset.Dir+"/" && strings.HasSuffix(base, changeset.Ext) &&
-		!strings.EqualFold(base, changeset.Readme)) ||
+		!strings.EqualFold(base, changeset.Readme)) || base == changeset.Changelog ||
 		slices.ContainsFunc(r.c.Exclude, func(glob string) bool {
 			matched, _ := doublestar.Match(glob, p)
 			return matched

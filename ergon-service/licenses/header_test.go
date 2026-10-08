@@ -92,6 +92,26 @@ func TestHeader(t *testing.T) {
 			assert.Equal(t, report, licenses.Report{Skipped: 6}, "the report")
 		})
 
+		t.Run("skips the changelogs of the packages", func(t *testing.T) {
+			t.Parallel()
+			dir := vcstest.Repository(t, files.Tree{
+				"CHANGELOG.md":     files.Text("# example.com/demo\n\n## 1.0.0\n\n- Release the first version.\n"),
+				"pkg/CHANGELOG.md": files.Text("# example.com/demo/pkg\n\n## 1.0.0\n\n- Release the first version.\n"),
+			})
+			report, err := licenses.Check(t.Context(), dir, config())
+			assert.NoError(t, err, "Check")
+			assert.Equal(t, report, licenses.Report{Skipped: 2}, "the report")
+		})
+
+		t.Run("returns Missing for a Markdown file whose name differs from CHANGELOG.md in case", func(t *testing.T) {
+			t.Parallel()
+			dir := vcstest.Repository(t, files.Tree{"docs/changelog.md": files.Text("# Changes\n")})
+			report, err := licenses.Check(t.Context(), dir, config())
+			assert.NoError(t, err, "Check")
+			assert.Equal(t, report.Findings, []licenses.Finding{{Path: "docs/changelog.md", Kind: licenses.Missing}},
+				"the findings")
+		})
+
 		t.Run("returns Missing for the README.md of .changeset without a header", func(t *testing.T) {
 			t.Parallel()
 			dir := vcstest.Repository(t, files.Tree{".changeset/README.md": files.Text("# Changesets\n")})

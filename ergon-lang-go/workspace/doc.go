@@ -26,6 +26,6 @@
 //
 // # Dependency position
 //
-// Imports the standard library, golang.org/x/mod/modfile, [go.dokimi.dev/ergon/core/version] and
-// [go.dokimi.dev/ergon/core/workspace].
+// Imports the standard library, golang.org/x/mod/modfile, [go.dokimi.dev/ergon/core/changeset],
+// [go.dokimi.dev/ergon/core/version] and [go.dokimi.dev/ergon/core/workspace].
 package workspace

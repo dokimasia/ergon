@@ -20,6 +20,9 @@
 // name in double quotes. A name that two toolchains share is spelled <toolchain>:<name>, and the
 // planner of a release resolves it.
 //
+// [Dir] is the directory of the changesets, and [Changelog] the name of the changelog of a package,
+// into which a release writes the summaries of its changesets.
+//
 // # Errors
 //
 // Parse returns an error that wraps [ErrInvalid] and names the file and the line.

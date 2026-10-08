@@ -79,7 +79,7 @@ The repositories differ in their licenses as well as in their headers. Of the 17
 
 Both commands work on the repository of the working directory, or of the nearest of its parents that has `.ergon/init.lock`. They read the section `license` of its `.ergon.yaml` as every command of `ergon init` resolves it.
 
-Each command prints the kind and the path of each finding, with the line of a conflict, and then the number of files that it checked and skipped. `fix` first prints the path of each file that it wrote. Files without a comment syntax are skipped, and they never fail the check. A changeset of `.changeset` is skipped too, because its front matter opens the file and its body is the entry of the changelogs, as RFC-0002 states. A file with a comment syntax whose content is not text, such as a file with a null byte, is reported `unsupported` and fails neither command.
+Each command prints the kind and the path of each finding, with the line of a conflict, and then the number of files that it checked and skipped. `fix` first prints the path of each file that it wrote. Files without a comment syntax are skipped, and they never fail the check. A changeset of `.changeset` is skipped too, because its front matter opens the file and its body is the entry of the changelogs, as RFC-0002 states. So is a changelog, a file named `CHANGELOG.md` in any directory: `ergon release version` creates it without a header at the first release of a package, and adds an entry to it at each release. A file with a comment syntax whose content is not text, such as a file with a null byte, is reported `unsupported` and fails neither command.
 
 ### Licenses
 
@@ -299,7 +299,7 @@ func Fix(ctx context.Context, root string, c *Config, year int) (Report, error)
 
 1. Set `logger.Log` to discard, once per process. Resolve the style of each file from `c.Styles`, then none for a license file, then ergon's overrides, then the library's table, each by the base name and then by the longest extension.
 2. Build a `header.ConfigHeader` whose `License.Content` is the rendered header and whose pattern is `Copyright <owner> \d{4}(?:\s*[-,]\s*\d{4})*\s+SPDX-License-Identifier: <spdx>(?:\s|$)`, normalized by `NormalizedPattern`.
-3. List the files with `git ls-files --cached --others --exclude-standard`, and drop the excluded files, the changesets, the generated files, the files without a style and every path that is no regular file. A changeset is a Markdown file directly in `.changeset` other than its `README.md`. A file is generated when its first line contains `Code generated … DO NOT EDIT` or `Managed by ergon init`.
+3. List the files with `git ls-files --cached --others --exclude-standard`, and drop the excluded files, the changesets, the changelogs, the generated files, the files without a style and every path that is no regular file. A changeset is a Markdown file directly in `.changeset` other than its `README.md`. A changelog is a file named `CHANGELOG.md`. A file is generated when its first line contains `Code generated … DO NOT EDIT` or `Managed by ergon init`.
 4. Normalize each file with `license.NormalizeHeader`, and match the pattern.
 5. For each failing file, `Fix` looks for an existing header block in the file's style, after its preamble: the first comment block with a copyright line or an SPDX tag, among the comment blocks and blank lines before the first other line. It removes a block whose lines are all copyright lines, SPDX tags or empty comment lines, and keeps its years. It reports a block with any other line as a conflict and leaves the file unchanged. It then inserts the text of `header.GenerateLicenseHeader` after the preamble of the style, as the library inserts it, in one write.
 
@@ -388,12 +388,19 @@ The texts and templates of the SPDX License List 3.29.0 cover its 708 current li
 
 **Why not:** many of those licenses name the copyright holder of one project in their text, such as `AMD-newlib`, whose notice is `Copyright 1990 Advanced Micro Devices, Inc.`. The SPDX texts also mark the copyright notice inconsistently: the template of BSD-2-Clause states it as `<owner>.`, while its text has `<owner>` without the full stop, and the text of zlib omits the notice that its template declares. GitHub's texts state each notice as a field.
 
+### F. A header in each changelog
+
+`ergon release version` would write the header into a new `CHANGELOG.md`, or `ergon license fix` would run after it.
+
+**Why not:** the header depends on the section `license`, so the release command would read the configuration of another command, and a version pull request would contain the work of two commands. A changelog lists the summaries of the changesets, which ergon license skips for the same reason.
+
 ## Drawbacks
 
 - ergon depends on a v0.x library whose API may change. ergon pins v0.9.0, and each upgrade needs the six-repository run again.
 - The library brings go-git, logrus and 4.57 MB of embedded assets. The probe binary that imports it is 14,999,624 bytes.
 - `logger.Log` is package-level state of the library, which discards every message for the whole process once ergon has set it.
 - Files without a comment syntax, 538 of them JSON, contain no license information.
+- A file named `CHANGELOG.md` has no header, also when the repository writes it by hand.
 - `check` accepts any year, so it does not detect a year that is out of date.
 - A license outside the 44 needs a change to ergon.
 - The texts follow GitHub's formatting, which differs in places from the text of a license's author: GitHub's Apache License 2.0 lacks the blank line that opens the text at apache.org.
