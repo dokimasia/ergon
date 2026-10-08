@@ -1,5 +1,20 @@
 # go.dokimi.dev/ergon/service
 
+## 0.4.0
+
+### Minor Changes
+
+- c61862c: Add make generate, which runs the generators of every language, and the options generate.command and generate.args to every language section of .ergon.yaml. generate-<language> runs the generators, and verify-generate-<language>, the step generate of check, fails when they change a file. make help lists the targets in groups: Common, each language, and the targets of the repository.
+- 806100c: Make the targets of the hooks of .pre-commit-config.yaml options of .ergon.yaml: common.hooks.pre-commit and common.hooks.pre-push.
+- 354fe1c: Open the version pull request in version.yml when the run of ci.yml for a push to main passes, and publish in release.yml after ergon release ci verify finds a run of ci.yml that passed on the content of the commit, such as the run of the version pull request. ergon release ci verify replaces ergon release ci wait, so no job waits for another workflow. ergon release ci version skips a commit that is no longer the head of main. A GitHub App in the variable ERGON_APP_CLIENT_ID and the secret ERGON_APP_PRIVATE_KEY opens the version pull request, so its checks run without an approval. Each push to main gets a concurrency group of its own in ci.yml.
+
+### Patch Changes
+
+- 12066ae: Drop the license header of a local file, such as .ergon/local/Makefile, when ergon init appends the file to its managed file.
+- 7c5311d: Turn off the automatic maintenance of git in vcstest.Isolate, which a commit of git 2.48 and later starts in the background, so no process of git writes into the working tree of a test after the test ends.
+- Updated dependencies [c61862c]
+  - go.dokimi.dev/ergon/core@0.4.0
+
 ## 0.3.0
 
 ### Minor Changes

@@ -1,5 +1,24 @@
 # go.dokimi.dev/ergon/lang/go
 
+## 0.3.0
+
+### Minor Changes
+
+- c61862c: Add make generate, which runs the generators of every language, and the options generate.command and generate.args to every language section of .ergon.yaml. generate-<language> runs the generators, and verify-generate-<language>, the step generate of check, fails when they change a file. make help lists the targets in groups: Common, each language, and the targets of the repository.
+
+### Patch Changes
+
+- f81caba: Move the pins of the baseline to their newest releases.
+  
+  - `go.tools.ergon-go-vet` from v0.1.0 to v0.2.1
+- Updated dependencies [c61862c]
+- Updated dependencies [12066ae]
+- Updated dependencies [806100c]
+- Updated dependencies [354fe1c]
+- Updated dependencies [7c5311d]
+  - go.dokimi.dev/ergon/core@0.4.0
+  - go.dokimi.dev/ergon/service@0.4.0
+
 ## 0.2.1
 
 ### Patch Changes
