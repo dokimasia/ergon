@@ -172,10 +172,10 @@ func TestTool(t *testing.T) {
 			t.Parallel()
 			dir := filepath.Join(javascriptRepository(t), "packages", "web")
 			assert.NoError(t, os.MkdirAll(dir, 0o755), "MkdirAll of the package")
-			status, stdout, stderr := runWith(t, app.Register, dir, "tool", "run", "js.biome", "--", pwdFlag)
-			assert.Equal(t, status, statusOK, "the exit status: "+stderr)
 			resolved, err := filepath.EvalSymlinks(dir)
 			assert.NoError(t, err, "EvalSymlinks of the package")
+			status, stdout, stderr := runWith(t, app.Register, resolved, "tool", "run", "js.biome", "--", pwdFlag)
+			assert.Equal(t, status, statusOK, "the exit status: "+stderr)
 			assert.Equal(t, stdout, biome+" "+pwdFlag+"\n"+resolved+"\n", "the output of the tool")
 		})
 

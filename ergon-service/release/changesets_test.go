@@ -41,7 +41,6 @@ func TestChangesets(t *testing.T) {
 			t.Parallel()
 			root := files.Workspace(t, files.Tree{
 				".changeset/README.md":   files.Text("# Changesets\n"),
-				".changeset/readme.MD":   files.Text("# Changesets\n"),
 				".changeset/AGENTS.md":   files.Text("# Agents\n"),
 				".changeset/CLAUDE.md":   files.Text("# Claude\n"),
 				".changeset/GEMINI.md":   files.Text("# Gemini\n"),
@@ -49,6 +48,14 @@ func TestChangesets(t *testing.T) {
 				".changeset/config.json": files.Text("{}\n"),
 				".changeset/pre/x.md":    files.Text("not a changeset\n"),
 			})
+			got, err := release.ReadChangesets(root)
+			assert.NoError(t, err, "ReadChangesets")
+			assert.Empty(t, got, "the changesets")
+		})
+
+		t.Run("skips a README.md whose letters differ in case", func(t *testing.T) {
+			t.Parallel()
+			root := files.Workspace(t, files.Tree{".changeset/readme.MD": files.Text("# Changesets\n")})
 			got, err := release.ReadChangesets(root)
 			assert.NoError(t, err, "ReadChangesets")
 			assert.Empty(t, got, "the changesets")

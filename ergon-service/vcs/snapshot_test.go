@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -15,6 +16,9 @@ import (
 	"go.dokimi.dev/ergon/service/vcs"
 	"go.dokimi.dev/ergon/service/vcs/vcstest"
 )
+
+// windows is the system of Windows, which stores no execute bit of a file.
+const windows = "windows"
 
 func TestSnapshot(t *testing.T) {
 	t.Parallel()
@@ -109,6 +113,9 @@ func TestSnapshot(t *testing.T) {
 
 		t.Run("restores an executable file and a symbolic link", func(t *testing.T) {
 			t.Parallel()
+			if runtime.GOOS == windows {
+				t.Skip("Windows stores no execute bit of a file")
+			}
 			dir := vcstest.Repository(
 				t,
 				files.Tree{"run.sh": files.Executable("#!/bin/sh\n"), "link": files.Link("run.sh")},
