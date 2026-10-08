@@ -28,3 +28,4 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 | [0017](0017-generate-and-help-groups.md) | make generate runs the generators of every language, and make help groups the targets | Accepted |
 | [0018](0018-ci-skips-tested-content.md) | ci.yml skips its jobs on content that already passed | Accepted |
 | [0019](0019-no-lock-of-a-development-build.md) | A build of ergon without a release does not write a lock of a release | Accepted |
+| [0020](0020-nightly-workflow.md) | nightly.yml runs the long steps of a language on a schedule | Accepted |

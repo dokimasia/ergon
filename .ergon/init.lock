@@ -167,6 +167,7 @@
     "github.ci.timeout": 15,
     "github.linux": "ubuntu-26.04",
     "github.make": "4.4.1",
+    "github.nightly.schedule": "0 3 * * *",
     "github.runners": [
       "ubuntu-26.04",
       "macos-26",
@@ -205,6 +206,11 @@
     "go.mutate.args": [],
     "go.mutate.timeout": "0s",
     "go.mutate.workers": 1,
+    "go.nightly": {
+      "bench": 45,
+      "fuzz": 120,
+      "mutate": 60
+    },
     "go.paths": [
       "./..."
     ],

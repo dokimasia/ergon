@@ -42,6 +42,12 @@ github:
   # The release of GNU make that the action setup-make installs from Chocolatey on a Windows runner,
   # whose image has no make.
   make: 4.4.1
+  # The options of nightly.yml, which runs the steps under the key nightly of each language on a
+  # schedule, each in a job of its own.
+  nightly:
+    # When nightly.yml runs, as a cron expression of five fields in UTC, such as 0 3 * * * for 03:00
+    # each day.
+    schedule: 0 3 * * *
   # The pins of the actions of the workflows, and the limit in minutes of each job of the GitHub
   # files.
   ci:
@@ -147,6 +153,9 @@ go:
   # The steps that check-go runs, in order: lint, test, race, fuzz, bench, mutate, generate or
   # audit.
   check: [lint, test, race, audit]
+  # The steps that nightly.yml runs on its schedule, fuzz, bench or mutate, each in a job of its own
+  # on Linux, mapped to the limit of that job in minutes.
+  nightly: {}
   # The options of lint-go, which runs golangci-lint with the rules of .golangci.yml and
   # ergon-go-vet in every module.
   lint:
