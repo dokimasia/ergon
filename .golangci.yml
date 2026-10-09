@@ -145,6 +145,8 @@ linters:
             # The paths and the pseudo-versions of Go modules, which a baseline update resolves
             # through a module proxy.
             - golang.org/x/mod
+            # The .tar.xz archives of release binaries, such as the Linux programs of UPX.
+            - github.com/ulikunitz/xz
         # The package licenses is the one package of the repository that imports skywalking-eyes and
         # its logger.
         license-library:
@@ -181,7 +183,8 @@ linters:
         # The analyzers of ergon-go-vet read the syntax and the types of Go, and run on
         # golang.org/x/tools, whose multichecker runs them and whose go/packages resolves the
         # patterns of -exclude. A release reads and writes go.work and go.mod, and writes the zips
-        # of the released modules, with golang.org/x/mod.
+        # of the released modules, with golang.org/x/mod. The packer reads the dist directory from
+        # the GoReleaser configuration of each module with go.yaml.in/yaml/v3.
         go-module:
           files: ["**/ergon-lang-go/**", "!$test"]
           list-mode: strict
@@ -195,6 +198,7 @@ linters:
             - go.dokimi.dev/ergon/lang/go/
             - golang.org/x/mod
             - golang.org/x/tools
+            - go.yaml.in/yaml/v3
         python-module:
           files: ["**/ergon-lang-python/**", "!$test"]
           list-mode: strict

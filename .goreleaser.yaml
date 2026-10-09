@@ -1,48 +1,168 @@
-# Copyright Dokimasia B.V. 2026
-# SPDX-License-Identifier: MIT
-
-# The binaries of a release of ergon, which the workflow binaries.yml builds at the tag v<version>
-# of the root module: an archive of the command ergon for each system and architecture that the
-# action setup-ergon of ergon init installs, and checksums.txt, which it checks the archives
-# against. GoReleaser keeps the notes of a GitHub Release that ergon release publish created, and
-# writes the annotation of the tag into a release that it creates: its subject and its body, which
-# leave out the signature of a signed tag.
+# Managed by ergon init. Add repository settings to .ergon/local/.goreleaser.yaml and run ergon init sync.
+#
+# The commands of the root module, which the key binaries of the section go of .ergon.yaml lists.
+# ergon release pack builds, packs and signs them for each release of the module in the job pack of
+# release.yml: it tags the commit with the tag of the module, and runs GoReleaser in snapshot mode
+# with the version of the release in ERGON_VERSION. ergon release publish attaches the assets to the
+# release of the tag before it publishes the release.
 
 version: 2
 
 project_name: ergon
 
+dist: dist/goreleaser/ergon
+
+snapshot:
+  version_template: "{{ .Env.ERGON_VERSION }}"
+
+# Each cobra program writes its completions of bash, zsh and fish, which its archives, packages and
+# cask contain.
+before:
+  hooks:
+    - sh -c 'mkdir -p dist/completions/ergon && for s in bash zsh fish; do go -C . run ./cmd/ergon completion "$s" > "dist/completions/ergon/ergon.$s"; done'
+
+# A static binary without the paths of the runner, the symbol table and DWARF data. Go writes the
+# version of the module from its tag, and applies a default.pgo beside the main package. The build
+# <name>-upx has the Linux targets of a command, and UPX packs each of its binaries with LZMA, whose
+# packed binaries syft still reads. UPX refuses macOS binaries, and syft reads no packed Windows
+# binary, so the build <name> of the other targets has no UPX.
 builds:
   - id: ergon
+    dir: .
     main: ./cmd/ergon
     binary: ergon
-    env:
-      - CGO_ENABLED=0
-    flags:
-      - -trimpath
-    ldflags:
-      - -s -w
-      - -X go.dokimi.dev/ergon/internal/buildinfo.version={{ .Version }}
-      - -X go.dokimi.dev/ergon/internal/buildinfo.commit={{ .ShortCommit }}
-      - -X go.dokimi.dev/ergon/internal/buildinfo.date={{ .CommitDate }}
+    env: [CGO_ENABLED=0]
+    flags: [-trimpath]
+    ldflags: [-s -w]
     mod_timestamp: "{{ .CommitTimestamp }}"
-    goos: [linux, darwin, windows]
-    goarch: [amd64, arm64]
+    targets:
+      - darwin_amd64_v1
+      - darwin_arm64_v8.0
+      - windows_amd64_v1
+      - windows_arm64_v8.0
+  - id: ergon-upx
+    dir: .
+    main: ./cmd/ergon
+    binary: ergon
+    env: [CGO_ENABLED=0]
+    flags: [-trimpath]
+    ldflags: [-s -w]
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    targets:
+      - linux_amd64_v1
+      - linux_arm64_v8.0
+    hooks:
+      post:
+        - ergon tool run go.upx -- --best --lzma --quiet "{{ .Path }}"
 
+# The files of each archive have a fixed owner and mode and the time of the commit, so the bytes of
+# an archive do not depend on the runner.
 archives:
   - id: ergon
+    ids: [ergon, ergon-upx]
     formats: [tar.gz]
-    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    name_template: "ergon_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    builds_info: {owner: root, group: root, mtime: "{{ .CommitDate }}"}
+    files:
+      - src: LICENSE*
+        info: {owner: root, group: root, mode: 0644, mtime: "{{ .CommitDate }}"}
+      - src: README.md
+        info: {owner: root, group: root, mode: 0644, mtime: "{{ .CommitDate }}"}
+      - src: dist/completions/ergon/*
+        dst: completions
+        strip_parent: true
+        info: {owner: root, group: root, mode: 0644, mtime: "{{ .CommitDate }}"}
+
+nfpms:
+  - id: ergon
+    ids: [ergon, ergon-upx]
+    package_name: ergon
+    file_name_template: '{{ replace .ConventionalFileName "~" "-" }}'
+    vendor: "Dokimasia B.V."
+    maintainer: "Dokimasia B.V. <security@dokimi.dev>"
+    homepage: https://github.com/dokimasia/ergon
+    description: "Sets up a repository with a managed baseline, and releases its packages."
+    license: MIT
+    formats: [deb, rpm, apk]
+    bindir: /usr/bin
+    section: utils
+    mtime: "{{ .CommitDate }}"
+    contents:
+      - src: dist/completions/ergon/ergon.bash
+        dst: /usr/share/bash-completion/completions/ergon
+        file_info: {mode: 0644, mtime: "{{ .CommitDate }}"}
+      - src: dist/completions/ergon/ergon.zsh
+        dst: /usr/share/zsh/vendor-completions/_ergon
+        file_info: {mode: 0644, mtime: "{{ .CommitDate }}"}
+      - src: dist/completions/ergon/ergon.fish
+        dst: /usr/share/fish/vendor_completions.d/ergon.fish
+        file_info: {mode: 0644, mtime: "{{ .CommitDate }}"}
+      - src: LICENSE
+        dst: /usr/share/doc/ergon/copyright
+        file_info: {mode: 0644, mtime: "{{ .CommitDate }}"}
+    deb:
+      lintian_overrides:
+        - statically-linked-binary
+        - changelog-file-missing-in-native-package
+
+source:
+  enabled: true
+  name_template: "ergon_{{ .Version }}_source"
 
 checksum:
   name_template: checksums.txt
+  algorithm: sha256
 
+# cosign signs checksums.txt with the OIDC identity of the workflow, without a key.
+signs:
+  - cmd: ergon
+    signature: "${artifact}.sigstore.json"
+    args: [tool, run, go.cosign, --, sign-blob, "--bundle=${signature}", "${artifact}", --yes]
+    artifacts: checksum
+
+# syft writes an SPDX SBOM of each archive and each package, which checksums.txt lists.
+sboms:
+  - id: archives
+    cmd: ergon
+    args: [tool, run, go.syft, --, "$artifact", --output, "spdx-json=$document", --enrich, all]
+    artifacts: archive
+  - id: packages
+    cmd: ergon
+    args: [tool, run, go.syft, --, "$artifact", --output, "spdx-json=$document", --enrich, all]
+    artifacts: package
+
+# ergon release ci homebrew commits each cask to the tap after the publish. The hook removes the
+# quarantine attribute on macOS, because the binaries are not notarized.
+homebrew_casks:
+  - name: ergon
+    ids: [ergon]
+    binaries: [ergon]
+    homepage: https://github.com/dokimasia/ergon
+    description: "Sets up a repository with a managed baseline, and releases its packages."
+    license: MIT
+    url:
+      template: "https://github.com/dokimasia/ergon/releases/download/v{{ .Version }}/{{ .ArtifactName }}"
+    completions:
+      bash: completions/ergon.bash
+      zsh: completions/ergon.zsh
+      fish: completions/ergon.fish
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/ergon"]
+          end
+    repository:
+      owner: dokimasia
+      name: homebrew-tap
+    skip_upload: true
+
+# ergon creates the release of the tag, and changesets writes its notes.
 changelog:
   disable: true
 
 release:
-  github:
-    owner: dokimasia
-    name: ergon
-  mode: keep-existing
-  header: "{{ .TagSubject }}\n\n{{ .TagBody }}"
+  disable: true
+
+metadata:
+  mod_timestamp: "{{ .CommitTimestamp }}"
