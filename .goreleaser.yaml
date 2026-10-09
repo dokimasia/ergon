@@ -81,7 +81,7 @@ nfpms:
     vendor: "Dokimasia B.V."
     maintainer: "Dokimasia B.V. <security@dokimi.dev>"
     homepage: https://github.com/dokimasia/ergon
-    description: "Sets up a repository with a managed baseline, and releases its packages."
+    description: "Sets up repositories with a managed baseline and releases their packages"
     license: MIT
     formats: [deb, rpm, apk]
     bindir: /usr/bin
@@ -138,7 +138,7 @@ homebrew_casks:
     ids: [ergon]
     binaries: [ergon]
     homepage: https://github.com/dokimasia/ergon
-    description: "Sets up a repository with a managed baseline, and releases its packages."
+    description: "Sets up repositories with a managed baseline and releases their packages"
     license: MIT
     url:
       template: "https://github.com/dokimasia/ergon/releases/download/v{{ .Version }}/{{ .ArtifactName }}"

@@ -96,7 +96,7 @@
     {
       "path": ".goreleaser.yaml",
       "producer": "go",
-      "sha256": "a2789c27f72956b3ce52d3a18e9369447957ac93552f50cef62d4c4b1ef894b8"
+      "sha256": "229355ae370c73a342a667f8577039603acc9c4ea14a3222cd2d59de307f8c9c"
     },
     {
       "path": ".markdownlint.yml",

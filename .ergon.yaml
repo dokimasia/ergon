@@ -247,14 +247,15 @@ go:
   # The commands whose binaries each release of their module attaches, which the job pack of
   # release.yml builds, signs and attests with GoReleaser: name, the binary and its archives,
   # packages and cask; module, the directory of the module in go.work, . for the root; main, the
-  # package of the command in the module; description, one line; platforms, every platform when
-  # empty; completions, true for a cobra program; packages, from deb, rpm and apk; homebrew, true
-  # for a cask in homebrew.tap; license, the license of the repository when empty.
+  # package of the command in the module; description, one line, and for a cask one that brew audit
+  # accepts, such as one without a full stop at its end; platforms, every platform when empty;
+  # completions, true for a cobra program; packages, from deb, rpm and apk; homebrew, true for a
+  # cask in homebrew.tap; license, the license of the repository when empty.
   binaries:
     - name: ergon
       module: .
       main: ./cmd/ergon
-      description: Sets up a repository with a managed baseline, and releases its packages.
+      description: Sets up repositories with a managed baseline and releases their packages
       license: ""
       platforms: []
       packages:
