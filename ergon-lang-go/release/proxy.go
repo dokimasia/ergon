@@ -15,7 +15,7 @@ import (
 	"golang.org/x/mod/module"
 )
 
-// The modes of the files and the directories that Apply creates, before the umask.
+// The modes of the files and the directories that Apply and Pack create, before the umask.
 const (
 	filePerm fs.FileMode = 0o644
 	dirPerm  fs.FileMode = 0o755

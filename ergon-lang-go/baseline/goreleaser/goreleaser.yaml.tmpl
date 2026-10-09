@@ -1,0 +1,182 @@
+# Managed by ergon init. Add repository settings to .ergon/local/{{% .Path %}} and run ergon init sync.
+#
+# The commands of {{% if eq .Module "." %}}the root module{{% else %}}the module {{% .Module %}}{{% end %}}, which the key binaries of the section go of .ergon.yaml lists.
+# ergon release pack builds, packs and signs them for each release of the module in the job pack of
+# release.yml: it tags the commit with the tag of the module, and runs GoReleaser in snapshot mode
+# with the version of the release in ERGON_VERSION. ergon release publish attaches the assets to the
+# release of the tag before it publishes the release.
+
+version: 2
+
+project_name: {{% .Project %}}
+
+dist: dist/goreleaser/{{% .Project %}}
+
+snapshot:
+  version_template: "{{ .Env.ERGON_VERSION }}"
+{{%- if .Completions %}}
+
+# Each cobra program writes its completions of bash, zsh and fish, which its archives, packages and
+# cask contain.
+before:
+  hooks:
+{{%- range .Commands %}}{{% if .Completions %}}
+    - sh -c 'mkdir -p dist/completions/{{% .Name %}} && for s in bash zsh fish; do go -C {{% $.Module %}} run {{% .Main %}} completion "$s" > "dist/completions/{{% .Name %}}/{{% .Name %}}.$s"; done'
+{{%- end %}}{{% end %}}
+{{%- end %}}
+
+# A static binary without the paths of the runner, the symbol table and DWARF data. Go writes the
+# version of the module from its tag, and applies a default.pgo beside the main package. The build
+# <name>-upx has the Linux targets of a command, and UPX packs each of its binaries with LZMA, whose
+# packed binaries syft still reads. UPX refuses macOS binaries, and syft reads no packed Windows
+# binary, so the build <name> of the other targets has no UPX.
+builds:
+{{%- range .Builds %}}
+  - id: {{% .ID %}}
+    dir: {{% $.Module %}}
+    main: {{% .Main %}}
+    binary: {{% .Name %}}
+    env: [CGO_ENABLED=0]
+    flags: [-trimpath]
+    ldflags: [-s -w]
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    targets:
+{{%- range .Targets %}}
+      - {{% . %}}
+{{%- end %}}
+{{%- if .Pack %}}
+    hooks:
+      post:
+        - ergon tool run go.upx -- --best --lzma --quiet "{{ .Path }}"
+{{%- end %}}
+{{%- end %}}
+
+# The files of each archive have a fixed owner and mode and the time of the commit, so the bytes of
+# an archive do not depend on the runner.
+archives:
+{{%- range .Commands %}}
+  - id: {{% .Name %}}
+    ids: [{{% join .IDs ", " %}}]
+    formats: [tar.gz]
+    name_template: "{{% .Name %}}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    builds_info: {owner: root, group: root, mtime: "{{ .CommitDate }}"}
+    files:
+      - src: LICENSE*
+        info: {owner: root, group: root, mode: 0644, mtime: "{{ .CommitDate }}"}
+      - src: README.md
+        info: {owner: root, group: root, mode: 0644, mtime: "{{ .CommitDate }}"}
+{{%- if .Completions %}}
+      - src: dist/completions/{{% .Name %}}/*
+        dst: completions
+        strip_parent: true
+        info: {owner: root, group: root, mode: 0644, mtime: "{{ .CommitDate }}"}
+{{%- end %}}
+{{%- end %}}
+{{%- if .Packages %}}
+
+nfpms:
+{{%- range .Commands %}}{{% if .Packages %}}
+  - id: {{% .Name %}}
+    ids: [{{% join .IDs ", " %}}]
+    package_name: {{% .Name %}}
+    file_name_template: '{{ replace .ConventionalFileName "~" "-" }}'
+    vendor: {{% quote $.Vendor %}}
+    maintainer: {{% quote $.Maintainer %}}
+    homepage: {{% $.Homepage %}}
+    description: {{% quote .Description %}}
+    license: {{% .License %}}
+    formats: [{{% join .Packages ", " %}}]
+    bindir: /usr/bin
+    section: utils
+    mtime: "{{ .CommitDate }}"
+    contents:
+{{%- if .Completions %}}
+      - src: dist/completions/{{% .Name %}}/{{% .Name %}}.bash
+        dst: /usr/share/bash-completion/completions/{{% .Name %}}
+        file_info: {mode: 0644, mtime: "{{ .CommitDate }}"}
+      - src: dist/completions/{{% .Name %}}/{{% .Name %}}.zsh
+        dst: /usr/share/zsh/vendor-completions/_{{% .Name %}}
+        file_info: {mode: 0644, mtime: "{{ .CommitDate }}"}
+      - src: dist/completions/{{% .Name %}}/{{% .Name %}}.fish
+        dst: /usr/share/fish/vendor_completions.d/{{% .Name %}}.fish
+        file_info: {mode: 0644, mtime: "{{ .CommitDate }}"}
+{{%- end %}}
+      - src: LICENSE
+        dst: /usr/share/doc/{{% .Name %}}/copyright
+        file_info: {mode: 0644, mtime: "{{ .CommitDate }}"}
+    deb:
+      lintian_overrides:
+        - statically-linked-binary
+        - changelog-file-missing-in-native-package
+{{%- end %}}{{% end %}}
+{{%- end %}}
+
+source:
+  enabled: true
+  name_template: "{{% .Project %}}_{{ .Version }}_source"
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+# cosign signs checksums.txt with the OIDC identity of the workflow, without a key.
+signs:
+  - cmd: ergon
+    signature: "${artifact}.sigstore.json"
+    args: [tool, run, go.cosign, --, sign-blob, "--bundle=${signature}", "${artifact}", --yes]
+    artifacts: checksum
+
+# syft writes an SPDX SBOM of each archive{{% if .Packages %}} and each package{{% end %}}, which checksums.txt lists.
+sboms:
+  - id: archives
+    cmd: ergon
+    args: [tool, run, go.syft, --, "$artifact", --output, "spdx-json=$document", --enrich, all]
+    artifacts: archive
+{{%- if .Packages %}}
+  - id: packages
+    cmd: ergon
+    args: [tool, run, go.syft, --, "$artifact", --output, "spdx-json=$document", --enrich, all]
+    artifacts: package
+{{%- end %}}
+{{%- if .Homebrew %}}
+
+# ergon release ci homebrew commits each cask to the tap after the publish. The hook removes the
+# quarantine attribute on macOS, because the binaries are not notarized.
+homebrew_casks:
+{{%- range .Commands %}}{{% if .Homebrew %}}
+  - name: {{% .Name %}}
+    ids: [{{% .Name %}}]
+    binaries: [{{% .Name %}}]
+    homepage: {{% $.Homepage %}}
+    description: {{% quote .Description %}}
+    license: {{% .License %}}
+    url:
+      template: "{{% $.Homepage %}}/releases/download/{{% $.Prefix %}}v{{ .Version }}/{{ .ArtifactName }}"
+{{%- if .Completions %}}
+    completions:
+      bash: completions/{{% .Name %}}.bash
+      zsh: completions/{{% .Name %}}.zsh
+      fish: completions/{{% .Name %}}.fish
+{{%- end %}}
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/{{% .Name %}}"]
+          end
+    repository:
+      owner: {{% $.TapOwner %}}
+      name: {{% $.TapName %}}
+    skip_upload: true
+{{%- end %}}{{% end %}}
+{{%- end %}}
+
+# ergon creates the release of the tag, and changesets writes its notes.
+changelog:
+  disable: true
+
+release:
+  disable: true
+
+metadata:
+  mod_timestamp: "{{ .CommitTimestamp }}"

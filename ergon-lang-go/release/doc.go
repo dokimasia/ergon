@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 // Package release implements the release roles of the toolchain go: the [Versioner] of require
-// lines, the [Tagger] of the tags that the go command reads, and the [Locker] of the hashes that
-// go.sum records.
+// lines, the [Tagger] of the tags that the go command reads, the [Locker] of the hashes that go.sum
+// records, and the [Packer] of the binaries of the commands of a module.
 //
 // # Requirements
 //
@@ -39,15 +39,25 @@
 // go.mod requires. A replace in go.work applies in the workspace alone, so it changes no build of a
 // consumer and no go install.
 //
+// # Binaries
+//
+// A module whose directory has .goreleaser.yaml has commands, which ergon init lists from the key
+// binaries of the section go. [Packer.Pack] tags the commit of a release with the tag of such a
+// module, so that Go writes the version of the module into its binaries, and runs GoReleaser in
+// snapshot mode with the version of the release. It copies the archives, the packages, the
+// checksums, their signature and the SBOMs into the assets of the release of the tag, and the casks
+// beside them, where ergon release publish and ergon release ci homebrew find them.
+//
 // # Errors
 //
-// Each error of the package wraps [ErrRequirement], [ErrMajor] or [ErrCycle], or the error of the
-// go command, of git or of the file system, and names the module or the file that caused it.
+// Each error of the package wraps [ErrRequirement], [ErrMajor], [ErrCycle] or [ErrTag], or the error
+// of the go command, of GoReleaser, of git or of the file system, and names the module or the file
+// that caused it.
 //
 // # Dependency position
 //
-// Imports the standard library, golang.org/x/mod/modfile, golang.org/x/mod/module,
-// golang.org/x/mod/sumdb/dirhash, golang.org/x/mod/zip, [go.dokimi.dev/ergon/core/language],
-// [go.dokimi.dev/ergon/core/version], [go.dokimi.dev/ergon/core/workspace] and
-// [go.dokimi.dev/ergon/lang/go/workspace].
+// Imports the standard library, go.yaml.in/yaml/v3, golang.org/x/mod/modfile,
+// golang.org/x/mod/module, golang.org/x/mod/sumdb/dirhash, golang.org/x/mod/zip,
+// [go.dokimi.dev/ergon/core/language], [go.dokimi.dev/ergon/core/version],
+// [go.dokimi.dev/ergon/core/workspace] and [go.dokimi.dev/ergon/lang/go/workspace].
 package release

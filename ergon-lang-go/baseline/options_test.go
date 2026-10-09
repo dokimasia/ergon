@@ -74,6 +74,76 @@ func TestOptions(t *testing.T) {
 			assert.ErrorIs(t, err, option.ErrInvalid, "Validate")
 			assert.Contains(t, err.Error(), "nightly names race", "the error")
 		})
+
+		t.Run("returns nil for commands with a cask and a tap", func(t *testing.T) {
+			t.Parallel()
+			o := goOptions()
+			o.Binaries = commands()
+			o.Homebrew.Tap = tap
+			assert.NoError(t, o.Validate(), "Validate")
+		})
+
+		binaries := []struct {
+			name string
+			give func(*baseline.Options)
+			want string
+		}{
+			{
+				name: "returns ErrInvalid for a command that is not valid",
+				give: func(o *baseline.Options) { o.Binaries[0].Main = "cmd/ergon" },
+				want: `the command ergon has the package "cmd/ergon"`,
+			},
+			{
+				name: "returns ErrInvalid for two commands of one name",
+				give: func(o *baseline.Options) { o.Binaries[1].Name = "ergon" },
+				want: "binaries names the command ergon twice",
+			},
+			{
+				name: "returns ErrInvalid for a command with a cask without a tap",
+				give: func(o *baseline.Options) { o.Homebrew.Tap = "" },
+				want: "the command ergon has a cask, and homebrew.tap is empty",
+			},
+			{
+				name: "returns ErrInvalid for a command named after the UPX build of another",
+				give: func(o *baseline.Options) { o.Binaries[1].Name = "ergon-upx" },
+				want: "the command ergon-upx has the name of the UPX build of the command ergon",
+			},
+		}
+		for _, tt := range binaries {
+			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+				o := goOptions()
+				o.Binaries = commands()
+				o.Homebrew.Tap = tap
+				tt.give(o)
+				err := o.Validate()
+				assert.ErrorIs(t, err, option.ErrInvalid, "Validate")
+				assert.Contains(t, err.Error(), tt.want, "the error")
+			})
+		}
+	})
+
+	t.Run("Homebrew", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Validate", func(t *testing.T) {
+			t.Parallel()
+
+			for _, give := range []string{"", tap} {
+				t.Run("returns nil for the tap "+give, func(t *testing.T) {
+					t.Parallel()
+					assert.NoError(t, baseline.Homebrew{Tap: give}.Validate(), "Validate")
+				})
+			}
+
+			t.Run("returns ErrInvalid for a tap that is not owner/name", func(t *testing.T) {
+				t.Parallel()
+				err := baseline.Homebrew{Tap: "homebrew-tap"}.Validate()
+				assert.ErrorIs(t, err, option.ErrInvalid, "Validate")
+				want := `option: invalid value: homebrew.tap "homebrew-tap", which is not owner/name`
+				assert.Equal(t, err.Error(), want, "the error")
+			})
+		})
 	})
 
 	t.Run("Contribution", func(t *testing.T) {
@@ -157,6 +227,22 @@ func TestOptions(t *testing.T) {
 			for _, j := range got {
 				expect.Equal(t, j, nightlyJob(j.ID, j.Name, j.Setup.Timeout), "the nightly job "+j.ID)
 			}
+		})
+
+		t.Run("returns the assets of the commands with the tap of a command with a cask", func(t *testing.T) {
+			t.Parallel()
+			o := goOptions()
+			o.Binaries = commands()
+			o.Homebrew.Tap = tap
+			assert.Equal(t, o.Contribution().Assets, &workflow.Assets{Tap: tap}, "the assets")
+		})
+
+		t.Run("returns assets without a tap for commands without a cask", func(t *testing.T) {
+			t.Parallel()
+			o := goOptions()
+			o.Binaries = commands()[1:]
+			o.Homebrew.Tap = tap
+			assert.Equal(t, o.Contribution().Assets, &workflow.Assets{}, "the assets")
 		})
 
 		t.Run("returns no nightly job for a nightly without steps", func(t *testing.T) {

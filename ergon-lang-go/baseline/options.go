@@ -4,6 +4,9 @@
 package baseline
 
 import (
+	"fmt"
+	"regexp"
+	"slices"
 	"strings"
 
 	"go.dokimi.dev/ergon/core/option"
@@ -29,10 +32,13 @@ var steps = []option.Step{
 // nightly are the steps of Go that are too long for each push, which the key nightly names.
 var nightly = []option.Step{option.StepFuzz, option.StepBench, option.StepMutate}
 
+// tapRepository matches a repository on GitHub as owner/name.
+var tapRepository = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9._-]+$`)
+
 // Options are the options of the section go of .ergon.yaml.
 type Options struct {
-	// Tools are the tools of the targets of Go.
-	Tools Tools `yaml:"tools" doc:"The tools of the targets of Go, which ergon tool run installs with go install, as <module>@<version>."`
+	// Tools are the tools of the targets and of the releases of Go.
+	Tools Tools `yaml:"tools" doc:"The tools of the targets and of the releases of Go, which ergon tool run installs: a Go module with go install, as <module>@<version>, and a release binary by its version and the SHA-256 of the asset of each platform."`
 
 	// Paths are the package patterns of the targets in every module.
 	Paths option.Paths `yaml:"paths" doc:"The package patterns that each target of Go passes in every module of go.work."`
@@ -67,6 +73,12 @@ type Options struct {
 	// Audit are the options of audit-go.
 	Audit option.Run `yaml:"audit" doc:"audit-go runs govulncheck with args in every module."`
 
+	// Binaries are the commands whose binaries each release of their module attaches.
+	Binaries []Command `yaml:"binaries" doc:"The commands whose binaries each release of their module attaches, which the job pack of release.yml builds, signs and attests with GoReleaser: name, the binary and its archives, packages and cask; module, the directory of the module in go.work, . for the root; main, the package of the command in the module; description, one line; platforms, every platform when empty; completions, true for a cobra program; packages, from deb, rpm and apk; homebrew, true for a cask in homebrew.tap; license, the license of the repository when empty."`
+
+	// Homebrew are the options of the casks of the commands.
+	Homebrew Homebrew `yaml:"homebrew" doc:"The options of the casks of the commands under binaries whose homebrew is true."`
+
 	// CI are the pins of the actions of the job check-go, its runners, its versions of Go and its
 	// limit.
 	CI option.MatrixCI[Actions] `yaml:"ci" doc:"The pin of setup-go, the runners and the versions of Go of the job check-go, and its limit in minutes. Empty runners select every runner of the section github, and empty versions the version of go.work."`
@@ -88,12 +100,39 @@ type Tools struct {
 
 	// ErgonGoVet runs the analyzers of ergon.
 	ErgonGoVet option.Module `yaml:"ergon-go-vet" doc:"The analyzers of lint-go: errorprefix, which reports an error whose text does not start with the name of its package, and skipexpiry, which reports a skipped test whose date has passed."`
+
+	// GoReleaser builds the binaries of the commands.
+	GoReleaser GoReleaser `yaml:"goreleaser" doc:"The release of GoReleaser, which builds, packs and signs the commands of binaries in the job pack of release.yml."`
+
+	// Cosign signs the checksums of a release.
+	Cosign Cosign `yaml:"cosign" doc:"The release of cosign, which signs the checksums.txt of each release with the OIDC identity of the workflow, without a key."`
+
+	// Syft writes the SBOMs of a release.
+	Syft Syft `yaml:"syft" doc:"The release of syft, which writes the SPDX SBOM of each archive and package of a release."`
+
+	// UPX packs the Linux binaries of a release.
+	UPX UPX `yaml:"upx" doc:"The release of UPX, which packs each Linux binary of the commands of binaries with --best --lzma in the job pack of release.yml."`
 }
 
 // Lint are the options of lint-go.
 type Lint struct {
 	// Exclude are the package patterns that ergon-go-vet skips.
 	Exclude option.Paths `yaml:"exclude" doc:"The package patterns that ergon-go-vet skips, such as ./internal/legacy/...."`
+}
+
+// Homebrew are the options of the casks of the commands.
+type Homebrew struct {
+	// Tap is the repository of the tap on GitHub, as owner/name, or empty for no tap.
+	Tap string `yaml:"tap" doc:"The repository of the Homebrew tap on GitHub, as owner/name, to which the job homebrew of release.yml commits each cask, with a token of the GitHub App of ERGON_APP_CLIENT_ID and ERGON_APP_PRIVATE_KEY."`
+}
+
+// Validate returns an error that wraps [option.ErrInvalid] for a Tap that is neither empty nor
+// owner/name.
+func (h Homebrew) Validate() error {
+	if h.Tap != "" && !tapRepository.MatchString(h.Tap) {
+		return fmt.Errorf("%w: homebrew.tap %q, which is not owner/name", option.ErrInvalid, h.Tap)
+	}
+	return nil
 }
 
 // Actions are the pins of the actions of the job check-go.
@@ -103,9 +142,11 @@ type Actions struct {
 }
 
 // Validate returns an error that wraps [option.ErrInvalid] for a step of check that Go does not
-// have, for the step generate without a command, and for a step of nightly other than fuzz, bench
-// and mutate. The command checks each option by the Validate method of its type before it calls
-// Validate.
+// have, for the step generate without a command, for a step of nightly other than fuzz, bench and
+// mutate, for a command that is not valid, as [Command.Validate] states, for two commands of one
+// name, for a command named after the UPX build of another, <name>-upx, and for a command with a
+// cask while homebrew.tap is empty. The command checks each option by the Validate method of its
+// type before it calls Validate.
 func (o *Options) Validate() error {
 	if err := o.Check.Only(steps...); err != nil {
 		return err
@@ -113,7 +154,27 @@ func (o *Options) Validate() error {
 	if err := o.Nightly.Only(nightly...); err != nil {
 		return err
 	}
-	return o.Generate.CheckStep(o.Check)
+	if err := o.Generate.CheckStep(o.Check); err != nil {
+		return err
+	}
+	for i := range o.Binaries {
+		c := &o.Binaries[i]
+		if err := c.Validate(); err != nil {
+			return err
+		}
+		if slices.ContainsFunc(o.Binaries[:i], func(d Command) bool { return d.Name == c.Name }) {
+			return fmt.Errorf("%w: binaries names the command %s twice", option.ErrInvalid, c.Name)
+		}
+		base, packs := strings.CutSuffix(c.Name, packedSuffix)
+		if packs && slices.ContainsFunc(o.Binaries, func(d Command) bool { return d.Name == base }) {
+			return fmt.Errorf("%w: the command %s has the name of the UPX build of the command %s", option.ErrInvalid,
+				c.Name, base)
+		}
+		if c.Homebrew && o.Homebrew.Tap == "" {
+			return fmt.Errorf("%w: the command %s has a cask, and homebrew.tap is empty", option.ErrInvalid, c.Name)
+		}
+	}
+	return nil
 }
 
 // Contribution returns the part of Go of the workflows for o:
@@ -127,7 +188,10 @@ func (o *Options) Validate() error {
 //     the targets, on the Linux runner of the section github and the version of go.work, with the
 //     limit that nightly states for the step. It sets up Go as check-go does.
 //   - The release steps install the version of go.work with setup-go in the jobs version and pack of
-//     release.yml, once the repository has go.work, for the go mod tidy of a release.
+//     release.yml, once the repository has go.work, for the go mod tidy of a release and the builds
+//     of its commands.
+//   - The assets of the releases of the commands of binaries, with the tap of homebrew when a
+//     command has a cask, and no assets without a command.
 //   - The CodeQL analysis of go builds the modules with autobuild, once the repository has go.work.
 //   - Dependabot updates the modules of every directory.
 func (o *Options) Contribution() workflow.Contribution {
@@ -163,7 +227,15 @@ func (o *Options) Contribution() workflow.Contribution {
 			Steps: []workflow.Step{{Name: name, Run: []string{"make " + target}}},
 		})
 	}
+	var assets *workflow.Assets
+	if len(o.Binaries) > 0 {
+		assets = &workflow.Assets{}
+		if slices.ContainsFunc(o.Binaries, func(c Command) bool { return c.Homebrew }) {
+			assets.Tap = o.Homebrew.Tap
+		}
+	}
 	return workflow.Contribution{
+		Assets: assets,
 		Jobs: []workflow.Job{{
 			ID:          "check-go",
 			Name:        "Go",

@@ -32,6 +32,13 @@ const name = "go"
 var git = golang.Git{
 	Tags:     func(context.Context, string) (map[string]string, error) { return nil, nil },
 	Snapshot: func(context.Context, string) (string, error) { return "", nil },
+	Head:     func(context.Context, string) (string, error) { return "", nil },
+	LightTag: func(context.Context, string, string, string) error { return nil },
+}
+
+// tools runs no tool of the section go.
+func tools(context.Context, string, string, []string, []string) error {
+	return nil
 }
 
 // workflows are the files of the GitHub files that the contribution of Go changes.
@@ -172,7 +179,7 @@ func TestBaseline(t *testing.T) {
 func catalog(t *testing.T) *language.Catalog {
 	t.Helper()
 	c := new(language.Catalog)
-	assert.NoError(t, golang.Register(c, git), "Register of Go")
+	assert.NoError(t, golang.Register(c, git, tools), "Register of Go")
 	return c
 }
 
