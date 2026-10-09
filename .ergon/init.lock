@@ -60,7 +60,7 @@
     {
       "path": ".github/workflows/ci.yml",
       "producer": "github",
-      "sha256": "ebf16882134292c2844708818463bc4c450d2e133986dce562376082bf1989c2"
+      "sha256": "2a905205d987b481713e2e56aa158c0a1af4e4eda1bbc052f605d29e6d3436cf"
     },
     {
       "path": ".github/workflows/codeql.yml",
@@ -91,7 +91,7 @@
       "path": ".golangci.yml",
       "producer": "go",
       "local": "9f53d2ca8deb74189d56bdaa0f85a0c134ec4b6cb6ea8800c521bc76b7e3014e",
-      "sha256": "168ade6ed3c0da2927d639e5681b09cbf1f42d4e83478609f80c0b5c776b49d7"
+      "sha256": "ffb8b48e6cb56c1059fa1873285219ce39ad11e7e5491519800fd02988b50b55"
     },
     {
       "path": ".goreleaser.yaml",
@@ -122,7 +122,7 @@
       "path": "Makefile",
       "producer": "common",
       "local": "ed1d8e6ca45c5ee89f5c067057c5684a7fd1dc89ccb14a99a4321cdcb9075a53",
-      "sha256": "46f40eff3164ac96536b50b460202a1e40fb62adf1885a383b4f677290f34738"
+      "sha256": "fe51e7c8f217d1894f089d8f3ebfe0fdbe9f66202bb23a66f9e714ef6d0b71d9"
     }
   ],
   "settings": {

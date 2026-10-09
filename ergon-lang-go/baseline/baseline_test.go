@@ -6,13 +6,16 @@ package baseline_test
 import (
 	"context"
 	"os"
+	"os/exec"
 	"path"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
 
 	"go.dokimi.dev/assert"
 	"go.dokimi.dev/assert/expect"
+	"go.dokimi.dev/assert/files"
 	"go.dokimi.dev/assert/golden"
 	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/core/option"
@@ -27,6 +30,10 @@ import (
 
 // name pins the name of the producer of Go, which is the name of its section.
 const name = "go"
+
+// passing is the module of the workspace of the case of make test-go whose tests pass. The tests
+// of the module before it fail.
+const passing = "example.com/b"
 
 // git is the access to a repository that the catalog of the cases does not read.
 var git = golang.Git{
@@ -141,6 +148,26 @@ func TestBaseline(t *testing.T) {
 				o, _ := baseline.Producer{}.Options().(*baseline.Options)
 				o.Generate = option.Generate{}
 				assert.NotContains(t, rendered(t, o, "Makefile"), "generate", "the Makefile")
+			})
+
+			t.Run("runs the tests of every module after the tests of a module fail", func(t *testing.T) {
+				t.Parallel()
+				failing := "package a\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) { t.Fatal(\"a\") }\n"
+				dir := files.Workspace(t, files.Tree{
+					"Makefile":    files.Text(rendered(t, baseline.Producer{}.Options(), "Makefile")),
+					"go.work":     files.Text("go 1.27\n\nuse (\n\t./a\n\t./b\n)\n"),
+					"a/go.mod":    files.Text("module example.com/a\n\ngo 1.27\n"),
+					"a/a_test.go": files.Text(failing),
+					"b/go.mod":    files.Text("module " + passing + "\n\ngo 1.27\n"),
+					"b/b_test.go": files.Text("package b\n\nimport \"testing\"\n\nfunc TestB(t *testing.T) {}\n"),
+				})
+				cmd := exec.CommandContext(t.Context(), "make", "test-go")
+				cmd.Dir = dir
+				cmd.Env = append(os.Environ(), "GOWORK="+filepath.Join(dir, "go.work"))
+				out, err := cmd.CombinedOutput()
+				exit := assert.ErrorAs[*exec.ExitError](t, err, "the error of make test-go, whose first module fails")
+				assert.Equal(t, exit.ExitCode(), 2, "the exit status of make after a target fails")
+				assert.Contains(t, string(out), "ok  \t"+passing, "the output of make test-go")
 			})
 		})
 

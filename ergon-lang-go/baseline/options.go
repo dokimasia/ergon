@@ -179,11 +179,13 @@ func (o *Options) Validate() error {
 
 // Contribution returns the part of Go of the workflows for o:
 //
-//   - The job check-go runs make check-go on the runners and the versions of Go of o, once the
-//     repository has a go.mod. It fails a repository with a go.mod and without go.work, because the
-//     targets run in the modules of go.work. setup-go installs the version of go.work, or the
-//     version of the matrix where o lists versions, and caches the modules by every go.sum. The job
-//     keeps the tools of the section, which ergon tool run installs, in the cache of GitHub Actions.
+//   - The job check-go runs make --keep-going check-go on the runners and the versions of Go of o,
+//     once the repository has a go.mod, so a step that fails does not skip the steps after it. Each
+//     step runs in every module and fails after the last. The job fails a repository with a go.mod
+//     and without go.work, because the targets run in the modules of go.work. setup-go installs the
+//     version of go.work, or the version of the matrix where o lists versions, and caches the
+//     modules by every go.sum. The job keeps the tools of the section, which ergon tool run
+//     installs, in the cache of GitHub Actions.
 //   - The job <step>-go of nightly.yml runs make <step>-go for each step of nightly, in the order of
 //     the targets, on the Linux runner of the section github and the version of go.work, with the
 //     limit that nightly states for the step. It sets up Go as check-go does.
@@ -248,7 +250,7 @@ func (o *Options) Contribution() workflow.Contribution {
 				Timeout:  o.CI.Timeout,
 			},
 			Tools: true,
-			Steps: []workflow.Step{{Name: "Check Go", Run: []string{"make check-go"}}},
+			Steps: []workflow.Step{{Name: "Check Go", Run: []string{"make --keep-going check-go"}}},
 		}},
 		Nightly: scheduled,
 		Release: []workflow.Step{{

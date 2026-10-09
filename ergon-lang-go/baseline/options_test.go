@@ -176,7 +176,7 @@ func TestOptions(t *testing.T) {
 							Timeout: 30,
 						},
 						Tools: true,
-						Steps: []workflow.Step{{Name: "Check Go", Run: []string{"make check-go"}}},
+						Steps: []workflow.Step{{Name: "Check Go", Run: []string{"make --keep-going check-go"}}},
 					}},
 					Nightly: []workflow.Job{
 						nightlyJob("fuzz-go", "Fuzz Go", 120),

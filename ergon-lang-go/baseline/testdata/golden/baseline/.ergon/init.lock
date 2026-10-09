@@ -19,12 +19,12 @@
     {
       "path": ".golangci.yml",
       "producer": "go",
-      "sha256": "464d314b392b0cc4496d96f1e9f254a824de8c9307906b8a27992ed96aaa438a"
+      "sha256": "9b99fb7542ca65cd8a6dc3f247f20fd953308f50afca8cd95eefa1b090155ae4"
     },
     {
       "path": "Makefile",
       "producer": "go",
-      "sha256": "9e74ae470c2ab78e02f0387532ef77b6e05e7ab376f6e1da4a0bcc4bbbe4daff"
+      "sha256": "fbe32f82d29dbf8fca51af53d0a6a350e2cbe7fe681147de672b70cbec096377"
     }
   ],
   "settings": {
