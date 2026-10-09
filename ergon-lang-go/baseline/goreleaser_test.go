@@ -129,7 +129,7 @@ func commands() []baseline.Command {
 			Name:        "ergon",
 			Module:      ".",
 			Main:        "./cmd/ergon",
-			Description: "Sets up repositories and releases their packages.",
+			Description: "Sets up repositories and releases their packages",
 			Completions: true,
 			Packages:    []baseline.Package{baseline.PackageDeb, baseline.PackageRPM, baseline.PackageAPK},
 			Homebrew:    true,

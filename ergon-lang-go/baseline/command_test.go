@@ -4,6 +4,7 @@
 package baseline_test
 
 import (
+	"strings"
 	"testing"
 
 	"go.dokimi.dev/assert"
@@ -31,6 +32,30 @@ func TestCommand(t *testing.T) {
 			}},
 			{name: "returns nil for a cask of a command of Linux alone", give: func(c *baseline.Command) {
 				c.Platforms, c.Packages = []option.Platform{option.LinuxARM64}, nil
+			}},
+			{
+				name: "returns nil for a full stop at the end of the description of a command without a cask",
+				give: func(c *baseline.Command) {
+					c.Description, c.Homebrew = "Sets up repositories.", false
+				},
+			},
+			{name: "returns nil for a cask whose description ends with etc.", give: func(c *baseline.Command) {
+				c.Description = "Lints Go, Rust, Python, etc."
+			}},
+			{name: "returns nil for a cask whose description starts with iOS", give: func(c *baseline.Command) {
+				c.Description = "iOS builds of repositories"
+			}},
+			{
+				name: "returns nil for a cask whose description names macOS virtual machines",
+				give: func(c *baseline.Command) {
+					c.Description = "Runs macOS virtual machines"
+				},
+			},
+			{name: "returns nil for a cask whose description names a MAC address", give: func(c *baseline.Command) {
+				c.Description = "Prints the MAC address of each interface"
+			}},
+			{name: "returns nil for a cask whose description has 80 characters", give: func(c *baseline.Command) {
+				c.Description = "Sets up " + strings.Repeat("x", 72)
 			}},
 		}
 		for _, tt := range valid {
@@ -91,6 +116,70 @@ func TestCommand(t *testing.T) {
 				name: "returns ErrInvalid for an empty description",
 				give: func(c *baseline.Command) { c.Description = " " },
 				want: "the command ergon has a description that is empty or spans lines",
+			},
+			{
+				name: "returns ErrInvalid for a cask whose description starts with white space",
+				give: func(c *baseline.Command) { c.Description = " Sets up repositories" },
+				want: "the command ergon has a description that brew audit refuses in a cask, " +
+					"because it starts or ends with white space",
+			},
+			{
+				name: "returns ErrInvalid for a cask whose description ends with white space",
+				give: func(c *baseline.Command) { c.Description = "Sets up repositories\t" },
+				want: "because it starts or ends with white space",
+			},
+			{
+				name: "returns ErrInvalid for a cask whose description writes command line",
+				give: func(c *baseline.Command) { c.Description = "Sets up repositories from the command line" },
+				want: "because it writes command line without the hyphen of command-line",
+			},
+			{
+				name: "returns ErrInvalid for a cask whose description starts with an article",
+				give: func(c *baseline.Command) { c.Description = "A tool that sets up repositories" },
+				want: "because it starts with an article",
+			},
+			{
+				name: "returns ErrInvalid for a cask whose description starts with a lowercase letter",
+				give: func(c *baseline.Command) { c.Description = "sets up repositories" },
+				want: "because it starts with a lowercase letter",
+			},
+			{
+				name: "returns ErrInvalid for a cask whose description starts with the name of the command",
+				give: func(c *baseline.Command) { c.Description = "Ergon sets up repositories" },
+				want: "because it starts with the name of the command",
+			},
+			{
+				name: "returns ErrInvalid for a cask whose description starts with the words of a hyphenated name",
+				give: func(c *baseline.Command) {
+					c.Name, c.Description = "ergon-go-vet", "Ergon go vet checks Go code"
+				},
+				want: "the command ergon-go-vet has a description that brew audit refuses in a cask, " +
+					"because it starts with the name of the command",
+			},
+			{
+				name: "returns ErrInvalid for a cask whose description names macOS",
+				give: func(c *baseline.Command) { c.Description = "Sets up repositories on macOS" },
+				want: "because it names macOS",
+			},
+			{
+				name: "returns ErrInvalid for a cask whose description names Mac OS X",
+				give: func(c *baseline.Command) { c.Description = "Sets up repositories on Mac OS X" },
+				want: "because it names macOS",
+			},
+			{
+				name: "returns ErrInvalid for a cask whose description ends with a full stop",
+				give: func(c *baseline.Command) { c.Description = "Sets up repositories." },
+				want: "because it ends with a full stop",
+			},
+			{
+				name: "returns ErrInvalid for a cask whose description contains an emoji",
+				give: func(c *baseline.Command) { c.Description = "Sets up repositories 🚀" },
+				want: "because it contains an emoji or another symbol",
+			},
+			{
+				name: "returns ErrInvalid for a cask whose description has 81 characters",
+				give: func(c *baseline.Command) { c.Description = "Sets up " + strings.Repeat("x", 73) },
+				want: "because it has more than 80 characters",
 			},
 			{
 				name: "returns ErrInvalid for a license that ergon does not know",
@@ -156,7 +245,7 @@ func ergonCommand() baseline.Command {
 		Name:        "ergon",
 		Module:      ".",
 		Main:        "./cmd/ergon",
-		Description: "Sets up repositories and releases their packages.",
+		Description: "Sets up repositories and releases their packages",
 		Completions: true,
 		Packages:    []baseline.Package{baseline.PackageDeb, baseline.PackageRPM, baseline.PackageAPK},
 		Homebrew:    true,

@@ -74,7 +74,7 @@ type Options struct {
 	Audit option.Run `yaml:"audit" doc:"audit-go runs govulncheck with args in every module."`
 
 	// Binaries are the commands whose binaries each release of their module attaches.
-	Binaries []Command `yaml:"binaries" doc:"The commands whose binaries each release of their module attaches, which the job pack of release.yml builds, signs and attests with GoReleaser: name, the binary and its archives, packages and cask; module, the directory of the module in go.work, . for the root; main, the package of the command in the module; description, one line; platforms, every platform when empty; completions, true for a cobra program; packages, from deb, rpm and apk; homebrew, true for a cask in homebrew.tap; license, the license of the repository when empty."`
+	Binaries []Command `yaml:"binaries" doc:"The commands whose binaries each release of their module attaches, which the job pack of release.yml builds, signs and attests with GoReleaser: name, the binary and its archives, packages and cask; module, the directory of the module in go.work, . for the root; main, the package of the command in the module; description, one line, and for a cask one that brew audit accepts, such as one without a full stop at its end; platforms, every platform when empty; completions, true for a cobra program; packages, from deb, rpm and apk; homebrew, true for a cask in homebrew.tap; license, the license of the repository when empty."`
 
 	// Homebrew are the options of the casks of the commands.
 	Homebrew Homebrew `yaml:"homebrew" doc:"The options of the casks of the commands under binaries whose homebrew is true."`
