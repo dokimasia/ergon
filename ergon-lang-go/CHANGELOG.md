@@ -1,5 +1,13 @@
 # go.dokimi.dev/ergon/lang/go
 
+## 0.4.1
+
+### Patch Changes
+
+- dfc0ced: Refuse a description of a command with a cask that brew audit refuses, such as a description with a full stop at its end.
+- Updated dependencies [b68662b]
+  - go.dokimi.dev/ergon/service@0.6.1
+
 ## 0.4.0
 
 ### Minor Changes

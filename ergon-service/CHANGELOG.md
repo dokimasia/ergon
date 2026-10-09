@@ -1,5 +1,11 @@
 # go.dokimi.dev/ergon/service
 
+## 0.6.1
+
+### Patch Changes
+
+- b68662b: Install a Go tool of ergon tool run once for each version of the go command. A build of dokimi-mutate-go by an older Go refuses the packages of a newer one.
+
 ## 0.6.0
 
 ### Minor Changes

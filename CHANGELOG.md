@@ -1,5 +1,26 @@
 # go.dokimi.dev/ergon
 
+## 0.6.1
+
+### Patch Changes
+
+- b68662b: Install a Go tool of ergon tool run once for each version of the go command. A build of dokimi-mutate-go by an older Go refuses the packages of a newer one.
+- da88eb5: Describe the cask of ergon without the full stop at its end, which brew audit refuses.
+- Updated dependencies [b68662b]
+- Updated dependencies [dfc0ced]
+  - go.dokimi.dev/ergon/service@0.6.1
+  - go.dokimi.dev/ergon/lang/go@0.4.1
+  - go.dokimi.dev/ergon/lang/bash@0.3.3
+  - go.dokimi.dev/ergon/lang/csharp@0.2.3
+  - go.dokimi.dev/ergon/lang/java@0.3.3
+  - go.dokimi.dev/ergon/lang/javascript@0.2.3
+  - go.dokimi.dev/ergon/lang/kotlin@0.3.3
+  - go.dokimi.dev/ergon/lang/php@0.3.3
+  - go.dokimi.dev/ergon/lang/python@0.3.3
+  - go.dokimi.dev/ergon/lang/rust@0.3.3
+  - go.dokimi.dev/ergon/lang/terraform@0.3.3
+  - go.dokimi.dev/ergon/lang/typescript@0.2.3
+
 ## 0.6.0
 
 ### Minor Changes
