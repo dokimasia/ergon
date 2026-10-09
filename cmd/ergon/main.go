@@ -42,5 +42,6 @@ func run() int {
 		Args:      os.Args[1:],
 		Env:       os.Environ(),
 	}
-	return cli.Run(ctx, &p, app.Register, cli.Version{Release: buildinfo.Version(), Full: buildinfo.Full()})
+	info := buildinfo.Read()
+	return cli.Run(ctx, &p, app.Register, cli.Version{Release: info.Version, Full: info.String()})
 }

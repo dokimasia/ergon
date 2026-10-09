@@ -1,17 +1,24 @@
 // Copyright Dokimasia B.V. 2026
 // SPDX-License-Identifier: MIT
 
-// Package buildinfo returns the version of a build of ergon.
+// Package buildinfo reads the version of the running ergon from the build information that the go
+// command writes into it.
 //
-// A build of a release sets three variables with -X flags of the linker. [Full] writes them with
-// [Format], and [Version] returns the version of the release alone:
+// A build at a tag records the version of the main module, such as v0.6.0 at the tag v0.6.0, and go
+// install of a version records that version. A build of a git checkout also records the commit,
+// its time, and whether the working tree had changes. The binary needs no -X flag of the linker for
+// any of it.
 //
-//	go.dokimi.dev/ergon/internal/buildinfo.version  the version of the release
-//	go.dokimi.dev/ergon/internal/buildinfo.commit   the commit of the release
-//	go.dokimi.dev/ergon/internal/buildinfo.date     the date of the commit
+// [Read] returns the [Info] of the running binary, and [From] the Info of any build information.
+// [Info.String] writes the version string of the flag --version, such as 0.6.0 (a5eb82a,
+// 2026-10-08).
 //
-// A build without the flags has the version of its main module when go install built a release of
-// it, as [Release] resolves it, and the version dev otherwise.
+// # Releases
+//
+// The version of an Info is the version of a release without its v, or [Development] for a build
+// that no release tags: a build without build information, a build of the go command that records
+// (devel), a build at a commit after the last tag, which records a pseudo-version, and a build of a
+// working tree with changes.
 //
 // # Dependency position
 //
