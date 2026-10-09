@@ -211,7 +211,9 @@ Global Flags:
 
 // packHelp is the help of ergon release pack, pinned because a person reads it.
 const packHelp = `ergon release pack builds the artifacts of each package of the publish plan
-that its registry receives as an artifact, into --out-dir.
+into --out-dir: the files that its registry receives, and the assets of its
+release under assets/<tag>/, such as the archives, the packages and the
+checksums of the commands of a Go module, which GoReleaser builds and signs.
 
 Usage:
   ergon release pack [flags]
@@ -230,9 +232,11 @@ const publishHelp = `ergon release publish uploads each package of the publish p
 lacks its version, and then tags each package at HEAD with the section of its
 changelog as the notes. On a workstation it creates annotated tags and pushes
 them to origin in one push. In GitHub Actions it creates the tags and the
-GitHub Releases through the API of GitHub. It refuses a plan whose lockfiles
-record other content of its packages than the working tree. --no-git-tag
-creates no tag.
+GitHub Releases through the API of GitHub: each release as a draft, then its
+assets from assets/<tag>/ of --from-pack-dir, and then the publish of the
+draft. A run after a failed upload completes the draft. It refuses a plan whose
+lockfiles record other content of its packages than the working tree, and on a
+workstation a release with assets. --no-git-tag creates no tag.
 
 Usage:
   ergon release publish [flags]
@@ -272,6 +276,7 @@ Usage:
   ergon release ci [command]
 
 Available Commands:
+  homebrew    Commit the casks of a publish to the Homebrew tap
   select-mode Choose the job that the release workflow runs
   skip        Decide whether a CI run skips its jobs
   verify      Verify that a CI run passed on the content of the commit
@@ -365,6 +370,33 @@ Global Flags:
   -h, --help          show the help of the command
 `
 
+// ciHomebrewHelp is the help of ergon release ci homebrew, pinned because a person reads it.
+const ciHomebrewHelp = `ergon release ci homebrew commits each cask that ergon release pack wrote for a
+release of the publish plan, casks/<tag>/<name>.rb of --from-pack-dir, to
+Casks/<name>.rb of the tap --tap, through the API of GitHub with the token of
+GITHUB_TOKEN, which needs write access to the contents of the tap. Each cask is
+one commit, which GitHub signs, and a cask that the tap already has is no
+commit.
+
+Usage:
+  ergon release ci homebrew [flags]
+
+Examples:
+  ergon release ci homebrew --tap dokimasia/homebrew-tap --from-publish-plan publish-plan.json
+
+Flags:
+      --from-pack-dir dir        read the casks of dir (default "dist")
+      --from-publish-plan file   read the publish plan from file
+      --tap owner/name           commit the casks to the tap owner/name
+
+Global Flags:
+      --config file   read the configuration from file (default ".ergon.yaml")
+  -h, --help          show the help of the command
+`
+
+// tapRepo is the Homebrew tap of the release cases.
+const tapRepo = "o/homebrew-tap"
+
 // releaseVariables are the variables of GitHub Actions and of the editors that the release
 // commands read, which every release case sets to an empty value before its own.
 var releaseVariables = []string{
@@ -380,9 +412,10 @@ var errRandom = errors.New("random: failed")
 // creates it, without tags and without pull requests, and makes each commit as hubCommit, whose
 // branch then points at it. Every commit has the tree tree, hubTree when tree is empty, and the
 // parent parent, none when parent is empty. The commit marked has the status ergon/version in the
-// state success, and no other commit has a status. It responds with runs to a request for the runs
-// of a workflow, and with the status 500 to a request whose method and path start with fail. It is
-// safe for concurrent use, as the goroutines of a server use it.
+// state success, and no other commit has a status. It creates each release as the draft 7, and has
+// the tap tapRepo with the default branch main and no file. It responds with runs to a request for
+// the runs of a workflow, and with the status 500 to a request whose method and path start with
+// fail. It is safe for concurrent use, as the goroutines of a server use it.
 type hub struct {
 	// fail is the start of the method and the path of the requests that fail, or empty for none.
 	fail string
@@ -461,9 +494,15 @@ func (h *hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.WriteString(w, `{"ref":"refs/heads/main","object":{"type":"commit","sha":"`+h.head+`"}}`)
 	case r.Method == http.MethodGet && created:
 		_, _ = io.WriteString(w, `{"object":{"type":"commit","sha":"`+hubCommit+`"}}`)
-	case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/git/ref/"):
+	case r.Method == http.MethodGet && (strings.Contains(r.URL.Path, "/git/ref/") ||
+		strings.Contains(r.URL.Path, "/contents/")):
 		w.WriteHeader(http.StatusNotFound)
 		_, _ = io.WriteString(w, `{"message":"Not Found"}`)
+	case r.Method == http.MethodGet && r.URL.Path == "/repos/"+tapRepo:
+		_, _ = io.WriteString(w, `{"default_branch":"main"}`)
+	case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/releases"):
+		w.WriteHeader(http.StatusCreated)
+		_, _ = io.WriteString(w, `{"id":7,"draft":true,"assets":[]}`)
 	case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/git/commits/"):
 		_, _ = io.WriteString(w, h.commit())
 	case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/status"):
@@ -601,6 +640,10 @@ func TestRelease(t *testing.T) {
 				name: "writes the help of release ci skip", args: []string{"release", "ci", "skip", "--help"},
 				stdout: ciSkipHelp,
 			},
+			{
+				name: "writes the help of release ci homebrew", args: []string{"release", "ci", "homebrew", "--help"},
+				stdout: ciHomebrewHelp,
+			},
 		}
 		for _, tt := range help {
 			t.Run(tt.name, func(t *testing.T) {
@@ -626,7 +669,7 @@ func TestRelease(t *testing.T) {
 			{
 				name: "returns 2 for release ci without a subcommand",
 				args: []string{"release", "ci"},
-				stderr: "ergon: cli: ci needs a subcommand: select-mode, skip, verify, version\n" +
+				stderr: "ergon: cli: ci needs a subcommand: homebrew, select-mode, skip, verify, version\n" +
 					"Run 'ergon release ci --help' for usage.\n",
 			},
 			{
@@ -1196,9 +1239,35 @@ func TestRelease(t *testing.T) {
 			assert.Equal(t, stdout, "released "+modulePath+"@1.0.0\n", "the standard output")
 			assert.Equal(t, h.calls(), []string{
 				"GET /repos/" + hubRepo + "/git/ref/tags/v1.0.0",
+				"GET /repos/" + hubRepo + "/git/ref/tags/v1.0.0",
 				"POST /repos/" + hubRepo + "/git/refs",
+				"GET /repos/" + hubRepo + "/releases?per_page=100&page=1",
 				"POST /repos/" + hubRepo + "/releases",
+				"PATCH /repos/" + hubRepo + "/releases/7",
 			}, "the requests to GitHub")
+		})
+
+		t.Run("ci homebrew commits the casks of the publish plan to the tap", func(t *testing.T) {
+			t.Parallel()
+			h := &hub{head: laterCommit}
+			env := h.start(t)
+			dir := goModule(t, gitConfig, nil)
+			plan := filepath.Join(t.TempDir(), "plan.json")
+			assert.NoError(t, os.WriteFile(plan, []byte(publishPlan), 0o600), "WriteFile of the plan")
+			pack := files.Workspace(t, files.Tree{"casks/v1.0.0/demo.rb": files.Text("cask \"demo\" do\nend\n")})
+			status, stdout, stderr := runRelease(t, dir, env, "release", "ci", "homebrew", "--tap", tapRepo,
+				"--from-publish-plan", plan, "--from-pack-dir", pack)
+			assert.Equal(t, status, statusOK, "the exit status: "+stderr)
+			assert.Equal(t, stdout, "committed Casks/demo.rb to "+tapRepo+"\n", "the standard output")
+			assert.Contains(t, h.commits()[0], `"headline":"demo 1.0.0"`, "the message of the commit")
+		})
+
+		t.Run("ci homebrew returns 2 without --tap", func(t *testing.T) {
+			t.Parallel()
+			status, stdout, stderr := runRelease(t, t.TempDir(), nil, "release", "ci", "homebrew")
+			assert.Equal(t, status, statusUsage, "the exit status")
+			assert.Empty(t, stdout, "the standard output")
+			assert.HasPrefix(t, stderr, "ergon: cli: set --tap to the tap, as owner/name\n", "the standard error")
 		})
 
 		t.Run("publish returns 1 in GitHub Actions without GITHUB_REPOSITORY", func(t *testing.T) {

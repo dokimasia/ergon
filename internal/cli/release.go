@@ -45,6 +45,7 @@ const (
 	titleFlag    = "title"
 	workflowFlag = "workflow"
 	commitFlag   = "commit"
+	tapFlag      = "tap"
 )
 
 // The variables of the environment that the release commands read, as GitHub Actions sets them, and
@@ -149,16 +150,20 @@ missing, in chunks of dependency order. --output writes the plan into a file.`
 
 	packShort = "Build the artifacts of the packages of a publish plan"
 	packLong  = `ergon release pack builds the artifacts of each package of the publish plan
-that its registry receives as an artifact, into --out-dir.`
+into --out-dir: the files that its registry receives, and the assets of its
+release under assets/<tag>/, such as the archives, the packages and the
+checksums of the commands of a Go module, which GoReleaser builds and signs.`
 
 	publishShort = "Publish and tag the packages of a publish plan"
 	publishLong  = `ergon release publish uploads each package of the publish plan whose registry
 lacks its version, and then tags each package at HEAD with the section of its
 changelog as the notes. On a workstation it creates annotated tags and pushes
 them to origin in one push. In GitHub Actions it creates the tags and the
-GitHub Releases through the API of GitHub. It refuses a plan whose lockfiles
-record other content of its packages than the working tree. --no-git-tag
-creates no tag.`
+GitHub Releases through the API of GitHub: each release as a draft, then its
+assets from assets/<tag>/ of --from-pack-dir, and then the publish of the
+draft. A run after a failed upload completes the draft. It refuses a plan whose
+lockfiles record other content of its packages than the working tree, and on a
+workstation a release with assets. --no-git-tag creates no tag.`
 
 	gitTagShort = "Tag the packages whose tags are missing"
 	gitTagLong  = `ergon release git-tag creates the annotated tag of each package whose tag at
@@ -200,6 +205,15 @@ with the status ergon/version, and a run passed on the parent of that commit.
 base. Without GITHUB_TOKEN or GITHUB_REPOSITORY, and on an error of GitHub, it
 writes a warning and false, so that the run tests the commit.`
 
+	ciHomebrewShort = "Commit the casks of a publish to the Homebrew tap"
+	ciHomebrewLong  = `ergon release ci homebrew commits each cask that ergon release pack wrote for a
+release of the publish plan, casks/<tag>/<name>.rb of --from-pack-dir, to
+Casks/<name>.rb of the tap --tap, through the API of GitHub with the token of
+GITHUB_TOKEN, which needs write access to the contents of the tap. Each cask is
+one commit, which GitHub signs, and a cask that the tap already has is no
+commit.`
+	ciHomebrewExample = "  ergon release ci homebrew --tap dokimasia/homebrew-tap --from-publish-plan publish-plan.json"
+
 	ciVerifyShort = "Verify that a CI run passed on the content of the commit"
 	ciVerifyLong  = `ergon release ci verify finds a run of the workflow --workflow that passed on the
 content of the commit of HEAD, through the API of GitHub: a run of the commit
@@ -228,8 +242,8 @@ func (untagged) Tag(context.Context, string) (string, bool, error) {
 	return "", false, nil
 }
 
-// Release creates nothing.
-func (untagged) Release(context.Context, string, string, string, bool) error {
+// Release creates nothing, and attaches no asset.
+func (untagged) Release(context.Context, string, string, string, bool, []string) error {
 	return nil
 }
 
@@ -242,7 +256,7 @@ func (untagged) Finish(context.Context) error {
 // working directory of s under ctx.
 func releaseCommand(ctx context.Context, s *session) *cobra.Command {
 	ci := group(s, "ci", ciShort, ciLong, selectModeCommand(ctx, s), ciSkipCommand(ctx, s), ciVerifyCommand(ctx, s),
-		ciVersionCommand(ctx, s))
+		ciVersionCommand(ctx, s), ciHomebrewCommand(ctx, s))
 	return group(s, "release", releaseShort, releaseLong, changesetCommand(ctx, s), statusCommand(ctx, s),
 		versionCommand(ctx, s), publishPlanCommand(ctx, s), packCommand(ctx, s), publishCommand(ctx, s),
 		gitTagCommand(ctx, s), ci)
@@ -657,6 +671,44 @@ func ciVerifyCommand(ctx context.Context, s *session) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&workflow, workflowFlag, defaultWorkflow, "find a passed run of the workflow `file`")
+	return cmd
+}
+
+// ciHomebrewCommand returns ergon release ci homebrew, which commits the casks of the publish plan
+// of --from-publish-plan from --from-pack-dir to the tap of --tap with [release.Homebrew], through
+// the client of GitHub of s, and writes a line of each cask. It returns a [usageError] without
+// --tap, and the errors of the publish plan, of the client and of Homebrew.
+func ciHomebrewCommand(ctx context.Context, s *session) *cobra.Command {
+	var tap, from, packDir string
+	cmd := &cobra.Command{
+		Use:     "homebrew",
+		Short:   ciHomebrewShort,
+		Long:    ciHomebrewLong,
+		Example: ciHomebrewExample,
+		Args:    usage(cobra.NoArgs),
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if tap == "" {
+				return usageError{err: fmt.Errorf("cli: set --%s to the tap, as owner/name", tapFlag)}
+			}
+			_, plan, err := s.planOf(ctx, cmd.ErrOrStderr(), from)
+			if err != nil {
+				return err
+			}
+			client, _, err := s.forge()
+			if err != nil {
+				return err
+			}
+			casks, err := release.Homebrew(ctx, client, tap, &plan, packDir)
+			for _, c := range casks {
+				fmt.Fprintf(cmd.OutOrStdout(), "committed %s to %s\n", c, tap)
+			}
+			return err
+		},
+	}
+	flags := cmd.Flags()
+	flags.StringVar(&tap, tapFlag, "", "commit the casks to the tap `owner/name`")
+	flags.StringVar(&from, planFlag, "", "read the publish plan from `file`")
+	flags.StringVar(&packDir, packDirFlag, defaultPackDir, "read the casks of `dir`")
 	return cmd
 }
 

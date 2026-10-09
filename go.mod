@@ -3,7 +3,7 @@
 
 module go.dokimi.dev/ergon
 
-go 1.27.1
+go 1.27.2
 
 require (
 	github.com/spf13/cobra v1.10.2
@@ -58,7 +58,7 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	golang.org/x/crypto v0.57.0 // indirect
-	golang.org/x/net v0.59.0 // indirect
+	golang.org/x/net v0.60.0 // indirect
 	golang.org/x/sync v0.23.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/text v0.42.0 // indirect

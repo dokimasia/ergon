@@ -4,10 +4,16 @@
 package app
 
 import (
+	"context"
+	"fmt"
+	"os"
+	"os/exec"
+
 	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/lang/bash"
 	"go.dokimi.dev/ergon/lang/csharp"
 	golang "go.dokimi.dev/ergon/lang/go"
+	"go.dokimi.dev/ergon/lang/go/baseline"
 	"go.dokimi.dev/ergon/lang/java"
 	"go.dokimi.dev/ergon/lang/javascript"
 	"go.dokimi.dev/ergon/lang/kotlin"
@@ -19,8 +25,9 @@ import (
 	"go.dokimi.dev/ergon/service/vcs"
 )
 
-// git is the access to the repository that the toolchain of Go reads tags and snapshots through.
-var git = golang.Git{Tags: vcs.Tags, Snapshot: vcs.Snapshot}
+// git is the access to the repository that the toolchain of Go reads tags and snapshots through,
+// and creates the tag of a module with commands through.
+var git = golang.Git{Tags: vcs.Tags, Snapshot: vcs.Snapshot, Head: vcs.Head, LightTag: vcs.LightTag}
 
 // registrations are the Register functions of the language modules, in the order that [Register]
 // calls them. Java precedes Kotlin and JavaScript precedes TypeScript, because Kotlin and
@@ -32,7 +39,7 @@ var registrations = []func(*language.Catalog) error{
 	php.Register,
 	javascript.Register,
 	typescript.Register,
-	func(c *language.Catalog) error { return golang.Register(c, git) },
+	func(c *language.Catalog) error { return golang.Register(c, git, tools) },
 	python.Register,
 	rust.Register,
 	terraform.Register,
@@ -47,6 +54,25 @@ func Register(c *language.Catalog) error {
 		if err := register(c); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// tools runs the tool of the section go with args in dir through ergon tool run of the running
+// ergon, with env added to the environment of the process and the standard streams of the process,
+// so the log of a pack shows the output of GoReleaser. It returns the error of finding the running
+// ergon, and the error of the tool, such as an exit status other than 0.
+func tools(ctx context.Context, dir, tool string, args, env []string) error {
+	self, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("app: find the running ergon: %w", err)
+	}
+	cmd := exec.CommandContext(ctx, self, append([]string{"tool", "run", baseline.Name + "." + tool, "--"}, args...)...)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), env...)
+	cmd.Stdout, cmd.Stderr = os.Stderr, os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("app: ergon tool run %s.%s: %w", baseline.Name, tool, err)
 	}
 	return nil
 }
