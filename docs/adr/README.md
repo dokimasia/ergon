@@ -32,3 +32,8 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 | [0021](0021-binary-releases.md) | Each release of a Go module attaches the signed binaries of its commands | Accepted, superseded in part by ADR-0023 |
 | [0022](0022-upx-for-go-binaries.md) | The release of a Go module packs the Linux binaries of its commands with UPX | Accepted |
 | [0023](0023-buildinfo-in-the-root-module.md) | ergon reads the version of its binary in a package of the root module | Accepted |
+| [0024](0024-one-module-for-the-cli.md) | ergon has one module for its CLI and one for ergon-go-vet | Proposed |
+| [0025](0025-internal-packages-by-command.md) | The packages of ergon are internal and grouped by command | Proposed |
+| [0026](0026-options-implement-producer-roles.md) | The options of a producer return its contribution, data and files | Proposed |
+| [0027](0027-template-function-for-gate-targets.md) | A template function writes the generate and check targets of each language | Proposed |
+| [0028](0028-one-test-over-the-catalog.md) | One test over the catalog renders every producer | Proposed |
