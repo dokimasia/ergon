@@ -4,9 +4,10 @@
 // Package workflow declares a producer's part of the GitHub workflows of a repository.
 //
 // A producer of ergon init returns its part as a [Contribution]: the jobs of ci.yml and of
-// nightly.yml, the steps that set up its toolchain in release.yml, the CodeQL analyses of
-// security.yml and the updates of dependabot.yml. The producer of the GitHub files renders the
-// contributions of every producer into those files, so no toolchain appears in its templates.
+// nightly.yml, the steps that set up its toolchain in release.yml, the [Assets] of its releases,
+// the CodeQL analyses of security.yml and the updates of dependabot.yml. The producer of the
+// GitHub files renders the contributions of every producer into those files, so no toolchain
+// appears in its templates.
 //
 //   - A [Job] is a job of ci.yml or of nightly.yml: the steps that follow the checkout, the
 //     permissions, and the runners. A check job of a language runs the [Setup] of its toolchain
@@ -30,8 +31,8 @@
 // # Errors
 //
 // Each type has a Validate method. It returns an error that wraps the sentinel of its type,
-// [ErrInvalidAction], [ErrInvalidStep], [ErrInvalidJob], [ErrInvalidCodeQL] or [ErrInvalidUpdate],
-// for the first value that a workflow cannot contain.
+// [ErrInvalidAction], [ErrInvalidStep], [ErrInvalidJob], [ErrInvalidAssets], [ErrInvalidCodeQL] or
+// [ErrInvalidUpdate], for the first value that a workflow cannot contain.
 //
 // # Dependency position
 //

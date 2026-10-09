@@ -7,8 +7,8 @@ import "fmt"
 
 // Contribution is a producer's part of the workflows of a repository: the setup of a toolchain
 // that two languages share, the jobs of ci.yml and of nightly.yml, the setup of the toolchain in
-// release.yml, the CodeQL analyses of security.yml and the updates of dependabot.yml. The zero value
-// contributes nothing.
+// release.yml, the assets of its releases, the CodeQL analyses of security.yml and the updates of
+// dependabot.yml. The zero value contributes nothing.
 type Contribution struct {
 	// Setup is the setup of the toolchain of the producer, which the jobs of the toolchain's
 	// languages run, or nil. Only a toolchain that two languages share contributes one: a language
@@ -29,6 +29,10 @@ type Contribution struct {
 	// producers.
 	Release []Step
 
+	// Assets states that the producer builds release assets in the job pack of release.yml, or is
+	// nil.
+	Assets *Assets
+
 	// CodeQL are the CodeQL analyses of security.yml.
 	CodeQL []CodeQL
 
@@ -38,8 +42,9 @@ type Contribution struct {
 
 // Validate returns the first error of the parts of c, in the order of its fields: the error of
 // [Setup.Validate], [Job.Validate] of a job of ci.yml or of nightly.yml, [Step.Validate] with the
-// position of the release step, [CodeQL.Validate] or [Update.Validate], which wraps the sentinel of
-// the part. It returns nil for a contribution whose every part is valid, and for the zero value.
+// position of the release step, [Assets.Validate], [CodeQL.Validate] or [Update.Validate], which
+// wraps the sentinel of the part. It returns nil for a contribution whose every part is valid, and
+// for the zero value.
 func (c *Contribution) Validate() error {
 	if c.Setup != nil {
 		if err := c.Setup.Validate(); err != nil {
@@ -56,6 +61,11 @@ func (c *Contribution) Validate() error {
 	for i := range c.Release {
 		if err := c.Release[i].Validate(); err != nil {
 			return fmt.Errorf("workflow: release step %d: %w", i+1, err)
+		}
+	}
+	if c.Assets != nil {
+		if err := c.Assets.Validate(); err != nil {
+			return err
 		}
 	}
 	for i := range c.CodeQL {

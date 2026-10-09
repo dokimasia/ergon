@@ -85,10 +85,24 @@ type Tagger interface {
 	Tag(p *workspace.Package, v version.Version) string
 }
 
+// The directories of a pack directory that a [Packer] writes beside the artifacts of a registry.
+const (
+	// AssetsDir has the assets of the release of each tag, as assets/<tag>/<file>, which a publish
+	// attaches to the release of the tag.
+	AssetsDir = "assets"
+
+	// CasksDir has the Homebrew casks of the release of each tag, as casks/<tag>/<name>.rb, which a
+	// release commits to its tap after the publish.
+	CasksDir = "casks"
+)
+
 // Packer is the release role of a toolchain whose packages a registry receives as artifacts, such
-// as the tarballs of npm.
+// as the tarballs of npm, or whose releases have assets, such as the archives of the commands of a
+// Go module.
 type Packer interface {
-	// Pack builds the artifacts of pkgs from root into dir. It returns the error of the build.
+	// Pack builds the artifacts of pkgs from root into dir: the files that the registry of a
+	// package receives, and the assets of the release of its tag under [AssetsDir]/<tag>/ of dir.
+	// Each package of pkgs has the Version of its release. Pack returns the error of the build.
 	Pack(ctx context.Context, root string, pkgs []workspace.Package, dir string) error
 }
 

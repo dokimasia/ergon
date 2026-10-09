@@ -54,6 +54,11 @@ func TestContribution(t *testing.T) {
 				want: workflow.ErrInvalidStep,
 			},
 			{
+				name: "returns ErrInvalidAssets for assets that are not valid",
+				give: func(c *workflow.Contribution) { c.Assets.Tap = "homebrew-tap" },
+				want: workflow.ErrInvalidAssets,
+			},
+			{
 				name: "returns ErrInvalidCodeQL for an analysis that is not valid",
 				give: func(c *workflow.Contribution) { c.CodeQL[0].BuildMode = "" },
 				want: workflow.ErrInvalidCodeQL,
@@ -76,14 +81,15 @@ func TestContribution(t *testing.T) {
 }
 
 // goContribution returns a new valid contribution of the cases with every part: a shared setup,
-// the check of Go, the check of Go as a nightly job, the setup of Go in a release, its analysis and
-// its updates.
+// the check of Go, the check of Go as a nightly job, the setup of Go in a release, the assets of
+// its commands with a tap, its analysis and its updates.
 func goContribution() workflow.Contribution {
 	return workflow.Contribution{
 		Setup:   goSetup(),
 		Jobs:    []workflow.Job{*goJob()},
 		Nightly: []workflow.Job{*goJob()},
 		Release: []workflow.Step{{Uses: setupGo, With: map[string]string{"go-version-file": "go.work"}}},
+		Assets:  &workflow.Assets{Tap: "dokimasia/homebrew-tap"},
 		CodeQL:  []workflow.CodeQL{goAnalysis()},
 		Updates: []workflow.Update{{Ecosystem: "gomod", Directories: []string{"/"}}},
 	}
