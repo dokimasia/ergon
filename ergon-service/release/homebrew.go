@@ -43,10 +43,12 @@ func Homebrew(ctx context.Context, f TapForge, tap string, plan *PublishPlan, di
 		for k := range chunk {
 			e := &chunk[k]
 			casksDir := filepath.Join(dir, language.CasksDir, filepath.FromSlash(e.Tag))
-			entries, err := os.ReadDir(casksDir)
-			if errors.Is(err, fs.ErrNotExist) {
+			// os.Stat tells a missing path from a file, because os.ReadDir on Windows returns an error
+			// that matches fs.ErrNotExist for both.
+			if _, err := os.Stat(casksDir); errors.Is(err, fs.ErrNotExist) {
 				continue
 			}
+			entries, err := os.ReadDir(casksDir)
 			if err != nil {
 				return committed, fmt.Errorf("release: read the casks of %s: %w", e.Tag, err)
 			}

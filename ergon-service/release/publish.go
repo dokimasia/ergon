@@ -196,10 +196,12 @@ func assetsOf(dir, tag string) ([]string, error) {
 		return nil, nil
 	}
 	assetsDir := filepath.Join(dir, language.AssetsDir, filepath.FromSlash(tag))
-	entries, err := os.ReadDir(assetsDir)
-	if errors.Is(err, fs.ErrNotExist) {
+	// os.Stat tells a missing path from a file, because os.ReadDir on Windows returns an error that
+	// matches fs.ErrNotExist for both.
+	if _, err := os.Stat(assetsDir); errors.Is(err, fs.ErrNotExist) {
 		return nil, nil
 	}
+	entries, err := os.ReadDir(assetsDir)
 	if err != nil {
 		return nil, fmt.Errorf("release: read the assets of %s: %w", tag, err)
 	}
