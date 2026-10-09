@@ -1,5 +1,19 @@
 # go.dokimi.dev/ergon/lang/java
 
+## 0.3.2
+
+### Patch Changes
+
+- babadd5: Require Go 1.27.2, whose standard library fixes the nine vulnerabilities that govulncheck reports for Go 1.27.1, such as GO-2026-6604 of os.Root on Windows.
+- Updated dependencies [b8f1c6a]
+- Updated dependencies [14e7a3a]
+- Updated dependencies [d616a74]
+- Updated dependencies [326b07e]
+- Updated dependencies [babadd5]
+- Updated dependencies [2fdb4d1]
+  - go.dokimi.dev/ergon/core@0.5.0
+  - go.dokimi.dev/ergon/service@0.6.0
+
 ## 0.3.1
 
 ### Patch Changes
