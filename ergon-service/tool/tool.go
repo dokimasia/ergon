@@ -109,7 +109,7 @@ type entry struct {
 //
 //   - a [option.Release] downloads the asset of the platform, which Run checks against the digest
 //     of the pin before it unpacks the program
-//   - a [option.Module] installs with go install
+//   - a [option.Module] installs with go install, once for each version of the go command in Dir
 //   - a [option.PyPI] runs through the [option.UV] of the section, with uv tool run, or with uv run
 //     in the environment of the project for a tool tagged run:"project"
 //   - an [option.NPM] runs with npx

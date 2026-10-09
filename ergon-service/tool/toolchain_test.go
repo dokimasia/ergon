@@ -4,6 +4,7 @@
 package tool_test
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -89,15 +90,44 @@ func TestToolchain(t *testing.T) {
 			})
 		}
 
-		t.Run("runs an installed module without go", func(t *testing.T) {
+		t.Run("runs an installed module without installing it again", func(t *testing.T) {
 			t.Parallel()
 			r, out, _ := runner(t, map[string][]byte{})
 			_, err := r.Run(t.Context(), section, demo(), "golangci-lint", nil)
 			assert.NoError(t, err, "the first Run")
-			r.Env = append(r.Env, "PATH=")
+			r.Env = append(r.Env, installFailsEnv+"=1")
 			_, err = r.Run(t.Context(), section, demo(), "golangci-lint", []string{"again"})
-			assert.NoError(t, err, "the second Run")
+			assert.NoError(t, err, "the second Run, whose go install fails")
 			assert.Equal(t, out.String(), "golangci-lint\n"+"golangci-lint again\n", "the output of both runs")
+		})
+
+		t.Run("installs a module again for another version of the go command", func(t *testing.T) {
+			t.Parallel()
+			r, out, _ := runner(t, map[string][]byte{})
+			_, err := r.Run(t.Context(), section, demo(), "golangci-lint", nil)
+			assert.NoError(t, err, "the Run with the first version")
+			r.Env = append(r.Env, goVersionEnv+"=go1.28.0")
+			_, err = r.Run(t.Context(), section, demo(), "golangci-lint", []string{"again"})
+			assert.NoError(t, err, "the Run with the second version")
+			assert.Equal(t, out.String(), "golangci-lint\n"+"golangci-lint again\n", "the output of both runs")
+			var programs []string
+			err = filepath.WalkDir(r.Cache, func(p string, d fs.DirEntry, err error) error {
+				if err == nil && d.Type().IsRegular() && strings.TrimSuffix(d.Name(), exe) == "golangci-lint" {
+					programs = append(programs, p)
+				}
+				return err
+			})
+			assert.NoError(t, err, "WalkDir of the cache")
+			assert.Length(t, programs, 2, "the programs of the module in the cache")
+		})
+
+		t.Run("returns ErrInstall for a go command that does not report its version", func(t *testing.T) {
+			t.Parallel()
+			r, _, errs := runner(t, map[string][]byte{})
+			r.Env = append(r.Env, versionFailsEnv+"=1")
+			_, err := r.Run(t.Context(), section, demo(), "golangci-lint", nil)
+			assert.ErrorIs(t, err, tool.ErrInstall, "Run")
+			assert.Contains(t, errs.String(), "GOVERSION is unknown", "the output of go")
 		})
 
 		t.Run("runs an installed crate a second time", func(t *testing.T) {

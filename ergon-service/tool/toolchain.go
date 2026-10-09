@@ -4,6 +4,7 @@
 package tool
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -30,9 +31,21 @@ const project = `{"config": {"allow-plugins": true}}` + "\n"
 const filePerm fs.FileMode = 0o644
 
 // module installs the Go module m with go install into the cache, unless the cache has its program
-// name, and returns the program. go install checks the module against the checksum database.
+// name, and returns the program. The cache keeps a program for each version of the go command in
+// the directory Dir, as go env GOVERSION reports it, because a program that reads the packages of
+// Go can refuse a go command of another version, as dokimi-mutate-go refuses the export data of
+// one. go install checks the module against the checksum database. It returns an error that wraps
+// [ErrInstall] for a go command that does not report its version.
 func (r *Runner) module(ctx context.Context, m option.Module, name string) (string, error) {
-	dir := filepath.Join(r.Cache, "module", filepath.FromSlash(m.Package()), m.Version(), r.platform())
+	cmd := exec.CommandContext(ctx, "go", "env", "GOVERSION")
+	cmd.Dir, cmd.Env, cmd.Stderr = r.Dir, r.Env, r.Stderr
+	goVersion, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("%w: go env GOVERSION: %w", ErrInstall, err)
+	}
+	sum := sha256.Sum256(bytes.TrimSpace(goVersion))
+	dir := filepath.Join(r.Cache, "module", filepath.FromSlash(m.Package()), m.Version(),
+		hex.EncodeToString(sum[:8]), r.platform())
 	program := filepath.Join(dir, r.executable(name))
 	if exists(program) {
 		return program, nil

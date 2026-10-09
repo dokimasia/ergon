@@ -15,7 +15,9 @@
 //   - A Maven artifact downloads its jar, which the runner checks against the .sha256 file beside
 //     it in Maven Central, and runs with java -jar.
 //   - A Go module installs with go install, and a crate with cargo install --locked. Both check
-//     what they download against the checksums of their registry.
+//     what they download against the checksums of their registry. A Go module installs once for
+//     each version of the go command in the working directory, because a program that reads the
+//     packages of Go can refuse a go command of another version.
 //   - A PyPI package runs through the release binary of uv of its section, and an npm package with
 //     npx, which install it into their own caches.
 //   - The Composer packages of a section install together into one project, so a package such as

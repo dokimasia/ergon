@@ -7,6 +7,7 @@ import (
 	"archive/tar"
 	"archive/zip"
 	"bytes"
+	"cmp"
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
@@ -37,6 +38,21 @@ import (
 // base name of its path states: a toolchain, which installs a copy of the test binary, or a tool,
 // which writes its name and its arguments to the standard output.
 const fakeEnv = "ERGON_TOOL_FAKE"
+
+// The variables of the environment that the fake go reads.
+const (
+	// goVersionEnv is the version that go env GOVERSION writes, and fakeGoVersion when it is empty.
+	goVersionEnv = "ERGON_TOOL_FAKE_GOVERSION"
+
+	// versionFailsEnv makes go env GOVERSION fail.
+	versionFailsEnv = "ERGON_TOOL_FAKE_VERSION_FAILS"
+
+	// installFailsEnv makes go install fail.
+	installFailsEnv = "ERGON_TOOL_FAKE_INSTALL_FAILS"
+)
+
+// fakeGoVersion is the version that the fake go writes without goVersionEnv.
+const fakeGoVersion = "go1.27.2"
 
 // section is the name of the section of the cases.
 const section = "demo"
@@ -369,8 +385,10 @@ func TestTool(t *testing.T) {
 // fake acts as the program that the base name of args[0] states, without .exe, and returns its
 // exit status:
 //
+//   - go env GOVERSION writes the version of goVersionEnv, or fakeGoVersion, and fails with
+//     versionFailsEnv
 //   - go install <module>@<version> copies the test binary to GOBIN, named as go install names it,
-//     and fails for a module whose path has broken
+//     and fails for a module whose path has broken, and with installFailsEnv
 //   - cargo install --locked --root <root> <crate>@<version> copies it to <root>/bin
 //   - composer require ... --working-dir=<dir> <package>:<version>... writes a proxy of each
 //     package to <dir>/vendor/bin, and fails for a package whose name has broken
@@ -383,8 +401,16 @@ func fake(args []string) int {
 	name := strings.TrimSuffix(filepath.Base(args[0]), exe)
 	switch name {
 	case "go":
+		if args[1] == "env" {
+			if os.Getenv(versionFailsEnv) != "" {
+				fmt.Fprintln(os.Stderr, "go: GOVERSION is unknown")
+				return 1
+			}
+			fmt.Fprintln(os.Stdout, cmp.Or(os.Getenv(goVersionEnv), fakeGoVersion))
+			return 0
+		}
 		pkg, _, _ := strings.Cut(args[2], "@")
-		if strings.Contains(pkg, "broken") {
+		if strings.Contains(pkg, "broken") || os.Getenv(installFailsEnv) != "" {
 			fmt.Fprintln(os.Stderr, "go: the module does not install")
 			return 1
 		}
