@@ -21,9 +21,15 @@ ergon sets up a repository with a managed baseline. It also keeps the license he
 
 ## Install
 
-Each [release](https://github.com/dokimasia/ergon/releases/latest) has archives for Linux, macOS and Windows on amd64 and arm64, and `checksums.txt` with the SHA-256 digest of each archive. Download the archive for your system, check its digest, and put `ergon` on your `PATH`.
+Each [release](https://github.com/dokimasia/ergon/releases/latest) has archives for Linux, macOS and Windows on amd64 and arm64, deb, rpm and apk packages for Linux, and `checksums.txt` with the SHA-256 digest of each file. cosign signs `checksums.txt` without a key, and each archive and package has an SPDX SBOM. Download the archive for your system, check its digest, and put `ergon` on your `PATH`. `gh attestation verify <file> --repo dokimasia/ergon` checks the build provenance of a file.
 
-With Go 1.27.1 or later, install the command from source:
+With Homebrew, install the cask of the tap:
+
+```sh
+brew install --cask dokimasia/tap/ergon
+```
+
+With Go 1.27.2 or later, install the command from source:
 
 ```sh
 go install go.dokimi.dev/ergon/cmd/ergon@latest
