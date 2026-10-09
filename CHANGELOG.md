@@ -1,5 +1,39 @@
 # go.dokimi.dev/ergon
 
+## 0.6.0
+
+### Minor Changes
+
+- b8f1c6a: Build, sign and attest the binaries of the commands of a Go module in each release of the module. The key binaries of the section go lists the commands. ergon init renders the configuration of GoReleaser of each module with a command. The job pack of release.yml builds the archives, the deb, rpm and apk packages, the casks, the checksums with their cosign signature and the SBOMs, and attests them. UPX packs each Linux binary with LZMA, and ergon tool run unpacks the .tar.xz of a release binary such as UPX. ergon release publish attaches the assets to a draft release before it publishes the release. ergon release ci homebrew then commits the casks to the tap of the key homebrew. The managed .gitignore ignores publish-plan.json and /dist/, so that Go writes the version of the release into each binary.
+- d78232a: Read the version of ergon from the build information that Go writes from the tag of its module, without flags of the linker, and report a build of a working tree with changes as dev.
+- d616a74: Refuse to write a new lock, or a lock that a release wrote, in a build of ergon without a release, whose version dev no release has. Such a build keeps a lock that such a build wrote.
+- 326b07e: Render nightly.yml, which runs the long steps of each language on a schedule, each step in a job of its own. The key nightly of the section go maps fuzz, bench and mutate to the limit of each job in minutes, and the key nightly.schedule of the section github states when the workflow runs.
+
+### Patch Changes
+
+- 14e7a3a: Move golang.org/x/net to v0.60.0, which fixes GO-2026-6603, GO-2026-6610, GO-2026-6611, GO-2026-6612 and GO-2026-6617.
+- babadd5: Require Go 1.27.2, whose standard library fixes the nine vulnerabilities that govulncheck reports for Go 1.27.1, such as GO-2026-6604 of os.Root on Windows.
+- 2fdb4d1: Return an error on Windows for a file in place of the directory of the assets or the casks of a release, as on Linux and macOS. ergon release publish and ergon release ci homebrew read the directory.
+- Updated dependencies [b8f1c6a]
+- Updated dependencies [14e7a3a]
+- Updated dependencies [d616a74]
+- Updated dependencies [326b07e]
+- Updated dependencies [babadd5]
+- Updated dependencies [2fdb4d1]
+  - go.dokimi.dev/ergon/core@0.5.0
+  - go.dokimi.dev/ergon/service@0.6.0
+  - go.dokimi.dev/ergon/lang/go@0.4.0
+  - go.dokimi.dev/ergon/lang/bash@0.3.2
+  - go.dokimi.dev/ergon/lang/csharp@0.2.2
+  - go.dokimi.dev/ergon/lang/java@0.3.2
+  - go.dokimi.dev/ergon/lang/javascript@0.2.2
+  - go.dokimi.dev/ergon/lang/kotlin@0.3.2
+  - go.dokimi.dev/ergon/lang/php@0.3.2
+  - go.dokimi.dev/ergon/lang/python@0.3.2
+  - go.dokimi.dev/ergon/lang/rust@0.3.2
+  - go.dokimi.dev/ergon/lang/terraform@0.3.2
+  - go.dokimi.dev/ergon/lang/typescript@0.2.2
+
 ## 0.5.0
 
 ### Minor Changes

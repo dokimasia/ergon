@@ -9,19 +9,19 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	go.dokimi.dev/assert v0.0.0-20261007161809-4abc39fa6683
-	go.dokimi.dev/ergon/core v0.4.0
-	go.dokimi.dev/ergon/lang/bash v0.3.1
-	go.dokimi.dev/ergon/lang/csharp v0.2.1
-	go.dokimi.dev/ergon/lang/go v0.3.1
-	go.dokimi.dev/ergon/lang/java v0.3.1
-	go.dokimi.dev/ergon/lang/javascript v0.2.1
-	go.dokimi.dev/ergon/lang/kotlin v0.3.1
-	go.dokimi.dev/ergon/lang/php v0.3.1
-	go.dokimi.dev/ergon/lang/python v0.3.1
-	go.dokimi.dev/ergon/lang/rust v0.3.1
-	go.dokimi.dev/ergon/lang/terraform v0.3.1
-	go.dokimi.dev/ergon/lang/typescript v0.2.1
-	go.dokimi.dev/ergon/service v0.5.0
+	go.dokimi.dev/ergon/core v0.5.0
+	go.dokimi.dev/ergon/lang/bash v0.3.2
+	go.dokimi.dev/ergon/lang/csharp v0.2.2
+	go.dokimi.dev/ergon/lang/go v0.4.0
+	go.dokimi.dev/ergon/lang/java v0.3.2
+	go.dokimi.dev/ergon/lang/javascript v0.2.2
+	go.dokimi.dev/ergon/lang/kotlin v0.3.2
+	go.dokimi.dev/ergon/lang/php v0.3.2
+	go.dokimi.dev/ergon/lang/python v0.3.2
+	go.dokimi.dev/ergon/lang/rust v0.3.2
+	go.dokimi.dev/ergon/lang/terraform v0.3.2
+	go.dokimi.dev/ergon/lang/typescript v0.2.2
+	go.dokimi.dev/ergon/service v0.6.0
 	go.yaml.in/yaml/v3 v3.0.5
 	golang.org/x/mod v0.41.0
 )
@@ -56,6 +56,7 @@ require (
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
+	github.com/ulikunitz/xz v0.5.17 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	golang.org/x/crypto v0.57.0 // indirect
 	golang.org/x/net v0.60.0 // indirect
