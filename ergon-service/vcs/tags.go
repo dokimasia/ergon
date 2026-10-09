@@ -47,6 +47,16 @@ func Tag(ctx context.Context, dir string, t Terminal, name, commit, message stri
 	return err
 }
 
+// LightTag creates the lightweight tag name at commit in the repository of dir, unsigned whatever
+// the configuration of the repository states, such as the tag of a module that a pack builds the
+// assets at before the publish creates the same tag on the host. It returns an error that wraps
+// [ErrGit] for a tag that exists, for a commit that the repository does not have, and for a ctx that
+// ends before git does.
+func LightTag(ctx context.Context, dir, name, commit string) error {
+	_, err := run(ctx, dir, "tag", "--no-sign", "--", name, commit)
+	return err
+}
+
 // Push pushes refs, such as refs/tags/v1.2.0, from the repository of dir to remote in one atomic
 // push: the remote updates every ref or none. git and its ssh read and write t, such as for the PIN
 // and the touch of the key of the remote. It returns an error that wraps [ErrGit] for a push that

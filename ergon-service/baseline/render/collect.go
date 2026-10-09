@@ -19,13 +19,14 @@ import (
 var ErrInvalidContribution = errors.New("render: invalid contribution")
 
 // Collect returns the contributions of units to the workflows, in the order of units: every job of
-// ci.yml and of nightly.yml, every step of a release, every CodeQL analysis and every update. A job
-// that names a toolchain runs the setup that the unit of that name contributes, which Collect sets
-// as the job's Setup. A unit that is not a [language.Contributor] contributes nothing, and the
-// result has no Setup of its own.
+// ci.yml and of nightly.yml, every step of a release, the assets of the releases with their tap,
+// every CodeQL analysis and every update. A job that names a toolchain runs the setup that the unit
+// of that name contributes, which Collect sets as the job's Setup. A unit that is not a
+// [language.Contributor] contributes nothing, and the result has no Setup of its own.
 //
 // It returns an error that wraps [ErrInvalidContribution] for a contribution that a producer
-// declares wrong, and for a job that two contributions declare in the same workflow.
+// declares wrong, for a job that two contributions declare in the same workflow, and for two
+// contributions whose assets name different taps.
 func Collect(units []Unit) (workflow.Contribution, error) {
 	setups := map[string]*workflow.Setup{}
 	var parts []workflow.Contribution
@@ -56,6 +57,9 @@ func Collect(units []Unit) (workflow.Contribution, error) {
 			return workflow.Contribution{}, err
 		}
 		all.Release = append(all.Release, part.Release...)
+		if all.Assets, err = assetsOf(all.Assets, part.Assets, names[i]); err != nil {
+			return workflow.Contribution{}, err
+		}
 		for _, c := range part.CodeQL {
 			if slices.ContainsFunc(all.CodeQL, func(d workflow.CodeQL) bool { return d.Language == c.Language }) {
 				return workflow.Contribution{}, fmt.Errorf("%w: %s declares the CodeQL analysis of %s again",
@@ -75,6 +79,26 @@ func Collect(units []Unit) (workflow.Contribution, error) {
 			}
 			all.Updates = append(all.Updates, u)
 		}
+	}
+	return all, nil
+}
+
+// assetsOf returns the assets of all with the assets of the contribution of name: a copy of part
+// when all has none, all with the tap of part when all has no tap, and all otherwise. It returns an
+// error that wraps [ErrInvalidContribution] for a tap of part that differs from the tap of all,
+// because release.yml commits the casks to one tap.
+func assetsOf(all, part *workflow.Assets, name string) (*workflow.Assets, error) {
+	switch {
+	case part == nil:
+		return all, nil
+	case all == nil:
+		merged := *part
+		return &merged, nil
+	case part.Tap != "" && all.Tap != "" && part.Tap != all.Tap:
+		return nil, fmt.Errorf("%w: %s names the tap %s, and another producer names %s", ErrInvalidContribution, name,
+			part.Tap, all.Tap)
+	case part.Tap != "":
+		all.Tap = part.Tap
 	}
 	return all, nil
 }

@@ -26,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ulikunitz/xz"
 	"go.dokimi.dev/assert"
 	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/core/option"
@@ -524,8 +525,8 @@ func digest(content []byte) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// archive returns an archive of the format of suffix, .tar.gz or .zip, with the entry name of
-// content, and an empty archive for content of a failing writer, which no case has.
+// archive returns an archive of the format of suffix, .tar.gz, .tar.xz or .zip, with the entry name
+// of content, and an empty archive for content of a failing writer, which no case has.
 func archive(suffix, name string, content []byte) []byte {
 	var b bytes.Buffer
 	if suffix == ".zip" {
@@ -535,11 +536,16 @@ func archive(suffix, name string, content []byte) []byte {
 		_ = z.Close()
 		return b.Bytes()
 	}
-	gz, _ := gzip.NewWriterLevel(&b, gzip.BestSpeed)
-	tw := tar.NewWriter(gz)
+	var compressed io.WriteCloser
+	if suffix == ".tar.xz" {
+		compressed, _ = xz.NewWriter(&b)
+	} else {
+		compressed, _ = gzip.NewWriterLevel(&b, gzip.BestSpeed)
+	}
+	tw := tar.NewWriter(compressed)
 	_ = tw.WriteHeader(&tar.Header{Name: name, Mode: 0o755, Size: int64(len(content))})
 	_, _ = io.Copy(tw, bytes.NewReader(content))
 	_ = tw.Close()
-	_ = gz.Close()
+	_ = compressed.Close()
 	return b.Bytes()
 }

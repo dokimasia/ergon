@@ -63,6 +63,26 @@ func TestCollect(t *testing.T) {
 			}, "the contributions")
 		})
 
+		t.Run("merges the assets of the parts with the tap of the part that names one", func(t *testing.T) {
+			t.Parallel()
+			first := &workflow.Assets{}
+			got, err := render.Collect([]render.Unit{
+				contributing("rust", workflow.Contribution{Assets: first}),
+				contributing("go", workflow.Contribution{Assets: &workflow.Assets{Tap: "dokimasia/homebrew-tap"}}),
+				contributing("java", workflow.Contribution{Assets: &workflow.Assets{Tap: "dokimasia/homebrew-tap"}}),
+			})
+			assert.NoError(t, err, "Collect")
+			assert.Equal(t, got.Assets, &workflow.Assets{Tap: "dokimasia/homebrew-tap"}, "the assets")
+			assert.Empty(t, first.Tap, "the tap of the assets of the first part")
+		})
+
+		t.Run("returns no assets for parts without assets", func(t *testing.T) {
+			t.Parallel()
+			got, err := render.Collect([]render.Unit{contributing("common", workflow.Contribution{})})
+			assert.NoError(t, err, "Collect")
+			assert.Nil(t, got.Assets, "the assets")
+		})
+
 		t.Run("sets the setup of the toolchain that a job names", func(t *testing.T) {
 			t.Parallel()
 			setup := &workflow.Setup{Files: ".java-version", Timeout: 30, Steps: []workflow.Step{{Uses: setupJava}}}
@@ -143,6 +163,13 @@ func TestCollect(t *testing.T) {
 						Steps:     []workflow.Step{{Run: []string{"make fuzz-java"}}},
 					},
 				}})},
+			},
+			{
+				name: "returns ErrInvalidContribution for two parts whose assets name different taps",
+				units: []render.Unit{
+					contributing("go", workflow.Contribution{Assets: &workflow.Assets{Tap: "dokimasia/homebrew-tap"}}),
+					contributing("rust", workflow.Contribution{Assets: &workflow.Assets{Tap: "thesm-os/homebrew-tap"}}),
+				},
 			},
 			{
 				name: "returns ErrInvalidContribution for an analysis that two parts declare",

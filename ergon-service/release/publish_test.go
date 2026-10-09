@@ -8,11 +8,15 @@ import (
 	"context"
 	"errors"
 	"path"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
 	"go.dokimi.dev/assert"
 	"go.dokimi.dev/assert/files"
+	"go.dokimi.dev/ergon/core/language"
+	"go.dokimi.dev/ergon/service/forge"
 	"go.dokimi.dev/ergon/service/release"
 	"go.dokimi.dev/ergon/service/vcs"
 	"go.dokimi.dev/ergon/service/vcs/vcstest"
@@ -50,6 +54,9 @@ type released struct {
 	// notes are the notes of the release.
 	notes string
 
+	// assets are the base names of the files of the assets of the release.
+	assets []string
+
 	// prerelease reports that the release is a pre-release.
 	prerelease bool
 }
@@ -81,12 +88,18 @@ func (r *releaser) Tag(_ context.Context, name string) (string, bool, error) {
 	return commit, ok, r.failTag
 }
 
-// Release records the release of the tag name.
-func (r *releaser) Release(_ context.Context, name, commit, notes string, prerelease bool) error {
+// Release records the release of the tag name, with the base names of its assets.
+func (r *releaser) Release(_ context.Context, name, commit, notes string, prerelease bool, assets []string) error {
 	if r.failRelease != nil {
 		return r.failRelease
 	}
-	r.releases = append(r.releases, released{name: name, commit: commit, notes: notes, prerelease: prerelease})
+	var names []string
+	for _, a := range assets {
+		names = append(names, filepath.Base(a))
+	}
+	r.releases = append(r.releases, released{
+		name: name, commit: commit, notes: notes, assets: names, prerelease: prerelease,
+	})
 	return nil
 }
 
@@ -96,16 +109,23 @@ func (r *releaser) Finish(context.Context) error {
 	return nil
 }
 
-// tagForge is a [release.TagForge] that has the tags of tags and records each tag and each release
-// that it creates. CreateTag returns failCreate.
+// tagForge is a [release.TagForge] that has the tags of tags and the releases of releases, and
+// records each tag, draft, upload and publish that it receives. CreateTag returns failCreate, and
+// UploadAsset failUpload.
 type tagForge struct {
 	// failCreate is the error of CreateTag, or nil.
 	failCreate error
 
-	// tags are the tags of the repository and their commits.
+	// failUpload is the error of UploadAsset, or nil.
+	failUpload error
+
+	// tags are the tags of the repository and their commits, each keyed as <repo> <tag>.
 	tags map[string]string
 
-	// calls are the calls of CreateTag and CreateRelease, each as a line.
+	// releases are the releases of the repository, each keyed as <repo> <tag>.
+	releases map[string]forge.Release
+
+	// calls are the calls of CreateTag, CreateDraft, UploadAsset and Publish, each as a line.
 	calls []string
 }
 
@@ -126,13 +146,34 @@ func (f *tagForge) CreateTag(_ context.Context, repo, name, sha string) error {
 	return nil
 }
 
-// CreateRelease records the release of the tag of repo.
-func (f *tagForge) CreateRelease(_ context.Context, repo, tag, body string, prerelease bool) error {
-	kind := "release"
+// ReleaseOf returns the release of the tag of repo, and reports whether f has it.
+func (f *tagForge) ReleaseOf(_ context.Context, repo, tag string) (forge.Release, bool, error) {
+	r, ok := f.releases[repo+" "+tag]
+	return r, ok, nil
+}
+
+// CreateDraft records the draft of the tag of repo, and returns it with the ID 7.
+func (f *tagForge) CreateDraft(_ context.Context, repo, tag, body string, prerelease bool) (forge.Release, error) {
+	kind := "draft"
 	if prerelease {
-		kind = "prerelease"
+		kind = "prerelease draft"
 	}
 	f.calls = append(f.calls, kind+" "+repo+" "+tag+" "+body)
+	return forge.Release{ID: 7, Tag: tag, Draft: true}, nil
+}
+
+// UploadAsset records the upload of the base name of path to the release r.
+func (f *tagForge) UploadAsset(_ context.Context, r *forge.Release, path string) error {
+	if f.failUpload != nil {
+		return f.failUpload
+	}
+	f.calls = append(f.calls, "upload "+r.Tag+" "+filepath.Base(path))
+	return nil
+}
+
+// Publish records the publish of the release id of repo.
+func (f *tagForge) Publish(_ context.Context, repo string, id int64) error {
+	f.calls = append(f.calls, "publish "+repo+" "+strconv.FormatInt(id, 10))
 	return nil
 }
 
@@ -173,6 +214,48 @@ func TestPublish(t *testing.T) {
 			assert.Length(t, got, 2, "the released packages")
 			assert.Equal(t, r.releases, []released{{name: "pkg-b@2.0.0-rc.1", commit: commitA, prerelease: true}},
 				"the releases")
+		})
+
+		t.Run("attaches the assets of the pack directory to the release of their tag", func(t *testing.T) {
+			t.Parallel()
+			s, plan := publishable(t)
+			dir := files.Workspace(t, files.Tree{
+				path.Join(language.AssetsDir, "pkg-a@1.0.0", "pkg-a_1.0.0_linux_amd64.tar.gz"): files.Text("archive\n"),
+				path.Join(language.AssetsDir, "pkg-a@1.0.0", "checksums.txt"):                  files.Text("sums\n"),
+			})
+			r := &releaser{}
+			_, err := release.Publish(t.Context(), t.TempDir(), s.graph(t), plan, commitA, dir, r)
+			assert.NoError(t, err, "Publish")
+			assert.Equal(t, r.releases, []released{
+				{
+					name:   "pkg-a@1.0.0",
+					commit: commitA,
+					assets: []string{"checksums.txt", "pkg-a_1.0.0_linux_amd64.tar.gz"},
+				},
+				{name: "pkg-b@2.0.0-rc.1", commit: commitA, prerelease: true},
+			}, "the releases")
+		})
+
+		t.Run("completes the release of a tag at the commit that has assets", func(t *testing.T) {
+			t.Parallel()
+			s, plan := publishable(t)
+			dir := files.Workspace(t, files.Tree{
+				path.Join(language.AssetsDir, "pkg-a@1.0.0", "checksums.txt"): files.Text("sums\n"),
+			})
+			r := &releaser{tags: map[string]string{"pkg-a@1.0.0": commitA, "pkg-b@2.0.0-rc.1": commitA}}
+			_, err := release.Publish(t.Context(), t.TempDir(), s.graph(t), plan, commitA, dir, r)
+			assert.NoError(t, err, "Publish")
+			want := []released{{name: "pkg-a@1.0.0", commit: commitA, assets: []string{"checksums.txt"}}}
+			assert.Equal(t, r.releases, want, "the releases")
+		})
+
+		t.Run("returns the error of assets that it cannot read", func(t *testing.T) {
+			t.Parallel()
+			s, plan := publishable(t)
+			dir := files.Workspace(t, files.Tree{path.Join(language.AssetsDir, "pkg-a@1.0.0"): files.Text("a file\n")})
+			_, err := release.Publish(t.Context(), t.TempDir(), s.graph(t), plan, commitA, dir, &releaser{})
+			assert.HasError(t, err, "Publish")
+			assert.Contains(t, err.Error(), "read the assets of pkg-a@1.0.0", "the error")
 		})
 
 		t.Run("returns ErrTag for a tag at another commit", func(t *testing.T) {
@@ -321,10 +404,9 @@ func TestPublish(t *testing.T) {
 		t.Run("creates annotated tags with their notes and pushes them in one push", func(t *testing.T) {
 			t.Parallel()
 			root, remote := remoteRepository(t)
-			head := vcstest.Git(t, root, "rev-parse", "HEAD")
+			head := strings.TrimSpace(vcstest.Git(t, root, "rev-parse", "HEAD"))
 			r := &release.GitReleaser{Root: root, Remote: "origin"}
-			assert.NoError(t, r.Release(t.Context(), "v1.0.0", strings.TrimSpace(head), "### Minor Changes", false),
-				"Release")
+			assert.NoError(t, r.Release(t.Context(), "v1.0.0", head, "### Minor Changes", false, nil), "Release")
 			assert.NoError(t, r.Finish(t.Context()), "Finish")
 			assert.Equal(t, vcstest.Git(t, root, "tag", "--list", "--format=%(contents)", "v1.0.0"),
 				"### Minor Changes\n\n", "the annotation with its newline, and the newline of git tag --list")
@@ -336,9 +418,19 @@ func TestPublish(t *testing.T) {
 			root, _ := remoteRepository(t)
 			head := strings.TrimSpace(vcstest.Git(t, root, "rev-parse", "HEAD"))
 			r := &release.GitReleaser{Root: root, Remote: "origin"}
-			assert.NoError(t, r.Release(t.Context(), "v1.0.0", head, "", false), "Release")
+			assert.NoError(t, r.Release(t.Context(), "v1.0.0", head, "", false, nil), "Release")
 			assert.Equal(t, vcstest.Git(t, root, "tag", "--list", "--format=%(contents)", "v1.0.0"), "v1.0.0\n\n",
 				"the annotation with its newline, and the newline of git tag --list")
+		})
+
+		t.Run("returns ErrAssets for a release with assets before it creates the tag", func(t *testing.T) {
+			t.Parallel()
+			root, _ := remoteRepository(t)
+			head := strings.TrimSpace(vcstest.Git(t, root, "rev-parse", "HEAD"))
+			r := &release.GitReleaser{Root: root, Remote: "origin"}
+			err := r.Release(t.Context(), "v1.0.0", head, "notes", false, []string{"checksums.txt"})
+			assert.ErrorIs(t, err, release.ErrAssets, "Release")
+			assert.Empty(t, vcstest.Git(t, root, "tag", "--list"), "the tags of the repository")
 		})
 
 		t.Run("pushes nothing without a release", func(t *testing.T) {
@@ -372,7 +464,7 @@ func TestPublish(t *testing.T) {
 			head := strings.TrimSpace(vcstest.Git(t, root, "rev-parse", "HEAD"))
 			vcstest.Git(t, root, "tag", "v1.0.0", head)
 			r := &release.GitReleaser{Root: root, Remote: "origin"}
-			assert.ErrorIs(t, r.Release(t.Context(), "v1.0.0", head, "notes", false), vcs.ErrGit, "Release")
+			assert.ErrorIs(t, r.Release(t.Context(), "v1.0.0", head, "notes", false, nil), vcs.ErrGit, "Release")
 		})
 
 		t.Run("runs git tag with its terminal", func(t *testing.T) {
@@ -382,7 +474,7 @@ func TestPublish(t *testing.T) {
 			vcstest.Git(t, root, "tag", "v1.0.0", head)
 			var stderr strings.Builder
 			r := &release.GitReleaser{Terminal: vcs.Terminal{Stderr: &stderr}, Root: root, Remote: "origin"}
-			assert.ErrorIs(t, r.Release(t.Context(), "v1.0.0", head, "notes", false), vcs.ErrGit, "Release")
+			assert.ErrorIs(t, r.Release(t.Context(), "v1.0.0", head, "notes", false, nil), vcs.ErrGit, "Release")
 			assert.Contains(t, stderr.String(), tagExists, "the standard error of git tag")
 		})
 
@@ -392,7 +484,7 @@ func TestPublish(t *testing.T) {
 			head := strings.TrimSpace(vcstest.Git(t, root, "rev-parse", "HEAD"))
 			var stderr strings.Builder
 			r := &release.GitReleaser{Terminal: vcs.Terminal{Stderr: &stderr}, Root: root, Remote: "origin"}
-			assert.NoError(t, r.Release(t.Context(), "v1.0.0", head, "notes", false), "Release")
+			assert.NoError(t, r.Release(t.Context(), "v1.0.0", head, "notes", false, nil), "Release")
 			assert.NoError(t, r.Finish(t.Context()), "Finish")
 			assert.Contains(t, stderr.String(), newTag, "the standard error of git push")
 		})
@@ -410,22 +502,66 @@ func TestPublish(t *testing.T) {
 			assert.Equal(t, commit, commitA, "the commit")
 		})
 
-		t.Run("creates the tag and then its release with the notes", func(t *testing.T) {
+		t.Run("creates the tag, then the draft with the notes, then its assets, and then publishes it",
+			func(t *testing.T) {
+				t.Parallel()
+				f := &tagForge{}
+				r := release.ForgeReleaser{Forge: f, Repo: "o/r"}
+				assets := []string{filepath.Join("dist", "assets", "checksums.txt"), "ergon_1.0.0_linux_amd64.tar.gz"}
+				assert.NoError(t, r.Release(t.Context(), "v1.0.0-rc.1", commitA, "notes", true, assets), "Release")
+				assert.NoError(t, r.Finish(t.Context()), "Finish")
+				assert.Equal(t, f.calls, []string{
+					"tag o/r v1.0.0-rc.1 " + commitA,
+					"prerelease draft o/r v1.0.0-rc.1 notes",
+					"upload v1.0.0-rc.1 checksums.txt",
+					"upload v1.0.0-rc.1 ergon_1.0.0_linux_amd64.tar.gz",
+					"publish o/r 7",
+				}, "the calls")
+			})
+
+		t.Run("completes the draft of an earlier publish with the assets that it lacks", func(t *testing.T) {
 			t.Parallel()
-			f := &tagForge{}
+			f := &tagForge{
+				tags: map[string]string{"o/r v1.0.0": commitA},
+				releases: map[string]forge.Release{"o/r v1.0.0": {
+					ID: 9, Tag: "v1.0.0", Draft: true, Assets: []forge.Asset{{Name: "checksums.txt"}},
+				}},
+			}
 			r := release.ForgeReleaser{Forge: f, Repo: "o/r"}
-			assert.NoError(t, r.Release(t.Context(), "v1.0.0-rc.1", commitA, "notes", true), "Release")
-			assert.NoError(t, r.Finish(t.Context()), "Finish")
-			assert.Equal(t, f.calls, []string{"tag o/r v1.0.0-rc.1 " + commitA, "prerelease o/r v1.0.0-rc.1 notes"},
-				"the calls")
+			err := r.Release(t.Context(), "v1.0.0", commitA, "notes", false, []string{"checksums.txt", "ergon.tar.gz"})
+			assert.NoError(t, err, "Release")
+			assert.Equal(t, f.calls, []string{"upload v1.0.0 ergon.tar.gz", "publish o/r 9"}, "the calls")
+		})
+
+		t.Run("changes nothing of a published release with every asset", func(t *testing.T) {
+			t.Parallel()
+			f := &tagForge{
+				tags: map[string]string{"o/r v1.0.0": commitA},
+				releases: map[string]forge.Release{"o/r v1.0.0": {
+					ID: 9, Tag: "v1.0.0", Assets: []forge.Asset{{Name: "checksums.txt"}},
+				}},
+			}
+			r := release.ForgeReleaser{Forge: f, Repo: "o/r"}
+			assert.NoError(t, r.Release(t.Context(), "v1.0.0", commitA, "notes", false, []string{"checksums.txt"}),
+				"Release")
+			assert.Empty(t, f.calls, "the calls")
 		})
 
 		t.Run("returns the error of the tag without a release", func(t *testing.T) {
 			t.Parallel()
 			f := &tagForge{failCreate: errTag}
 			r := release.ForgeReleaser{Forge: f, Repo: "o/r"}
-			assert.ErrorIs(t, r.Release(t.Context(), "v1.0.0", commitA, "notes", false), errTag, "Release")
+			assert.ErrorIs(t, r.Release(t.Context(), "v1.0.0", commitA, "notes", false, nil), errTag, "Release")
 			assert.Empty(t, f.calls, "the calls")
+		})
+
+		t.Run("returns the error of an upload and leaves the draft unpublished", func(t *testing.T) {
+			t.Parallel()
+			f := &tagForge{failUpload: errRelease}
+			r := release.ForgeReleaser{Forge: f, Repo: "o/r"}
+			err := r.Release(t.Context(), "v1.0.0", commitA, "notes", false, []string{"checksums.txt"})
+			assert.ErrorIs(t, err, errRelease, "Release")
+			assert.Equal(t, f.calls, []string{"tag o/r v1.0.0 " + commitA, "draft o/r v1.0.0 notes"}, "the calls")
 		})
 	})
 }

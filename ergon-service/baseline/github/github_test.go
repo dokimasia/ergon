@@ -149,6 +149,16 @@ func TestGithub(t *testing.T) {
 				assert.True(t, ok, "the data is a Workflows")
 				expect.Equal(t, w.Jobs, want, "the jobs")
 				expect.Equal(t, w.Nightly, nightly, "the nightly jobs")
+				expect.True(t, w.Assets, "the assets")
+				expect.Equal(t, w.TapOwner, "dokimasia", "the owner of the tap")
+				expect.Equal(t, w.TapName, "homebrew-tap", "the name of the tap")
+			})
+
+			t.Run("returns no assets and no tap for contributions without assets", func(t *testing.T) {
+				t.Parallel()
+				got, err := github.Producer{}.Data(baselinetest.Answers(), nil, &workflow.Contribution{})
+				assert.NoError(t, err, "Data")
+				assert.Equal(t, got, any(github.Workflows{}), "the data", assert.EquateEmpty())
 			})
 
 			t.Run("returns ErrInvalid for a nightly job on a runner that the section does not list",
@@ -358,9 +368,10 @@ func toolchain() workflow.Contribution {
 // languages returns the contribution of the language alpha of the cases: a check that runs tools on
 // the setup of the toolchain tool, a check on a setup of its own, a check of text that runs tools,
 // and a job without a setup whose steps have each key of a step. Its nightly jobs fuzz alpha on the
-// setup of the toolchain tool, and mutate beta on a setup of their own.
+// setup of the toolchain tool, and mutate beta on a setup of their own. Its releases have assets with
+// casks for the tap dokimasia/homebrew-tap.
 func languages() workflow.Contribution {
-	return workflow.Contribution{Nightly: []workflow.Job{
+	return workflow.Contribution{Assets: &workflow.Assets{Tap: "dokimasia/homebrew-tap"}, Nightly: []workflow.Job{
 		{
 			ID:          "fuzz-alpha",
 			Name:        "Fuzz alpha",

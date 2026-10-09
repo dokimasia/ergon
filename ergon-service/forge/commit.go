@@ -5,10 +5,15 @@ package forge
 
 import (
 	"context"
+	"crypto/sha1" //nolint:gosec // git names a blob by the SHA-1 of its content, which PutFile compares.
 	"encoding/base64"
+	"encoding/hex"
+	"fmt"
 	"maps"
 	"net/http"
+	"net/url"
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -90,6 +95,46 @@ func (c *Client) Commit(
 		return "", err
 	}
 	return data.CreateCommitOnBranch.Commit.OID, nil
+}
+
+// PutFile writes content to path on the default branch of repo in one commit with message, which
+// [Client.Commit] creates, and GitHub signs. path is relative to the root of the repository and
+// slash-separated. PutFile commits nothing when the file at path already has content, so a second
+// call with the same content changes nothing. It returns an error that wraps [ErrGitHub] for a
+// repository without its default branch, and the errors of the requests.
+func (c *Client) PutFile(ctx context.Context, repo, path, message string, content []byte) error {
+	var meta struct {
+		DefaultBranch string `json:"default_branch"`
+	}
+	if _, err := c.rest(ctx, http.MethodGet, "/repos/"+repo, nil, &meta); err != nil {
+		return err
+	}
+	branch := meta.DefaultBranch
+	head, found, err := c.Branch(ctx, repo, branch)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return fmt.Errorf("%w: %s has no default branch %q", ErrGitHub, repo, branch)
+	}
+	var file struct {
+		SHA string `json:"sha"`
+	}
+	escaped := (&url.URL{Path: path}).EscapedPath()
+	status, err := c.rest(ctx, http.MethodGet, "/repos/"+repo+"/contents/"+escaped+"?ref="+url.QueryEscape(head), nil,
+		&file, http.StatusNotFound)
+	if err != nil {
+		return err
+	}
+	// git names a blob by the SHA-1 of its header, blob <length> and a NUL byte, and its content.
+	blob := sha1.New() //nolint:gosec // the name of a git blob, as git computes it.
+	blob.Write([]byte("blob " + strconv.Itoa(len(content)) + "\x00"))
+	blob.Write(content)
+	if status != http.StatusNotFound && file.SHA == hex.EncodeToString(blob.Sum(nil)) {
+		return nil
+	}
+	_, err = c.Commit(ctx, repo, branch, head, message, map[string][]byte{path: content}, nil)
+	return err
 }
 
 // Tree returns the tree of the commit sha of repo. It returns an error that wraps [ErrGitHub] for a

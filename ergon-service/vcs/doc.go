@@ -13,9 +13,11 @@
 // # History and tags
 //
 // [Head] returns the commit of HEAD, [HeadTree] that commit with its tree, and [AddedBy] the commit
-// that added a file, which names the pull request of a changeset. [Tags] returns the commit of each tag, [Tag] creates an annotated
-// tag, which git signs when tag.gpgSign is set, and [Push] pushes refs in one atomic push. Both run
-// git with a [Terminal], on which a signing program and ssh ask for the PIN and the touch of a key.
+// that added a file, which names the pull request of a changeset. [Tags] returns the commit of each
+// tag, [Tag] creates an annotated tag, which git signs when tag.gpgSign is set, and [Push] pushes
+// refs in one atomic push. Both run git with a [Terminal], on which a signing program and ssh ask
+// for the PIN and the touch of a key. [LightTag] creates an unsigned lightweight tag, such as the
+// tag of a module that a pack builds the assets at.
 //
 // # Snapshots
 //

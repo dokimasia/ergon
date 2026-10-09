@@ -20,12 +20,14 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/ulikunitz/xz"
 	"go.dokimi.dev/ergon/core/option"
 )
 
 // The suffixes of the archives of a release binary.
 const (
 	tarGz  = ".tar.gz"
+	tarXz  = ".tar.xz"
 	zipped = ".zip"
 )
 
@@ -41,8 +43,8 @@ const (
 // release installs the release binary rel of the tool name into the cache, unless the cache has it,
 // and returns its program. The cache keeps the program under the name, the version, the platform
 // and the digest, so a pin with another digest installs again. It downloads the asset of the
-// platform, checks it against the digest of the pin, and unpacks the program from a .tar.gz or a
-// .zip, or takes the asset as the program. It returns an error that wraps [ErrInstall] for a
+// platform, checks it against the digest of the pin, and unpacks the program from a .tar.gz, a
+// .tar.xz or a .zip, or takes the asset as the program. It returns an error that wraps [ErrInstall] for a
 // platform without an asset or a digest, and the errors of the download.
 func (r *Runner) release(ctx context.Context, rel option.Release, name string) (string, error) {
 	pin := rel.Pin()
@@ -162,15 +164,15 @@ func (r *Runner) get(ctx context.Context, address string) (io.ReadCloser, error)
 }
 
 // unpack writes the program of asset, from archive, the downloaded asset of size bytes, to
-// program, with the mode of a program: the entry asset.Program of a .tar.gz or a .zip, or the whole
-// archive for an asset that is the program. It writes a temporary file of the directory of program
-// and renames it. It returns an error that wraps [ErrInstall] for an archive that does not read, an
-// archive without the program, and a program that does not write.
+// program, with the mode of a program: the entry asset.Program of a .tar.gz, a .tar.xz or a .zip,
+// or the whole archive for an asset that is the program. It writes a temporary file of the
+// directory of program and renames it. It returns an error that wraps [ErrInstall] for an archive
+// that does not read, an archive without the program, and a program that does not write.
 func unpack(archive *os.File, size int64, asset option.Asset, program string) error {
 	var source io.Reader = archive
 	var err error
-	if strings.HasSuffix(asset.URL, tarGz) {
-		source, err = fromTar(archive, asset.Program)
+	if strings.HasSuffix(asset.URL, tarGz) || strings.HasSuffix(asset.URL, tarXz) {
+		source, err = fromTar(archive, asset.URL, asset.Program)
 	} else if strings.HasSuffix(asset.URL, zipped) {
 		source, err = fromZip(archive, size, asset.Program)
 	}
@@ -194,14 +196,21 @@ func unpack(archive *os.File, size int64, asset option.Asset, program string) er
 	return nil
 }
 
-// fromTar returns the content of the entry name of the gzipped tar archive. It returns an error for
-// an archive that does not read, and for an archive without the entry.
-func fromTar(archive io.Reader, name string) (io.Reader, error) {
-	gz, err := gzip.NewReader(archive)
+// fromTar returns the content of the entry name of the tar archive, which xz compresses for an
+// address that ends in .tar.xz, and gzip for any other. It returns an error for an archive that does
+// not read, and for an archive without the entry.
+func fromTar(archive io.Reader, address, name string) (io.Reader, error) {
+	var stream io.Reader
+	var err error
+	if strings.HasSuffix(address, tarXz) {
+		stream, err = xz.NewReader(archive)
+	} else {
+		stream, err = gzip.NewReader(archive)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("read the archive: %w", err)
 	}
-	t := tar.NewReader(gz)
+	t := tar.NewReader(stream)
 	for {
 		h, err := t.Next()
 		if err != nil {

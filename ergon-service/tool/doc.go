@@ -11,7 +11,7 @@
 //
 //   - A release binary, such as commitlint or shellcheck, downloads the asset of the platform. The
 //     runner checks the asset against the SHA-256 that the pin states for the platform before it
-//     unpacks the program.
+//     unpacks the program from a .tar.gz, a .tar.xz or a .zip, or takes the asset as the program.
 //   - A Maven artifact downloads its jar, which the runner checks against the .sha256 file beside
 //     it in Maven Central, and runs with java -jar.
 //   - A Go module installs with go install, and a crate with cargo install --locked. Both check
@@ -35,6 +35,7 @@
 //
 // # Dependency position
 //
-// Imports the standard library, [go.dokimi.dev/ergon/core/language] and
-// [go.dokimi.dev/ergon/core/option]. internal/cli of the root module imports it.
+// Imports the standard library, [go.dokimi.dev/ergon/core/language],
+// [go.dokimi.dev/ergon/core/option], and github.com/ulikunitz/xz for the .tar.xz of a release
+// binary. internal/cli of the root module imports it.
 package tool

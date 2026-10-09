@@ -117,6 +117,39 @@ func TestTags(t *testing.T) {
 		})
 	})
 
+	t.Run("LightTag", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("creates a lightweight tag at the commit", func(t *testing.T) {
+			t.Parallel()
+			dir := vcstest.Repository(t, files.Tree{})
+			first := vcstest.Commit(t, dir, "first")
+			vcstest.Commit(t, dir, "second")
+			assert.NoError(t, vcs.LightTag(t.Context(), dir, "lint/v0.1.0", first), "LightTag")
+			assert.Equal(t, strings.TrimSpace(vcstest.Git(t, dir, "cat-file", "-t", "lint/v0.1.0")), "commit",
+				"the object of the tag")
+			assert.Equal(t, strings.TrimSpace(vcstest.Git(t, dir, "rev-parse", "lint/v0.1.0")), first, "the commit")
+		})
+
+		t.Run("creates an unsigned tag in a repository that signs its tags", func(t *testing.T) {
+			t.Parallel()
+			dir := vcstest.Repository(t, files.Tree{})
+			commit := vcstest.Commit(t, dir, "first")
+			vcstest.Git(t, dir, "config", "tag.gpgSign", "true")
+			assert.NoError(t, vcs.LightTag(t.Context(), dir, "v0.1.0", commit), "LightTag")
+			assert.Equal(t, strings.TrimSpace(vcstest.Git(t, dir, "cat-file", "-t", "v0.1.0")), "commit",
+				"the object of the tag")
+		})
+
+		t.Run("returns ErrGit for a tag that exists", func(t *testing.T) {
+			t.Parallel()
+			dir := vcstest.Repository(t, files.Tree{})
+			commit := vcstest.Commit(t, dir, "first")
+			assert.NoError(t, vcs.LightTag(t.Context(), dir, "v0.1.0", commit), "the first LightTag")
+			assert.ErrorIs(t, vcs.LightTag(t.Context(), dir, "v0.1.0", commit), vcs.ErrGit, "the second LightTag")
+		})
+	})
+
 	t.Run("Push", func(t *testing.T) {
 		t.Parallel()
 

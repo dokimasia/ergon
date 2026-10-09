@@ -36,6 +36,12 @@ func TestDownload(t *testing.T) {
 			content []byte
 		}{
 			{name: "runs the program of a .tar.gz", file: "tool.tar.gz", program: entry, content: toolTarGz},
+			{
+				name:    "runs the program of a .tar.xz",
+				file:    "tool.tar.xz",
+				program: entry,
+				content: archive(".tar.xz", entry, self),
+			},
 			{name: "runs the program of a .zip", file: "tool.zip", program: "tool.exe", content: toolZip},
 			{name: "runs an asset that is the program", file: program, content: self},
 		}
@@ -126,6 +132,12 @@ func TestDownload(t *testing.T) {
 				name: "returns ErrInstall for a .tar.gz that does not read",
 				give: func(served map[string][]byte) binary {
 					return release(served, "tool.tar.gz", "tool-1.0/tool", []byte("no archive"))
+				},
+			},
+			{
+				name: "returns ErrInstall for a .tar.xz that does not read",
+				give: func(served map[string][]byte) binary {
+					return release(served, "tool.tar.xz", "tool-1.0/tool", toolTarGz)
 				},
 			},
 			{

@@ -65,6 +65,12 @@
 // [ForgeReleaser] in CI. [SelectMode] chooses the job of the release workflow from the changesets,
 // the publish plan and its stale lockfiles.
 //
+// A packer also builds the assets of the release of a tag, such as the archives of the commands of
+// a Go module. [Publish] attaches them to the release through the Releaser: ForgeReleaser creates
+// the release as a draft, uploads the assets and then publishes it, and GitReleaser refuses them
+// with [ErrAssets]. [Homebrew] then commits the casks of the releases to a tap through a
+// [TapForge].
+//
 // # Lockfiles
 //
 // A change to a package of a publish plan after its version commit changes the content that the tag
@@ -89,14 +95,13 @@
 // # Errors
 //
 // Each error of the package wraps one of [ErrPackages], [ErrConfig], [ErrChangeset],
-// [ErrChangelog], [ErrPublishPlan], [ErrTag], [ErrStale], [ErrMoved] and [ErrGate], and names the
-// package, the key, the file, the tag, the branch or the commit that caused it, or is
+// [ErrChangelog], [ErrPublishPlan], [ErrTag], [ErrAssets], [ErrStale], [ErrMoved] and [ErrGate],
+// and names the package, the key, the file, the tag, the branch or the commit that caused it, or is
 // [ErrNoChangesets]. [MarkVersion] returns an error that names the branch of a version pull request
 // that does not exist. The package also returns the error of git, which wraps
 // [go.dokimi.dev/ergon/service/vcs.ErrGit], the error of the file system with its path, and the
-// error of a toolchain role, of a [Forge], a [Proposer], a [Releaser], a [GateForge], a [SkipForge],
-// a [Marker] or of
-// [go.dokimi.dev/ergon/core/version].
+// error of a toolchain role, of a [Forge], a [Proposer], a [Releaser], a [TagForge], a [TapForge],
+// a [GateForge], a [SkipForge], a [Marker] or of [go.dokimi.dev/ergon/core/version].
 //
 // # Concurrency
 //
@@ -109,7 +114,8 @@
 //
 // Imports the standard library, github.com/bmatcuk/doublestar/v4,
 // [go.dokimi.dev/ergon/core/changeset], [go.dokimi.dev/ergon/core/language],
-// [go.dokimi.dev/ergon/core/version], [go.dokimi.dev/ergon/core/workspace] and
+// [go.dokimi.dev/ergon/core/version], [go.dokimi.dev/ergon/core/workspace],
+// [go.dokimi.dev/ergon/service/forge] for the types of its releases, and
 // [go.dokimi.dev/ergon/service/vcs]. internal/cli of the root module and
 // [go.dokimi.dev/ergon/service/baseline/common] import it.
 package release

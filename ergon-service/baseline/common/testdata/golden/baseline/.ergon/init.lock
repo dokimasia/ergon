@@ -19,7 +19,7 @@
     {
       "path": ".gitignore",
       "producer": "common",
-      "sha256": "f928048441c14c68cccd38032596fe73f566579350ef3de897b9fd1859d1219c"
+      "sha256": "3f77be3f42349bdca3970dd632b9c08941d816e30ea4060b998afe13981d15df"
     },
     {
       "path": ".markdownlint.yml",

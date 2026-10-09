@@ -59,9 +59,16 @@ github:
         release: v6.1.0
       # The action that creates a token of the GitHub App of the variable ERGON_APP_CLIENT_ID and
       # the secret ERGON_APP_PRIVATE_KEY in version.yml, whose pull request then runs its checks
-      # without an approval.
+      # without an approval, and in the job homebrew of release.yml, which commits the casks of a
+      # release to the tap.
       create-github-app-token:
         uses: actions/create-github-app-token
         commit: bcd2ba49218906704ab6c1aa796996da409d3eb1
         release: v3.2.0
+      # The action that attests the assets of a release with SLSA build provenance in the job pack
+      # of release.yml, which GitHub stores in its attestation API.
+      attest:
+        uses: actions/attest
+        commit: 1e69f48acb82d1966a394da916b4c1698aa569d6
+        release: v4.2.2
     timeout: 15

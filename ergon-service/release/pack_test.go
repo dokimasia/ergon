@@ -48,18 +48,32 @@ func TestPack(t *testing.T) {
 	t.Run("Pack", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("builds the artifacts of the uploads of the plan with the packer of their toolchain", func(t *testing.T) {
+		t.Run("builds the artifacts of each package of the plan once with the packer of its toolchain",
+			func(t *testing.T) {
+				t.Parallel()
+				s := newState(t)
+				s.add("pkg-b", "1.0.0")
+				packs := new([][]string)
+				s.roles = []any{newRegistry(), packer{packs: packs}}
+				plan := &release.PublishPlan{Version: 1, Plan: [][]release.PublishEntry{
+					{{Kind: release.KindPublish, Name: "pkg-a"}, {Kind: release.KindTagOnly, Name: "pkg-b"}},
+					{{Kind: release.KindPublish, Name: "pkg-b"}},
+				}}
+				assert.NoError(t, release.Pack(t.Context(), t.TempDir(), s.graph(t), plan, "dist"), "Pack")
+				assert.Equal(t, *packs, [][]string{{"pkg-a", "pkg-b"}}, "the packs")
+			})
+
+		t.Run("builds the assets of a package that a publish tags alone", func(t *testing.T) {
 			t.Parallel()
 			s := newState(t)
-			s.add("pkg-b", "1.0.0")
 			packs := new([][]string)
-			s.roles = []any{newRegistry(), packer{packs: packs}}
-			plan := &release.PublishPlan{Version: 1, Plan: [][]release.PublishEntry{
-				{{Kind: release.KindPublish, Name: "pkg-a"}, {Kind: release.KindTagOnly, Name: "pkg-b"}},
-				{{Kind: release.KindPublish, Name: "pkg-b"}},
-			}}
+			s.roles = []any{packer{packs: packs}}
+			plan := &release.PublishPlan{
+				Version: 1,
+				Plan:    [][]release.PublishEntry{{{Kind: release.KindTagOnly, Name: "pkg-a"}}},
+			}
 			assert.NoError(t, release.Pack(t.Context(), t.TempDir(), s.graph(t), plan, "dist"), "Pack")
-			assert.Equal(t, *packs, [][]string{{"pkg-a", "pkg-b"}}, "the packs")
+			assert.Equal(t, *packs, [][]string{{"pkg-a"}}, "the packs")
 		})
 
 		t.Run("builds nothing for a toolchain without a packer", func(t *testing.T) {

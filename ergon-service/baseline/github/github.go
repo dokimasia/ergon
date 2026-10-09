@@ -7,6 +7,7 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
+	"strings"
 
 	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/core/option"
@@ -34,12 +35,20 @@ var templates embed.FS
 
 // Workflows are the data of the templates of the GitHub files, which each template reads as .Data.
 type Workflows struct {
+	// TapOwner and TapName are the owner and the name of the Homebrew tap of the casks of the
+	// assets, whose job homebrew release.yml has, or empty.
+	TapOwner, TapName string
+
 	// Jobs are the jobs of ci.yml, as [Options.Jobs] returns them.
 	Jobs []Job
 
 	// Nightly are the jobs of nightly.yml, as [Options.NightlyJobs] returns them. ergon init renders
 	// no nightly.yml without one.
 	Nightly []Job
+
+	// Assets reports that a producer builds release assets in the job pack of release.yml, which
+	// then attests them.
+	Assets bool
 }
 
 // Producer renders the GitHub files of a repository: the workflows, the actions that install ergon
@@ -66,9 +75,9 @@ func (Producer) Templates() fs.FS {
 // Options returns the options of the GitHub files at the baseline: the runners ubuntu-26.04,
 // macos-26 and windows-2025, ubuntu-26.04 for the checks of text, the release of GNU make, the
 // releases of actions/checkout, github/codeql-action, actions/dependency-review-action,
-// ossf/scorecard-action, actions/upload-artifact, actions/download-artifact, actions/cache and
-// actions/create-github-app-token, a limit of 15 minutes for each job, and nightly.yml at 03:00
-// UTC each day.
+// ossf/scorecard-action, actions/upload-artifact, actions/download-artifact, actions/cache,
+// actions/create-github-app-token and actions/attest, a limit of 15 minutes for each job, and
+// nightly.yml at 03:00 UTC each day.
 func (Producer) Options() language.Options {
 	return &Options{
 		Runners: option.Runners{"ubuntu-26.04", "macos-26", "windows-2025"},
@@ -116,6 +125,11 @@ func (Producer) Options() language.Options {
 					Commit:  "bcd2ba49218906704ab6c1aa796996da409d3eb1",
 					Release: "v3.2.0",
 				},
+				Attest: workflow.Action{
+					Uses:    "actions/attest",
+					Commit:  "1e69f48acb82d1966a394da916b4c1698aa569d6",
+					Release: "v4.2.2",
+				},
 			},
 			Timeout: 15,
 		},
@@ -124,9 +138,9 @@ func (Producer) Options() language.Options {
 }
 
 // Data returns the [Workflows] of c for o, and for the options at the baseline when o is not the
-// options of the GitHub files: the jobs of c, as [Options.Jobs] returns them, and its nightly jobs,
-// as [Options.NightlyJobs] returns them. It returns the error of either for a job whose runners the
-// section does not list.
+// options of the GitHub files: the jobs of c, as [Options.Jobs] returns them, its nightly jobs, as
+// [Options.NightlyJobs] returns them, and its assets with the owner and the name of their tap. It
+// returns the error of either for a job whose runners the section does not list.
 func (Producer) Data(_ *language.Answers, o language.Options, c *workflow.Contribution) (any, error) {
 	jobs, err := own(o).Jobs(c)
 	if err != nil {
@@ -136,7 +150,11 @@ func (Producer) Data(_ *language.Answers, o language.Options, c *workflow.Contri
 	if err != nil {
 		return nil, err
 	}
-	return Workflows{Jobs: jobs, Nightly: nightly}, nil
+	w := Workflows{Jobs: jobs, Nightly: nightly, Assets: c.Assets != nil}
+	if c.Assets != nil {
+		w.TapOwner, w.TapName, _ = strings.Cut(c.Assets.Tap, "/")
+	}
+	return w, nil
 }
 
 // Contribution returns the job baseline of ci.yml for o, and for the options at the baseline when o

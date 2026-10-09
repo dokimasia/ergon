@@ -35,6 +35,9 @@ const (
 	// mediaType is the media type of the responses that a request accepts.
 	mediaType = "application/vnd.github+json"
 
+	// jsonType is the media type of the body of a request of the API.
+	jsonType = "application/json"
+
 	// userAgent names ergon in each request, which GitHub requires.
 	userAgent = "ergon"
 )
@@ -106,13 +109,12 @@ func (c *Client) Server() string {
 // the statuses of allowed, with the message of GitHub, and the error of the request and of the
 // decode.
 func (c *Client) rest(ctx context.Context, method, path string, in, out any, allowed ...int) (int, error) {
-	var body io.Reader
-	if in != nil {
-		// Every body of the package is a struct of strings, numbers and bools, which encodes.
-		data, _ := json.Marshal(in)
-		body = bytes.NewReader(data)
+	if in == nil {
+		return c.send(ctx, method, c.config.API+path, nil, "", out, allowed)
 	}
-	return c.send(ctx, method, c.config.API+path, body, out, allowed)
+	// Every body of the package is a struct of strings, numbers and bools, which encodes.
+	data, _ := json.Marshal(in)
+	return c.send(ctx, method, c.config.API+path, bytes.NewReader(data), jsonType, out, allowed)
 }
 
 // graphql sends query with variables to the GraphQL API, and decodes the data of the response into
@@ -128,7 +130,8 @@ func (c *Client) graphql(ctx context.Context, query string, variables map[string
 			Message string `json:"message"`
 		} `json:"errors"`
 	}
-	if _, err := c.send(ctx, http.MethodPost, c.config.GraphQL, bytes.NewReader(data), &response, nil); err != nil {
+	_, err := c.send(ctx, http.MethodPost, c.config.GraphQL, bytes.NewReader(data), jsonType, &response, nil)
+	if err != nil {
 		return err
 	}
 	if len(response.Errors) > 0 {
@@ -144,11 +147,12 @@ func (c *Client) graphql(ctx context.Context, query string, variables map[string
 	return nil
 }
 
-// send sends a request of method to address with body, and decodes the JSON of a response into
-// out when out is not nil, as rest states.
-func (c *Client) send(ctx context.Context, method, address string, body io.Reader, out any, allowed []int) (
-	int, error,
-) {
+// send sends a request of method to address with body of the media type contentType, and decodes
+// the JSON of a response into out when out is not nil, as rest states. A body is nil or a
+// *bytes.Reader, whose length the request states.
+func (c *Client) send(
+	ctx context.Context, method, address string, body io.Reader, contentType string, out any, allowed []int,
+) (int, error) {
 	req, err := http.NewRequestWithContext(ctx, method, address, body)
 	if err != nil {
 		return 0, fmt.Errorf("forge: %s %s: %w", method, address, err)
@@ -157,8 +161,8 @@ func (c *Client) send(ctx context.Context, method, address string, body io.Reade
 	req.Header.Set("Authorization", "Bearer "+c.config.Token)
 	req.Header.Set("X-GitHub-Api-Version", apiVersion)
 	req.Header.Set("User-Agent", userAgent)
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
+	if contentType != "" {
+		req.Header.Set("Content-Type", contentType)
 	}
 	resp, err := c.http.Do(req)
 	if err != nil {

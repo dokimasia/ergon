@@ -28,7 +28,11 @@
 //   - release.yml publishes on every push to main. The job select-mode chooses the next job. The
 //     job verify lets the publish run only when a run of ci.yml passed on the content of the commit,
 //     through ergon release ci verify. The jobs pack and publish then release each package of the
-//     publish plan.
+//     publish plan. When a contribution has assets, the job pack attests them with actions/attest,
+//     with the permissions id-token and attestations, which cosign also signs with. When the assets
+//     have a tap, the job homebrew commits their casks to it after the publish, with a token of the
+//     GitHub App of ERGON_APP_CLIENT_ID and ERGON_APP_PRIVATE_KEY, through ergon release ci
+//     homebrew.
 //   - The job version of version.yml and the job pack of release.yml run the release steps of the
 //     contributions before the installation of ergon.
 //   - security.yml runs the dependency review on a pull request, the OpenSSF Scorecard weekly, and

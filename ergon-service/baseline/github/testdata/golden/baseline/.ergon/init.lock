@@ -63,6 +63,9 @@
     }
   ],
   "settings": {
+    "github.ci.actions.attest.commit": "1e69f48acb82d1966a394da916b4c1698aa569d6",
+    "github.ci.actions.attest.release": "v4.2.2",
+    "github.ci.actions.attest.uses": "actions/attest",
     "github.ci.actions.cache.commit": "55cc8345863c7cc4c66a329aec7e433d2d1c52a9",
     "github.ci.actions.cache.release": "v6.1.0",
     "github.ci.actions.cache.uses": "actions/cache",

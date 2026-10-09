@@ -152,7 +152,10 @@ type Actions struct {
 	Cache workflow.Action `yaml:"cache" doc:"The action that restores the tool directory of ergon before the steps of each job of ci.yml that runs tools, and saves it after a run that succeeds."`
 
 	// CreateGitHubAppToken creates the token of a GitHub App that opens the version pull request.
-	CreateGitHubAppToken workflow.Action `yaml:"create-github-app-token" doc:"The action that creates a token of the GitHub App of the variable ERGON_APP_CLIENT_ID and the secret ERGON_APP_PRIVATE_KEY in version.yml, whose pull request then runs its checks without an approval."`
+	CreateGitHubAppToken workflow.Action `yaml:"create-github-app-token" doc:"The action that creates a token of the GitHub App of the variable ERGON_APP_CLIENT_ID and the secret ERGON_APP_PRIVATE_KEY in version.yml, whose pull request then runs its checks without an approval, and in the job homebrew of release.yml, which commits the casks of a release to the tap."`
+
+	// Attest attests the assets of a release with SLSA build provenance.
+	Attest workflow.Action `yaml:"attest" doc:"The action that attests the assets of a release with SLSA build provenance in the job pack of release.yml, which GitHub stores in its attestation API."`
 }
 
 // Validate returns an error that wraps [option.ErrInvalid] for no runner, and for a Linux that

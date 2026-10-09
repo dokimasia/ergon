@@ -12,14 +12,21 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 
+	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/core/workspace"
+	"go.dokimi.dev/ergon/service/forge"
 	"go.dokimi.dev/ergon/service/vcs"
 )
 
 // ErrTag is the error for a tag of a release that the repository has at another commit.
 var ErrTag = errors.New("release: tag at another commit")
+
+// ErrAssets is the error of a releaser that cannot attach assets to a release, such as
+// [GitReleaser].
+var ErrAssets = errors.New("release: the releaser cannot attach assets")
 
 // ErrPublishPlan is the error for a publish plan that does not fit the packages of the repository: an
 // entry of a package that the repository does not have, and an entry of [KindPublish] of a package
@@ -27,15 +34,17 @@ var ErrTag = errors.New("release: tag at another commit")
 var ErrPublishPlan = errors.New("release: invalid publish plan")
 
 // Releaser records the releases of a publish: it reads the tags of the repository, and creates the
-// tag of a release with its notes.
+// tag of a release with its notes and its assets.
 type Releaser interface {
 	// Tag returns the commit of the tag name, and reports whether the repository has the tag.
 	Tag(ctx context.Context, name string) (string, bool, error)
 
 	// Release creates the tag name at commit, with notes, the section of the changelog of the
 	// release, as its annotation or as the notes of a release of the host, marked as a pre-release
-	// for prerelease.
-	Release(ctx context.Context, name, commit, notes string, prerelease bool) error
+	// for prerelease, and with the files of assets as the assets of the release. It completes a
+	// release that an earlier publish left: it creates what the host lacks of the tag, the release
+	// and the assets, and publishes a draft.
+	Release(ctx context.Context, name, commit, notes string, prerelease bool, assets []string) error
 
 	// Finish completes the releases that Release created, such as by pushing their tags.
 	Finish(ctx context.Context) error
@@ -59,7 +68,10 @@ type Published struct {
 //     whose registry already has its version, as the publisher reports, so a publish that runs again
 //     continues where an earlier one stopped.
 //   - It then creates the tag of each entry of the chunk whose tag r does not have, at head, with the
-//     section of the version in the changelog of the package as its notes.
+//     section of the version in the changelog of the package as its notes, and with the files of
+//     dir/assets/<tag>/ as the assets of its release, in the order of their names.
+//   - It calls r.Release again for an entry whose tag r has at head and whose release has assets in
+//     dir, so that a publish that runs again completes a release that an earlier one left.
 //
 // A chunk starts after the tags of the chunk before it. Publish calls r.Finish once, after the last
 // tag or after an error.
@@ -68,8 +80,8 @@ type Published struct {
 // not fit g, and an error that wraps [ErrStale] for lockfiles that record other content of the
 // packages of plan than the working tree, as [Stale] reports them, with their paths. It returns an
 // error that wraps [ErrTag] for a tag that r has at another commit than head, with both commits. It
-// returns the error of Stale, of a publisher, of r and of reading a changelog. On an error it also
-// returns the packages that it released before the error.
+// returns the error of Stale, of a publisher, of r and of reading a changelog or the assets of a
+// release. On an error it also returns the packages that it released before the error.
 func Publish(ctx context.Context, root string, g *Graph, plan *PublishPlan, head, dir string, r Releaser) (
 	[]Published, error,
 ) {
@@ -111,12 +123,16 @@ func publish(
 				)
 			}
 			p := &g.pkgs[g.index[e.Name]]
-			if !found {
+			assets, err := assetsOf(dir, e.Tag)
+			if err != nil {
+				return err
+			}
+			if !found || len(assets) > 0 {
 				notes, err := notesOf(root, p, e)
 				if err != nil {
 					return err
 				}
-				if err := r.Release(ctx, e.Tag, head, notes, e.Version.Pre != ""); err != nil {
+				if err := r.Release(ctx, e.Tag, head, notes, e.Version.Pre != "", assets); err != nil {
 					return err
 				}
 			}
@@ -172,8 +188,33 @@ func notesOf(root string, p *workspace.Package, e *PublishEntry) (string, error)
 	return notes, nil
 }
 
+// assetsOf returns the paths of the files of dir/assets/<tag>/, the assets of the release of tag
+// that a packer built, in the order of their names. It returns no asset for an empty dir and for a
+// tag without the directory, and the error of reading the directory.
+func assetsOf(dir, tag string) ([]string, error) {
+	if dir == "" {
+		return nil, nil
+	}
+	assetsDir := filepath.Join(dir, language.AssetsDir, filepath.FromSlash(tag))
+	entries, err := os.ReadDir(assetsDir)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("release: read the assets of %s: %w", tag, err)
+	}
+	assets := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if entry.Type().IsRegular() {
+			assets = append(assets, filepath.Join(assetsDir, entry.Name()))
+		}
+	}
+	return assets, nil
+}
+
 // GitReleaser releases through the git of a repository: annotated tags with the notes as their
 // annotation, which git signs when the configuration sets tag.gpgSign, pushed in one atomic push.
+// A tag of git has no assets, so a GitReleaser refuses a release with assets.
 //
 // # Concurrency
 //
@@ -211,8 +252,13 @@ func (r *GitReleaser) Tag(ctx context.Context, name string) (string, bool, error
 }
 
 // Release creates the annotated tag name at commit, with notes as its annotation, or the name for
-// empty notes, with the terminal of r. It returns the error of git, which wraps [vcs.ErrGit].
-func (r *GitReleaser) Release(ctx context.Context, name, commit, notes string, _ bool) error {
+// empty notes, with the terminal of r. It returns an error that wraps [ErrAssets] for a release
+// with assets, before it creates the tag, and the error of git, which wraps [vcs.ErrGit].
+func (r *GitReleaser) Release(ctx context.Context, name, commit, notes string, _ bool, assets []string) error {
+	if len(assets) > 0 {
+		return fmt.Errorf("%w: the release %s has %d assets, which a publish through release.yml attaches",
+			ErrAssets, name, len(assets))
+	}
 	if err := vcs.Tag(ctx, r.Root, r.Terminal, name, commit, cmp.Or(notes, name)); err != nil {
 		return err
 	}
@@ -231,6 +277,7 @@ func (r *GitReleaser) Finish(ctx context.Context) error {
 }
 
 // TagForge is the host of a repository that a publish in CI tags and releases through.
+// *forge.Client implements it.
 type TagForge interface {
 	// Tag returns the commit of the tag name of repo, and reports whether repo has the tag.
 	Tag(ctx context.Context, repo, name string) (string, bool, error)
@@ -238,12 +285,25 @@ type TagForge interface {
 	// CreateTag creates the lightweight tag name of repo at the commit sha.
 	CreateTag(ctx context.Context, repo, name, sha string) error
 
-	// CreateRelease creates the release of the tag of repo with the Markdown body.
-	CreateRelease(ctx context.Context, repo, tag, body string, prerelease bool) error
+	// ReleaseOf returns the release of the tag of repo, a draft included, and reports whether repo
+	// has one.
+	ReleaseOf(ctx context.Context, repo, tag string) (forge.Release, bool, error)
+
+	// CreateDraft creates the release of the tag of repo as a draft with the Markdown body, and
+	// returns it.
+	CreateDraft(ctx context.Context, repo, tag, body string, prerelease bool) (forge.Release, error)
+
+	// UploadAsset uploads the file at path as an asset of the release r.
+	UploadAsset(ctx context.Context, r *forge.Release, path string) error
+
+	// Publish publishes the draft release id of repo.
+	Publish(ctx context.Context, repo string, id int64) error
 }
 
 // ForgeReleaser releases through the host of a repository, as changesets/action releases a package:
-// a lightweight tag, and a release of the host with the notes as its body.
+// a lightweight tag, and a release of the host with the notes as its body. It creates a release as
+// a draft, uploads its assets, and then publishes it, the order that a repository with immutable
+// releases requires.
 type ForgeReleaser struct {
 	// Forge is the host.
 	Forge TagForge
@@ -258,13 +318,45 @@ func (r ForgeReleaser) Tag(ctx context.Context, name string) (string, bool, erro
 	return r.Forge.Tag(ctx, r.Repo, name)
 }
 
-// Release creates the tag name at commit on the host and then its release with notes as its body. It
-// returns the error of the host.
-func (r ForgeReleaser) Release(ctx context.Context, name, commit, notes string, prerelease bool) error {
-	if err := r.Forge.CreateTag(ctx, r.Repo, name, commit); err != nil {
+// Release releases the tag name at commit on the host in four steps, each of which it leaves out
+// when an earlier publish took it: it creates the tag, creates its release as a draft with notes as
+// its body, uploads each file of assets that the release lacks by its base name, and publishes the
+// draft. It returns the error of the host.
+func (r ForgeReleaser) Release(
+	ctx context.Context, name, commit, notes string, prerelease bool, assets []string,
+) error {
+	_, tagged, err := r.Forge.Tag(ctx, r.Repo, name)
+	if err != nil {
 		return err
 	}
-	return r.Forge.CreateRelease(ctx, r.Repo, name, notes, prerelease)
+	if !tagged {
+		err = r.Forge.CreateTag(ctx, r.Repo, name, commit)
+		if err != nil {
+			return err
+		}
+	}
+	rel, found, err := r.Forge.ReleaseOf(ctx, r.Repo, name)
+	if err != nil {
+		return err
+	}
+	if !found {
+		if rel, err = r.Forge.CreateDraft(ctx, r.Repo, name, notes, prerelease); err != nil {
+			return err
+		}
+	}
+	for _, path := range assets {
+		base := filepath.Base(path)
+		if slices.ContainsFunc(rel.Assets, func(a forge.Asset) bool { return a.Name == base }) {
+			continue
+		}
+		if err := r.Forge.UploadAsset(ctx, &rel, path); err != nil {
+			return err
+		}
+	}
+	if !rel.Draft {
+		return nil
+	}
+	return r.Forge.Publish(ctx, r.Repo, rel.ID)
 }
 
 // Finish returns nil: the host has each tag and release once Release returns.

@@ -6,6 +6,14 @@
 # passed on the content of the commit, such as the run of the version pull request. The jobs pack
 # and publish then release each package of the publish plan. The job pack sets up the toolchains of
 # the repository before ergon, which build the artifacts.
+{{%- if .Data.Assets %}}
+#
+# The job pack also builds, signs and attests the assets of the releases, such as the binaries of
+# the commands of a Go module, and the job publish attaches them to each release before its publish.
+{{%- end %}}
+{{%- if .Data.TapName %}}
+# The job homebrew then commits the casks of the releases to the tap.
+{{%- end %}}
 
 name: Release
 
@@ -78,6 +86,12 @@ jobs:
     timeout-minutes: {{% .Options.CI.Timeout %}}
     permissions:
       contents: read
+{{%- if .Data.Assets %}}
+      # cosign signs the checksums of the assets, and actions/attest attests the assets, each with the
+      # OIDC identity of the workflow.
+      id-token: write
+      attestations: write
+{{%- end %}}
     steps:
       - uses: {{% .Options.CI.Actions.Checkout %}}
         with:
@@ -91,6 +105,13 @@ jobs:
       - name: Pack the packages
         run: |
           ergon release pack --from-publish-plan publish-plan.json --out-dir dist
+{{%- if .Data.Assets %}}
+      - name: Attest the assets
+        if: hashFiles('dist/assets/**') != ''
+        uses: {{% .Options.CI.Actions.Attest %}}
+        with:
+          subject-path: dist/assets/**/*
+{{%- end %}}
       - uses: {{% .Options.CI.Actions.UploadArtifact %}}
         with:
           name: release
@@ -124,3 +145,38 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           ergon release publish --from-publish-plan publish-plan.json --from-pack-dir dist
+{{%- if .Data.TapName %}}
+
+  homebrew:
+    name: Homebrew
+    needs: publish
+    if: needs.publish.outputs.published == 'true'
+    runs-on: {{% yaml .Options.Linux %}}
+    timeout-minutes: {{% .Options.CI.Timeout %}}
+    permissions:
+      contents: read
+    steps:
+      - uses: {{% .Options.CI.Actions.Checkout %}}
+        with:
+          persist-credentials: false
+      # The GitHub App of ERGON_APP_CLIENT_ID and ERGON_APP_PRIVATE_KEY, installed on the tap, commits
+      # to it, because GITHUB_TOKEN writes to no other repository.
+      - name: Create a token for the tap
+        id: tap
+        uses: {{% .Options.CI.Actions.CreateGitHubAppToken %}}
+        with:
+          client-id: ${{ vars.ERGON_APP_CLIENT_ID }}
+          private-key: ${{ secrets.ERGON_APP_PRIVATE_KEY }}
+          owner: {{% .Data.TapOwner %}}
+          repositories: {{% .Data.TapName %}}
+          permission-contents: write
+      - uses: ./.github/actions/setup-ergon
+      - uses: {{% .Options.CI.Actions.DownloadArtifact %}}
+        with:
+          name: release
+      - name: Commit the casks to the tap
+        env:
+          GITHUB_TOKEN: ${{ steps.tap.outputs.token }}
+        run: |
+          ergon release ci homebrew --tap {{% .Data.TapOwner %}}/{{% .Data.TapName %}} --from-publish-plan publish-plan.json --from-pack-dir dist
+{{%- end %}}
