@@ -30,10 +30,17 @@ import (
 	"go.dokimi.dev/ergon/service/vcs/vcstest"
 )
 
-// recordEnv names the file into which the test binary, run as ergon by the tools of the toolchain
-// of Go, writes its arguments and the version of its environment, one per line. It then writes an
-// empty artifacts.json into the dist directory of the configuration of the cases.
+// recordEnv is the environment variable that contains the path of the record file. When the tools
+// of the toolchain of Go run the test binary as ergon, the binary writes each argument and then
+// ERGON_VERSION into that file on a line of its own. It then writes an empty artifacts.json into
+// the dist directory of config.
 const recordEnv = "ERGON_APP_TEST_RECORD"
+
+// The module that the cases pack, and its go.mod.
+const (
+	modulePath = "go.dokimi.dev/demo"
+	goMod      = "module " + modulePath + "\n\ngo 1.24\n"
+)
 
 // The configuration of GoReleaser of the cases, and the artifacts.json of its dist directory.
 const (
@@ -96,14 +103,17 @@ func TestRegister(t *testing.T) {
 	})
 }
 
-// TestRegisterProcess runs the case whose packer starts the test binary as ergon, alone, because two
-// processes of a coverage run that exit in the same nanosecond write one coverage file. It sets the
-// environment of the process.
+// TestRegisterProcess sets the environment of the process and runs the case whose packer starts the
+// test binary as ergon. The case does not call t.Parallel. A coverage run writes one coverage file
+// for two processes that exit in the same nanosecond.
 func TestRegisterProcess(t *testing.T) {
 	t.Run("Register", func(t *testing.T) {
 		t.Run("packs a module of Go with GoReleaser through ergon tool run at the tag of the module",
 			func(t *testing.T) {
-				root := vcstest.Repository(t, files.Tree{".goreleaser.yaml": files.Text(config)})
+				root := vcstest.Repository(t, files.Tree{
+					"go.mod":           files.Text(goMod),
+					".goreleaser.yaml": files.Text(config),
+				})
 				head := vcstest.Commit(t, root, "first")
 				record := filepath.Join(t.TempDir(), "record")
 				t.Setenv(recordEnv, record)
@@ -114,7 +124,7 @@ func TestRegisterProcess(t *testing.T) {
 				assert.True(t, ok, "the packer of Go")
 				v, err := version.Parse("1.0.0")
 				assert.NoError(t, err, "Parse")
-				pkgs := []workspace.Package{{Name: "go.dokimi.dev/demo", Dir: ".", Version: v}}
+				pkgs := []workspace.Package{{Name: modulePath, Dir: ".", Version: v}}
 				assert.NoError(t, packer.Pack(t.Context(), root, pkgs, t.TempDir()), "Pack")
 				files.HasContent(t, record, "tool\nrun\ngo.goreleaser\n--\nrelease\n--snapshot\n--clean\n--config\n"+
 					".goreleaser.yaml\n1.0.0\n", "the arguments and the version of the run")
