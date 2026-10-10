@@ -12,7 +12,7 @@ require (
 	go.dokimi.dev/ergon/core v0.8.0
 	go.dokimi.dev/ergon/lang/bash v0.3.6
 	go.dokimi.dev/ergon/lang/csharp v0.2.6
-	go.dokimi.dev/ergon/lang/go v0.6.1
+	go.dokimi.dev/ergon/lang/go v0.6.2
 	go.dokimi.dev/ergon/lang/java v0.3.6
 	go.dokimi.dev/ergon/lang/javascript v0.2.6
 	go.dokimi.dev/ergon/lang/kotlin v0.3.6
