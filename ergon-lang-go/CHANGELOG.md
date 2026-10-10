@@ -1,5 +1,12 @@
 # go.dokimi.dev/ergon/lang/go
 
+## 0.6.2
+
+### Patch Changes
+
+- e854655: Build the binaries of a release outside the workspace, against a proxy of the released modules.
+- 7a2dbd0: Pass the modules of a release to syft as GOPRIVATE in the managed `.goreleaser.yaml`.
+
 ## 0.6.1
 
 ### Patch Changes

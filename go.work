@@ -30,7 +30,7 @@ replace (
 	go.dokimi.dev/ergon/core v0.8.0 => ./ergon-core
 	go.dokimi.dev/ergon/lang/bash v0.3.6 => ./ergon-lang-bash
 	go.dokimi.dev/ergon/lang/csharp v0.2.6 => ./ergon-lang-csharp
-	go.dokimi.dev/ergon/lang/go v0.6.1 => ./ergon-lang-go
+	go.dokimi.dev/ergon/lang/go v0.6.2 => ./ergon-lang-go
 	go.dokimi.dev/ergon/lang/java v0.3.6 => ./ergon-lang-java
 	go.dokimi.dev/ergon/lang/javascript v0.2.6 => ./ergon-lang-javascript
 	go.dokimi.dev/ergon/lang/kotlin v0.3.6 => ./ergon-lang-kotlin
