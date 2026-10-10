@@ -1,5 +1,12 @@
 # go.dokimi.dev/ergon/core
 
+## 0.7.0
+
+### Minor Changes
+
+- c6386e5: Add `option.Linters` for a group of options whose module plugins `ergon tool run` builds into golangci-lint.
+- c6386e5: Key the tool cache of a job by the files of `workflow.Setup.VersionFiles`, which the jobs of Go set to `go.work`.
+
 ## 0.6.0
 
 ### Minor Changes

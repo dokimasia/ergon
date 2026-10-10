@@ -1,5 +1,25 @@
 # go.dokimi.dev/ergon/service
 
+## 0.8.0
+
+### Minor Changes
+
+- 170d883: Add `common.ergon`, the command that runs ergon in the targets of the Makefile and in the commit-msg hook.
+- 876696f: Add `ergon tool prune` and `tool.Runner.Prune`, which remove each file of the tool directory that is not the install of a tool of the options.
+- c6386e5: Add `option.Linters` for a group of options whose module plugins `ergon tool run` builds into golangci-lint.
+- 74613ae: Add `baseline.Repository.Sections`, which returns the resolved options of each section.
+- 74613ae: Leave out an option of `.ergon.yaml` that its producer no longer has when the lock records it with the same value.
+- 74613ae: Add the job `prune-tools` to `nightly.yml` of each repository with a job that runs tools, which runs `ergon tool ci prune` each night.
+- 74613ae: End each job that runs tools with `ergon tool prune` when the key of its tool cache missed.
+- 74613ae: Restore the newest tool cache of a job of `ci.yml` and `nightly.yml` when the key of its cache misses.
+- c6386e5: Key the tool cache of a job by the files of `workflow.Setup.VersionFiles`, which the jobs of Go set to `go.work`.
+
+### Patch Changes
+
+- Updated dependencies [c6386e5]
+- Updated dependencies [c6386e5]
+  - go.dokimi.dev/ergon/core@0.7.0
+
 ## 0.7.0
 
 ### Minor Changes
