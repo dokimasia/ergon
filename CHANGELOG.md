@@ -1,5 +1,12 @@
 # go.dokimi.dev/ergon
 
+## 0.8.4
+
+### Patch Changes
+
+- Updated dependencies [a07f0e1]
+  - go.dokimi.dev/ergon/lang/go@0.7.1
+
 ## 0.8.3
 
 ### Patch Changes
