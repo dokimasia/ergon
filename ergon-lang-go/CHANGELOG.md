@@ -1,5 +1,11 @@
 # go.dokimi.dev/ergon/lang/go
 
+## 0.7.1
+
+### Patch Changes
+
+- a07f0e1: Put the NOTICE of a repository under Apache-2.0 into the archives and the packages of its releases.
+
 ## 0.7.0
 
 ### Minor Changes

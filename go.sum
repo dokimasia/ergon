@@ -112,8 +112,8 @@ go.dokimi.dev/ergon/lang/bash v0.4.0 h1:6U+gfrqGQZ//QI5Dl8U1G8K3xY2PYoLbE7yg7JTI
 go.dokimi.dev/ergon/lang/bash v0.4.0/go.mod h1:kC5uwZ/lFkffnXglB+T3AnpG1TCnk/sUe0yl4Y4jJgY=
 go.dokimi.dev/ergon/lang/csharp v0.3.0 h1:DaybsvupLL/+lpmWzFEGYuHmh+1A9jgmq4VQM9eujt4=
 go.dokimi.dev/ergon/lang/csharp v0.3.0/go.mod h1:zBXPxbdXWfJ0XUD3ihFp7R+A0JiyBOB29gE8zY77zrA=
-go.dokimi.dev/ergon/lang/go v0.7.0 h1:QTWC5VmGezLYh78DqihOnXdDIBeDRSsClvWHHEK7aE8=
-go.dokimi.dev/ergon/lang/go v0.7.0/go.mod h1:vUKv5Al8Lnm52I5deRDcp9r3sx58pYBo7aWfLF5Ljwc=
+go.dokimi.dev/ergon/lang/go v0.7.1 h1:pPtNjb38Sz+48Uv2gXwtgD0Jxw607fkZ1Pq54kqGtgk=
+go.dokimi.dev/ergon/lang/go v0.7.1/go.mod h1:vUKv5Al8Lnm52I5deRDcp9r3sx58pYBo7aWfLF5Ljwc=
 go.dokimi.dev/ergon/lang/java v0.4.0 h1:ws9+83ovF9rolHoZHqqdhjBZ1KtlJ6P+l9+n7yL5sT4=
 go.dokimi.dev/ergon/lang/java v0.4.0/go.mod h1:IBcH5+3hmypq70ii/kwOmLjurahvOoUr4ea3ElN/KbM=
 go.dokimi.dev/ergon/lang/javascript v0.3.0 h1:H5xjWI3UBCqzoCCqKn0djC76Hm2rEnY8fQ9VFm1ll30=
