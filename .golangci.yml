@@ -81,17 +81,24 @@ linters:
     - thelper
     - tparallel
     - usetesting
-    # The module plugins of go.lint.plugins, which ergon tool run builds into golangci-lint
+    # The analyzers of go.lint.analyzers and the module plugins of go.lint.plugins, which ergon tool
+    # run builds into golangci-lint
     - assertlint
+    - errorprefix
+    - skipexpiry
   settings:
     asasalint:
       use-builtin-exclusions: true
     copyloopvar:
       check-alias: true
-    # golangci-lint loads each module plugin of go.lint.plugins from its program. A repository
-    # sets the settings of a plugin in its local file, under the name of the plugin.
+    # golangci-lint loads each analyzer and module plugin from its program. A repository sets the
+    # settings of a plugin in its local file, under the name of the plugin.
     custom:
       assertlint:
+        type: module
+      errorprefix:
+        type: module
+      skipexpiry:
         type: module
     decorder:
       disable-dec-order-check: true
@@ -187,24 +194,18 @@ linters:
             - go.dokimi.dev/ergon/core
             - go.dokimi.dev/ergon/lang/javascript$
             - go.dokimi.dev/ergon/lang/javascript/
-        # The analyzers of ergon-go-vet read the syntax and the types of Go, and run on
-        # golang.org/x/tools, whose multichecker runs them and whose go/packages resolves the
-        # patterns of -exclude. A release reads and writes go.work and go.mod, and writes the zips
-        # of the released modules, with golang.org/x/mod. The packer reads the dist directory from
-        # the GoReleaser configuration of each module with go.yaml.in/yaml/v3.
+        # A release reads and writes go.work and go.mod, and writes the zips of the released
+        # modules, with golang.org/x/mod. The packer reads the dist directory from the GoReleaser
+        # configuration of each module with go.yaml.in/yaml/v3.
         go-module:
           files: ["**/ergon-lang-go/**", "!$test"]
           list-mode: strict
           allow:
             - $gostd
-            - go/ast
-            - go/constant
-            - go/types
             - go.dokimi.dev/ergon/core
             - go.dokimi.dev/ergon/lang/go$
             - go.dokimi.dev/ergon/lang/go/
             - golang.org/x/mod
-            - golang.org/x/tools
             - go.yaml.in/yaml/v3
         python-module:
           files: ["**/ergon-lang-python/**", "!$test"]
@@ -250,8 +251,7 @@ linters:
         # toolchain, and the packages of ergon init in service: the test kit, which renders the
         # language as ergon init new does, the engine of the templates, and the producer of the
         # GitHub files, which renders the contribution of the language. The tests of the release
-        # roles read real repositories through the git of service and its test kit. The tests of the
-        # analyzers of the Go module run them with the test kit of golang.org/x/tools. depguard
+        # roles read real repositories through the git of service and its test kit. depguard
         # matches a file against any entry of files, so the globs name the test files of the
         # language modules.
         language-module-tests:
@@ -265,7 +265,6 @@ linters:
             - go.dokimi.dev/ergon/service/baseline
             - go.dokimi.dev/ergon/service/vcs
             - golang.org/x/mod
-            - golang.org/x/tools/go/analysis
     exhaustive:
       default-signifies-exhaustive: true
       check:
