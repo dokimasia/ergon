@@ -48,7 +48,9 @@
 //
 // [CI], [RunnerCI] and [MatrixCI] are the key ci of a section: the pins of the actions of its
 // jobs, the runners and the runtime versions of their matrix, and their timeout. The type
-// parameter is the producer's struct of the pins of its actions.
+// parameter is the producer's struct of the pins of its actions. The key ci of a toolchain,
+// [RunnerCI] or [MatrixCI], also has the steps of the repository that its jobs run after the setup
+// of the toolchain.
 //
 // # Answers
 //
@@ -63,5 +65,5 @@
 //
 // # Dependency position
 //
-// Position 0 of ergon-core. Imports the standard library.
+// Position 1 of ergon-core. Imports the standard library and [go.dokimi.dev/ergon/core/workflow].
 package option

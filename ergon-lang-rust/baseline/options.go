@@ -4,6 +4,8 @@
 package baseline
 
 import (
+	"slices"
+
 	"go.dokimi.dev/ergon/core/option"
 	"go.dokimi.dev/ergon/core/workflow"
 )
@@ -62,8 +64,9 @@ func (o *Options) Validate() error {
 //
 //   - The job check-rust runs make check-rust on the runners of o, once the repository has
 //     rust-toolchain.toml. setup-rust-toolchain installs the toolchain of rust-toolchain.toml, or
-//     the toolchain of the matrix where o lists versions, with rustfmt and clippy. The job keeps
-//     cargo-audit, which ergon tool run installs, in the cache of GitHub Actions.
+//     the toolchain of the matrix where o lists versions, with rustfmt and clippy. The steps of
+//     ci.steps run after setup-rust-toolchain. The job keeps cargo-audit, which ergon tool run
+//     installs, in the cache of GitHub Actions.
 //   - The CodeQL analysis of rust reads the sources without a build.
 //   - Dependabot updates Cargo.lock.
 func (o *Options) Contribution() workflow.Contribution {
@@ -80,8 +83,11 @@ func (o *Options) Contribution() workflow.Contribution {
 				Files:    toolchain,
 				Runners:  o.CI.Runners,
 				Versions: o.CI.Versions,
-				Steps:    []workflow.Step{{Name: "Set up Rust", Uses: o.CI.Actions.SetupRustToolchain, With: with}},
-				Timeout:  o.CI.Timeout,
+				Steps: slices.Concat(
+					[]workflow.Step{{Name: "Set up Rust", Uses: o.CI.Actions.SetupRustToolchain, With: with}},
+					o.CI.Steps,
+				),
+				Timeout: o.CI.Timeout,
 			},
 			Tools: true,
 			Steps: []workflow.Step{{Name: "Check Rust", Run: []string{"make check-rust"}}},

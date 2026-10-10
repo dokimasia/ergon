@@ -5,6 +5,7 @@ package baseline
 
 import (
 	"fmt"
+	"slices"
 
 	"go.dokimi.dev/ergon/core/option"
 	"go.dokimi.dev/ergon/core/workflow"
@@ -60,7 +61,8 @@ func (*ToolchainOptions) Validate() error {
 //
 //   - The setup that the jobs check-java and check-kotlin run on the runners of o, once the
 //     repository has .java-version: setup-java installs the Temurin build of the Java of
-//     .java-version, or of the version of the matrix where o lists versions.
+//     .java-version, or of the version of the matrix where o lists versions. The steps of
+//     ci.steps run after setup-java.
 //   - The CodeQL analysis of java-kotlin builds the sources with the build of the repository, which
 //     the analysis of Kotlin requires.
 //   - Dependabot updates the Gradle dependencies.
@@ -74,8 +76,9 @@ func (o *ToolchainOptions) Contribution() workflow.Contribution {
 			Files:    pin,
 			Runners:  o.CI.Runners,
 			Versions: o.CI.Versions,
-			Steps:    []workflow.Step{{Name: "Set up Java", Uses: o.CI.Actions.SetupJava, With: with}},
-			Timeout:  o.CI.Timeout,
+			Steps: slices.Concat([]workflow.Step{{Name: "Set up Java", Uses: o.CI.Actions.SetupJava, With: with}},
+				o.CI.Steps),
+			Timeout: o.CI.Timeout,
 		},
 		CodeQL: []workflow.CodeQL{{
 			Language:  "java-kotlin",

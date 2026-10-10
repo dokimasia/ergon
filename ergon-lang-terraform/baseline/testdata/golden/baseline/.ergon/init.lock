@@ -38,6 +38,7 @@
     "terraform.ci.actions.setup-terraform.release": "v4.0.1",
     "terraform.ci.actions.setup-terraform.uses": "hashicorp/setup-terraform",
     "terraform.ci.runners": [],
+    "terraform.ci.steps": [],
     "terraform.ci.timeout": 30,
     "terraform.ci.versions": [],
     "terraform.generate.args": [],

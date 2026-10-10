@@ -51,6 +51,7 @@ func (Toolchain) Options() language.Options {
 			}},
 			Runners:  option.Runners{},
 			Versions: []string{},
+			Steps:    []workflow.Step{},
 			Timeout:  30,
 		},
 	}

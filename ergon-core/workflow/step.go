@@ -29,30 +29,32 @@ var (
 )
 
 // Step is a step of a job: an action, which Uses names, or a command of bash, which Run states.
-// The renderer writes the command as a literal block of YAML, one line of Run per line.
+// The renderer writes the command as a literal block of YAML, one line of Run per line. In
+// .ergon.yaml a step is a mapping of the keys name, id, if, uses, with, env and run, and a key
+// with an empty value is left out.
 type Step struct {
 	// Name is the name of the step in the log of the job, or empty for the name that GitHub
 	// derives from the action or the command.
-	Name string
+	Name string `yaml:"name,omitempty"`
 
 	// ID identifies the step to the expressions of later steps, such as steps.pin.outputs.version,
 	// or is empty.
-	ID string
+	ID string `yaml:"id,omitempty"`
 
 	// If is the condition of the step, or empty for a step that always runs.
-	If string
+	If string `yaml:"if,omitempty"`
 
 	// Uses is the action of the step, and the zero value for a command.
-	Uses Action
+	Uses Action `yaml:"uses,omitempty"`
 
 	// With are the inputs of the action, by name. A value may span lines.
-	With map[string]string
+	With map[string]string `yaml:"with,omitempty"`
 
 	// Env are the environment variables of the step, by name.
-	Env map[string]string
+	Env map[string]string `yaml:"env,omitempty"`
 
 	// Run are the lines of the command, which bash runs, or nil for an action.
-	Run []string
+	Run []string `yaml:"run,omitempty"`
 }
 
 // Validate returns an error that wraps [ErrInvalidStep] for the first value of s that a workflow

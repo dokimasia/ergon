@@ -12,6 +12,9 @@ import (
 	"go.dokimi.dev/ergon/lang/python/baseline"
 )
 
+// installTypeScript is a step of ci.steps, which installs a compiler that the tests run.
+var installTypeScript = workflow.Step{Name: "Install TypeScript", Run: []string{"npm install --global typescript"}}
+
 func TestOptions(t *testing.T) {
 	t.Parallel()
 
@@ -60,6 +63,7 @@ func TestOptions(t *testing.T) {
 						Files:    "pyproject.toml",
 						Runners:  option.Runners{},
 						Versions: []string{},
+						Steps:    []workflow.Step{},
 						Timeout:  30,
 					},
 					Tools: true,
@@ -76,6 +80,14 @@ func TestOptions(t *testing.T) {
 			t.Parallel()
 			got := pythonOptions().Contribution()
 			assert.NoError(t, got.Validate(), "Validate of the contribution")
+		})
+
+		t.Run("adds the steps of ci.steps to the setup", func(t *testing.T) {
+			t.Parallel()
+			o := pythonOptions()
+			o.CI.Steps = []workflow.Step{installTypeScript}
+			assert.Equal(t, o.Contribution().Jobs[0].Setup.Steps, []workflow.Step{installTypeScript},
+				"the steps of the setup")
 		})
 
 		t.Run("installs the version of the matrix through UV_PYTHON for versions of the options", func(t *testing.T) {

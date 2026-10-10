@@ -213,10 +213,12 @@ func (o *Options) Validate() error {
 //     version of go.work, or the version of the matrix where o lists versions, and caches the
 //     modules by every go.sum. The job keeps the tools of the section, which ergon tool run
 //     installs, in the cache of GitHub Actions, under a key that covers go.work, because ergon
-//     tool run builds each Go module with the version of the go command.
+//     tool run builds each Go module with the version of the go command. The steps of ci.steps run
+//     after setup-go.
 //   - The job <step>-go of nightly.yml runs make <step>-go for each step of nightly, in the order of
 //     the targets, on the Linux runner of the section github and the version of go.work, with the
-//     limit that nightly states for the step. It sets up Go as check-go does.
+//     limit that nightly states for the step. It sets up Go as check-go does, with the steps of
+//     ci.steps after setup-go.
 //   - The release steps install the version of go.work with setup-go in the jobs version and pack of
 //     release.yml, once the repository has go.work, for the go mod tidy of a release and the builds
 //     of its commands.
@@ -242,6 +244,10 @@ func (o *Options) Contribution() workflow.Contribution {
 		},
 	}
 	read := map[string]string{"contents": "read"}
+	nightlySetup := slices.Concat([]workflow.Step{require, {Name: setupName, Uses: o.CI.Actions.SetupGo, With: pinned}},
+		o.CI.Steps)
+	checkSetup := slices.Concat([]workflow.Step{require, {Name: setupName, Uses: o.CI.Actions.SetupGo, With: with}},
+		o.CI.Steps)
 	nightly := o.Nightly.Steps()
 	scheduled := make([]workflow.Job, 0, len(nightly))
 	for _, s := range nightly {
@@ -254,7 +260,7 @@ func (o *Options) Contribution() workflow.Contribution {
 			Setup: &workflow.Setup{
 				Files:        modules,
 				VersionFiles: workspace,
-				Steps:        []workflow.Step{require, {Name: setupName, Uses: o.CI.Actions.SetupGo, With: pinned}},
+				Steps:        nightlySetup,
 				Timeout:      o.Nightly[s],
 			},
 			Tools: true,
@@ -279,7 +285,7 @@ func (o *Options) Contribution() workflow.Contribution {
 				VersionFiles: workspace,
 				Runners:      o.CI.Runners,
 				Versions:     o.CI.Versions,
-				Steps:        []workflow.Step{require, {Name: setupName, Uses: o.CI.Actions.SetupGo, With: with}},
+				Steps:        checkSetup,
 				Timeout:      o.CI.Timeout,
 			},
 			Tools: true,

@@ -38,6 +38,7 @@
     "rust.ci.actions.setup-rust-toolchain.release": "v2.0.0",
     "rust.ci.actions.setup-rust-toolchain.uses": "actions-rust-lang/setup-rust-toolchain",
     "rust.ci.runners": [],
+    "rust.ci.steps": [],
     "rust.ci.timeout": 30,
     "rust.ci.versions": [],
     "rust.generate.args": [],

@@ -5,6 +5,7 @@ package baseline_test
 
 import (
 	"reflect"
+	"slices"
 	"testing"
 
 	"go.dokimi.dev/assert"
@@ -21,6 +22,9 @@ var setupGo = workflow.Action{
 	Commit:  "b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
 	Release: "v7.0.0",
 }
+
+// installTypeScript is a step of ci.steps, which installs a compiler that the tests run.
+var installTypeScript = workflow.Step{Name: "Install TypeScript", Run: []string{"npm install --global typescript"}}
 
 // requireWork is the step of the job of Go that fails a repository without go.work.
 var requireWork = workflow.Step{
@@ -291,6 +295,26 @@ func TestOptions(t *testing.T) {
 			t.Parallel()
 			got := goOptions().Contribution()
 			assert.NoError(t, got.Validate(), "Validate of the contribution")
+		})
+
+		t.Run("adds the steps of ci.steps to the end of the setup of every job", func(t *testing.T) {
+			t.Parallel()
+			o := goOptions()
+			o.CI.Steps = []workflow.Step{installTypeScript}
+			got := o.Contribution()
+			assert.Length(t, got.Nightly, 3, "the nightly jobs")
+			want := []workflow.Step{
+				requireWork,
+				{
+					Name: "Set up Go",
+					Uses: setupGo,
+					With: map[string]string{"go-version-file": "go.work", "cache-dependency-path": "**/go.sum"},
+				},
+				installTypeScript,
+			}
+			for _, j := range slices.Concat(got.Jobs, got.Nightly) {
+				expect.Equal(t, j.Setup.Steps, want, "the steps of the setup of "+j.ID)
+			}
 		})
 
 		t.Run("sets up the version of the matrix for versions of the options", func(t *testing.T) {

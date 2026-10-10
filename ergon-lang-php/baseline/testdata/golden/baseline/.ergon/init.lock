@@ -37,6 +37,7 @@
     "php.ci.actions.setup-php.release": "2.37.2",
     "php.ci.actions.setup-php.uses": "shivammathur/setup-php",
     "php.ci.runners": [],
+    "php.ci.steps": [],
     "php.ci.timeout": 30,
     "php.ci.versions": [],
     "php.generate.args": [],

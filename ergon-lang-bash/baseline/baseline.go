@@ -57,7 +57,7 @@ func (Producer) Options() language.Options {
 		Paths:    option.Paths{"*.sh", "*.bash"},
 		Check:    option.Check{option.StepLint},
 		Generate: option.Generate{Command: []string{}, Args: []string{}},
-		CI:       option.RunnerCI[struct{}]{Runners: option.Runners{}, Timeout: 30},
+		CI:       option.RunnerCI[struct{}]{Runners: option.Runners{}, Steps: []workflow.Step{}, Timeout: 30},
 	}
 }
 

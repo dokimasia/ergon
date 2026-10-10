@@ -66,7 +66,12 @@ func (Producer) Options() language.Options {
 		Test:     option.Run{Args: []string{}},
 		Generate: option.Generate{Command: []string{}, Args: []string{}},
 		Audit:    option.Audit{Ignore: []string{}},
-		CI:       option.MatrixCI[struct{}]{Runners: option.Runners{}, Versions: []string{}, Timeout: 30},
+		CI: option.MatrixCI[struct{}]{
+			Runners:  option.Runners{},
+			Versions: []string{},
+			Steps:    []workflow.Step{},
+			Timeout:  30,
+		},
 	}
 }
 

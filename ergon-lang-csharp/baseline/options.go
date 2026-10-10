@@ -4,6 +4,8 @@
 package baseline
 
 import (
+	"slices"
+
 	"go.dokimi.dev/ergon/core/option"
 	"go.dokimi.dev/ergon/core/workflow"
 )
@@ -53,7 +55,7 @@ func (o *Options) Validate() error {
 //
 //   - The job check-csharp runs make check-csharp on the runners of o, once the repository has
 //     global.json. setup-dotnet installs the SDK of global.json, or the version of the matrix
-//     where o lists versions.
+//     where o lists versions. The steps of ci.steps run after setup-dotnet.
 //   - The CodeQL analysis of csharp reads the sources without a build.
 //   - Dependabot updates the NuGet packages.
 func (o *Options) Contribution() workflow.Contribution {
@@ -70,8 +72,9 @@ func (o *Options) Contribution() workflow.Contribution {
 				Files:    sdk,
 				Runners:  o.CI.Runners,
 				Versions: o.CI.Versions,
-				Steps:    []workflow.Step{{Name: "Set up .NET", Uses: o.CI.Actions.SetupDotnet, With: with}},
-				Timeout:  o.CI.Timeout,
+				Steps: slices.Concat([]workflow.Step{{Name: "Set up .NET", Uses: o.CI.Actions.SetupDotnet, With: with}},
+					o.CI.Steps),
+				Timeout: o.CI.Timeout,
 			},
 			Steps: []workflow.Step{{Name: "Check C#", Run: []string{"make check-csharp"}}},
 		}},

@@ -27,6 +27,7 @@
       "lint"
     ],
     "bash.ci.runners": [],
+    "bash.ci.steps": [],
     "bash.ci.timeout": 30,
     "bash.generate.args": [],
     "bash.generate.command": [],

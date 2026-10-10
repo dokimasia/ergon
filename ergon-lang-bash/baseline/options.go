@@ -63,14 +63,15 @@ func (o *Options) Validate() error {
 
 // Contribution returns the part of Bash of the workflows for o: the job check-bash, which runs
 // make check-bash on the runners of o in every repository, because Bash has no file that pins a
-// toolchain. The job keeps shellcheck, which ergon tool run installs, in the cache of GitHub
-// Actions. CodeQL analyzes no Bash, and Dependabot updates no script.
+// toolchain. The steps of ci.steps run before the installation of ergon. The job keeps
+// shellcheck, which ergon tool run installs, in the cache of GitHub Actions. CodeQL analyzes no
+// Bash, and Dependabot updates no script.
 func (o *Options) Contribution() workflow.Contribution {
 	return workflow.Contribution{Jobs: []workflow.Job{{
 		ID:          "check-bash",
 		Name:        "Bash",
 		Permissions: map[string]string{"contents": "read"},
-		Setup:       &workflow.Setup{Runners: o.CI.Runners, Timeout: o.CI.Timeout},
+		Setup:       &workflow.Setup{Runners: o.CI.Runners, Steps: o.CI.Steps, Timeout: o.CI.Timeout},
 		Tools:       true,
 		Steps:       []workflow.Step{{Name: "Check Bash", Run: []string{"make check-bash"}}},
 	}}}

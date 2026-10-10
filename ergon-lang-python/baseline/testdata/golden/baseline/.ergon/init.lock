@@ -35,6 +35,7 @@
       "audit"
     ],
     "python.ci.runners": [],
+    "python.ci.steps": [],
     "python.ci.timeout": 30,
     "python.ci.versions": [],
     "python.generate.args": [],

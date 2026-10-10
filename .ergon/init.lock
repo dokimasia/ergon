@@ -206,6 +206,7 @@
     "go.ci.actions.setup-go.release": "v7.0.0",
     "go.ci.actions.setup-go.uses": "actions/setup-go",
     "go.ci.runners": [],
+    "go.ci.steps": [],
     "go.ci.timeout": 30,
     "go.ci.versions": [],
     "go.fuzz.args": [

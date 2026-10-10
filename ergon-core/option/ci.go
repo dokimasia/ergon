@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+
+	"go.dokimi.dev/ergon/core/workflow"
 )
 
 // runner matches the label of a runner image, such as ubuntu-26.04.
@@ -47,7 +49,8 @@ func (c CI[A]) Validate() error {
 }
 
 // RunnerCI is the key ci of the section of a toolchain without a runtime version, such as Bash:
-// the pins of the actions of its jobs, the runners of their matrix, and their timeout.
+// the pins of the actions of its jobs, the runners of their matrix, the steps that follow the
+// setup of the toolchain, and their timeout.
 type RunnerCI[A any] struct {
 	// Actions are the pins of the actions of the producer's jobs.
 	Actions A `yaml:"actions"`
@@ -56,23 +59,31 @@ type RunnerCI[A any] struct {
 	// every runner of the section github.
 	Runners Runners `yaml:"runners"`
 
+	// Steps are the steps of the repository that each job of the producer runs after the setup of
+	// the toolchain and before ergon.
+	Steps []workflow.Step `yaml:"steps" doc:"The steps that each job of the toolchain runs after the setup of the toolchain and before ergon, such as the installation of a compiler that the tests run. A step has the keys name, id, if and env, and either uses with its inputs under with, or run. uses is an action as uses, commit and release, and each input is a string. run is the list of the lines of a command of bash."`
+
 	// Timeout is the limit of each job of the producer in minutes, at least 1.
 	Timeout int `yaml:"timeout"`
 }
 
 // Validate returns an error that wraps [ErrInvalid] for runners that are not valid, as
-// [Runners.Validate] states, and for a Timeout below 1. The producer of the GitHub files rejects a
-// runner that its own section does not list.
+// [Runners.Validate] states, for a step that is not valid, as [workflow.Step.Validate] states, and
+// for a Timeout below 1. The producer of the GitHub files rejects a runner that its own section does
+// not list.
 func (c RunnerCI[A]) Validate() error {
 	if err := c.Runners.Validate(); err != nil {
+		return err
+	}
+	if err := validateSteps(c.Steps); err != nil {
 		return err
 	}
 	return timeout(c.Timeout)
 }
 
 // MatrixCI is the key ci of the section of a toolchain with runtime versions, such as Go: the pins
-// of the actions of its jobs, the runners and the runtime versions of their matrix, and their
-// timeout.
+// of the actions of its jobs, the runners and the runtime versions of their matrix, the steps that
+// follow the setup of the toolchain, and their timeout.
 type MatrixCI[A any] struct {
 	// Actions are the pins of the actions of the producer's jobs, such as the setup of its
 	// toolchain.
@@ -86,13 +97,17 @@ type MatrixCI[A any] struct {
 	// version that the toolchain's pin file states.
 	Versions []string `yaml:"versions"`
 
+	// Steps are the steps of the repository that each job of the producer runs after the setup of
+	// the toolchain and before ergon.
+	Steps []workflow.Step `yaml:"steps" doc:"The steps that each job of the toolchain runs after the setup of the toolchain and before ergon, such as the installation of a compiler that the tests run. A step has the keys name, id, if and env, and either uses with its inputs under with, or run. uses is an action as uses, commit and release, and each input is a string. run is the list of the lines of a command of bash."`
+
 	// Timeout is the limit of each job of the producer in minutes, at least 1.
 	Timeout int `yaml:"timeout"`
 }
 
 // Validate returns an error that wraps [ErrInvalid] for runners that are not valid, as
-// [Runners.Validate] states, a version that is empty, spans lines or that Versions names twice, and
-// a Timeout below 1.
+// [Runners.Validate] states, a version that is empty, spans lines or that Versions names twice, a
+// step that is not valid, as [workflow.Step.Validate] states, and a Timeout below 1.
 func (c MatrixCI[A]) Validate() error {
 	if err := c.Runners.Validate(); err != nil {
 		return err
@@ -102,7 +117,22 @@ func (c MatrixCI[A]) Validate() error {
 			return fmt.Errorf("%w: version %q, which is empty, spans lines or is named twice", ErrInvalid, v)
 		}
 	}
+	if err := validateSteps(c.Steps); err != nil {
+		return err
+	}
 	return timeout(c.Timeout)
+}
+
+// validateSteps returns an error that wraps [ErrInvalid] and [workflow.ErrInvalidStep], with the
+// number of the step, for the first step of steps that is not valid, as [workflow.Step.Validate]
+// states.
+func validateSteps(steps []workflow.Step) error {
+	for i := range steps {
+		if err := steps[i].Validate(); err != nil {
+			return fmt.Errorf("%w: step %d: %w", ErrInvalid, i+1, err)
+		}
+	}
+	return nil
 }
 
 // timeout returns an error that wraps [ErrInvalid] for minutes below 1.

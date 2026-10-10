@@ -4,6 +4,8 @@
 package baseline
 
 import (
+	"slices"
+
 	"go.dokimi.dev/ergon/core/option"
 	"go.dokimi.dev/ergon/core/workflow"
 )
@@ -50,7 +52,8 @@ func (*ToolchainOptions) Validate() error {
 //
 //   - The setup that the jobs check-javascript and check-typescript run on the runners of o, once
 //     the repository has package.json: setup-node installs the Node.js of package.json, or the
-//     version of the matrix where o lists versions, and npm ci installs the packages.
+//     version of the matrix where o lists versions, and npm ci installs the packages. The steps of
+//     ci.steps run after npm ci.
 //   - The CodeQL analysis of javascript-typescript reads the sources without a build.
 //   - Dependabot updates the npm packages.
 func (o *ToolchainOptions) Contribution() workflow.Contribution {
@@ -63,10 +66,10 @@ func (o *ToolchainOptions) Contribution() workflow.Contribution {
 			Files:    manifest,
 			Runners:  o.CI.Runners,
 			Versions: o.CI.Versions,
-			Steps: []workflow.Step{
+			Steps: slices.Concat([]workflow.Step{
 				{Name: "Set up Node.js", Uses: o.CI.Actions.SetupNode, With: with},
 				{Name: "Install the packages", Run: []string{"npm ci"}},
-			},
+			}, o.CI.Steps),
 			Timeout: o.CI.Timeout,
 		},
 		CodeQL: []workflow.CodeQL{{

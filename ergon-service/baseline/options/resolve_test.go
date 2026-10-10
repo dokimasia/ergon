@@ -183,6 +183,7 @@ func TestResolve(t *testing.T) {
 				"demo.ci.actions.setup.release": setup.Release,
 				"demo.ci.runners":               b.CI.Runners,
 				"demo.ci.versions":              b.CI.Versions,
+				"demo.ci.steps":                 b.CI.Steps,
 				"demo.ci.timeout":               b.CI.Timeout,
 			}, "the record")
 		})
@@ -476,6 +477,7 @@ func baseline() *demo {
 			Actions:  actions{Setup: setup},
 			Runners:  []string{},
 			Versions: []string{},
+			Steps:    []workflow.Step{},
 			Timeout:  30,
 		},
 	}

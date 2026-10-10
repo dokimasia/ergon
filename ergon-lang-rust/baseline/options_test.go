@@ -4,6 +4,7 @@
 package baseline_test
 
 import (
+	"slices"
 	"testing"
 
 	"go.dokimi.dev/assert"
@@ -18,6 +19,9 @@ var setupRust = workflow.Action{
 	Commit:  "ecabd13d1c56bd1345c230e542e9144811ad706f",
 	Release: "v2.0.0",
 }
+
+// installTypeScript is a step of ci.steps, which installs a compiler that the tests run.
+var installTypeScript = workflow.Step{Name: "Install TypeScript", Run: []string{"npm install --global typescript"}}
 
 func TestOptions(t *testing.T) {
 	t.Parallel()
@@ -88,6 +92,14 @@ func TestOptions(t *testing.T) {
 			t.Parallel()
 			got := rustOptions().Contribution()
 			assert.NoError(t, got.Validate(), "Validate of the contribution")
+		})
+
+		t.Run("adds the steps of ci.steps to the end of the setup", func(t *testing.T) {
+			t.Parallel()
+			o := rustOptions()
+			o.CI.Steps = []workflow.Step{installTypeScript}
+			want := slices.Concat(rustOptions().Contribution().Jobs[0].Setup.Steps, o.CI.Steps)
+			assert.Equal(t, o.Contribution().Jobs[0].Setup.Steps, want, "the steps of the setup")
 		})
 
 		t.Run("installs the toolchain of the matrix for versions of the options", func(t *testing.T) {

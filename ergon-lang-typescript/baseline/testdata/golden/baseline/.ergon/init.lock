@@ -33,6 +33,7 @@
     "js.ci.actions.setup-node.release": "v7.0.0",
     "js.ci.actions.setup-node.uses": "actions/setup-node",
     "js.ci.runners": [],
+    "js.ci.steps": [],
     "js.ci.timeout": 30,
     "js.ci.versions": [],
     "js.paths": [

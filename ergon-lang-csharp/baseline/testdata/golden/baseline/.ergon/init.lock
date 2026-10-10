@@ -38,6 +38,7 @@
     "csharp.ci.actions.setup-dotnet.release": "v6.0.0",
     "csharp.ci.actions.setup-dotnet.uses": "actions/setup-dotnet",
     "csharp.ci.runners": [],
+    "csharp.ci.steps": [],
     "csharp.ci.timeout": 30,
     "csharp.ci.versions": [],
     "csharp.generate.args": [],

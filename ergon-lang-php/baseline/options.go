@@ -5,6 +5,7 @@ package baseline
 
 import (
 	"fmt"
+	"slices"
 
 	"go.dokimi.dev/ergon/core/option"
 	"go.dokimi.dev/ergon/core/workflow"
@@ -97,8 +98,8 @@ func (o *Options) Validate() error {
 //
 //   - The job check-php runs make check-php on the runners of o, once the repository has
 //     .php-version. setup-php installs Composer and the PHP of .php-version, or the version of the
-//     matrix where o lists versions. The job keeps the Composer packages of its tools, which ergon
-//     tool run installs, in the cache of GitHub Actions.
+//     matrix where o lists versions. The steps of ci.steps run after setup-php. The job keeps the
+//     Composer packages of its tools, which ergon tool run installs, in the cache of GitHub Actions.
 //   - Dependabot updates the Composer packages.
 //
 // CodeQL does not analyze PHP, so the contribution has no analysis.
@@ -116,8 +117,9 @@ func (o *Options) Contribution() workflow.Contribution {
 				Files:    pin,
 				Runners:  o.CI.Runners,
 				Versions: o.CI.Versions,
-				Steps:    []workflow.Step{{Name: "Set up PHP", Uses: o.CI.Actions.SetupPHP, With: with}},
-				Timeout:  o.CI.Timeout,
+				Steps: slices.Concat([]workflow.Step{{Name: "Set up PHP", Uses: o.CI.Actions.SetupPHP, With: with}},
+					o.CI.Steps),
+				Timeout: o.CI.Timeout,
 			},
 			Tools: true,
 			Steps: []workflow.Step{{Name: "Check PHP", Run: []string{"make check-php"}}},

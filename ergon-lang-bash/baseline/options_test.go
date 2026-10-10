@@ -15,6 +15,9 @@ import (
 // release is the address of the assets of shellcheck 0.11.0, before the name of the asset.
 const release = "https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0"
 
+// installTypeScript is a step of ci.steps, which installs a compiler that the tests run.
+var installTypeScript = workflow.Step{Name: "Install TypeScript", Run: []string{"npm install --global typescript"}}
+
 func TestOptions(t *testing.T) {
 	t.Parallel()
 
@@ -58,7 +61,7 @@ func TestOptions(t *testing.T) {
 				ID:          "check-bash",
 				Name:        "Bash",
 				Permissions: map[string]string{"contents": "read"},
-				Setup:       &workflow.Setup{Runners: option.Runners{}, Timeout: 30},
+				Setup:       &workflow.Setup{Runners: option.Runners{}, Steps: []workflow.Step{}, Timeout: 30},
 				Tools:       true,
 				Steps:       []workflow.Step{{Name: "Check Bash", Run: []string{"make check-bash"}}},
 			}}}, "the contribution")
@@ -68,6 +71,14 @@ func TestOptions(t *testing.T) {
 			t.Parallel()
 			got := bashOptions().Contribution()
 			assert.NoError(t, got.Validate(), "Validate of the contribution")
+		})
+
+		t.Run("adds the steps of ci.steps to the setup", func(t *testing.T) {
+			t.Parallel()
+			o := bashOptions()
+			o.CI.Steps = []workflow.Step{installTypeScript}
+			assert.Equal(t, o.Contribution().Jobs[0].Setup.Steps, []workflow.Step{installTypeScript},
+				"the steps of the setup")
 		})
 	})
 

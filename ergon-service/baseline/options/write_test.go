@@ -47,6 +47,12 @@ const written = `demo:
         release: v7.0.0
     runners: []
     versions: []
+    # The steps that each job of the toolchain runs after the setup of the toolchain and before
+    # ergon, such as the installation of a compiler that the tests run. A step has the keys name,
+    # id, if and env, and either uses with its inputs under with, or run. uses is an action as uses,
+    # commit and release, and each input is a string. run is the list of the lines of a command of
+    # bash.
+    steps: []
     timeout: 30
 `
 
