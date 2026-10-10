@@ -1,5 +1,14 @@
 # go.dokimi.dev/ergon/lang/go
 
+## 0.6.1
+
+### Patch Changes
+
+- ce53c4b: Set up Go and set GOPRIVATE to the modules of `go.work` before the CodeQL analysis of Go.
+- Updated dependencies [c17340d]
+  - go.dokimi.dev/ergon/core@0.8.0
+  - go.dokimi.dev/ergon/service@0.9.0
+
 ## 0.6.0
 
 ### Minor Changes

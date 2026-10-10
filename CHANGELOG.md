@@ -1,5 +1,25 @@
 # go.dokimi.dev/ergon
 
+## 0.8.1
+
+### Patch Changes
+
+- Updated dependencies [c17340d]
+- Updated dependencies [ce53c4b]
+  - go.dokimi.dev/ergon/core@0.8.0
+  - go.dokimi.dev/ergon/service@0.9.0
+  - go.dokimi.dev/ergon/lang/go@0.6.1
+  - go.dokimi.dev/ergon/lang/bash@0.3.6
+  - go.dokimi.dev/ergon/lang/csharp@0.2.6
+  - go.dokimi.dev/ergon/lang/java@0.3.6
+  - go.dokimi.dev/ergon/lang/javascript@0.2.6
+  - go.dokimi.dev/ergon/lang/kotlin@0.3.6
+  - go.dokimi.dev/ergon/lang/php@0.3.6
+  - go.dokimi.dev/ergon/lang/python@0.3.6
+  - go.dokimi.dev/ergon/lang/rust@0.3.6
+  - go.dokimi.dev/ergon/lang/terraform@0.3.6
+  - go.dokimi.dev/ergon/lang/typescript@0.2.6
+
 ## 0.8.0
 
 ### Minor Changes
