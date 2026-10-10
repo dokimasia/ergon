@@ -50,7 +50,8 @@ func tools(context.Context, string, string, []string, []string) error {
 // workflows are the files of the GitHub files that the contribution of Go changes.
 var workflows = []string{
 	".github/workflows/ci.yml", ".github/workflows/nightly.yml", ".github/workflows/release.yml",
-	".github/workflows/version.yml", ".github/workflows/security.yml", ".github/dependabot.yml",
+	".github/workflows/version.yml", ".github/workflows/security.yml", ".github/workflows/codeql.yml",
+	".github/dependabot.yml",
 }
 
 // linters are the linters that the configuration of golangci-lint enables, in lexical order, pinned

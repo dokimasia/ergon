@@ -24,6 +24,14 @@ const (
 // setupName is the name of the step that installs Go in each job of Go.
 const setupName = "Set up Go"
 
+// The step of the CodeQL analysis of Go that sets GOPRIVATE to the paths of the modules of go.work,
+// so the go command of the autobuild of CodeQL fetches those modules from their origin, and not
+// from the module proxy and the checksum database: its name and its command.
+const (
+	privateName = "Fetch the modules of go.work from their origin"
+	privateRun  = `echo "GOPRIVATE=$(go list -m -f '{{.Path}}' | paste -sd , -)" >> "$GITHUB_ENV"`
+)
+
 // steps are the steps of the gate of Go, which the key check of the section names.
 var steps = []option.Step{
 	option.StepLint, option.StepTest, option.StepRace, option.StepFuzz, option.StepBench, option.StepMutate,
@@ -215,6 +223,9 @@ func (o *Options) Validate() error {
 //   - The assets of the releases of the commands of binaries, with the tap of homebrew when a
 //     command has a cask, and no assets without a command.
 //   - The CodeQL analysis of go builds the modules with autobuild, once the repository has go.work.
+//     Before the analysis, setup-go installs the version of go.work, and GOPRIVATE names the
+//     modules of go.work, so the go mod tidy of the autobuild fetches them from their origin and
+//     not from the module proxy.
 //   - Dependabot updates the modules of every directory.
 func (o *Options) Contribution() workflow.Contribution {
 	pinned := map[string]string{"go-version-file": workspace, "cache-dependency-path": "**/go.sum"}
@@ -281,9 +292,17 @@ func (o *Options) Contribution() workflow.Contribution {
 			Uses: o.CI.Actions.SetupGo,
 			With: pinned,
 		}},
-		CodeQL: []workflow.CodeQL{
-			{Language: "go", Name: "Go", BuildMode: "autobuild", Files: workspace, Timeout: o.CI.Timeout},
-		},
+		CodeQL: []workflow.CodeQL{{
+			Language:  "go",
+			Name:      "Go",
+			BuildMode: "autobuild",
+			Files:     workspace,
+			Steps: []workflow.Step{
+				{Name: setupName, Uses: o.CI.Actions.SetupGo, With: pinned},
+				{Name: privateName, Run: []string{privateRun}},
+			},
+			Timeout: o.CI.Timeout,
+		}},
 		Updates: []workflow.Update{{Ecosystem: "gomod", Directories: []string{"/", "/**/*"}}},
 	}
 }

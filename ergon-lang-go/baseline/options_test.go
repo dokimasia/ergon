@@ -259,9 +259,29 @@ func TestOptions(t *testing.T) {
 						Uses: setupGo,
 						With: map[string]string{"go-version-file": "go.work", "cache-dependency-path": "**/go.sum"},
 					}},
-					CodeQL: []workflow.CodeQL{
-						{Language: "go", Name: "Go", BuildMode: "autobuild", Files: "go.work", Timeout: 30},
-					},
+					CodeQL: []workflow.CodeQL{{
+						Language:  "go",
+						Name:      "Go",
+						BuildMode: "autobuild",
+						Files:     "go.work",
+						Steps: []workflow.Step{
+							{
+								Name: "Set up Go",
+								Uses: setupGo,
+								With: map[string]string{
+									"go-version-file":       "go.work",
+									"cache-dependency-path": "**/go.sum",
+								},
+							},
+							{
+								Name: "Fetch the modules of go.work from their origin",
+								Run: []string{
+									`echo "GOPRIVATE=$(go list -m -f '{{.Path}}' | paste -sd , -)" >> "$GITHUB_ENV"`,
+								},
+							},
+						},
+						Timeout: 30,
+					}},
 					Updates: []workflow.Update{{Ecosystem: "gomod", Directories: []string{"/", "/**/*"}}},
 				}, "the contribution")
 			},
@@ -286,6 +306,19 @@ func TestOptions(t *testing.T) {
 				"cache-dependency-path": "**/go.sum",
 			}, "the inputs of setup-go")
 		})
+
+		t.Run("sets up the version of go.work before the CodeQL analysis for versions of the options",
+			func(t *testing.T) {
+				t.Parallel()
+				o := goOptions()
+				o.CI.Versions = []string{"1.27", "1.26"}
+				got := o.Contribution().CodeQL
+				assert.Length(t, got, 1, "the analyses")
+				assert.Equal(t, got[0].Steps[0].With, map[string]string{
+					"go-version-file":       "go.work",
+					"cache-dependency-path": "**/go.sum",
+				}, "the inputs of setup-go")
+			})
 
 		t.Run("sets up the version of go.work in each nightly job for versions of the options", func(t *testing.T) {
 			t.Parallel()
