@@ -38,3 +38,4 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 | [0027](0027-template-function-for-gate-targets.md) | A template function writes the generate and check targets of each language | Proposed |
 | [0028](0028-one-test-over-the-catalog.md) | One test over the catalog renders every producer | Proposed |
 | [0029](0029-golangci-lint-module-plugins.md) | ergon tool run builds golangci-lint with the module plugins of go.lint.plugins | Accepted |
+| [0030](0030-command-of-ergon.md) | The command that runs ergon is an option of the section common | Accepted |
