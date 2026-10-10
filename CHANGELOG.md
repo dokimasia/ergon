@@ -1,5 +1,40 @@
 # go.dokimi.dev/ergon
 
+## 0.8.0
+
+### Minor Changes
+
+- 170d883: Add `common.ergon`, the command that runs ergon in the targets of the Makefile and in the commit-msg hook.
+- 876696f: Add `ergon tool ci prune`, which deletes each tool cache of GitHub Actions that a newer cache of the same job replaced.
+- 876696f: Add `ergon tool prune` and `tool.Runner.Prune`, which remove each file of the tool directory that is not the install of a tool of the options.
+
+### Patch Changes
+
+- Updated dependencies [170d883]
+- Updated dependencies [876696f]
+- Updated dependencies [c6386e5]
+- Updated dependencies [74613ae]
+- Updated dependencies [74613ae]
+- Updated dependencies [e93df52]
+- Updated dependencies [74613ae]
+- Updated dependencies [74613ae]
+- Updated dependencies [e93df52]
+- Updated dependencies [74613ae]
+- Updated dependencies [c6386e5]
+  - go.dokimi.dev/ergon/service@0.8.0
+  - go.dokimi.dev/ergon/core@0.7.0
+  - go.dokimi.dev/ergon/lang/go@0.6.0
+  - go.dokimi.dev/ergon/lang/csharp@0.2.5
+  - go.dokimi.dev/ergon/lang/javascript@0.2.5
+  - go.dokimi.dev/ergon/lang/typescript@0.2.5
+  - go.dokimi.dev/ergon/lang/bash@0.3.5
+  - go.dokimi.dev/ergon/lang/java@0.3.5
+  - go.dokimi.dev/ergon/lang/kotlin@0.3.5
+  - go.dokimi.dev/ergon/lang/php@0.3.5
+  - go.dokimi.dev/ergon/lang/python@0.3.5
+  - go.dokimi.dev/ergon/lang/rust@0.3.5
+  - go.dokimi.dev/ergon/lang/terraform@0.3.5
+
 ## 0.7.0
 
 ### Minor Changes

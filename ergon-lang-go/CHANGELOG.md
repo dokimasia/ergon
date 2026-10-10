@@ -1,5 +1,27 @@
 # go.dokimi.dev/ergon/lang/go
 
+## 0.6.0
+
+### Minor Changes
+
+- e93df52: **Breaking:** Replace `go.tools.ergon-go-vet` and `go.lint.exclude` with `go.lint.analyzers`, which builds the analyzers of `go.dokimi.dev/lint` into golangci-lint.
+- e93df52: **Breaking:** Remove the package `analysis` and the command `ergon-go-vet`, which moved to `go.dokimi.dev/lint` as its package `analysis` and its command `dokimi-lint-go`.
+- c6386e5: Key the tool cache of a job by the files of `workflow.Setup.VersionFiles`, which the jobs of Go set to `go.work`.
+
+### Patch Changes
+
+- Updated dependencies [170d883]
+- Updated dependencies [876696f]
+- Updated dependencies [c6386e5]
+- Updated dependencies [74613ae]
+- Updated dependencies [74613ae]
+- Updated dependencies [74613ae]
+- Updated dependencies [74613ae]
+- Updated dependencies [74613ae]
+- Updated dependencies [c6386e5]
+  - go.dokimi.dev/ergon/service@0.8.0
+  - go.dokimi.dev/ergon/core@0.7.0
+
 ## 0.5.0
 
 ### Minor Changes
