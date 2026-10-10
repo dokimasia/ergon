@@ -63,6 +63,10 @@ archives:
     files:
       - src: LICENSE*
         info: {owner: root, group: root, mode: 0644, mtime: "{{ .CommitDate }}"}
+{{%- if $.Notice %}}
+      - src: NOTICE
+        info: {owner: root, group: root, mode: 0644, mtime: "{{ .CommitDate }}"}
+{{%- end %}}
       - src: README.md
         info: {owner: root, group: root, mode: 0644, mtime: "{{ .CommitDate }}"}
 {{%- if .Completions %}}
@@ -104,6 +108,11 @@ nfpms:
       - src: LICENSE
         dst: /usr/share/doc/{{% .Name %}}/copyright
         file_info: {mode: 0644, mtime: "{{ .CommitDate }}"}
+{{%- if $.Notice %}}
+      - src: NOTICE
+        dst: /usr/share/doc/{{% .Name %}}/NOTICE
+        file_info: {mode: 0644, mtime: "{{ .CommitDate }}"}
+{{%- end %}}
     deb:
       lintian_overrides:
         - statically-linked-binary

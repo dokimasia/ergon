@@ -35,8 +35,10 @@
 // binary. The configuration writes:
 //
 //   - an archive .tar.gz of each command and platform, with LICENSE, README.md and the completions
-//     of bash, zsh and fish of a cobra program
-//   - the deb, rpm and apk packages of a command, with its completions and its license
+//     of bash, zsh and fish of a cobra program, and with the NOTICE of a repository under
+//     Apache-2.0
+//   - the deb, rpm and apk packages of a command, with its completions, its license and the NOTICE
+//     of a repository under Apache-2.0
 //   - a source archive, checksums.txt, its cosign signature without a key, and an SPDX SBOM of each
 //     archive and package
 //   - a cask of Homebrew of each command with a cask, for the tap of the key homebrew

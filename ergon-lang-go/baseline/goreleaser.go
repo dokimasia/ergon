@@ -14,6 +14,7 @@ import (
 	"text/template"
 
 	"go.dokimi.dev/ergon/core/language"
+	"go.dokimi.dev/ergon/core/spdx"
 	"go.dokimi.dev/ergon/core/workflow"
 )
 
@@ -91,6 +92,10 @@ type release struct {
 
 	// Homebrew reports that a command of the module has a cask.
 	Homebrew bool
+
+	// Notice reports that the repository has a NOTICE, which ergon init writes for Apache-2.0
+	// alone. Each archive and each package of the release includes it.
+	Notice bool
 }
 
 // build is a build of GoReleaser of a command, as its template reads it.
@@ -144,8 +149,9 @@ type command struct {
 // command of each module, and no file for options without a command. It takes the options at the
 // baseline, which list no command, when o is not the section go. Each configuration builds,
 // archives, packs and signs the commands of its module, as the package documentation states, with
-// the owner, the security contact, the license and the repository of a. Files returns an error for
-// a template that does not execute, which is a defect of the producer.
+// the owner, the security contact, the license and the repository of a. The archives and the
+// packages of a repository under Apache-2.0 include its NOTICE. Files returns an error for a
+// template that does not execute, which is a defect of the producer.
 func (Producer) Files(a *language.Answers, o language.Options, _ *workflow.Contribution) ([]language.File, error) {
 	opts, ok := o.(*Options)
 	if !ok {
@@ -167,6 +173,7 @@ func (Producer) Files(a *language.Answers, o language.Options, _ *workflow.Contr
 				Maintainer: a.Owner + " <" + a.SecurityContact + ">",
 				TapOwner:   owner,
 				TapName:    name,
+				Notice:     a.License == spdx.Apache20,
 			}
 			if c.Module != root {
 				r.Path = path.Join(c.Module, configFile)

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"go.dokimi.dev/assert"
+	"go.dokimi.dev/assert/expect"
 	"go.dokimi.dev/assert/golden"
 	"go.dokimi.dev/ergon/core/option"
 	"go.dokimi.dev/ergon/core/spdx"
@@ -116,6 +117,24 @@ func TestGoReleaser(t *testing.T) {
 				assert.Length(t, files, 1, "the configurations")
 				assert.Contains(t, string(files[0].Content), "\n    license: BUSL-1.1\n", "the license of the package")
 			})
+
+			t.Run("adds the NOTICE of a repository under Apache-2.0 to the archives and the packages",
+				func(t *testing.T) {
+					t.Parallel()
+					o := goOptions()
+					o.Binaries = []baseline.Command{{
+						Name: "worker", Module: ".", Main: "./cmd/worker", Description: "Runs the jobs.",
+						Packages: []baseline.Package{baseline.PackageDeb},
+					}}
+					a := baselinetest.Answers(golang.Language)
+					a.License = spdx.Apache20
+					files, err := baseline.Producer{}.Files(a, o, &workflow.Contribution{})
+					assert.NoError(t, err, "Files")
+					assert.Length(t, files, 1, "the configurations")
+					expect.That(t, string(files[0].Content)).
+						Contains("\n      - src: NOTICE\n        info:", "the NOTICE of the archive").
+						Contains("\n      - src: NOTICE\n        dst: /usr/share/doc/worker/NOTICE\n", "the NOTICE of the package")
+				})
 		})
 	})
 }
