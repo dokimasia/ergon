@@ -37,5 +37,10 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 | [0026](0026-options-implement-producer-roles.md) | The options of a producer return its contribution, data and files | Proposed |
 | [0027](0027-template-function-for-gate-targets.md) | A template function writes the generate and check targets of each language | Proposed |
 | [0028](0028-one-test-over-the-catalog.md) | One test over the catalog renders every producer | Proposed |
-| [0029](0029-golangci-lint-module-plugins.md) | ergon tool run builds golangci-lint with the module plugins of go.lint.plugins | Accepted |
+| [0029](0029-golangci-lint-module-plugins.md) | ergon tool run builds golangci-lint with the module plugins of go.lint.plugins | Accepted, superseded in part by ADR-0035 |
 | [0030](0030-command-of-ergon.md) | The command that runs ergon is an option of the section common | Accepted |
+| [0031](0031-restore-the-newest-tool-cache.md) | The tool cache of a job has its key without the digest as its restore key | Accepted |
+| [0032](0032-prune-the-replaced-tool-caches.md) | nightly.yml deletes the tool caches that newer caches replaced | Accepted |
+| [0033](0033-prune-the-tools-before-the-cache-saves.md) | A job removes the tools that the options do not name before its tool cache saves | Accepted |
+| [0034](0034-version-files-in-the-tool-cache-key.md) | The key of a tool cache covers the files that set the version of the toolchain | Accepted |
+| [0035](0035-lint-go-analyzers-as-module-plugins.md) | golangci-lint runs the analyzers of lint-go as module plugins in place of ergon-go-vet | Accepted |

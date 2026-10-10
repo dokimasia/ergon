@@ -4,7 +4,7 @@ title: ergon tool run builds golangci-lint with the module plugins of go.lint.pl
 status: Accepted
 date: 2026-10-09
 supersedes: RFC-0004, in part
-superseded-by: none
+superseded-by: ADR-0035, in part
 rfc: RFC-0004
 ---
 
