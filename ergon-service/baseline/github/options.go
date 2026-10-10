@@ -290,17 +290,7 @@ func (o *Options) Jobs(c *workflow.Contribution) ([]Job, error) {
 		// A guard comes with a setup. The guarded steps are copies, so the conditions change no step
 		// of c, and no step of a setup that the jobs of two languages share.
 		if job.Guard != "" {
-			job.Setup, job.Steps = slices.Clone(job.Setup), slices.Clone(job.Steps)
-			for _, steps := range [][]workflow.Step{job.Setup, job.Steps} {
-				for k := range steps {
-					step := &steps[k]
-					if step.If == "" {
-						step.If = job.Guard
-					} else {
-						step.If = job.Guard + " && (" + step.If + ")"
-					}
-				}
-			}
+			job.Setup, job.Steps = guard(job.Setup, job.Guard), guard(job.Steps, job.Guard)
 		}
 		jobs = append(jobs, job)
 	}
@@ -346,4 +336,19 @@ func (o *Options) NightlyJobs(c *workflow.Contribution) ([]Job, error) {
 		}
 	}
 	return jobs, nil
+}
+
+// guard returns a copy of steps in which condition comes before the condition of each step, so each
+// step runs only when condition is true. The copies share their maps with steps.
+func guard(steps []workflow.Step, condition string) []workflow.Step {
+	guarded := slices.Clone(steps)
+	for k := range guarded {
+		step := &guarded[k]
+		if step.If == "" {
+			step.If = condition
+		} else {
+			step.If = condition + " && (" + step.If + ")"
+		}
+	}
+	return guarded
 }

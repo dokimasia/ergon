@@ -15,8 +15,8 @@
 //   - A [Setup] states how a job sets up a toolchain: the files whose presence runs the job, the
 //     runners and the runtime versions of its matrix, its timeout, and its setup steps.
 //   - A [Step] runs an [Action] at the commit of a release, or a command of bash.
-//   - A [CodeQL] analysis and an [Update] of Dependabot each state one language or one package
-//     manager.
+//   - A [CodeQL] analysis states one language, and the steps that run before its analysis, such as
+//     the setup of its toolchain. An [Update] of Dependabot states one package manager.
 //
 // A toolchain that two languages share contributes the setup of their jobs, and each language
 // names the toolchain in [Job.Toolchain]. A language whose toolchain is its own sets [Job.Setup]

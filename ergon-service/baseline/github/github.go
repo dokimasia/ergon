@@ -22,6 +22,14 @@ const Name = "github"
 // dependabot is the path of the configuration of Dependabot.
 const dependabot = ".github/dependabot.yml"
 
+// The condition of each step of a CodeQL analysis in codeql.yml, before and after the language of
+// the analysis: the run analyzes that language, and the repository has a file of the pattern of the
+// files of the analysis.
+const (
+	codeqlLanguage = "inputs.language == '"
+	codeqlFiles    = "' && hashFiles(inputs.files) != ''"
+)
+
 // rendered are the files that ergon init renders of each ecosystem of Dependabot that edits them.
 var rendered = map[string]string{
 	"github-actions": "the workflows and the actions under .github/",
@@ -45,6 +53,11 @@ type Workflows struct {
 	// Nightly are the jobs of nightly.yml, as [Options.NightlyJobs] returns them. ergon init renders
 	// no nightly.yml without one.
 	Nightly []Job
+
+	// CodeQL are the steps that codeql.yml runs before an analysis: the steps of each CodeQL
+	// analysis of the contributions, in their order. Each step runs only when the run analyzes the
+	// language of its analysis and the repository has a file of the files of its analysis.
+	CodeQL []workflow.Step
 
 	// Assets reports that a producer builds release assets in the job pack of release.yml, which
 	// then attests them.
@@ -139,8 +152,10 @@ func (Producer) Options() language.Options {
 
 // Data returns the [Workflows] of c for o, and for the options at the baseline when o is not the
 // options of the GitHub files: the jobs of c, as [Options.Jobs] returns them, its nightly jobs, as
-// [Options.NightlyJobs] returns them, and its assets with the owner and the name of their tap. It
-// returns the error of either for a job whose runners the section does not list.
+// [Options.NightlyJobs] returns them, the steps of its CodeQL analyses, and its assets with the
+// owner and the name of their tap. Each step of an analysis is a copy, with the condition of its
+// language and its files before its own condition. Data returns the error of Jobs or NightlyJobs
+// for a job whose runners the section does not list.
 func (Producer) Data(_ *language.Answers, o language.Options, c *workflow.Contribution) (any, error) {
 	jobs, err := own(o).Jobs(c)
 	if err != nil {
@@ -151,6 +166,10 @@ func (Producer) Data(_ *language.Answers, o language.Options, c *workflow.Contri
 		return nil, err
 	}
 	w := Workflows{Jobs: jobs, Nightly: nightly, Assets: c.Assets != nil}
+	for i := range c.CodeQL {
+		a := &c.CodeQL[i]
+		w.CodeQL = append(w.CodeQL, guard(a.Steps, codeqlLanguage+a.Language+codeqlFiles)...)
+	}
 	if c.Assets != nil {
 		w.TapOwner, w.TapName, _ = strings.Cut(c.Assets.Tap, "/")
 	}

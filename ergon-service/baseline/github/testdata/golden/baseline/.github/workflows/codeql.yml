@@ -2,7 +2,8 @@
 #
 # The CodeQL analysis of one language, which security.yml calls for each analysis that a producer
 # of ergon init contributes. The analysis runs once the repository has a file of the pattern
-# files, which pins the toolchain of the language.
+# files, which pins the toolchain of the language. The steps that a producer contributes to its
+# analysis, such as the setup of its toolchain, run before CodeQL in the runs of its language.
 
 name: CodeQL
 

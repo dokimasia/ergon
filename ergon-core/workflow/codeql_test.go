@@ -26,6 +26,12 @@ func TestCodeQL(t *testing.T) {
 				give: func(c *workflow.CodeQL) { c.Language, c.Name = "javascript-typescript", "JavaScript and TypeScript" },
 			},
 			{name: "returns nil for the build mode none", give: func(c *workflow.CodeQL) { c.BuildMode = "none" }},
+			{
+				name: "returns nil for an analysis with a step before it",
+				give: func(c *workflow.CodeQL) {
+					c.Steps = []workflow.Step{{Name: "Name the modules", Run: []string{"go list -m"}}}
+				},
+			},
 		}
 		for _, tt := range valid {
 			t.Run(tt.name, func(t *testing.T) {
@@ -63,6 +69,10 @@ func TestCodeQL(t *testing.T) {
 				give: func(c *workflow.CodeQL) { c.Files = "go'work" },
 			},
 			{name: "returns ErrInvalidCodeQL for a timeout of 0", give: func(c *workflow.CodeQL) { c.Timeout = 0 }},
+			{
+				name: "returns ErrInvalidCodeQL for a step without an action and without a command",
+				give: func(c *workflow.CodeQL) { c.Steps = []workflow.Step{{Name: "nothing"}} },
+			},
 		}
 		for _, tt := range invalid {
 			t.Run(tt.name, func(t *testing.T) {

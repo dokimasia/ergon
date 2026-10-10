@@ -44,7 +44,7 @@
     {
       "path": ".github/workflows/codeql.yml",
       "producer": "github",
-      "sha256": "73258c4feacff149ac50c7cfb695871a474076c17835059e1a6d70200cfdbcec"
+      "sha256": "c6316ee5a953f3fde2df3f268b125fe4680290fda2624ecedd9ea412cf661e1e"
     },
     {
       "path": ".github/workflows/release.yml",

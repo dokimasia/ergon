@@ -40,6 +40,11 @@ type CodeQL struct {
 	// has a file that matches it, which is the file that pins the language's toolchain.
 	Files string
 
+	// Steps are the steps that codeql.yml runs before the analysis, such as the setup of the
+	// language's toolchain. codeql.yml runs them for the analysis of Language alone, once the
+	// repository has a file of Files.
+	Steps []Step
+
 	// Timeout is the limit of the analysis in minutes.
 	Timeout int
 }
@@ -47,8 +52,9 @@ type CodeQL struct {
 // Validate returns an error that wraps [ErrInvalidCodeQL] for the first value of c that a workflow
 // cannot contain: a Language that is not a lowercase letter followed by lowercase letters, digits
 // and '-', an empty Name or one that spans lines, a BuildMode other than none and autobuild, an
-// empty Files or one that spans lines or has a single quote, and a Timeout below 1. CodeQL itself
-// rejects a language that it does not analyze, when the analysis runs.
+// empty Files or one that spans lines or has a single quote, a Timeout below 1, and a step of Steps
+// for which [Step.Validate] returns an error. CodeQL itself rejects a language that it does not
+// analyze, when the analysis runs.
 func (c *CodeQL) Validate() error {
 	if !language.MatchString(c.Language) {
 		return fmt.Errorf("%w: language %q, which is not a name of a language", ErrInvalidCodeQL, c.Language)
@@ -67,6 +73,11 @@ func (c *CodeQL) Validate() error {
 	if c.Timeout < 1 {
 		return fmt.Errorf("%w: %s has the timeout %d, which is less than a minute", ErrInvalidCodeQL, c.Language,
 			c.Timeout)
+	}
+	for i := range c.Steps {
+		if err := c.Steps[i].Validate(); err != nil {
+			return fmt.Errorf("%w: %s: step %d: %w", ErrInvalidCodeQL, c.Language, i+1, err)
+		}
 	}
 	return nil
 }

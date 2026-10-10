@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"testing"
 	"testing/fstest"
 
@@ -33,6 +34,7 @@ const (
 	releasePath    = ".github/workflows/release.yml"
 	versionPath    = ".github/workflows/version.yml"
 	securityPath   = ".github/workflows/security.yml"
+	codeqlPath     = ".github/workflows/codeql.yml"
 	dependabotPath = ".github/dependabot.yml"
 )
 
@@ -96,7 +98,9 @@ func TestGithub(t *testing.T) {
 						baseline.Producer{Name: "alpha", Producer: part{contribution: languages()}},
 					)
 					baselinetest.Hygiene(t, dir)
-					files := []string{ciPath, nightlyPath, releasePath, versionPath, securityPath, dependabotPath}
+					files := []string{
+						ciPath, nightlyPath, releasePath, versionPath, securityPath, codeqlPath, dependabotPath,
+					}
 					for _, file := range files {
 						got, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(file)))
 						assert.NoError(t, err, "ReadFile of "+file)
@@ -156,6 +160,24 @@ func TestGithub(t *testing.T) {
 				expect.Equal(t, w.TapOwner, "dokimasia", "the owner of the tap")
 				expect.Equal(t, w.TapName, "homebrew-tap", "the name of the tap")
 			})
+
+			t.Run("returns the steps of each analysis of CodeQL under the condition of its language and its files",
+				func(t *testing.T) {
+					t.Parallel()
+					c := toolchain()
+					var got any
+					var err error
+					assert.Pure(t, func() []workflow.Step { return slices.Clone(c.CodeQL[0].Steps) }, func() {
+						got, err = github.Producer{}.Data(baselinetest.Answers(), nil, &c)
+					}, "the steps of the analysis of the contribution")
+					assert.NoError(t, err, "Data")
+					w, ok := got.(github.Workflows)
+					assert.True(t, ok, "the data is a Workflows")
+					want := slices.Clone(c.CodeQL[0].Steps)
+					want[0].If = "inputs.language == 'alpha' && hashFiles(inputs.files) != ''"
+					want[1].If = "inputs.language == 'alpha' && hashFiles(inputs.files) != '' && (runner.os == 'Linux')"
+					assert.Equal(t, w.CodeQL, want, "the steps of codeql.yml")
+				})
 
 			t.Run("returns no assets and no tap for contributions without assets", func(t *testing.T) {
 				t.Parallel()
@@ -341,7 +363,8 @@ func producer() baseline.Producer {
 }
 
 // toolchain returns the contribution of the toolchain tool of the cases: the setup of alpha on
-// every runner and two versions, its setup in a release, its analysis of CodeQL, and its updates.
+// every runner and two versions, its setup in a release, its analysis of CodeQL with a step without
+// a condition and a step with one before it, and its updates.
 func toolchain() workflow.Contribution {
 	return workflow.Contribution{
 		Setup: &workflow.Setup{
@@ -361,9 +384,17 @@ func toolchain() workflow.Contribution {
 			Uses: setupAlpha,
 			With: map[string]string{"version-file": ".alpha-version"},
 		}},
-		CodeQL: []workflow.CodeQL{
-			{Language: "alpha", Name: "Alpha", BuildMode: "none", Files: "alpha.lock", Timeout: 20},
-		},
+		CodeQL: []workflow.CodeQL{{
+			Language:  "alpha",
+			Name:      "Alpha",
+			BuildMode: "none",
+			Files:     "alpha.lock",
+			Steps: []workflow.Step{
+				{Name: "Set up alpha", Uses: setupAlpha, With: map[string]string{"version-file": ".alpha-version"}},
+				{Name: "Name the modules of alpha", If: "runner.os == 'Linux'", Run: []string{"alpha modules"}},
+			},
+			Timeout: 20,
+		}},
 		Updates: []workflow.Update{{Ecosystem: "alpha", Directories: []string{"/", "/**/*"}}},
 	}
 }

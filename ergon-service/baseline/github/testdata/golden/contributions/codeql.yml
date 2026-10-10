@@ -32,22 +32,30 @@ permissions: {}
 jobs:
   analyze:
     name: Analyze
-    runs-on: {{% yaml .Options.Linux %}}
+    runs-on: ubuntu-26.04
     timeout-minutes: ${{ inputs.timeout }}
     permissions:
       contents: read
       security-events: write
     steps:
-      - uses: {{% .Options.CI.Actions.Checkout %}}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-{{%- steps .Data.CodeQL %}}
+      - name: Set up alpha
+        if: "inputs.language == 'alpha' && hashFiles(inputs.files) != ''"
+        uses: alpha-lang/setup-alpha@0123456789abcdef0123456789abcdef01234567 # v1.2.3
+        with:
+          version-file: .alpha-version
+      - name: Name the modules of alpha
+        if: "inputs.language == 'alpha' && hashFiles(inputs.files) != '' && (runner.os == 'Linux')"
+        run: |
+          alpha modules
       - if: hashFiles(inputs.files) != ''
-        uses: {{% .Options.CI.Actions.CodeQL.Path "init" %}}
+        uses: github/codeql-action/init@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
         with:
           languages: ${{ inputs.language }}
           build-mode: ${{ inputs.build-mode }}
       - if: hashFiles(inputs.files) != ''
-        uses: {{% .Options.CI.Actions.CodeQL.Path "analyze" %}}
+        uses: github/codeql-action/analyze@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
         with:
           category: /language:${{ inputs.language }}
