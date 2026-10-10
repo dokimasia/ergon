@@ -90,6 +90,15 @@ func (p Plugins) Validate() error {
 	return nil
 }
 
+// Linters is a group of options whose module plugins of golangci-lint come from more than one
+// option, such as the analyzers of a section beside the plugins that a repository adds. The tag
+// plugins of a tool may name such a group in place of an option of the type [Plugins].
+type Linters interface {
+	// Linters returns the module plugins of the group, by the name of the linter that each
+	// registers.
+	Linters() Plugins
+}
+
 // PyPI is a PyPI package and its version, as <package>@<version>, such as ruff@0.16.10. ergon tool
 // run runs it through the release binary of uv of its section, which checks it against the digest
 // that PyPI publishes.

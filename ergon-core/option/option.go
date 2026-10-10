@@ -37,8 +37,9 @@ const (
 	ClassifierTag = "classifier"
 
 	// PluginsTag is the key of the option of the module plugins of golangci-lint, a tool of the kind
-	// [Module], by the keys of the option below its section, such as lint.plugins. The option has the
-	// type [Plugins]. ergon tool run builds its plugins into the program of the tool.
+	// [Module], by the keys of the option below its section, such as lint.plugins or lint. The
+	// option has the type [Plugins], or is a group of options that implements [Linters]. ergon tool
+	// run builds its plugins into the program of the tool.
 	PluginsTag = "plugins"
 
 	// SourceTag is the key of the registry of a field of the type [Version] whose release a

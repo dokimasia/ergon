@@ -40,6 +40,13 @@ type Setup struct {
 	// the toolchain's files passes the job. It is empty for a job whose steps always run.
 	Files string
 
+	// VersionFiles is a pattern of hashFiles of the files from which the setup steps read the
+	// version of the toolchain, such as go.work, or empty. The key of the cache of the tools of
+	// ergon of a job that runs tools covers these files, so the job saves a new cache for each
+	// version of a toolchain that builds tools, as the go command builds each Go module that ergon
+	// tool run installs.
+	VersionFiles string
+
 	// Runners are the runner images of the job's matrix. An empty list selects every runner of the
 	// section github of .ergon.yaml.
 	Runners []string
@@ -61,14 +68,18 @@ type Setup struct {
 }
 
 // Validate returns an error that wraps [ErrInvalidJob] for the first value of s that a workflow
-// cannot contain: a Files that spans lines or has a single quote, a runner that is not a label of
-// letters, digits, '.', '_' and '-', a version that is empty or spans lines, a runner or a version
-// that the list names twice, a Timeout below 1, an environment variable whose name is not a letter
-// or '_' followed by letters, digits and '_', and a step that is not valid, as [Step.Validate]
-// states.
+// cannot contain: a Files or a VersionFiles that spans lines or has a single quote, a runner that
+// is not a label of letters, digits, '.', '_' and '-', a version that is empty or spans lines, a
+// runner or a version that the list names twice, a Timeout below 1, an environment variable whose
+// name is not a letter or '_' followed by letters, digits and '_', and a step that is not valid, as
+// [Step.Validate] states.
 func (s *Setup) Validate() error {
 	if strings.ContainsAny(s.Files, "'\r\n") {
 		return fmt.Errorf("%w: files %q, which spans lines or has a single quote", ErrInvalidJob, s.Files)
+	}
+	if strings.ContainsAny(s.VersionFiles, "'\r\n") {
+		return fmt.Errorf("%w: version files %q, which span lines or have a single quote", ErrInvalidJob,
+			s.VersionFiles)
 	}
 	for i, r := range s.Runners {
 		if !runner.MatchString(r) || slices.Contains(s.Runners[:i], r) {
@@ -99,7 +110,8 @@ func (s *Setup) Validate() error {
 // Job is a job of ci.yml. The producer of the GitHub files renders every job from one skeleton:
 // the checkout, then the installation of GNU make for a job with a setup, the setup steps, the
 // installation of ergon for a job that runs it, the cache of the tools of ergon for a job with
-// Tools, and the steps of the job.
+// Tools, the steps of the job, and for a job with Tools the step that removes the tools that no
+// option names before the cache saves them.
 //
 // A job runs in one of three ways:
 //

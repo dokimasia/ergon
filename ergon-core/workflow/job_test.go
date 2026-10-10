@@ -31,7 +31,7 @@ func TestJob(t *testing.T) {
 				give func(*workflow.Setup)
 			}{
 				{
-					name: "returns nil for a setup with runners, versions, variables and steps",
+					name: "returns nil for a setup with version files, runners, versions, variables and steps",
 					give: func(*workflow.Setup) {},
 				},
 				{
@@ -59,6 +59,14 @@ func TestJob(t *testing.T) {
 				{
 					name: "returns ErrInvalidJob for files that span lines",
 					give: func(s *workflow.Setup) { s.Files = "a\nb" },
+				},
+				{
+					name: "returns ErrInvalidJob for version files with a single quote",
+					give: func(s *workflow.Setup) { s.VersionFiles = "go'work" },
+				},
+				{
+					name: "returns ErrInvalidJob for version files that span lines",
+					give: func(s *workflow.Setup) { s.VersionFiles = "go.work\ngo.mod" },
 				},
 				{
 					name: "returns ErrInvalidJob for a runner with a space",
@@ -224,12 +232,13 @@ func TestJob(t *testing.T) {
 // environment variable and the step that installs Go.
 func goSetup() *workflow.Setup {
 	return &workflow.Setup{
-		Files:    "**/go.mod",
-		Runners:  []string{"ubuntu-26.04", "macos-26"},
-		Versions: []string{"1.26", "1.27"},
-		Timeout:  30,
-		Env:      map[string]string{"GOTOOLCHAIN": "local"},
-		Steps:    []workflow.Step{{Uses: setupGo, With: map[string]string{"go-version": "${{ matrix.version }}"}}},
+		Files:        "**/go.mod",
+		VersionFiles: "go.work",
+		Runners:      []string{"ubuntu-26.04", "macos-26"},
+		Versions:     []string{"1.26", "1.27"},
+		Timeout:      30,
+		Env:          map[string]string{"GOTOOLCHAIN": "local"},
+		Steps:        []workflow.Step{{Uses: setupGo, With: map[string]string{"go-version": "${{ matrix.version }}"}}},
 	}
 }
 
