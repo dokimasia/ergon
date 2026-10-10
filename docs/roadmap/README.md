@@ -27,4 +27,5 @@ Go comes before JavaScript, because ergon releases its own modules through the f
 
 ## Deferred
 
-None.
+- The code structure that RFC-0008 proposes, with ADR-0024 to ADR-0028. It waits until the repositories have moved to the current ergon.
+- A format target for Java and one for Bash: `fmt-java` with google-java-format and `fmt-bash` with shfmt, each a pinned release binary in its section of `.ergon.yaml`. The other languages have a format target, which `make fmt` runs.
