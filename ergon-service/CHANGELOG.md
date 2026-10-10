@@ -1,5 +1,16 @@
 # go.dokimi.dev/ergon/service
 
+## 0.9.0
+
+### Minor Changes
+
+- c17340d: Add `workflow.CodeQL.Steps`, which `codeql.yml` runs before the analysis of their language.
+
+### Patch Changes
+
+- Updated dependencies [c17340d]
+  - go.dokimi.dev/ergon/core@0.8.0
+
 ## 0.8.0
 
 ### Minor Changes

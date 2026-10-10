@@ -1,5 +1,11 @@
 # go.dokimi.dev/ergon/core
 
+## 0.8.0
+
+### Minor Changes
+
+- c17340d: Add `workflow.CodeQL.Steps`, which `codeql.yml` runs before the analysis of their language.
+
 ## 0.7.0
 
 ### Minor Changes

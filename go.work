@@ -27,17 +27,17 @@ use (
 // requires. ergon release keeps a replace of each such version by the directory of its module, so
 // the workspace builds before the tag of a version exists.
 replace (
-	go.dokimi.dev/ergon/core v0.7.0 => ./ergon-core
-	go.dokimi.dev/ergon/lang/bash v0.3.5 => ./ergon-lang-bash
-	go.dokimi.dev/ergon/lang/csharp v0.2.5 => ./ergon-lang-csharp
-	go.dokimi.dev/ergon/lang/go v0.6.0 => ./ergon-lang-go
-	go.dokimi.dev/ergon/lang/java v0.3.5 => ./ergon-lang-java
-	go.dokimi.dev/ergon/lang/javascript v0.2.5 => ./ergon-lang-javascript
-	go.dokimi.dev/ergon/lang/kotlin v0.3.5 => ./ergon-lang-kotlin
-	go.dokimi.dev/ergon/lang/php v0.3.5 => ./ergon-lang-php
-	go.dokimi.dev/ergon/lang/python v0.3.5 => ./ergon-lang-python
-	go.dokimi.dev/ergon/lang/rust v0.3.5 => ./ergon-lang-rust
-	go.dokimi.dev/ergon/lang/terraform v0.3.5 => ./ergon-lang-terraform
-	go.dokimi.dev/ergon/lang/typescript v0.2.5 => ./ergon-lang-typescript
-	go.dokimi.dev/ergon/service v0.8.0 => ./ergon-service
+	go.dokimi.dev/ergon/core v0.8.0 => ./ergon-core
+	go.dokimi.dev/ergon/lang/bash v0.3.6 => ./ergon-lang-bash
+	go.dokimi.dev/ergon/lang/csharp v0.2.6 => ./ergon-lang-csharp
+	go.dokimi.dev/ergon/lang/go v0.6.1 => ./ergon-lang-go
+	go.dokimi.dev/ergon/lang/java v0.3.6 => ./ergon-lang-java
+	go.dokimi.dev/ergon/lang/javascript v0.2.6 => ./ergon-lang-javascript
+	go.dokimi.dev/ergon/lang/kotlin v0.3.6 => ./ergon-lang-kotlin
+	go.dokimi.dev/ergon/lang/php v0.3.6 => ./ergon-lang-php
+	go.dokimi.dev/ergon/lang/python v0.3.6 => ./ergon-lang-python
+	go.dokimi.dev/ergon/lang/rust v0.3.6 => ./ergon-lang-rust
+	go.dokimi.dev/ergon/lang/terraform v0.3.6 => ./ergon-lang-terraform
+	go.dokimi.dev/ergon/lang/typescript v0.2.6 => ./ergon-lang-typescript
+	go.dokimi.dev/ergon/service v0.9.0 => ./ergon-service
 )
