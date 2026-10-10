@@ -47,3 +47,4 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 | [0036](0036-codeql-of-go-fetches-own-modules-from-origin.md) | The CodeQL analysis of Go fetches the modules of its repository from their origin | Accepted |
 | [0037](0037-sboms-keep-release-modules-from-proxy.md) | syft does not read a module of a release from the module proxy | Accepted |
 | [0038](0038-binaries-build-outside-the-workspace.md) | The binaries of a release build outside the workspace against a proxy of the released modules | Accepted |
+| [0039](0039-setup-steps-of-each-toolchain.md) | The key ci.steps of each toolchain adds steps to the setup of its jobs | Accepted |
