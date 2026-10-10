@@ -45,9 +45,9 @@ func (Producer) Templates() fs.FS {
 // Options returns the section go at the baseline: the releases of golangci-lint, govulncheck,
 // benchstat, dokimi-mutate-go, ergon-go-vet, GoReleaser, cosign, syft and UPX, every package of each
 // module, the gate of lint, test, race and audit, the nightly jobs of fuzz for 120 minutes, bench
-// for 45 and mutate for 60, the options of each step with go generate as the generators, no command
-// and no tap, the release of setup-go, and a limit of 30 minutes for the job check-go on every
-// runner and the version of go.work.
+// for 45 and mutate for 60, the options of each step with no module plugin of golangci-lint and go
+// generate as the generators, no command and no tap, the release of setup-go, and a limit of 30
+// minutes for the job check-go on every runner and the version of go.work.
 func (Producer) Options() language.Options {
 	return &Options{
 		Tools: Tools{
@@ -100,7 +100,7 @@ func (Producer) Options() language.Options {
 		Paths:    option.Paths{"./..."},
 		Check:    option.Check{option.StepLint, option.StepTest, option.StepRace, option.StepAudit},
 		Nightly:  option.Nightly{option.StepFuzz: 120, option.StepBench: 45, option.StepMutate: 60},
-		Lint:     Lint{Exclude: option.Paths{}},
+		Lint:     Lint{Plugins: option.Plugins{}, Exclude: option.Paths{}},
 		Test:     option.Run{Args: []string{"-count=1"}},
 		Race:     option.Run{Args: []string{"-count=1", "-p=1"}},
 		Fuzz:     option.Fuzz{Match: ".", Time: "30s", Args: []string{"-fuzzminimizetime=5s"}},

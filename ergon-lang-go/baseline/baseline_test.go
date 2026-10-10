@@ -108,6 +108,20 @@ func TestBaseline(t *testing.T) {
 				assert.Equal(t, enabled(t, config), linters, "the enabled linters")
 			})
 
+			t.Run("enables the linter of each plugin of lint.plugins as a module plugin", func(t *testing.T) {
+				t.Parallel()
+				o, _ := baseline.Producer{}.Options().(*baseline.Options)
+				o.Lint.Plugins = option.Plugins{
+					"assertlint": "go.dokimi.dev/assert/lint/golangci@v0.1.0",
+					"otherlint":  "example.com/otherlint@v1.0.0",
+				}
+				config := rendered(t, o, ".golangci.yml")
+				want := append(slices.Clone(linters), "assertlint", "otherlint")
+				assert.Permutation(t, enabled(t, config), want, "the enabled linters")
+				custom := "\n    custom:\n      assertlint:\n        type: module\n      otherlint:\n        type: module\n\n"
+				assert.Contains(t, config, custom, "the settings of the module plugins")
+			})
+
 			t.Run("runs the steps that check of the section go names", func(t *testing.T) {
 				t.Parallel()
 				o, _ := baseline.Producer{}.Options().(*baseline.Options)

@@ -4,6 +4,7 @@
 package baseline_test
 
 import (
+	"reflect"
 	"testing"
 
 	"go.dokimi.dev/assert"
@@ -11,6 +12,7 @@ import (
 	"go.dokimi.dev/ergon/core/option"
 	"go.dokimi.dev/ergon/core/workflow"
 	"go.dokimi.dev/ergon/lang/go/baseline"
+	"go.dokimi.dev/ergon/service/baseline/options"
 )
 
 // setupGo is the pin of setup-go at the baseline.
@@ -32,6 +34,24 @@ var requireWork = workflow.Step{
 
 func TestOptions(t *testing.T) {
 	t.Parallel()
+
+	t.Run("Tools", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("names an option of plugins in the tag plugins of golangci-lint", func(t *testing.T) {
+			t.Parallel()
+			lint, ok := reflect.TypeFor[baseline.Tools]().FieldByName("GolangCILint")
+			assert.True(t, ok, "Tools has the field GolangCILint")
+			fields, err := options.Fields(goOptions())
+			assert.NoError(t, err, "Fields of the options")
+			types := map[string]reflect.Type{}
+			for _, f := range fields {
+				types[f.Key] = f.Type
+			}
+			key := lint.Tag.Get(option.PluginsTag)
+			assert.Equal(t, types[key], reflect.TypeFor[option.Plugins](), "the type of the option "+key)
+		})
+	})
 
 	t.Run("Validate", func(t *testing.T) {
 		t.Parallel()

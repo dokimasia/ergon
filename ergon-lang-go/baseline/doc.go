@@ -6,7 +6,9 @@
 // files, the section go of .ergon.yaml, and the part of Go of the workflows.
 //
 // [Producer] renders .golangci.yml as a managed file from templates/managed/, and its fragments of
-// .editorconfig, .gitattributes, .gitignore and the Makefile from templates/shared/.
+// .editorconfig, .gitattributes, .gitignore and the Makefile from templates/shared/. .golangci.yml
+// enables the linter of each module plugin of the key lint.plugins, which ergon tool run builds
+// into golangci-lint.
 //
 // # Makefile
 //

@@ -86,8 +86,8 @@ type Options struct {
 
 // Tools are the tools of the targets of Go.
 type Tools struct {
-	// GolangCILint lints and formats the sources.
-	GolangCILint option.Module `yaml:"golangci-lint" doc:"The linter and the formatter of lint-go and fmt-go, with the rules of .golangci.yml."`
+	// GolangCILint lints and formats the sources, with the module plugins of the key lint.plugins.
+	GolangCILint option.Module `yaml:"golangci-lint" plugins:"lint.plugins" doc:"The linter and the formatter of lint-go and fmt-go, with the rules of .golangci.yml and the module plugins of lint.plugins."`
 
 	// Govulncheck scans the modules for known vulnerabilities.
 	Govulncheck option.Module `yaml:"govulncheck" doc:"The vulnerability scan of audit-go, which reports a known vulnerability that the code calls."`
@@ -116,6 +116,9 @@ type Tools struct {
 
 // Lint are the options of lint-go.
 type Lint struct {
+	// Plugins are the module plugins of golangci-lint, which .golangci.yml enables.
+	Plugins option.Plugins `yaml:"plugins" doc:"The module plugins of golangci-lint, by the name of the linter that each registers, in lowercase, as <package>@<version> of the package that registers it, such as assertlint: go.dokimi.dev/assert/lint/golangci@v0.1.0. ergon tool run builds them into golangci-lint with golangci-lint custom, and .golangci.yml enables each linter. The local .golangci.yml sets the settings of a plugin under linters.settings.custom.<name>.settings."`
+
 	// Exclude are the package patterns that ergon-go-vet skips.
 	Exclude option.Paths `yaml:"exclude" doc:"The package patterns that ergon-go-vet skips, such as ./internal/legacy/...."`
 }

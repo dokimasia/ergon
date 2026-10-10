@@ -60,6 +60,7 @@
     ],
     "go.homebrew.tap": "",
     "go.lint.exclude": [],
+    "go.lint.plugins": {},
     "go.mutate.args": [],
     "go.mutate.timeout": "0s",
     "go.mutate.workers": 1,
