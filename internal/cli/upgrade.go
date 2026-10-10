@@ -25,7 +25,6 @@ import (
 	"go.dokimi.dev/ergon/service/forge"
 	"go.dokimi.dev/ergon/service/pin"
 	"go.dokimi.dev/ergon/service/release"
-	"go.dokimi.dev/ergon/service/tool"
 	"go.dokimi.dev/ergon/service/vcs"
 )
 
@@ -295,20 +294,12 @@ func (s *session) launch(ctx context.Context, cmd *cobra.Command, major bool) (b
 		return false, err
 	}
 	newest.SHA256 = map[option.Platform]string{s.platform: digest}
-	cache, err := s.cacheDir()
+	runner, err := s.runner(cmd)
 	if err != nil {
-		return false, fmt.Errorf("cli: find the cache directory: %w", err)
+		return false, err
 	}
-	runner := tool.Runner{
-		Client:   client,
-		Stdin:    cmd.InOrStdin(),
-		Stdout:   cmd.OutOrStdout(),
-		Stderr:   cmd.ErrOrStderr(),
-		Cache:    filepath.Join(cache, program, "tools"),
-		Dir:      s.dir,
-		Platform: s.platform,
-		Env:      append(append([]string{}, s.env...), upgradeEnv+"="+newest.Version),
-	}
+	runner.Client = client
+	runner.Env = append(append([]string{}, s.env...), upgradeEnv+"="+newest.Version)
 	s.status, err = runner.RunRelease(ctx, program, newest, s.args)
 	return true, err
 }
