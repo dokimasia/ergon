@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -163,7 +162,10 @@ func TestBaseline(t *testing.T) {
 				})
 				cmd := exec.CommandContext(t.Context(), "make", "test-go")
 				cmd.Dir = dir
-				cmd.Env = append(os.Environ(), "GOWORK="+filepath.Join(dir, "go.work"))
+				// The go commands find the go.work of the workspace from their own directory, as in a
+				// repository. A path in GOWORK would name the temporary directory as the test wrote it,
+				// which on macOS is a link from /var to /private/var.
+				cmd.Env = append(os.Environ(), "GOWORK=auto")
 				out, err := cmd.CombinedOutput()
 				exit := assert.ErrorAs[*exec.ExitError](t, err, "the error of make test-go, whose first module fails")
 				assert.Equal(t, exit.ExitCode(), 2, "the exit status of make after a target fails")
