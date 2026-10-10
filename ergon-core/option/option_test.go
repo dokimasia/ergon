@@ -18,6 +18,7 @@ const (
 	programTag    = "program"
 	runTag        = "run"
 	classifierTag = "classifier"
+	pluginsTag    = "plugins"
 	sourceTag     = "source"
 	project       = "project"
 )
@@ -88,6 +89,15 @@ func TestOption(t *testing.T) {
 		t.Run("is the key classifier", func(t *testing.T) {
 			t.Parallel()
 			assert.Equal(t, option.ClassifierTag, classifierTag, "ClassifierTag")
+		})
+	})
+
+	t.Run("PluginsTag", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("is the key plugins", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, option.PluginsTag, pluginsTag, "PluginsTag")
 		})
 	})
 

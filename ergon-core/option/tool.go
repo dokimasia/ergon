@@ -5,7 +5,9 @@ package option
 
 import (
 	"fmt"
+	"maps"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -34,6 +36,10 @@ var (
 
 	// composerName matches the name of a Composer package, as vendor/package.
 	composerName = regexp.MustCompile(`^[a-z0-9][a-z0-9_.-]*/[a-z0-9][a-z0-9_.-]*$`)
+
+	// linterName matches the name of a linter of golangci-lint: a lowercase letter, then lowercase
+	// letters, digits, hyphens and underscores.
+	linterName = regexp.MustCompile(`^[a-z][a-z0-9_-]*$`)
 )
 
 // Module is a Go module and its version, as <module>@<version>, such as
@@ -57,6 +63,31 @@ func (m Module) Version() string {
 // path whose first element is not a domain, or a version that does not start with v and a digit.
 func (m Module) Validate() error {
 	return validate("<module>@<version>", string(m), modulePath, moduleVersion)
+}
+
+// Plugins are the module plugins of golangci-lint, by the name of the linter that each plugin
+// registers, such as assertlint: go.dokimi.dev/assert/lint/golangci@v0.1.0. A plugin is the Go
+// package that registers the linter, at a version, as <package>@<version>. ergon tool run builds
+// the plugins into golangci-lint with golangci-lint custom, whose go get checks each plugin against
+// the checksum database.
+type Plugins map[string]Module
+
+// Validate returns an error that wraps [ErrInvalid] for a name that is not a lowercase letter
+// followed by lowercase letters, digits, hyphens and underscores, and for a plugin that is not
+// <module>@<version>, as [Module.Validate] states. golangci-lint refuses a linter whose name has an
+// uppercase letter. Validate reads the plugins in the order of their names, so it returns the same
+// error for the same plugins.
+func (p Plugins) Validate() error {
+	for _, name := range slices.Sorted(maps.Keys(p)) {
+		if !linterName.MatchString(name) {
+			return fmt.Errorf("%w: the linter %q, which is not a lowercase letter followed by lowercase letters, "+
+				"digits, hyphens and underscores", ErrInvalid, name)
+		}
+		if err := p[name].Validate(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // PyPI is a PyPI package and its version, as <package>@<version>, such as ruff@0.16.10. ergon tool

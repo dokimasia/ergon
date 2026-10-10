@@ -36,6 +36,11 @@ const (
 	// all for the jar that contains its dependencies.
 	ClassifierTag = "classifier"
 
+	// PluginsTag is the key of the option of the module plugins of golangci-lint, a tool of the kind
+	// [Module], by the keys of the option below its section, such as lint.plugins. The option has the
+	// type [Plugins]. ergon tool run builds its plugins into the program of the tool.
+	PluginsTag = "plugins"
+
 	// SourceTag is the key of the registry of a field of the type [Version] whose release a
 	// baseline update resolves, as <registry>:<name>: chocolatey:<package> for a package of the
 	// Chocolatey community repository, or github:<owner>/<name> for the releases of a repository

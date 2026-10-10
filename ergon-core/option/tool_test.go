@@ -94,6 +94,67 @@ func TestTool(t *testing.T) {
 		})
 	})
 
+	t.Run("Plugins", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Validate", func(t *testing.T) {
+			t.Parallel()
+
+			valid := []struct {
+				name string
+				give option.Plugins
+			}{
+				{name: "returns nil for no plugin", give: option.Plugins{}},
+				{
+					name: "returns nil for the plugin of a lowercase linter",
+					give: option.Plugins{"assertlint": "go.dokimi.dev/assert/lint/golangci@v0.1.0"},
+				},
+				{
+					name: "returns nil for a linter with a digit, a hyphen and an underscore",
+					give: option.Plugins{"lint-2_x": "example.com/lint@v1.0.0"},
+				},
+			}
+			for _, tt := range valid {
+				t.Run(tt.name, func(t *testing.T) {
+					t.Parallel()
+					assert.NoError(t, tt.give.Validate(), "Validate")
+				})
+			}
+
+			invalid := []struct {
+				name string
+				give option.Plugins
+			}{
+				{
+					name: "returns ErrInvalid for a linter in uppercase",
+					give: option.Plugins{"AssertLint": "example.com/lint@v1.0.0"},
+				},
+				{
+					name: "returns ErrInvalid for a linter that starts with a digit",
+					give: option.Plugins{"2lint": "example.com/lint@v1.0.0"},
+				},
+				{name: "returns ErrInvalid for the empty linter", give: option.Plugins{"": "example.com/lint@v1.0.0"}},
+				{
+					name: "returns ErrInvalid for a plugin without a version",
+					give: option.Plugins{"lint": "example.com/lint"},
+				},
+			}
+			for _, tt := range invalid {
+				t.Run(tt.name, func(t *testing.T) {
+					t.Parallel()
+					assert.ErrorIs(t, tt.give.Validate(), option.ErrInvalid, "Validate")
+				})
+			}
+
+			t.Run("returns the error of the first linter in the order of the names", func(t *testing.T) {
+				t.Parallel()
+				err := option.Plugins{"b": "example.com/b", "a": "example.com/a"}.Validate()
+				assert.ErrorIs(t, err, option.ErrInvalid, "Validate")
+				assert.Contains(t, err.Error(), `"example.com/a"`, "the error of Validate")
+			})
+		})
+	})
+
 	t.Run("PyPI", func(t *testing.T) {
 		t.Parallel()
 		p := option.PyPI("pip-audit@2.10.1")
