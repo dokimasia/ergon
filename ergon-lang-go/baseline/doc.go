@@ -7,7 +7,8 @@
 //
 // [Producer] renders .golangci.yml as a managed file from templates/managed/, and its fragments of
 // .editorconfig, .gitattributes, .gitignore and the Makefile from templates/shared/. .golangci.yml
-// enables the linter of each module plugin of the key lint.plugins, which ergon tool run builds
+// enables each linter that [Lint.Linters] returns: the analyzers errorprefix and skipexpiry of the
+// key lint.analyzers, and each module plugin of the key lint.plugins. ergon tool run builds them
 // into golangci-lint.
 //
 // # Makefile
@@ -17,9 +18,9 @@
 // audit-go, and check-go, which requires the targets of the steps that the key check of the section
 // names. Every tool runs through ergon tool run, which installs the version that the section names.
 // The fragment states each option of a step as a variable, such as GO_FUZZ_TIME, which one run of
-// make overrides on its command line. lint-go also runs ergon-go-vet. generate-go runs the command
-// of the generators, go generate at the baseline, and verify-generate-go fails when that command
-// changes a file of the repository. A line ##@ Go starts the group of Go in make help.
+// make overrides on its command line. generate-go runs the command of the generators, go generate
+// at the baseline, and verify-generate-go fails when that command changes a file of the repository.
+// A line ##@ Go starts the group of Go in make help.
 //
 // # Binaries
 //

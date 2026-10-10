@@ -5,6 +5,7 @@ package baseline
 
 import (
 	"fmt"
+	"maps"
 	"regexp"
 	"slices"
 	"strings"
@@ -50,7 +51,7 @@ type Options struct {
 	Nightly option.Nightly `yaml:"nightly" doc:"The steps that nightly.yml runs on its schedule, fuzz, bench or mutate, each in a job of its own on Linux, mapped to the limit of that job in minutes."`
 
 	// Lint are the options of lint-go.
-	Lint Lint `yaml:"lint" doc:"The options of lint-go, which runs golangci-lint with the rules of .golangci.yml and ergon-go-vet in every module."`
+	Lint Lint `yaml:"lint" doc:"The options of lint-go, which runs golangci-lint in every module with the rules of .golangci.yml, the analyzers of the key analyzers and the module plugins of the key plugins."`
 
 	// Test are the options of test-go.
 	Test option.Run `yaml:"test" doc:"test-go runs go test with args."`
@@ -86,8 +87,8 @@ type Options struct {
 
 // Tools are the tools of the targets of Go.
 type Tools struct {
-	// GolangCILint lints and formats the sources, with the module plugins of the key lint.plugins.
-	GolangCILint option.Module `yaml:"golangci-lint" plugins:"lint.plugins" doc:"The linter and the formatter of lint-go and fmt-go, with the rules of .golangci.yml and the module plugins of lint.plugins."`
+	// GolangCILint lints and formats the sources, with the module plugins of the group lint.
+	GolangCILint option.Module `yaml:"golangci-lint" plugins:"lint" doc:"The linter and the formatter of lint-go and fmt-go, with the rules of .golangci.yml, and with the analyzers of lint.analyzers and the module plugins of lint.plugins built in."`
 
 	// Govulncheck scans the modules for known vulnerabilities.
 	Govulncheck option.Module `yaml:"govulncheck" doc:"The vulnerability scan of audit-go, which reports a known vulnerability that the code calls."`
@@ -97,9 +98,6 @@ type Tools struct {
 
 	// DokimiMutateGo runs the mutation tests.
 	DokimiMutateGo option.Module `yaml:"dokimi-mutate-go" doc:"The mutation engine of mutate-go."`
-
-	// ErgonGoVet runs the analyzers of ergon.
-	ErgonGoVet option.Module `yaml:"ergon-go-vet" doc:"The analyzers of lint-go: errorprefix, which reports an error whose text does not start with the name of its package, and skipexpiry, which reports a skipped test whose date has passed."`
 
 	// GoReleaser builds the binaries of the commands.
 	GoReleaser GoReleaser `yaml:"goreleaser" doc:"The release of GoReleaser, which builds, packs and signs the commands of binaries in the job pack of release.yml."`
@@ -119,8 +117,26 @@ type Lint struct {
 	// Plugins are the module plugins of golangci-lint, which .golangci.yml enables.
 	Plugins option.Plugins `yaml:"plugins" doc:"The module plugins of golangci-lint, by the name of the linter that each registers, in lowercase, as <package>@<version> of the package that registers it, such as assertlint: go.dokimi.dev/assert/lint/golangci@v0.1.0. ergon tool run builds them into golangci-lint with golangci-lint custom, and .golangci.yml enables each linter. The local .golangci.yml sets the settings of a plugin under linters.settings.custom.<name>.settings."`
 
-	// Exclude are the package patterns that ergon-go-vet skips.
-	Exclude option.Paths `yaml:"exclude" doc:"The package patterns that ergon-go-vet skips, such as ./internal/legacy/...."`
+	// Analyzers is the package that registers the analyzers errorprefix and skipexpiry as module
+	// plugins of golangci-lint.
+	Analyzers option.Module `yaml:"analyzers" doc:"The package that registers the analyzers errorprefix and skipexpiry as module plugins of golangci-lint, as <package>@<version>. errorprefix reports a text of errors.New that does not start with the name of its package, and skipexpiry reports a skipped test whose expiry has passed. ergon tool run builds them into golangci-lint with the plugins, and .golangci.yml enables both."`
+}
+
+// The linters that the package of [Lint.Analyzers] registers.
+const (
+	errorPrefixLinter = "errorprefix"
+	skipExpiryLinter  = "skipexpiry"
+)
+
+var _ option.Linters = Lint{}
+
+// Linters returns the module plugins of golangci-lint of l: errorprefix and skipexpiry of
+// Analyzers, and each plugin of Plugins. A plugin of the name of an analyzer replaces the analyzer.
+// It returns a new map on each call.
+func (l Lint) Linters() option.Plugins {
+	p := option.Plugins{errorPrefixLinter: l.Analyzers, skipExpiryLinter: l.Analyzers}
+	maps.Copy(p, l.Plugins)
+	return p
 }
 
 // Homebrew are the options of the casks of the commands.
@@ -188,7 +204,8 @@ func (o *Options) Validate() error {
 //     and without go.work, because the targets run in the modules of go.work. setup-go installs the
 //     version of go.work, or the version of the matrix where o lists versions, and caches the
 //     modules by every go.sum. The job keeps the tools of the section, which ergon tool run
-//     installs, in the cache of GitHub Actions.
+//     installs, in the cache of GitHub Actions, under a key that covers go.work, because ergon
+//     tool run builds each Go module with the version of the go command.
 //   - The job <step>-go of nightly.yml runs make <step>-go for each step of nightly, in the order of
 //     the targets, on the Linux runner of the section github and the version of go.work, with the
 //     limit that nightly states for the step. It sets up Go as check-go does.
@@ -224,9 +241,10 @@ func (o *Options) Contribution() workflow.Contribution {
 			Name:        name,
 			Permissions: read,
 			Setup: &workflow.Setup{
-				Files:   modules,
-				Steps:   []workflow.Step{require, {Name: setupName, Uses: o.CI.Actions.SetupGo, With: pinned}},
-				Timeout: o.Nightly[s],
+				Files:        modules,
+				VersionFiles: workspace,
+				Steps:        []workflow.Step{require, {Name: setupName, Uses: o.CI.Actions.SetupGo, With: pinned}},
+				Timeout:      o.Nightly[s],
 			},
 			Tools: true,
 			Steps: []workflow.Step{{Name: name, Run: []string{"make " + target}}},
@@ -246,11 +264,12 @@ func (o *Options) Contribution() workflow.Contribution {
 			Name:        "Go",
 			Permissions: read,
 			Setup: &workflow.Setup{
-				Files:    modules,
-				Runners:  o.CI.Runners,
-				Versions: o.CI.Versions,
-				Steps:    []workflow.Step{require, {Name: setupName, Uses: o.CI.Actions.SetupGo, With: with}},
-				Timeout:  o.CI.Timeout,
+				Files:        modules,
+				VersionFiles: workspace,
+				Runners:      o.CI.Runners,
+				Versions:     o.CI.Versions,
+				Steps:        []workflow.Step{require, {Name: setupName, Uses: o.CI.Actions.SetupGo, With: with}},
+				Timeout:      o.CI.Timeout,
 			},
 			Tools: true,
 			Steps: []workflow.Step{{Name: "Check Go", Run: []string{"make --keep-going check-go"}}},

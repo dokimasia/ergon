@@ -43,11 +43,12 @@ func (Producer) Templates() fs.FS {
 }
 
 // Options returns the section go at the baseline: the releases of golangci-lint, govulncheck,
-// benchstat, dokimi-mutate-go, ergon-go-vet, GoReleaser, cosign, syft and UPX, every package of each
-// module, the gate of lint, test, race and audit, the nightly jobs of fuzz for 120 minutes, bench
-// for 45 and mutate for 60, the options of each step with no module plugin of golangci-lint and go
-// generate as the generators, no command and no tap, the release of setup-go, and a limit of 30
-// minutes for the job check-go on every runner and the version of go.work.
+// benchstat, dokimi-mutate-go, GoReleaser, cosign, syft and UPX, every package of each module, the
+// gate of lint, test, race and audit, the nightly jobs of fuzz for 120 minutes, bench for 45 and
+// mutate for 60, the options of each step with the analyzers of go.dokimi.dev/lint, no other module
+// plugin of golangci-lint and go generate as the generators, no command and no tap, the release of
+// setup-go, and a limit of 30 minutes for the job check-go on every runner and the version of
+// go.work.
 func (Producer) Options() language.Options {
 	return &Options{
 		Tools: Tools{
@@ -55,7 +56,6 @@ func (Producer) Options() language.Options {
 			Govulncheck:    "golang.org/x/vuln/cmd/govulncheck@v1.8.0",
 			Benchstat:      "golang.org/x/perf/cmd/benchstat@v0.0.0-20260929162123-406019bb8b68",
 			DokimiMutateGo: "go.dokimi.dev/mutate/cmd/dokimi-mutate-go@v0.0.0-20261006212535-719083ce3457",
-			ErgonGoVet:     "go.dokimi.dev/ergon/lang/go/cmd/ergon-go-vet@v0.2.1",
 			GoReleaser: GoReleaser{Binary: option.Binary{
 				Version: "2.18.2",
 				SHA256: map[option.Platform]string{
@@ -100,7 +100,7 @@ func (Producer) Options() language.Options {
 		Paths:    option.Paths{"./..."},
 		Check:    option.Check{option.StepLint, option.StepTest, option.StepRace, option.StepAudit},
 		Nightly:  option.Nightly{option.StepFuzz: 120, option.StepBench: 45, option.StepMutate: 60},
-		Lint:     Lint{Plugins: option.Plugins{}, Exclude: option.Paths{}},
+		Lint:     Lint{Analyzers: "go.dokimi.dev/lint/golangci@v0.2.0", Plugins: option.Plugins{}},
 		Test:     option.Run{Args: []string{"-count=1"}},
 		Race:     option.Run{Args: []string{"-count=1", "-p=1"}},
 		Fuzz:     option.Fuzz{Match: ".", Time: "30s", Args: []string{"-fuzzminimizetime=5s"}},

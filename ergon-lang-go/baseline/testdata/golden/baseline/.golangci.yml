@@ -84,6 +84,10 @@ linters:
     - thelper
     - tparallel
     - usetesting
+    # The analyzers of go.lint.analyzers and the module plugins of go.lint.plugins, which ergon tool
+    # run builds into golangci-lint
+    - errorprefix
+    - skipexpiry
 
   settings:
     asasalint:
@@ -91,6 +95,14 @@ linters:
 
     copyloopvar:
       check-alias: true
+
+    # golangci-lint loads each analyzer and module plugin from its program. A repository sets the
+    # settings of a plugin in its local file, under the name of the plugin.
+    custom:
+      errorprefix:
+        type: module
+      skipexpiry:
+        type: module
 
     decorder:
       disable-dec-order-check: true

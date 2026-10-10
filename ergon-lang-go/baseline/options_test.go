@@ -38,7 +38,7 @@ func TestOptions(t *testing.T) {
 	t.Run("Tools", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("names an option of plugins in the tag plugins of golangci-lint", func(t *testing.T) {
+		t.Run("names a group of linters in the tag plugins of golangci-lint", func(t *testing.T) {
 			t.Parallel()
 			lint, ok := reflect.TypeFor[baseline.Tools]().FieldByName("GolangCILint")
 			assert.True(t, ok, "Tools has the field GolangCILint")
@@ -49,7 +49,56 @@ func TestOptions(t *testing.T) {
 				types[f.Key] = f.Type
 			}
 			key := lint.Tag.Get(option.PluginsTag)
-			assert.Equal(t, types[key], reflect.TypeFor[option.Plugins](), "the type of the option "+key)
+			assert.NotNil(t, types[key], "the type of the option "+key)
+			assert.True(t, types[key].Implements(reflect.TypeFor[option.Linters]()),
+				"the option "+key+" implements Linters")
+		})
+	})
+
+	t.Run("Lint", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Linters", func(t *testing.T) {
+			t.Parallel()
+
+			analyzers := option.Module("go.dokimi.dev/lint/golangci@v0.2.0")
+			assertlint := option.Module("go.dokimi.dev/assert/lint/golangci@v0.1.0")
+			tests := []struct {
+				name string
+				give option.Plugins
+				want option.Plugins
+			}{
+				{
+					name: "returns errorprefix and skipexpiry of the analyzers",
+					give: option.Plugins{},
+					want: option.Plugins{"errorprefix": analyzers, "skipexpiry": analyzers},
+				},
+				{
+					name: "returns each plugin beside the analyzers",
+					give: option.Plugins{"assertlint": assertlint},
+					want: option.Plugins{"errorprefix": analyzers, "skipexpiry": analyzers, "assertlint": assertlint},
+				},
+				{
+					name: "returns a plugin of the name of an analyzer in place of the analyzer",
+					give: option.Plugins{"errorprefix": assertlint},
+					want: option.Plugins{"errorprefix": assertlint, "skipexpiry": analyzers},
+				},
+			}
+			for _, tt := range tests {
+				t.Run(tt.name, func(t *testing.T) {
+					t.Parallel()
+					l := baseline.Lint{Analyzers: analyzers, Plugins: tt.give}
+					assert.Equal(t, l.Linters(), tt.want, "the linters")
+				})
+			}
+
+			t.Run("returns a map that shares nothing with the plugins", func(t *testing.T) {
+				t.Parallel()
+				l := baseline.Lint{Analyzers: analyzers, Plugins: option.Plugins{"assertlint": assertlint}}
+				assert.Pure(t, func() option.Plugins { return l.Plugins }, func() {
+					l.Linters()["otherlint"] = "example.com/otherlint@v1.0.0"
+				}, "the plugins")
+			})
 		})
 	})
 
@@ -179,9 +228,10 @@ func TestOptions(t *testing.T) {
 						Name:        "Go",
 						Permissions: map[string]string{"contents": "read"},
 						Setup: &workflow.Setup{
-							Files:    "**/go.mod",
-							Runners:  option.Runners{},
-							Versions: []string{},
+							Files:        "**/go.mod",
+							VersionFiles: "go.work",
+							Runners:      option.Runners{},
+							Versions:     []string{},
 							Steps: []workflow.Step{
 								requireWork,
 								{
@@ -294,7 +344,8 @@ func nightlyJob(id, name string, minutes int) workflow.Job {
 		Name:        name,
 		Permissions: map[string]string{"contents": "read"},
 		Setup: &workflow.Setup{
-			Files: "**/go.mod",
+			Files:        "**/go.mod",
+			VersionFiles: "go.work",
 			Steps: []workflow.Step{
 				requireWork,
 				{

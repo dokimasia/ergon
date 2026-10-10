@@ -19,12 +19,12 @@
     {
       "path": ".golangci.yml",
       "producer": "go",
-      "sha256": "9b99fb7542ca65cd8a6dc3f247f20fd953308f50afca8cd95eefa1b090155ae4"
+      "sha256": "1357f799a72c35c283a26506609e4e1ab6a93db6e45de2e31eea2504b6b7753b"
     },
     {
       "path": "Makefile",
       "producer": "go",
-      "sha256": "fbe32f82d29dbf8fca51af53d0a6a350e2cbe7fe681147de672b70cbec096377"
+      "sha256": "962272b657ed0490a7e0e13978e178e787ee5aeebfe23a7c881b5616b7dd5376"
     }
   ],
   "settings": {
@@ -59,7 +59,7 @@
       "generate"
     ],
     "go.homebrew.tap": "",
-    "go.lint.exclude": [],
+    "go.lint.analyzers": "go.dokimi.dev/lint/golangci@v0.2.0",
     "go.lint.plugins": {},
     "go.mutate.args": [],
     "go.mutate.timeout": "0s",
@@ -89,7 +89,6 @@
     },
     "go.tools.cosign.version": "3.1.3",
     "go.tools.dokimi-mutate-go": "go.dokimi.dev/mutate/cmd/dokimi-mutate-go@v0.0.0-20261006212535-719083ce3457",
-    "go.tools.ergon-go-vet": "go.dokimi.dev/ergon/lang/go/cmd/ergon-go-vet@v0.2.1",
     "go.tools.golangci-lint": "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0",
     "go.tools.goreleaser.sha256": {
       "darwin/amd64": "5e97d6517f73a0b6f71675a2911b15d3136c03c8907650c2b18e114b1c0f5205",

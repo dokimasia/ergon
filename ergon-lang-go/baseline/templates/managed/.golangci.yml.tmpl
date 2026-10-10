@@ -84,11 +84,10 @@ linters:
     - thelper
     - tparallel
     - usetesting
-{{%- with .Options.Lint.Plugins %}}
-    # The module plugins of go.lint.plugins, which ergon tool run builds into golangci-lint
-{{%- range $name, $_ := . %}}
+    # The analyzers of go.lint.analyzers and the module plugins of go.lint.plugins, which ergon tool
+    # run builds into golangci-lint
+{{%- range $name, $_ := .Options.Lint.Linters %}}
     - {{% $name %}}
-{{%- end %}}
 {{%- end %}}
 
   settings:
@@ -97,15 +96,13 @@ linters:
 
     copyloopvar:
       check-alias: true
-{{%- with .Options.Lint.Plugins %}}
 
-    # golangci-lint loads each module plugin of go.lint.plugins from its program. A repository
-    # sets the settings of a plugin in its local file, under the name of the plugin.
+    # golangci-lint loads each analyzer and module plugin from its program. A repository sets the
+    # settings of a plugin in its local file, under the name of the plugin.
     custom:
-{{%- range $name, $_ := . %}}
+{{%- range $name, $_ := .Options.Lint.Linters %}}
       {{% $name %}}:
         type: module
-{{%- end %}}
 {{%- end %}}
 
     decorder:

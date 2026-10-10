@@ -53,16 +53,17 @@ var workflows = []string{
 	".github/workflows/version.yml", ".github/workflows/security.yml", ".github/dependabot.yml",
 }
 
-// linters are the linters that the configuration of golangci-lint enables, pinned because each
-// is a decision of the baseline: every linter that a Go repository of the baseline enables.
+// linters are the linters that the configuration of golangci-lint enables, in lexical order, pinned
+// because each is a decision of the baseline: every linter that a Go repository of the baseline
+// enables, the analyzers errorprefix and skipexpiry included.
 var linters = []string{
 	"asasalint", "bodyclose", "containedctx", "contextcheck", "copyloopvar", "decorder", "depguard", "dupl",
-	"dupword", "durationcheck", "errcheck", "errname", "errorlint", "exhaustive", "fatcontext", "forbidigo",
-	"forcetypeassert", "funcorder", "goconst", "gocritic", "gosec", "govet", "ineffassign", "interfacebloat",
-	"makezero", "mirror", "misspell", "modernize", "musttag", "nilerr", "nilnil", "noctx", "nolintlint",
-	"paralleltest", "perfsprint", "prealloc", "predeclared", "reassign", "revive", "sloglint", "spancheck",
-	"staticcheck", "testifylint", "testpackage", "thelper", "tparallel", "unconvert", "unparam", "unused",
-	"usestdlibvars", "usetesting", "wastedassign", "whitespace", "wrapcheck",
+	"dupword", "durationcheck", "errcheck", "errname", "errorlint", "errorprefix", "exhaustive", "fatcontext",
+	"forbidigo", "forcetypeassert", "funcorder", "goconst", "gocritic", "gosec", "govet", "ineffassign",
+	"interfacebloat", "makezero", "mirror", "misspell", "modernize", "musttag", "nilerr", "nilnil", "noctx",
+	"nolintlint", "paralleltest", "perfsprint", "prealloc", "predeclared", "reassign", "revive", "skipexpiry",
+	"sloglint", "spancheck", "staticcheck", "testifylint", "testpackage", "thelper", "tparallel", "unconvert",
+	"unparam", "unused", "usestdlibvars", "usetesting", "wastedassign", "whitespace", "wrapcheck",
 }
 
 func TestBaseline(t *testing.T) {
@@ -118,7 +119,8 @@ func TestBaseline(t *testing.T) {
 				config := rendered(t, o, ".golangci.yml")
 				want := append(slices.Clone(linters), "assertlint", "otherlint")
 				assert.Permutation(t, enabled(t, config), want, "the enabled linters")
-				custom := "\n    custom:\n      assertlint:\n        type: module\n      otherlint:\n        type: module\n\n"
+				custom := "\n    custom:\n      assertlint:\n        type: module\n      errorprefix:\n        type: module\n" +
+					"      otherlint:\n        type: module\n      skipexpiry:\n        type: module\n\n"
 				assert.Contains(t, config, custom, "the settings of the module plugins")
 			})
 
