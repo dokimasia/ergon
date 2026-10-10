@@ -1,5 +1,16 @@
 # go.dokimi.dev/ergon/service
 
+## 0.7.0
+
+### Minor Changes
+
+- ddcc0a1: Build golangci-lint with the module plugins of the option that its tag `plugins` names in `tool.Runner.Run`.
+
+### Patch Changes
+
+- Updated dependencies [ccbcc8f]
+  - go.dokimi.dev/ergon/core@0.6.0
+
 ## 0.6.1
 
 ### Patch Changes
