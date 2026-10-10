@@ -8,8 +8,10 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -29,6 +31,36 @@ const project = `{"config": {"allow-plugins": true}}` + "\n"
 
 // filePerm is the mode of a file of the cache that is no program.
 const filePerm fs.FileMode = 0o644
+
+// customFile is the configuration that golangci-lint custom reads from its working directory. It
+// reads a .json file as it reads a .yml file.
+const customFile = ".custom-gcl.json"
+
+// pluginsDir is the directory beside the program of golangci-lint whose subdirectories keep the
+// programs that golangci-lint custom builds, one for each digest of a configuration.
+const pluginsDir = "plugins"
+
+// customConfig is the configuration of golangci-lint custom. Without a destination, golangci-lint
+// custom writes the program into its working directory.
+type customConfig struct {
+	// Version is the version of golangci-lint that it builds, a tag of its repository.
+	Version string `json:"version"`
+
+	// Name is the name of the program, which golangci-lint custom ends in .exe on Windows.
+	Name string `json:"name"`
+
+	// Plugins are the module plugins that it adds with go get.
+	Plugins []customPlugin `json:"plugins"`
+}
+
+// customPlugin is a module plugin of golangci-lint custom.
+type customPlugin struct {
+	// Module is the package that registers the linter, which go get adds and the program imports.
+	Module string `json:"module"`
+
+	// Version is the version of the module of the package.
+	Version string `json:"version"`
+}
 
 // module installs the Go module m with go install into the cache, unless the cache has its program
 // name, and returns the program. The cache keeps a program for each version of the go command in
@@ -51,6 +83,53 @@ func (r *Runner) module(ctx context.Context, m option.Module, name string) (stri
 		return program, nil
 	}
 	return program, r.toolchain(ctx, []string{"GOBIN=" + dir}, "go", "install", string(m))
+}
+
+// custom builds the program name of golangci-lint, the Go module m whose program stock the cache
+// has, with the module plugins of the packages of plugins, unless the cache has it, and returns
+// the program. golangci-lint custom builds it in a temporary directory of the cache from
+// .custom-gcl.json, with the version of m and each package once. The runner then renames the
+// directory, so a run reads a whole program. When another process renamed its directory first,
+// custom returns the program of that process. The cache keeps the program and its configuration
+// beside stock, under the digest of the configuration, so other plugins build another program.
+// It returns an error that wraps [ErrInstall] for a directory that does not create, and for a
+// build that fails.
+func (r *Runner) custom(ctx context.Context, stock string, m option.Module, plugins option.Plugins, name string) (
+	string, error,
+) {
+	config := customConfig{Version: m.Version(), Name: name}
+	for _, p := range slices.Compact(slices.Sorted(maps.Values(plugins))) {
+		config.Plugins = append(config.Plugins, customPlugin{Module: p.Package(), Version: p.Version()})
+	}
+	content, _ := json.Marshal(config)
+	sum := sha256.Sum256(content)
+	parent := filepath.Join(filepath.Dir(stock), pluginsDir)
+	dir := filepath.Join(parent, hex.EncodeToString(sum[:8]))
+	program := filepath.Join(dir, filepath.Base(stock))
+	if exists(program) {
+		return program, nil
+	}
+	err := os.MkdirAll(parent, dirPerm)
+	var build string
+	if err == nil {
+		build, err = os.MkdirTemp(parent, ".build-*")
+	}
+	if err != nil {
+		return "", fmt.Errorf("%w: %w", ErrInstall, err)
+	}
+	defer func() { _ = os.RemoveAll(build) }()
+	if err := os.WriteFile(filepath.Join(build, customFile), content, filePerm); err != nil {
+		return "", fmt.Errorf("%w: %w", ErrInstall, err)
+	}
+	builder := *r
+	builder.Dir = build
+	if err := builder.toolchain(ctx, nil, stock, "custom"); err != nil {
+		return "", err
+	}
+	if err := os.Rename(build, dir); err != nil && !exists(program) {
+		return "", fmt.Errorf("%w: %w", ErrInstall, err)
+	}
+	return program, nil
 }
 
 // crate installs the crate c with cargo install --locked into the cache, unless the cache has its

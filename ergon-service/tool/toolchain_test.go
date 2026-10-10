@@ -16,6 +16,10 @@ import (
 	"go.dokimi.dev/ergon/service/tool"
 )
 
+// pluginsDir is the directory beside the program of golangci-lint in the cache that keeps the
+// programs of golangci-lint custom.
+const pluginsDir = "plugins"
+
 func TestToolchain(t *testing.T) {
 	t.Parallel()
 
@@ -150,6 +154,133 @@ func TestToolchain(t *testing.T) {
 			assert.Contains(t, errs.String(), "the module does not install", "the output of go")
 		})
 
+		custom := []struct {
+			name     string
+			give     option.Plugins
+			platform option.Platform
+			want     string
+		}{
+			{
+				name: "builds golangci-lint with the plugins of its option and runs the program",
+				give: option.Plugins{"assertlint": "go.dokimi.dev/assert/lint/golangci@v0.1.0"},
+				want: `{"version":"v2.14.0","name":"golangci-lint","plugins":[` +
+					`{"module":"go.dokimi.dev/assert/lint/golangci","version":"v0.1.0"}]}`,
+			},
+			{
+				name: "builds each package of the plugins once in the order of the packages",
+				give: option.Plugins{
+					"b": "example.com/one@v1.0.0",
+					"a": "example.com/two@v1.0.0",
+					"c": "example.com/one@v1.0.0",
+				},
+				want: `{"version":"v2.14.0","name":"golangci-lint","plugins":[` +
+					`{"module":"example.com/one","version":"v1.0.0"},{"module":"example.com/two","version":"v1.0.0"}]}`,
+			},
+			{
+				name:     "names the program of golangci-lint custom with .exe on Windows",
+				give:     option.Plugins{"assertlint": "go.dokimi.dev/assert/lint/golangci@v0.1.0"},
+				platform: option.WindowsAMD64,
+				want: `{"version":"v2.14.0","name":"golangci-lint","plugins":[` +
+					`{"module":"go.dokimi.dev/assert/lint/golangci","version":"v0.1.0"}]}`,
+			},
+			{name: "runs the program of go install for an option without plugins", give: option.Plugins{}},
+		}
+		for _, tt := range custom {
+			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+				r, out, _ := runner(t, map[string][]byte{})
+				if tt.platform != "" {
+					r.Platform = tt.platform
+				}
+				_, err := r.Run(t.Context(), section, withPlugins(tt.give), "golangci-lint", []string{"--config"})
+				assert.NoError(t, err, "Run")
+				assert.Equal(t, out.String(), "golangci-lint --config\n"+tt.want+"\n", "the output of the program")
+			})
+		}
+
+		t.Run("runs a program of golangci-lint custom without building it again", func(t *testing.T) {
+			t.Parallel()
+			o := withPlugins(option.Plugins{"assertlint": "go.dokimi.dev/assert/lint/golangci@v0.1.0"})
+			r, out, _ := runner(t, map[string][]byte{})
+			_, err := r.Run(t.Context(), section, o, "golangci-lint", nil)
+			assert.NoError(t, err, "the first Run")
+			r.Env = append(r.Env, customFailsEnv+"=1")
+			_, err = r.Run(t.Context(), section, o, "golangci-lint", []string{"again"})
+			assert.NoError(t, err, "the second Run, whose golangci-lint custom fails")
+			assert.Equal(t, out.String(), "golangci-lint\n"+"golangci-lint again\n", "the output of both runs")
+		})
+
+		t.Run("builds golangci-lint again for other plugins", func(t *testing.T) {
+			t.Parallel()
+			r, out, _ := runner(t, map[string][]byte{})
+			first := withPlugins(option.Plugins{"lint": "example.com/lint@v1.0.0"})
+			_, err := r.Run(t.Context(), section, first, "golangci-lint", nil)
+			assert.NoError(t, err, "the Run with the first plugins")
+			out.Reset()
+			second := withPlugins(option.Plugins{"lint": "example.com/lint@v2.0.0"})
+			_, err = r.Run(t.Context(), section, second, "golangci-lint", []string{"--config"})
+			assert.NoError(t, err, "the Run with the second plugins")
+			plugin := `{"module":"example.com/lint","version":"v2.0.0"}`
+			assert.Contains(t, out.String(), plugin, "the output of the program")
+		})
+
+		t.Run("returns ErrInstall for a plugin that golangci-lint custom does not build", func(t *testing.T) {
+			t.Parallel()
+			r, _, errs := runner(t, map[string][]byte{})
+			o := withPlugins(option.Plugins{"lint": "example.com/broken@v1.0.0"})
+			_, err := r.Run(t.Context(), section, o, "golangci-lint", nil)
+			assert.ErrorIs(t, err, tool.ErrInstall, "Run")
+			assert.Contains(t, errs.String(), "the plugin does not build", "the output of golangci-lint custom")
+		})
+
+		t.Run("returns the error of go install for a golangci-lint that does not install", func(t *testing.T) {
+			t.Parallel()
+			r, _, _ := runner(t, map[string][]byte{})
+			o := withPlugins(option.Plugins{"lint": "example.com/lint@v1.0.0"})
+			o.Tools.Lint = "example.com/broken@v1.0.0"
+			_, err := r.Run(t.Context(), section, o, "golangci-lint", nil)
+			assert.ErrorIs(t, err, tool.ErrInstall, "Run")
+			assert.Contains(t, err.Error(), "go install example.com/broken@v1.0.0", "the error of Run")
+		})
+
+		t.Run("returns ErrInstall for a directory of the plugins that does not create", func(t *testing.T) {
+			t.Parallel()
+			r, _, _ := runner(t, map[string][]byte{})
+			_, err := r.Run(t.Context(), section, withPlugins(option.Plugins{}), "golangci-lint", nil)
+			assert.NoError(t, err, "the Run that installs golangci-lint")
+			var programs []string
+			err = filepath.WalkDir(r.Cache, func(p string, d fs.DirEntry, err error) error {
+				if err == nil && d.Type().IsRegular() && strings.TrimSuffix(d.Name(), exe) == "golangci-lint" {
+					programs = append(programs, p)
+				}
+				return err
+			})
+			assert.NoError(t, err, "WalkDir of the cache")
+			assert.Length(t, programs, 1, "the programs of golangci-lint in the cache")
+			file := filepath.Join(filepath.Dir(programs[0]), pluginsDir)
+			assert.NoError(t, os.WriteFile(file, nil, 0o644), "WriteFile in place of the directory of the plugins")
+			o := withPlugins(option.Plugins{"lint": "example.com/lint@v1.0.0"})
+			_, err = r.Run(t.Context(), section, o, "golangci-lint", nil)
+			assert.ErrorIs(t, err, tool.ErrInstall, "Run")
+		})
+
+		misnamed := []struct {
+			name string
+			tool string
+		}{
+			{name: "returns ErrInstall for a tag plugins that names a missing key", tool: "missing"},
+			{name: "returns ErrInstall for a tag plugins that names an option of another type", tool: "typed"},
+			{name: "returns ErrInstall for a tag plugins that names a key below an option of no group", tool: "deep"},
+		}
+		for _, tt := range misnamed {
+			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+				r, _, _ := runner(t, map[string][]byte{})
+				_, err := r.Run(t.Context(), section, &unplugged{}, tt.tool, nil)
+				assert.ErrorIs(t, err, tool.ErrInstall, "Run")
+			})
+		}
+
 		pypi := []struct {
 			name string
 			tool string
@@ -275,4 +406,43 @@ type pythonless struct {
 // Validate returns nil.
 func (*pythonless) Validate() error {
 	return nil
+}
+
+// plugged are options whose golangci-lint builds with the module plugins of lint.plugins.
+type plugged struct {
+	Tools struct {
+		Lint option.Module `yaml:"golangci-lint" plugins:"lint.plugins"`
+	} `yaml:"tools"`
+	Lint struct {
+		Plugins option.Plugins `yaml:"plugins"`
+	} `yaml:"lint"`
+}
+
+// Validate returns nil.
+func (*plugged) Validate() error {
+	return nil
+}
+
+// unplugged are options whose tags plugins name no option of plugins: a key that the options do not
+// have, an option of another type, and a key below an option that is no group.
+type unplugged struct {
+	Tools struct {
+		Missing option.Module `yaml:"missing" plugins:"lint.missing"`
+		Typed   option.Module `yaml:"typed"   plugins:"tools.typed"`
+		Deep    option.Module `yaml:"deep"    plugins:"tools.deep.plugins"`
+	} `yaml:"tools"`
+	Lint struct{} `yaml:"lint"`
+}
+
+// Validate returns nil.
+func (*unplugged) Validate() error {
+	return nil
+}
+
+// withPlugins returns options of golangci-lint v2.14.0 with the module plugins p.
+func withPlugins(p option.Plugins) *plugged {
+	o := &plugged{}
+	o.Tools.Lint = "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0"
+	o.Lint.Plugins = p
+	return o
 }

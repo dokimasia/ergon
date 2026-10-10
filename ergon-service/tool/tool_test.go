@@ -11,6 +11,7 @@ import (
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -49,7 +50,14 @@ const (
 
 	// installFailsEnv makes go install fail.
 	installFailsEnv = "ERGON_TOOL_FAKE_INSTALL_FAILS"
+
+	// customFailsEnv makes golangci-lint custom fail.
+	customFailsEnv = "ERGON_TOOL_FAKE_CUSTOM_FAILS"
 )
+
+// customFile is the configuration that golangci-lint custom reads from its working directory, and
+// that the cache keeps beside the program that it builds.
+const customFile = ".custom-gcl.json"
 
 // fakeGoVersion is the version that the fake go writes without goVersionEnv.
 const fakeGoVersion = "go1.27.2"
@@ -392,8 +400,10 @@ func TestTool(t *testing.T) {
 //   - cargo install --locked --root <root> <crate>@<version> copies it to <root>/bin
 //   - composer require ... --working-dir=<dir> <package>:<version>... writes a proxy of each
 //     package to <dir>/vendor/bin, and fails for a package whose name has broken
-//   - any other program writes its name and its arguments to the standard output, and the working
-//     directory for an argument --pwd, and exits N for an argument --exit=N
+//   - golangci-lint custom acts as [custom] states
+//   - any other program writes its name and its arguments to the standard output, the working
+//     directory for an argument --pwd, and the configuration of golangci-lint custom beside the
+//     program for an argument --config, and exits N for an argument --exit=N
 //
 // A toolchain names a program with .exe when its directory is of the platform windows, as go and
 // cargo name it for that platform.
@@ -439,6 +449,11 @@ func fake(args []string) int {
 			}
 		}
 		return 0
+	case "golangci-lint":
+		if len(args) > 1 && args[1] == "custom" {
+			return custom()
+		}
+		fallthrough
 	default:
 		fmt.Fprintln(os.Stdout, strings.Join(slices.Concat([]string{name}, args[1:]), " "))
 		for _, arg := range args[1:] {
@@ -447,6 +462,11 @@ func fake(args []string) int {
 				dir, _ = filepath.EvalSymlinks(dir)
 				fmt.Fprintln(os.Stdout, dir)
 			}
+			if arg == "--config" {
+				program, _ := os.Executable()
+				config, _ := os.ReadFile(filepath.Join(filepath.Dir(program), customFile))
+				fmt.Fprintln(os.Stdout, string(config))
+			}
 			if code, ok := strings.CutPrefix(arg, "--exit="); ok {
 				n, _ := strconv.Atoi(code)
 				return n
@@ -454,6 +474,35 @@ func fake(args []string) int {
 		}
 		return 0
 	}
+}
+
+// custom acts as golangci-lint custom and returns its exit status. It reads the configuration of
+// its working directory, and copies the test binary into that directory under the name of the
+// configuration, as [copySelf] names it. It fails for a configuration that does not read, for a
+// plugin whose package has broken, and with customFailsEnv.
+func custom() int {
+	var config struct {
+		Name    string `json:"name"`
+		Plugins []struct {
+			Module string `json:"module"`
+		} `json:"plugins"`
+	}
+	content, err := os.ReadFile(customFile)
+	if err == nil {
+		err = json.Unmarshal(content, &config)
+	}
+	dir, err2 := os.Getwd()
+	if err != nil || err2 != nil {
+		fmt.Fprintln(os.Stderr, "golangci-lint custom:", err, err2)
+		return 1
+	}
+	for _, p := range config.Plugins {
+		if strings.Contains(p.Module, "broken") || os.Getenv(customFailsEnv) != "" {
+			fmt.Fprintln(os.Stderr, "golangci-lint custom: the plugin does not build")
+			return 1
+		}
+	}
+	return copySelf(filepath.Join(dir, config.Name))
 }
 
 // copySelf copies the test binary to name, with .exe for a directory of the platform windows, and

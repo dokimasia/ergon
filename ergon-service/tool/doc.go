@@ -18,6 +18,9 @@
 //     what they download against the checksums of their registry. A Go module installs once for
 //     each version of the go command in the working directory, because a program that reads the
 //     packages of Go can refuse a go command of another version.
+//   - A Go module whose field has the tag plugins, such as golangci-lint, builds again with
+//     golangci-lint custom when the option that the tag names lists a module plugin. The cache
+//     keeps the program of each set of plugins beside the program of go install.
 //   - A PyPI package runs through the release binary of uv of its section, and an npm package with
 //     npx, which install it into their own caches.
 //   - The Composer packages of a section install together into one project, so a package such as

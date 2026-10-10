@@ -29,8 +29,8 @@ var (
 
 	// ErrInstall is the error for a tool that does not install: a platform without an asset or a
 	// digest, a download that fails or that differs from its digest, an archive without the
-	// program, a toolchain that is missing or that fails, and a section without the uv of its PyPI
-	// packages.
+	// program, a toolchain that is missing or that fails, a section without the uv of its PyPI
+	// packages, and a tool whose tag plugins names no option of plugins.
 	ErrInstall = errors.New("tool: the tool does not install")
 )
 
@@ -98,6 +98,10 @@ type entry struct {
 	// name is the name of the tool, its key in the section.
 	name string
 
+	// plugins are the module plugins of the option that the tag plugins of the field names, which
+	// the runner builds into the program of a Go module. They are nil for a field without the tag.
+	plugins option.Plugins
+
 	// field is the field of the tool, with its tags.
 	field reflect.StructField
 }
@@ -110,6 +114,8 @@ type entry struct {
 //   - a [option.Release] downloads the asset of the platform, which Run checks against the digest
 //     of the pin before it unpacks the program
 //   - a [option.Module] installs with go install, once for each version of the go command in Dir
+//   - a [option.Module] whose field has the tag plugins installs with go install too, and then
+//     builds with golangci-lint custom when the option that the tag names lists a plugin
 //   - a [option.PyPI] runs through the [option.UV] of the section, with uv tool run, or with uv run
 //     in the environment of the project for a tool tagged run:"project"
 //   - an [option.NPM] runs with npx
@@ -189,7 +195,12 @@ func (r *Runner) install(ctx context.Context, section string, e *entry) (string,
 	}
 	switch tool := e.value.Interface().(type) {
 	case option.Module:
-		program, err := r.module(ctx, tool, e.program(goProgram(tool.Package())))
+		name := e.program(goProgram(tool.Package()))
+		program, err := r.module(ctx, tool, name)
+		if err != nil || len(e.plugins) == 0 {
+			return program, nil, err
+		}
+		program, err = r.custom(ctx, program, tool, e.plugins, name)
 		return program, nil, err
 	case option.PyPI:
 		return r.pypi(ctx, e, tool)
@@ -219,9 +230,10 @@ func (e *entry) program(fallback string) string {
 }
 
 // lookup returns the tool name of the struct of the tools of o, the options of section: the field
-// of the group tools whose yaml key is name. It returns an error that wraps [ErrUnknown] for options
-// without the group, and for a group without the key, which lists the tools of the group as
-// <section>.<tool>.
+// of the group tools whose yaml key is name, with the plugins of the option that its tag plugins
+// names. It returns an error that wraps [ErrUnknown] for options without the group, and for a group
+// without the key, which lists the tools of the group as <section>.<tool>. It returns an error that
+// wraps [ErrInstall] for a tag plugins that names no option of the type [option.Plugins].
 func lookup(o language.Options, section, name string) (entry, error) {
 	v := reflect.ValueOf(o)
 	var tools entry
@@ -245,7 +257,31 @@ func lookup(o language.Options, section, name string) (entry, error) {
 		return entry{}, fmt.Errorf("%w: %s.%s, which is none of %s", ErrUnknown, section, name,
 			strings.Join(names, ", "))
 	}
-	return entry{value: tool.value, tools: tools.value, name: name, field: tool.field}, nil
+	e := entry{value: tool.value, tools: tools.value, name: name, field: tool.field}
+	if key := tool.field.Tag.Get(option.PluginsTag); key != "" {
+		if e.plugins, ok = pluginsAt(v.Elem(), key); !ok {
+			return entry{}, fmt.Errorf("%w: %s.%s names the plugins %s.%s, which are no option of plugins", ErrInstall,
+				section, name, section, key)
+		}
+	}
+	return e, nil
+}
+
+// pluginsAt returns the option of the struct s at key, the yaml keys of the fields on its path
+// separated by dots, such as lint.plugins. It reports false when s has no option of the type
+// [option.Plugins] at key.
+func pluginsAt(s reflect.Value, key string) (option.Plugins, bool) {
+	for k := range strings.SplitSeq(key, ".") {
+		if s.Kind() != reflect.Struct {
+			return nil, false
+		}
+		f, ok := field(s, k)
+		if !ok {
+			return nil, false
+		}
+		s = f.value
+	}
+	return reflect.TypeAssert[option.Plugins](s)
 }
 
 // field returns the field of the struct s whose yaml key is key, and reports whether s has one.
