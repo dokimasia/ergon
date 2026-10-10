@@ -37,3 +37,4 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 | [0026](0026-options-implement-producer-roles.md) | The options of a producer return its contribution, data and files | Proposed |
 | [0027](0027-template-function-for-gate-targets.md) | A template function writes the generate and check targets of each language | Proposed |
 | [0028](0028-one-test-over-the-catalog.md) | One test over the catalog renders every producer | Proposed |
+| [0029](0029-golangci-lint-module-plugins.md) | ergon tool run builds golangci-lint with the module plugins of go.lint.plugins | Accepted |
