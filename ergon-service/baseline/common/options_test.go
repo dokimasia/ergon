@@ -26,6 +26,53 @@ func TestOptions(t *testing.T) {
 		})
 	})
 
+	t.Run("Command", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Validate", func(t *testing.T) {
+			t.Parallel()
+
+			valid := []struct {
+				name string
+				give common.Command
+			}{
+				{name: "returns nil for the ergon on the PATH", give: common.Command{"ergon"}},
+				{
+					name: "returns nil for go run of the package of ergon",
+					give: common.Command{"go", "run", "go.dokimi.dev/ergon/cmd/ergon"},
+				},
+				{
+					name: "returns nil for go run of a version of ergon",
+					give: common.Command{"go", "run", "go.dokimi.dev/ergon/cmd/ergon@v0.7.0"},
+				},
+			}
+			for _, tt := range valid {
+				t.Run(tt.name, func(t *testing.T) {
+					t.Parallel()
+					assert.NoError(t, tt.give.Validate(), "Validate")
+				})
+			}
+
+			invalid := []struct {
+				name string
+				give common.Command
+			}{
+				{name: "returns ErrInvalid for a command without a word", give: common.Command{}},
+				{name: "returns ErrInvalid for an empty word", give: common.Command{"go", ""}},
+				{name: "returns ErrInvalid for a word with a space", give: common.Command{"go run"}},
+				{name: "returns ErrInvalid for a word with a dollar sign", give: common.Command{"$(ERGON)"}},
+				{name: "returns ErrInvalid for a word with a number sign", give: common.Command{"ergon#1"}},
+				{name: "returns ErrInvalid for a word with a single quote", give: common.Command{"'ergon'"}},
+			}
+			for _, tt := range invalid {
+				t.Run(tt.name, func(t *testing.T) {
+					t.Parallel()
+					assert.ErrorIs(t, tt.give.Validate(), option.ErrInvalid, "Validate")
+				})
+			}
+		})
+	})
+
 	t.Run("Commitlint", func(t *testing.T) {
 		t.Parallel()
 

@@ -9,7 +9,8 @@
 
 .DEFAULT_GOAL := check
 
-# The ergon that runs the tools of the targets.
+# The command that runs ergon for the tools of the targets. The key ergon of the section common of
+# .ergon.yaml sets it.
 ERGON ?= ergon
 
 # verify-generated runs the command of the variable $(1) and fails when the run changes a file of

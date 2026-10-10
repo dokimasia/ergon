@@ -21,8 +21,12 @@ import (
 // name pins the name of the producer of the common files.
 const name = "common"
 
-// preCommitConfig is the configuration of pre-commit that the common files render.
-const preCommitConfig = ".pre-commit-config.yaml"
+// The managed files whose commands the cases read: the configuration of pre-commit, and the
+// Makefile.
+const (
+	preCommitConfig = ".pre-commit-config.yaml"
+	makefile        = "Makefile"
+)
 
 // markdownlint is the pin of the action of markdownlint at the baseline.
 var markdownlint = workflow.Action{
@@ -34,19 +38,20 @@ var markdownlint = workflow.Action{
 // read is the permission of the jobs of the common files.
 var read = map[string]string{"contents": "read"}
 
-// hooked is the producer of the common files whose options at the baseline have the hooks of its
-// field.
-type hooked struct {
+// adjusted is the producer of the common files whose options are the options at the baseline that
+// its function changes.
+type adjusted struct {
 	common.Producer
 
-	// hooks are the hooks of the options.
-	hooks common.Hooks
+	// adjust changes the options at the baseline.
+	adjust func(*common.Options)
 }
 
-// Options returns the options of the common files at the baseline, with the hooks of h.
-func (h hooked) Options() language.Options {
-	o, _ := h.Producer.Options().(*common.Options)
-	o.Hooks = h.hooks
+// Options returns the options of the common files at the baseline, after the function of a changes
+// them.
+func (a adjusted) Options() language.Options {
+	o, _ := a.Producer.Options().(*common.Options)
+	a.adjust(o)
 	return o
 }
 
@@ -107,7 +112,8 @@ func TestCommon(t *testing.T) {
 			for _, tt := range hooks {
 				t.Run(tt.name, func(t *testing.T) {
 					t.Parallel()
-					p := baseline.Producer{Name: common.Name, Producer: hooked{hooks: tt.give}}
+					hooked := adjusted{adjust: func(o *common.Options) { o.Hooks = tt.give }}
+					p := baseline.Producer{Name: common.Name, Producer: hooked}
 					dir := baselinetest.New(t, new(language.Catalog), baselinetest.Answers(), p)
 					baselinetest.Hygiene(t, dir)
 					got := files.Read(t, filepath.Join(dir, preCommitConfig))
@@ -115,6 +121,24 @@ func TestCommon(t *testing.T) {
 						golden.ShouldUpdate())
 				})
 			}
+
+			t.Run("runs ergon with the command of the options in the Makefile and the hooks", func(t *testing.T) {
+				t.Parallel()
+				source := adjusted{adjust: func(o *common.Options) {
+					o.Ergon = common.Command{"go", "run", "go.dokimi.dev/ergon/cmd/ergon"}
+				}}
+				p := baseline.Producer{Name: common.Name, Producer: source}
+				dir := baselinetest.New(t, new(language.Catalog), baselinetest.Answers(), p)
+				baselinetest.Hygiene(t, dir)
+				assert.Contains(t, files.Read(t, filepath.Join(dir, makefile)),
+					"\nERGON ?= go run go.dokimi.dev/ergon/cmd/ergon\n", "the command of ergon in the Makefile")
+				assert.Contains(
+					t,
+					files.Read(t, filepath.Join(dir, preCommitConfig)),
+					"\n        entry: go run go.dokimi.dev/ergon/cmd/ergon tool run common.commitlint -- lint --message\n",
+					"the command of the commit-msg hook",
+				)
+			})
 		})
 
 		t.Run("Options", func(t *testing.T) {

@@ -12,10 +12,13 @@
 //
 // # Options
 //
-// The section common of .ergon.yaml, [Options], names the release of commitlint, the release of
-// pre-commit-hooks, the targets of the hooks, the pin of the action of markdownlint, and the limit
-// of the jobs of the common files. commitlint is a release binary: ergon tool run installs it and
-// checks its archive against the digest of the platform.
+// The section common of .ergon.yaml, [Options], names the command of ergon, the release of
+// commitlint, the release of pre-commit-hooks, the targets of the hooks, the pin of the action of
+// markdownlint, and the limit of the jobs of the common files. commitlint is a release binary: ergon
+// tool run installs it and checks its archive against the digest of the platform.
+//
+// The Makefile and the commit-msg hook run ergon with the [Command] of the key ergon: the ergon on
+// the PATH at the baseline. The repository of ergon runs the ergon of its own source with go run.
 //
 // # Hooks
 //

@@ -43,12 +43,13 @@ func (Producer) Templates() fs.FS {
 	return sub
 }
 
-// Options returns the options of the common files at the baseline: the release of commitlint with
-// the digests that it states, the releases of pre-commit-hooks and markdownlint-cli2-action, the
-// hooks lint and test before each commit and check before each push, and a limit of 10 minutes for
-// each job.
+// Options returns the options of the common files at the baseline: the ergon on the PATH as the
+// command of ergon, the release of commitlint with the digests that it states, the releases of
+// pre-commit-hooks and markdownlint-cli2-action, the hooks lint and test before each commit and
+// check before each push, and a limit of 10 minutes for each job.
 func (Producer) Options() language.Options {
 	return &Options{
+		Ergon: Command{"ergon"},
 		Tools: Tools{Commitlint: Commitlint{Binary: option.Binary{
 			SHA256: map[option.Platform]string{
 				option.LinuxAMD64:   "bf9666441262bf8d31345a6d29d6f788d0dadea7d47e5b91890c3a651999c118",

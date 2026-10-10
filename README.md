@@ -103,10 +103,10 @@ ergon release publishes Go modules. [The roadmap](docs/roadmap/README.md) lists 
 
 ## Development
 
-The targets of the Makefile run their tools through `ergon tool run`, so install ergon from the checkout first:
+The targets of the Makefile and the hooks of `.pre-commit-config.yaml` run ergon from the checkout with `go run go.dokimi.dev/ergon/cmd/ergon`. They do not need an installed ergon:
 
 ```sh
-go install ./cmd/ergon
+pre-commit install
 make check
 ```
 

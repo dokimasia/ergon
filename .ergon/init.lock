@@ -106,7 +106,7 @@
     {
       "path": ".pre-commit-config.yaml",
       "producer": "common",
-      "sha256": "8768894c14bfb5c186c82619793914a242df2e1ab16e375d0f100e20dee424d6"
+      "sha256": "92566c4e8492d11b6855037a92795b9552c071bfd1f507298eafb9a888a1bbaf"
     },
     {
       "path": "CODE_OF_CONDUCT.md",
@@ -122,7 +122,7 @@
       "path": "Makefile",
       "producer": "common",
       "local": "ed1d8e6ca45c5ee89f5c067057c5684a7fd1dc89ccb14a99a4321cdcb9075a53",
-      "sha256": "fe51e7c8f217d1894f089d8f3ebfe0fdbe9f66202bb23a66f9e714ef6d0b71d9"
+      "sha256": "61a04c8d95e0791dd21069e72a320f7dd5fc5029de58fc93e2380adf97246f98"
     }
   ],
   "settings": {
@@ -130,6 +130,9 @@
     "common.ci.actions.markdownlint.release": "v24.2.0",
     "common.ci.actions.markdownlint.uses": "DavidAnson/markdownlint-cli2-action",
     "common.ci.timeout": 10,
+    "common.ergon": [
+      "ergon"
+    ],
     "common.hooks.pre-commit": [
       "lint",
       "test"

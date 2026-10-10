@@ -5,6 +5,7 @@ package common
 
 import (
 	"fmt"
+	"regexp"
 
 	"go.dokimi.dev/ergon/core/option"
 	"go.dokimi.dev/ergon/core/workflow"
@@ -13,8 +14,15 @@ import (
 // windows is the system of Windows, whose programs end in .exe.
 const windows = "windows"
 
+// word matches a word of a command that the shell, make and pre-commit read as it is: letters,
+// digits and the characters _ @ % + = : , . / ^ -.
+var word = regexp.MustCompile(`^[A-Za-z0-9_@%+=:,./^-]+$`)
+
 // Options are the options of the section common of .ergon.yaml.
 type Options struct {
+	// Ergon is the command that runs ergon in the targets of the Makefile and in the hooks.
+	Ergon Command `yaml:"ergon" doc:"The command that runs ergon in the targets of the Makefile and in the hooks of .pre-commit-config.yaml, as its words, such as [ergon] for the ergon on the PATH. The repository of ergon runs ergon from its own source with [go, run, go.dokimi.dev/ergon/cmd/ergon]."`
+
 	// Tools are the tools of the common files.
 	Tools Tools `yaml:"tools" doc:"The tools of the common files."`
 
@@ -26,6 +34,25 @@ type Options struct {
 
 	// CI are the pins of the actions of the jobs docs and commits, and their limit.
 	CI option.CI[Actions] `yaml:"ci" doc:"The pins of the actions of the jobs docs and commits of ci.yml, and the limit of each job in minutes."`
+}
+
+// Command is a command as its words, such as go, run and the package of a program.
+type Command []string
+
+// Validate returns an error that wraps [option.ErrInvalid] for a command without a word, and for a
+// word with a character other than a letter, a digit and _ @ % + = : , . / ^ -. The Makefile and
+// .pre-commit-config.yaml then write each word as it is.
+func (c Command) Validate() error {
+	if len(c) == 0 {
+		return fmt.Errorf("%w: a command without a word", option.ErrInvalid)
+	}
+	for _, w := range c {
+		if !word.MatchString(w) {
+			return fmt.Errorf("%w: the word %q, which has a character other than a letter, a digit and _ @ %% + = "+
+				": , . / ^ -", option.ErrInvalid, w)
+		}
+	}
+	return nil
 }
 
 // Tools are the tools of the common files.
