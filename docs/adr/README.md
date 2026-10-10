@@ -45,3 +45,5 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 | [0034](0034-version-files-in-the-tool-cache-key.md) | The key of a tool cache covers the files that set the version of the toolchain | Accepted |
 | [0035](0035-lint-go-analyzers-as-module-plugins.md) | golangci-lint runs the analyzers of lint-go as module plugins in place of ergon-go-vet | Accepted |
 | [0036](0036-codeql-of-go-fetches-own-modules-from-origin.md) | The CodeQL analysis of Go fetches the modules of its repository from their origin | Accepted |
+| [0037](0037-sboms-keep-release-modules-from-proxy.md) | syft does not read a module of a release from the module proxy | Accepted |
+| [0038](0038-binaries-build-outside-the-workspace.md) | The binaries of a release build outside the workspace against a proxy of the released modules | Accepted |

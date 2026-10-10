@@ -94,7 +94,8 @@ ergon-lang-go/
   release/      Versioner: require rewrites, go.sum through the file proxy, the
                 replaces of go.work, tag prefixes. Locker: the go.sum lines of a
                 pending release that record other content, and their rewrite.
-                Packer: the binaries of the commands of a module through GoReleaser
+                Packer: the binaries of the commands of a module through GoReleaser,
+                outside the workspace against the file proxy of the release
   baseline/     the producer: the options of the section go and their rules, the
                 templates, the configuration of GoReleaser of each module with a
                 command, and the contributions to the workflows
