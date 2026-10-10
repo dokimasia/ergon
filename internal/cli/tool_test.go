@@ -206,8 +206,7 @@ func TestTool(t *testing.T) {
 			config := read(t, dir, ".ergon.yaml")
 			start := strings.Index(config, "      sha256:\n")
 			end := strings.Index(config, "      version: 0.12.0\n")
-			assert.True(t, start > 0, "the digests of commitlint in .ergon.yaml")
-			assert.True(t, end > start, "the version of commitlint after its digests")
+			assert.InRange(t, start, 0, float64(end-1), "the digests of commitlint before its version in .ergon.yaml")
 			digests := "      sha256:\n        " + string(other) + ": " + strings.Repeat("ab", 32) + "\n"
 			write(t, dir, ".ergon.yaml", config[:start]+digests+config[end:])
 			status, stdout, stderr := runWith(t, app.Register, dir, "tool", "run", "common.commitlint")

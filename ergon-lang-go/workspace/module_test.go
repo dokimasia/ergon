@@ -128,8 +128,9 @@ func TestModule(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				t.Parallel()
 				_, err := workspace.Modules(files.Workspace(t, tt.tree))
-				assert.HasError(t, err, "Modules")
-				assert.ErrorIsNot(t, err, workspace.ErrModules, "the class of the error")
+				assert.That(t, err).
+					HasError("Modules").
+					ErrorIsNot(workspace.ErrModules, "the class of the error")
 				assert.Contains(t, err.Error(), tt.text, "the error")
 			})
 		}

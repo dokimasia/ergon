@@ -74,14 +74,13 @@ func TestText(t *testing.T) {
 
 		t.Run("returns one text for both identifiers of a GNU license", func(t *testing.T) {
 			t.Parallel()
-			c := config()
-			c.SPDX = spdx.GPL30Only
-			only, _, err := licenses.Text(c, holder())
+			only, orLater := config(), config()
+			only.SPDX, orLater.SPDX = spdx.GPL30Only, spdx.GPL30OrLater
+			want, _, err := licenses.Text(only, holder())
 			assert.NoError(t, err, "Text of GPL-3.0-only")
-			c.SPDX = spdx.GPL30OrLater
-			orLater, _, err := licenses.Text(c, holder())
+			got, _, err := licenses.Text(orLater, holder())
 			assert.NoError(t, err, "Text of GPL-3.0-or-later")
-			assert.Equal(t, only, orLater, "the texts")
+			assert.Equal(t, got, want, "the text of GPL-3.0-or-later")
 		})
 
 		t.Run("returns the notice of Apache-2.0 with the name of the repository", func(t *testing.T) {

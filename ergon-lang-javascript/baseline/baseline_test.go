@@ -161,6 +161,6 @@ func rendered(t *testing.T, u render.Unit, name string) string {
 	files, err := render.Render([]render.Unit{u}, baselinetest.Answers(javascript.Language), &workflow.Contribution{})
 	assert.NoError(t, err, "Render")
 	i := slices.IndexFunc(files, func(f render.File) bool { return f.Path == name })
-	assert.True(t, i >= 0, u.Name+" renders "+name)
+	assert.InRange(t, i, 0, float64(len(files)-1), u.Name+" renders "+name)
 	return string(files[i].Content)
 }

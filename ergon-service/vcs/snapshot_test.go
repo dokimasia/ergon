@@ -63,11 +63,11 @@ func TestSnapshot(t *testing.T) {
 			head := vcstest.Commit(t, dir, "first")
 			write(t, dir, "a.txt", "changed\n")
 			write(t, dir, "new.txt", "new\n")
-			status := vcstest.Git(t, dir, "status", "--porcelain")
-			_, err := vcs.Snapshot(t.Context(), dir)
+			var err error
+			assert.Pure(t, func() string { return vcstest.Git(t, dir, "status", "--porcelain") },
+				func() { _, err = vcs.Snapshot(t.Context(), dir) }, "the status")
 			assert.NoError(t, err, "Snapshot")
 			assert.Equal(t, strings.TrimSpace(vcstest.Git(t, dir, "rev-parse", "HEAD")), head, "HEAD")
-			assert.Equal(t, vcstest.Git(t, dir, "status", "--porcelain"), status, "the status")
 		})
 
 		t.Run("returns ErrGit for a directory outside a working tree", func(t *testing.T) {

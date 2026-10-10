@@ -688,10 +688,10 @@ func TestRepository(t *testing.T) {
 		t.Run("returns ErrDevelopmentBuild for a lock of a release and a build without a release", func(t *testing.T) {
 			t.Parallel()
 			r, root := releasedAt(t, version, development)
-			before := content(t, root, lockPath)
-			_, err := r.Sync(nil, baseline.Options{})
+			var err error
+			assert.Pure(t, func() string { return content(t, root, lockPath) },
+				func() { _, err = r.Sync(nil, baseline.Options{}) }, "the lock after Sync")
 			assert.ErrorIs(t, err, baseline.ErrDevelopmentBuild, "Sync")
-			assert.Equal(t, content(t, root, lockPath), before, "the lock after Sync")
 		})
 
 		t.Run("keeps the lock of a build without a release", func(t *testing.T) {

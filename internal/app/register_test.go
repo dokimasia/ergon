@@ -116,9 +116,7 @@ func TestRegisterProcess(t *testing.T) {
 				assert.NoError(t, err, "Parse")
 				pkgs := []workspace.Package{{Name: "go.dokimi.dev/demo", Dir: ".", Version: v}}
 				assert.NoError(t, packer.Pack(t.Context(), root, pkgs, t.TempDir()), "Pack")
-				got, err := os.ReadFile(record)
-				assert.NoError(t, err, "the record of the run")
-				assert.Equal(t, string(got), "tool\nrun\ngo.goreleaser\n--\nrelease\n--snapshot\n--clean\n--config\n"+
+				files.HasContent(t, record, "tool\nrun\ngo.goreleaser\n--\nrelease\n--snapshot\n--clean\n--config\n"+
 					".goreleaser.yaml\n1.0.0\n", "the arguments and the version of the run")
 				assert.Equal(t, strings.TrimSpace(vcstest.Git(t, root, "rev-parse", "v1.0.0^{commit}")), head,
 					"the commit of the tag of the module")

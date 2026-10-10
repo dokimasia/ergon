@@ -4,6 +4,7 @@
 package github_test
 
 import (
+	"encoding/json"
 	"testing"
 
 	"go.dokimi.dev/assert"
@@ -360,9 +361,14 @@ func TestOptions(t *testing.T) {
 		t.Run("leaves the contribution unchanged", func(t *testing.T) {
 			t.Parallel()
 			c := guarded()
-			_, err := baselineOptions().Jobs(&c)
+			var err error
+			// The reading is the JSON of the contribution, a copy that includes the setup behind its
+			// pointer.
+			assert.Pure(t, func() string {
+				encoded, _ := json.Marshal(c)
+				return string(encoded)
+			}, func() { _, err = baselineOptions().Jobs(&c) }, "the contribution")
 			assert.NoError(t, err, "Jobs")
-			assert.Equal(t, c, guarded(), "the contribution")
 		})
 
 		t.Run("returns no job for a contribution without one", func(t *testing.T) {

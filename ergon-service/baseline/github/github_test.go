@@ -13,6 +13,7 @@ import (
 
 	"go.dokimi.dev/assert"
 	"go.dokimi.dev/assert/expect"
+	"go.dokimi.dev/assert/files"
 	"go.dokimi.dev/assert/golden"
 	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/core/option"
@@ -107,15 +108,17 @@ func TestGithub(t *testing.T) {
 			t.Run("renders no configuration of Dependabot without an update", func(t *testing.T) {
 				t.Parallel()
 				dir := baselinetest.New(t, new(language.Catalog), baselinetest.Answers(), producer())
-				_, err := os.Stat(filepath.Join(dir, filepath.FromSlash(dependabotPath)))
-				assert.ErrorIs(t, err, fs.ErrNotExist, "Stat of "+dependabotPath)
+				files.Absent(
+					t,
+					filepath.Join(dir, filepath.FromSlash(dependabotPath)),
+					"the configuration of Dependabot",
+				)
 			})
 
 			t.Run("renders no nightly.yml without a nightly job", func(t *testing.T) {
 				t.Parallel()
 				dir := baselinetest.New(t, new(language.Catalog), baselinetest.Answers(), producer())
-				_, err := os.Stat(filepath.Join(dir, filepath.FromSlash(nightlyPath)))
-				assert.ErrorIs(t, err, fs.ErrNotExist, "Stat of "+nightlyPath)
+				files.Absent(t, filepath.Join(dir, filepath.FromSlash(nightlyPath)), "the workflow nightly.yml")
 			})
 		})
 

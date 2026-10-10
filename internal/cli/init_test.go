@@ -242,7 +242,7 @@ var uses = regexp.MustCompile(`(?m)^\s*(?:- )?uses: (.+)$`)
 
 // pinned matches the reference of an action pinned to the commit of a release, with the release
 // in a comment.
-var pinned = regexp.MustCompile(`^[A-Za-z0-9-]+/[A-Za-z0-9._/-]+@[0-9a-f]{40} # v?\d+\.\d+\.\d+$`)
+const pinned = `^[A-Za-z0-9-]+/[A-Za-z0-9._/-]+@[0-9a-f]{40} # v?\d+\.\d+\.\d+$`
 
 // lock is the part of .ergon/init.lock that the cases read.
 type lock struct {
@@ -747,7 +747,7 @@ func TestInit(t *testing.T) {
 					if strings.HasPrefix(reference, "./.github/") {
 						continue
 					}
-					assert.True(t, pinned.MatchString(reference), "the pin of "+reference+" in "+path)
+					assert.Matches(t, reference, pinned, "the pin of "+reference+" in "+path)
 					action, _, _ := strings.Cut(reference, "@")
 					if previous, ok := pins[action]; ok {
 						assert.Equal(t, reference, previous, "the pin of "+action+" in "+path)
@@ -768,7 +768,8 @@ func TestInit(t *testing.T) {
 				assert.NoError(t, err, "ReadFile of "+path)
 				var w workflow
 				assert.NoError(t, yaml.Unmarshal(data, &w), "Unmarshal of "+path)
-				assert.True(t, w.Permissions != nil && len(w.Permissions) == 0, "the permissions of "+path)
+				assert.NotNil(t, w.Permissions, "the permissions of "+path)
+				assert.Empty(t, w.Permissions, "the permissions of "+path)
 				gate := filepath.Base(path) == "ci.yml"
 				if gate {
 					assert.Equal(t, w.Defaults.Run.Shell, "bash", "the shell of the commands of "+path)
@@ -786,7 +787,7 @@ func TestInit(t *testing.T) {
 						continue
 					}
 					assert.NotEmpty(t, job.TimeoutMinutes, "the timeout of "+id)
-					assert.True(t, strings.HasPrefix(job.Steps[0].Uses, checkout.Uses+"@"), "the first step of "+id)
+					assert.HasPrefix(t, job.Steps[0].Uses, checkout.Uses+"@", "the first step of "+id)
 					assert.Equal(t, job.Steps[0].With["persist-credentials"], any(false), "persist-credentials of "+id)
 					matrix := gate && strings.HasPrefix(id, "check-")
 					if !matrix {
@@ -801,7 +802,7 @@ func TestInit(t *testing.T) {
 							setup = i
 						}
 						if strings.HasPrefix(step.Run, "make ") {
-							assert.True(t, setup >= 0 && setup < i, "setup-make before make in "+id)
+							assert.InRange(t, setup, 0, float64(i-1), "setup-make before make in "+id)
 						}
 					}
 				}

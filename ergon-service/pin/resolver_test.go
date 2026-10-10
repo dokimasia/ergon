@@ -566,8 +566,9 @@ func TestResolver(t *testing.T) {
 					Name:    program,
 				},
 			})
-			assert.ErrorIs(t, err, pin.ErrAsset, "Resolve")
-			assert.ErrorIs(t, err, option.ErrNoAsset, "Resolve")
+			assert.That(t, err).
+				ErrorIs(pin.ErrAsset, "Resolve").
+				ErrorIs(option.ErrNoAsset, "Resolve")
 		})
 
 		values := []struct {
@@ -639,8 +640,9 @@ func TestResolver(t *testing.T) {
 				Kind: pin.KindAction, Key: actionKey, Name: actionRepo,
 				Version: "v7.0.0",
 			})
-			assert.ErrorIs(t, err, pin.ErrRegistry, "Resolve")
-			assert.ErrorIs(t, err, errGitHub, "Resolve")
+			assert.That(t, err).
+				ErrorIs(pin.ErrRegistry, "Resolve").
+				ErrorIs(errGitHub, "Resolve")
 		})
 
 		t.Run("sends the user agent of ergon with the request of a document", func(t *testing.T) {

@@ -44,8 +44,9 @@ func TestGitHub(t *testing.T) {
 				Kind: pin.KindGitHub, Key: hooksKey, Name: hooksRepo,
 				Version: "v6.0.0",
 			})
-			assert.ErrorIs(t, err, pin.ErrRegistry, "Resolve")
-			assert.ErrorIs(t, err, errGitHub, "Resolve")
+			assert.That(t, err).
+				ErrorIs(pin.ErrRegistry, "Resolve").
+				ErrorIs(errGitHub, "Resolve")
 		})
 	})
 }

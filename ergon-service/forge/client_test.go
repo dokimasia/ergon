@@ -193,8 +193,9 @@ func TestClient(t *testing.T) {
 			c, err := forge.New(&http.Client{}, forge.Config{Token: token, API: "http://bad\x7fhost"})
 			assert.NoError(t, err, "New")
 			_, _, err = c.Branch(t.Context(), repo, "main")
-			assert.HasError(t, err, "Branch")
-			assert.ErrorIsNot(t, err, forge.ErrGitHub, "the class of the error")
+			assert.That(t, err).
+				HasError("Branch").
+				ErrorIsNot(forge.ErrGitHub, "the class of the error")
 		})
 	})
 

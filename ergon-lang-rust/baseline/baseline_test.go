@@ -145,6 +145,6 @@ func rendered(t *testing.T, o language.Options, name string) string {
 		baselinetest.Answers(rust.Language), &workflow.Contribution{})
 	assert.NoError(t, err, "Render")
 	i := slices.IndexFunc(files, func(f render.File) bool { return f.Path == name })
-	assert.True(t, i >= 0, "Rust renders "+name)
+	assert.InRange(t, i, 0, float64(len(files)-1), "Rust renders "+name)
 	return string(files[i].Content)
 }

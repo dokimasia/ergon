@@ -351,8 +351,9 @@ func TestTool(t *testing.T) {
 			o.Tools.Tool = release(served, program, "", []byte("no program\n"))
 			r, _, _ := runner(t, served)
 			_, err := r.Run(t.Context(), section, o, "tool", nil)
-			assert.HasError(t, err, "Run")
-			assert.ErrorIsNot(t, err, tool.ErrInstall, "Run")
+			assert.That(t, err).
+				HasError("Run").
+				ErrorIsNot(tool.ErrInstall, "Run")
 			assert.HasPrefix(t, err.Error(), "tool: run demo.tool: ", "the error")
 		})
 	})
