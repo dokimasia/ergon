@@ -46,7 +46,7 @@ func (c *Client) Status(ctx context.Context, repo, sha, name string) (string, bo
 	var combined struct {
 		Statuses []status `json:"statuses"`
 	}
-	path := "/repos/" + repo + "/commits/" + sha + "/status?" + url.Values{"per_page": {maxStatuses}}.Encode()
+	path := "/repos/" + repo + "/commits/" + sha + "/status?" + url.Values{perPage: {maxStatuses}}.Encode()
 	if _, err := c.rest(ctx, http.MethodGet, path, nil, &combined); err != nil {
 		return "", false, err
 	}

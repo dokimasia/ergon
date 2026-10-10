@@ -45,6 +45,9 @@ const (
 // maxResponse is the largest response that a Client reads, in bytes.
 const maxResponse = 10 << 20
 
+// perPage is the parameter of the query of a list that states the number of items of a page.
+const perPage = "per_page"
+
 // ErrToken is the error of [New] for a configuration without a token.
 var ErrToken = errors.New("forge: no token")
 

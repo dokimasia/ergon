@@ -327,6 +327,26 @@ func TestResolve(t *testing.T) {
 			assert.Equal(t, res.Drop, []string{"gone"}, "the dropped sections")
 		})
 
+		t.Run("leaves out an option that the producer no longer has at the value of its record", func(t *testing.T) {
+			t.Parallel()
+			recorded := map[string]any{"demo.tools.gone": "example.com/gone@v1.0.0", "demo.fuzz.time": "10s"}
+			file := "demo:\n  tools:\n    gone: example.com/gone@v1.0.0\n  fuzz:\n    time: 10s\n"
+			res, err := options.Resolve([]byte(file), recorded, nil, answers(), producers(), []string{name})
+			assert.NoError(t, err, "Resolve")
+			want := baseline()
+			want.Owner = "Dokimasia B.V."
+			assert.Equal(t, res.Sections, []options.Section{{Name: name, Options: want}}, "the sections")
+		})
+
+		t.Run("returns ErrInvalid for an option that the producer no longer has at another value", func(t *testing.T) {
+			t.Parallel()
+			recorded := map[string]any{"demo.tools.gone": "example.com/gone@v1.0.0"}
+			file := "demo:\n  tools:\n    gone: example.com/gone@v2.0.0\n"
+			_, err := options.Resolve([]byte(file), recorded, nil, answers(), producers(), []string{name})
+			assert.ErrorIs(t, err, options.ErrInvalid, "Resolve")
+			assert.Contains(t, err.Error(), "gone", "the error")
+		})
+
 		t.Run("does not modify the record", func(t *testing.T) {
 			t.Parallel()
 			recorded := map[string]any{"demo.fuzz.time": "10s"}

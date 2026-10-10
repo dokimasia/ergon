@@ -69,20 +69,38 @@ type customPlugin struct {
 // one. go install checks the module against the checksum database. It returns an error that wraps
 // [ErrInstall] for a go command that does not report its version.
 func (r *Runner) module(ctx context.Context, m option.Module, name string) (string, error) {
-	cmd := exec.CommandContext(ctx, "go", "env", "GOVERSION")
-	cmd.Dir, cmd.Env, cmd.Stderr = r.Dir, r.Env, r.Stderr
-	goVersion, err := cmd.Output()
+	goVersion, err := r.goVersion(ctx)
 	if err != nil {
-		return "", fmt.Errorf("%w: go env GOVERSION: %w", ErrInstall, err)
+		return "", err
 	}
-	sum := sha256.Sum256(bytes.TrimSpace(goVersion))
-	dir := filepath.Join(r.Cache, "module", filepath.FromSlash(m.Package()), m.Version(),
-		hex.EncodeToString(sum[:8]), r.platform())
+	dir := r.moduleDir(m, goVersion)
 	program := filepath.Join(dir, r.executable(name))
 	if exists(program) {
 		return program, nil
 	}
 	return program, r.toolchain(ctx, []string{"GOBIN=" + dir}, "go", "install", string(m))
+}
+
+// goVersion returns the version of the go command in the directory Dir, as go env GOVERSION
+// reports it, such as go1.27.2. It returns an error that wraps [ErrInstall] for a go command that
+// does not report its version.
+func (r *Runner) goVersion(ctx context.Context) ([]byte, error) {
+	cmd := exec.CommandContext(ctx, "go", "env", "GOVERSION")
+	cmd.Dir, cmd.Env, cmd.Stderr = r.Dir, r.Env, r.Stderr
+	version, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("%w: go env GOVERSION: %w", ErrInstall, err)
+	}
+	return bytes.TrimSpace(version), nil
+}
+
+// moduleDir returns the directory of the programs of the Go module m in the cache for the go command
+// of goVersion: under the package, the version, the first 8 bytes of the SHA-256 of goVersion in
+// hexadecimal, and the platform.
+func (r *Runner) moduleDir(m option.Module, goVersion []byte) string {
+	sum := sha256.Sum256(goVersion)
+	return filepath.Join(r.Cache, "module", filepath.FromSlash(m.Package()), m.Version(),
+		hex.EncodeToString(sum[:8]), r.platform())
 }
 
 // custom builds the program name of golangci-lint, the Go module m whose program stock the cache
@@ -97,18 +115,12 @@ func (r *Runner) module(ctx context.Context, m option.Module, name string) (stri
 func (r *Runner) custom(ctx context.Context, stock string, m option.Module, plugins option.Plugins, name string) (
 	string, error,
 ) {
-	config := customConfig{Version: m.Version(), Name: name}
-	for _, p := range slices.Compact(slices.Sorted(maps.Values(plugins))) {
-		config.Plugins = append(config.Plugins, customPlugin{Module: p.Package(), Version: p.Version()})
-	}
-	content, _ := json.Marshal(config)
-	sum := sha256.Sum256(content)
-	parent := filepath.Join(filepath.Dir(stock), pluginsDir)
-	dir := filepath.Join(parent, hex.EncodeToString(sum[:8]))
+	dir, content := customDir(stock, m, plugins, name)
 	program := filepath.Join(dir, filepath.Base(stock))
 	if exists(program) {
 		return program, nil
 	}
+	parent := filepath.Dir(dir)
 	err := os.MkdirAll(parent, dirPerm)
 	var build string
 	if err == nil {
@@ -130,6 +142,22 @@ func (r *Runner) custom(ctx context.Context, stock string, m option.Module, plug
 		return "", fmt.Errorf("%w: %w", ErrInstall, err)
 	}
 	return program, nil
+}
+
+// customDir returns the directory beside stock, the program of golangci-lint in the cache, in which
+// golangci-lint custom builds the program name with the module plugins of plugins, and the
+// configuration of that build: the version of m, name, and each package once. The directory is
+// named after the first 8 bytes of the SHA-256 of the configuration in hexadecimal, so other plugins
+// build another program.
+func customDir(stock string, m option.Module, plugins option.Plugins, name string) (string, []byte) {
+	config := customConfig{Version: m.Version(), Name: name}
+	for _, p := range slices.Compact(slices.Sorted(maps.Values(plugins))) {
+		config.Plugins = append(config.Plugins, customPlugin{Module: p.Package(), Version: p.Version()})
+	}
+	// A configuration of strings and of a list of structs of strings encodes.
+	content, _ := json.Marshal(config)
+	sum := sha256.Sum256(content)
+	return filepath.Join(filepath.Dir(stock), pluginsDir, hex.EncodeToString(sum[:8])), content
 }
 
 // crate installs the crate c with cargo install --locked into the cache, unless the cache has its
@@ -184,18 +212,7 @@ func npm(n option.NPM, name string) (string, []string) {
 // installer of PHPStan loads the extensions of the project. It returns an error that wraps
 // [ErrInstall] for a project that does not create, and the error of composer.
 func (r *Runner) composer(ctx context.Context, section string, e *entry, name string) (string, []string, error) {
-	var packages []string
-	for i := range e.tools.NumField() {
-		if !e.tools.Type().Field(i).IsExported() {
-			continue
-		}
-		if c, ok := reflect.TypeAssert[option.Composer](e.tools.Field(i)); ok {
-			packages = append(packages, c.Package()+":"+c.Version())
-		}
-	}
-	slices.Sort(packages)
-	sum := sha256.Sum256([]byte(strings.Join(packages, "\n")))
-	dir := filepath.Join(r.Cache, "composer", section, hex.EncodeToString(sum[:8]))
+	dir, packages := r.composerProject(section, e.tools)
 	program := filepath.Join(dir, "vendor", "bin", name)
 	if exists(program) {
 		return "php", []string{program}, nil
@@ -212,6 +229,25 @@ func (r *Runner) composer(ctx context.Context, section string, e *entry, name st
 		return "", nil, err
 	}
 	return "php", []string{program}, nil
+}
+
+// composerProject returns the directory of the project of the Composer packages of tools, the
+// struct of the tools of section, in the cache, and the packages as composer require takes them,
+// sorted, such as phpstan/phpstan:2.2.17. The project is named after the section and the first 8
+// bytes of the SHA-256 of its packages in hexadecimal.
+func (r *Runner) composerProject(section string, tools reflect.Value) (string, []string) {
+	var packages []string
+	for i := range tools.NumField() {
+		if !tools.Type().Field(i).IsExported() {
+			continue
+		}
+		if c, ok := reflect.TypeAssert[option.Composer](tools.Field(i)); ok {
+			packages = append(packages, c.Package()+":"+c.Version())
+		}
+	}
+	slices.Sort(packages)
+	sum := sha256.Sum256([]byte(strings.Join(packages, "\n")))
+	return filepath.Join(r.Cache, "composer", section, hex.EncodeToString(sum[:8])), packages
 }
 
 // toolchain runs the program name of a toolchain with args and the environment of the runner and

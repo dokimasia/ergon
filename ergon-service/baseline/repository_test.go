@@ -957,6 +957,28 @@ func TestRepository(t *testing.T) {
 			assert.Contains(t, err.Error(), editedKey, "the error")
 		})
 	})
+
+	t.Run("Sections", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("returns the options of each producer with options in the order of the producers", func(t *testing.T) {
+			t.Parallel()
+			r, root := initialized(t)
+			put(t, root, config, "common:\n  greeting: welcome\n")
+			got, err := r.Sections()
+			assert.NoError(t, err, "Sections")
+			assert.Equal(t, got, []options.Section{
+				{Name: "common", Options: &greetings{Greeting: "welcome"}},
+				{Name: string(alpha), Options: &greetings{Greeting: "hi"}},
+			}, "the sections")
+		})
+
+		t.Run("returns ErrNotInitialized for a repository without a lock", func(t *testing.T) {
+			t.Parallel()
+			_, err := repository(t, directory(t)).Sections()
+			assert.ErrorIs(t, err, baseline.ErrNotInitialized, "Sections")
+		})
+	})
 }
 
 // common returns the base producer of the cases: a shared, a managed, a seeded and a YAML file,

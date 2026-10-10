@@ -17,14 +17,43 @@ import (
 // The runners of the section github at the baseline.
 var runners = option.Runners{"ubuntu-26.04", "macos-26", "windows-2025"}
 
-// The step that keeps the tools of ergon in the cache: its name, the tool directory of ergon on each
-// system, and the key of a job without and with the runtime versions of a matrix.
+// The step that keeps the tools of ergon in the cache: its name and its ID, the tool directory of
+// ergon on each system, the start of its keys, the prefix that a job without and with the runtime
+// versions of a matrix restores, and the key of each of those jobs and of a job whose setup has
+// the version file alpha.version.
 const (
-	toolsName       = "Keep the tools of ergon"
-	toolsPath       = "${{ runner.os == 'Windows' && '~/AppData/Local/ergon/tools' || runner.os == 'macOS' && '~/Library/Caches/ergon/tools' || '~/.cache/ergon/tools' }}"
-	toolsKey        = "ergon-tools-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ hashFiles('.ergon.yaml', '.ergon/init.lock') }}"
-	toolsVersionKey = "ergon-tools-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ matrix.version }}-${{ hashFiles('.ergon.yaml', '.ergon/init.lock') }}"
+	toolsName          = "Keep the tools of ergon"
+	toolsID            = "ergon-tools"
+	toolsPath          = "${{ runner.os == 'Windows' && '~/AppData/Local/ergon/tools' || runner.os == 'macOS' && '~/Library/Caches/ergon/tools' || '~/.cache/ergon/tools' }}"
+	toolsCache         = "ergon-tools-"
+	toolsPrefix        = "ergon-tools-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-"
+	toolsVersionPrefix = "ergon-tools-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ matrix.version }}-"
+	toolsKey           = toolsPrefix + "${{ hashFiles('.ergon.yaml', '.ergon/init.lock') }}"
+	toolsVersionKey    = toolsVersionPrefix + "${{ hashFiles('.ergon.yaml', '.ergon/init.lock') }}"
+	toolsFilesKey      = toolsPrefix + "${{ hashFiles('.ergon.yaml', '.ergon/init.lock', 'alpha.version') }}"
 )
+
+// pruneTools is the last step of a job that runs tools, which removes the tools that the options
+// do not name when the key of the cache missed.
+var pruneTools = workflow.Step{
+	Name: "Prune the tools of ergon",
+	If:   "steps.ergon-tools.outputs.cache-hit != 'true'",
+	Run:  []string{"ergon tool prune"},
+}
+
+// prune is the job prune-tools of nightly.yml at the baseline, as NightlyJobs returns it.
+var prune = github.Job{
+	ID:          "prune-tools",
+	Name:        "Prune the tool caches",
+	Permissions: map[string]string{"actions": "write", "contents": "read"},
+	Steps: []workflow.Step{{
+		Name: "Delete the tool caches that newer caches replaced",
+		Env:  map[string]string{"GITHUB_TOKEN": "${{ github.token }}"},
+		Run:  []string{"ergon tool ci prune"},
+	}},
+	Timeout: 15,
+	Ergon:   true,
+}
 
 func TestOptions(t *testing.T) {
 	t.Parallel()
@@ -167,9 +196,53 @@ func TestOptions(t *testing.T) {
 			expect.Equal(t, got[0].Name, "Fuzz alpha (${{ matrix.os }})", "the name")
 		})
 
-		t.Run("returns no job for a contribution without a nightly job", func(t *testing.T) {
+		t.Run("returns the job prune-tools after the nightly jobs for a job of ci.yml that runs tools",
+			func(t *testing.T) {
+				t.Parallel()
+				c := workflow.Contribution{Jobs: guarded().Jobs, Nightly: []workflow.Job{{
+					ID:    "fuzz-alpha",
+					Name:  "Fuzz alpha",
+					Setup: &workflow.Setup{Timeout: 120},
+					Steps: []workflow.Step{{Run: []string{"make fuzz-alpha"}}},
+				}}}
+				got, err := baselineOptions().NightlyJobs(&c)
+				assert.NoError(t, err, "NightlyJobs")
+				assert.Length(t, got, 2, "the jobs")
+				expect.Equal(t, got[0].ID, "fuzz-alpha", "the first job")
+				expect.Equal(t, got[1], prune, "the last job")
+			})
+
+		t.Run("returns the job prune-tools for a nightly job that runs tools", func(t *testing.T) {
 			t.Parallel()
+			c := workflow.Contribution{Nightly: []workflow.Job{{
+				ID:    "fuzz-alpha",
+				Name:  "Fuzz alpha",
+				Setup: &workflow.Setup{Timeout: 120},
+				Tools: true,
+				Steps: []workflow.Step{{Run: []string{"make fuzz-alpha"}}},
+			}}}
+			got, err := baselineOptions().NightlyJobs(&c)
+			assert.NoError(t, err, "NightlyJobs")
+			assert.Length(t, got, 2, "the jobs")
+			assert.Equal(t, got[1], prune, "the last job")
+		})
+
+		t.Run("returns the job prune-tools with the timeout of the options", func(t *testing.T) {
+			t.Parallel()
+			o := baselineOptions()
+			o.CI.Timeout = 25
 			c := workflow.Contribution{Jobs: guarded().Jobs}
+			got, err := o.NightlyJobs(&c)
+			assert.NoError(t, err, "NightlyJobs")
+			assert.Length(t, got, 1, "the jobs")
+			assert.Equal(t, got[0].Timeout, 25, "the timeout of prune-tools")
+		})
+
+		t.Run("returns no job for a contribution whose jobs run no tools", func(t *testing.T) {
+			t.Parallel()
+			steps := []workflow.Step{{Run: []string{"make docs"}}}
+			docs := workflow.Job{ID: "docs", Name: "Docs", Text: true, Timeout: 3, Steps: steps}
+			c := workflow.Contribution{Jobs: []workflow.Job{docs}}
 			got, err := baselineOptions().NightlyJobs(&c)
 			assert.NoError(t, err, "NightlyJobs")
 			assert.Empty(t, got, "the jobs")
@@ -281,11 +354,45 @@ func TestOptions(t *testing.T) {
 			assert.Equal(t, got[0].Steps, []workflow.Step{
 				{
 					Name: toolsName,
+					ID:   toolsID,
 					Uses: o.CI.Actions.Cache,
-					With: map[string]string{"path": toolsPath, "key": toolsKey},
+					With: map[string]string{"path": toolsPath, "key": toolsKey, "restore-keys": toolsPrefix},
 				},
 				check,
+				pruneTools,
 			}, "the steps")
+		})
+
+		t.Run("prunes the tools of ergon after the steps of a job that runs tools", func(t *testing.T) {
+			t.Parallel()
+			c := workflow.Contribution{Jobs: []workflow.Job{{
+				ID:    "check-alpha",
+				Name:  "Alpha",
+				Setup: &workflow.Setup{Timeout: 20},
+				Tools: true,
+				Steps: []workflow.Step{{Run: []string{"make lint-alpha"}}, {Run: []string{"make test-alpha"}}},
+			}}}
+			got, err := baselineOptions().Jobs(&c)
+			assert.NoError(t, err, "Jobs")
+			assert.Length(t, got, 1, "the jobs")
+			assert.Length(t, got[0].Steps, 4, "the steps")
+			assert.Equal(t, got[0].Steps[3], pruneTools, "the last step")
+		})
+
+		t.Run("keys the cache of the tools of ergon by the version files of the setup", func(t *testing.T) {
+			t.Parallel()
+			c := workflow.Contribution{Jobs: []workflow.Job{{
+				ID:    "check-alpha",
+				Name:  "Alpha",
+				Setup: &workflow.Setup{VersionFiles: "alpha.version", Timeout: 20},
+				Tools: true,
+				Steps: []workflow.Step{{Run: []string{"make check-alpha"}}},
+			}}}
+			got, err := baselineOptions().Jobs(&c)
+			assert.NoError(t, err, "Jobs")
+			assert.Length(t, got, 1, "the jobs")
+			assert.NotEmpty(t, got[0].Steps, "the steps")
+			assert.Equal(t, got[0].Steps[0].With["key"], toolsFilesKey, "the key of the cache")
 		})
 
 		t.Run("keys the cache of the tools of ergon by the runtime version of a matrix", func(t *testing.T) {
@@ -301,7 +408,19 @@ func TestOptions(t *testing.T) {
 			assert.NoError(t, err, "Jobs")
 			assert.Length(t, got, 1, "the jobs")
 			assert.NotEmpty(t, got[0].Steps, "the steps")
-			assert.Equal(t, got[0].Steps[0].With["key"], toolsVersionKey, "the key of the cache")
+			with := got[0].Steps[0].With
+			expect.Equal(t, with["key"], toolsVersionKey, "the key of the cache")
+			expect.Equal(t, with["restore-keys"], toolsVersionPrefix, "the prefix that the job restores")
+		})
+
+		t.Run("starts the key of the cache of the tools of ergon with ToolsCache", func(t *testing.T) {
+			t.Parallel()
+			got, err := baselineOptions().Jobs(&workflow.Contribution{Jobs: guarded().Jobs})
+			assert.NoError(t, err, "Jobs")
+			assert.Length(t, got, 1, "the jobs")
+			assert.NotEmpty(t, got[0].Steps, "the steps")
+			expect.Equal(t, github.ToolsCache, toolsCache, "ToolsCache")
+			expect.HasPrefix(t, got[0].Steps[0].With["key"], github.ToolsCache, "the key of the cache")
 		})
 
 		t.Run("returns a job whose setup lists no runner on every runner", func(t *testing.T) {

@@ -5,8 +5,9 @@
 // changelog of GitHub, the branch, the signed commits, the commit status and the pull request of a
 // version pull request, the tags, the draft releases and the assets of a publish, the casks of a
 // tap, the passed runs of a workflow, the trees and the parents of commits, the statuses of commits
-// and the heads of pull requests that a publish and a skipped run of the gate verify, and the
-// releases of a repository with the digests of their assets for a baseline update.
+// and the heads of pull requests that a publish and a skipped run of the gate verify, the releases
+// of a repository with the digests of their assets for a baseline update, and the caches of GitHub
+// Actions of a repository, which a nightly job prunes.
 //
 // # Requests
 //
@@ -41,5 +42,6 @@
 //
 // Imports the standard library alone. internal/cli of the root module joins it to the package
 // release, which declares the interfaces that a Client implements and reads the types of its
-// releases, and [go.dokimi.dev/ergon/service/pin] reads its releases.
+// releases, and to the package tool, which reads the type of its caches.
+// [go.dokimi.dev/ergon/service/pin] reads its releases.
 package forge

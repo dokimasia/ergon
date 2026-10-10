@@ -18,7 +18,7 @@ const success = "success"
 // error that wraps [ErrGitHub] for a request that fails, such as for a workflow that repo does not
 // have.
 func (c *Client) Passed(ctx context.Context, repo, workflow, sha string) (string, bool, error) {
-	query := url.Values{"head_sha": {sha}, "status": {success}, "per_page": {"1"}}
+	query := url.Values{"head_sha": {sha}, "status": {success}, perPage: {"1"}}
 	var runs struct {
 		Runs []struct {
 			Page string `json:"html_url"`

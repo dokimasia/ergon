@@ -70,7 +70,9 @@ type Resolution struct {
 // each section into a new value of its producer's options, which starts with the baseline value of
 // every option that the section lacks. An option whose value in file equals the value that recorded
 // records for it takes its baseline value, so an option that the repository never changed follows
-// the baseline of the installed ergon. A field with an answer tag takes the answer's value of a.
+// the baseline of the installed ergon. Such an option that the producer no longer has is left out,
+// so the baseline of the installed ergon removes it. A field with an answer tag takes the answer's
+// value of a.
 // names are the names of every section that a producer of the catalog can have: a section of names
 // that no producer of producers states is dropped when recorded records an option of it.
 //
@@ -130,11 +132,9 @@ func resolve(v *viper.Viper, p *Producer, recorded map[string]any, previous, a *
 	if err := answer(options, fs, a); err != nil {
 		return nil, err
 	}
-	leaves := map[string]any{}
 	for _, f := range fs {
 		if f.Type.Kind() != reflect.Struct && f.Answer == "" {
-			leaves[f.Key] = stated(options.FieldByIndex(f.Index))
-			record[p.Name+"."+f.Key] = leaves[f.Key]
+			record[p.Name+"."+f.Key] = stated(options.FieldByIndex(f.Index))
 		}
 	}
 	if v.InConfig(p.Name) {
@@ -142,7 +142,7 @@ func resolve(v *viper.Viper, p *Producer, recorded map[string]any, previous, a *
 		if !ok {
 			return nil, fmt.Errorf("%w: %s, which must be a mapping", ErrInvalid, p.Name)
 		}
-		v.Set(p.Name, prune(section, p.Name, leaves, recorded))
+		v.Set(p.Name, prune(section, p.Name, recorded))
 		if err := v.UnmarshalKey(p.Name, o, strict); err != nil {
 			return nil, fmt.Errorf("%w: %s: %w", ErrInvalid, p.Name, err)
 		}
@@ -252,13 +252,14 @@ func stated(v reflect.Value) any {
 }
 
 // prune returns a copy of section, the section name of .ergon.yaml as viper parsed it, without each
-// option of leaves whose value in section equals the value that recorded records for it. The
-// decoder then keeps the option at its baseline value. The copy shares no map with section.
-func prune(section map[string]any, name string, leaves, recorded map[string]any) map[string]any {
+// option of the section that recorded records with the value that section states. The decoder then
+// keeps such an option at its baseline value. The decoder also does not see such an option when the
+// producer no longer has it. The copy does not share a map with section.
+func prune(section map[string]any, name string, recorded map[string]any) map[string]any {
 	out := clone(section)
-	for path := range leaves {
-		previous, known := recorded[name+"."+path]
-		if !known {
+	for key, previous := range recorded {
+		path, ok := strings.CutPrefix(key, name+".")
+		if !ok {
 			continue
 		}
 		parent := out

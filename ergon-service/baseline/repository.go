@@ -330,13 +330,28 @@ func (r *Repository) Check() ([]Finding, error) {
 
 // Options returns the options of the section name of .ergon.yaml, resolved as every command
 // resolves them: from the section, the record of the lock and the baseline of the producer of that
-// name among the producers of the repository. It writes nothing.
+// name among the producers of the repository. It does not write a file.
 //
 // It returns an error that wraps [ErrNotInitialized] for a repository without a lock,
 // [ErrUnknownSection] for a name of no producer with options, the errors that [Repository.Check]
 // returns for the answers of the lock, and [options.ErrInvalid] for .ergon.yaml that the producers
 // do not accept.
 func (r *Repository) Options(name string) (language.Options, error) {
+	sections, err := r.Sections()
+	if err != nil {
+		return nil, err
+	}
+	i := slices.IndexFunc(sections, func(s options.Section) bool { return s.Name == name })
+	if i < 0 {
+		return nil, fmt.Errorf("%w: %q", ErrUnknownSection, name)
+	}
+	return sections[i].Options, nil
+}
+
+// Sections returns the options of each producer of the repository with options, in the order of
+// the producers. It resolves each section as [Repository.Options] resolves one, and does not write
+// a file. It returns the errors of Options, except ErrUnknownSection.
+func (r *Repository) Sections() ([]options.Section, error) {
 	l, err := r.readLock()
 	if err != nil {
 		return nil, err
@@ -349,11 +364,7 @@ func (r *Repository) Options(name string) (language.Options, error) {
 	if err != nil {
 		return nil, err
 	}
-	i := slices.IndexFunc(res.Sections, func(s options.Section) bool { return s.Name == name })
-	if i < 0 {
-		return nil, fmt.Errorf("%w: %q", ErrUnknownSection, name)
-	}
-	return res.Sections[i].Options, nil
+	return res.Sections, nil
 }
 
 // change renders a with the options that previous records, plans against the file entries of

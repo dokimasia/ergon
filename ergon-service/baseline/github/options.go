@@ -27,16 +27,51 @@ const (
 	versionSuffix = " (${{ matrix.os }}, ${{ matrix.version }})"
 )
 
+// ToolsCache starts the key of each cache of GitHub Actions that keeps the tool directory of ergon
+// for a job of ci.yml or nightly.yml. The key continues with the system, the architecture, the job
+// and the runtime version of a matrix, each followed by a dash, and ends in the digest of the files
+// of the key, which contains no dash.
+const ToolsCache = "ergon-tools-"
+
 // The step that keeps the tool directory of ergon in the cache of GitHub Actions, in a job that
-// runs tools: its name, the directory, which is ergon/tools in the cache directory of the user on
-// each system, as os.UserCacheDir returns it, and its key without and with the runtime version of
-// a matrix. The key changes with each version of a tool or of ergon, which .ergon.yaml and the
-// lock state.
+// runs tools: its name and its ID, the directory, which is ergon/tools in the cache directory of the
+// user on each system, as os.UserCacheDir returns it, its prefix without and with the runtime
+// version of a matrix, and the files of its key. The key ends in the digest of .ergon.yaml, the lock
+// and the version files of the setup of the job, so it changes with each option, each version of
+// ergon and each version of the toolchain. On a miss, the prefix restores the newest cache of the
+// job, and ergon tool run installs only the tools whose versions that cache lacks.
 const (
-	toolsStep       = "Keep the tools of ergon"
-	toolsPath       = "${{ runner.os == 'Windows' && '~/AppData/Local/ergon/tools' || runner.os == 'macOS' && '~/Library/Caches/ergon/tools' || '~/.cache/ergon/tools' }}"
-	toolsKey        = "ergon-tools-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ hashFiles('.ergon.yaml', '.ergon/init.lock') }}"
-	toolsVersionKey = "ergon-tools-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ matrix.version }}-${{ hashFiles('.ergon.yaml', '.ergon/init.lock') }}"
+	toolsStep          = "Keep the tools of ergon"
+	toolsID            = "ergon-tools"
+	toolsPath          = "${{ runner.os == 'Windows' && '~/AppData/Local/ergon/tools' || runner.os == 'macOS' && '~/Library/Caches/ergon/tools' || '~/.cache/ergon/tools' }}"
+	toolsPrefix        = ToolsCache + "${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-"
+	toolsVersionPrefix = ToolsCache + "${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ matrix.version }}-"
+	toolsFiles         = "'.ergon.yaml', '.ergon/init.lock'"
+)
+
+// The last step of a job that runs tools, which removes each tool that the options do not name
+// from the tool directory before the cache saves it: its name, its condition, and its command. It
+// runs only when the key of the cache missed, because actions/cache does not save after a hit.
+const (
+	pruneToolsStep = "Prune the tools of ergon"
+	pruneToolsIf   = "steps." + toolsID + ".outputs.cache-hit != 'true'"
+	pruneToolsRun  = "ergon tool prune"
+)
+
+// The job of nightly.yml that deletes the caches of the tools of ergon that newer caches of the same
+// job replaced: its key, its name, the name of its step, and the command of the step.
+const (
+	pruneID   = "prune-tools"
+	pruneName = "Prune the tool caches"
+	pruneStep = "Delete the tool caches that newer caches replaced"
+	pruneRun  = "ergon tool ci prune"
+)
+
+// The variable of the environment from which ergon reads the token of GitHub, and the expression
+// of the token of the run, which GitHub Actions replaces before the step runs.
+const (
+	authVariable   = "GITHUB_TOKEN"
+	authExpression = "${{ github.token }}"
 )
 
 // Job is a job of ci.yml as its template renders it: the values of a [workflow.Job] that the
@@ -75,8 +110,9 @@ type Job struct {
 	// before the installation of ergon.
 	Setup []workflow.Step
 
-	// Steps are the steps of the job, each with Guard before its own condition: the step that keeps
-	// the tools of ergon in the cache for a job that runs tools, then the steps of the job.
+	// Steps are the steps of the job, each with Guard before its own condition. For a job that runs
+	// tools, the step that keeps the tools of ergon in the cache comes first, and the step that
+	// prunes them comes last.
 	Steps []workflow.Step
 
 	// Timeout is the limit of the job in minutes.
@@ -181,7 +217,9 @@ func (o *Options) Validate() error {
 //   - Any other job runs on every runner of o, and installs ergon when it runs ergon.
 //   - A job that runs tools keeps the tool directory of ergon in the cache with the action Cache,
 //     in a step before its own steps. The key of the cache names the runtime version of a matrix
-//     with versions.
+//     with versions, and covers the version files of its setup. Its prefix restores the newest
+//     cache of the job when the key misses. After its own steps, a step runs ergon tool prune when
+//     the key missed, so the cache saves only the tools that the options name.
 //
 // It returns an error that wraps [option.ErrInvalid] for a job that runs on a runner that Runners
 // does not list. Jobs reads c and does not modify it: a guarded step is a copy. A Job shares its
@@ -217,16 +255,26 @@ func (o *Options) Jobs(c *workflow.Contribution) ([]Job, error) {
 			}
 		}
 		if j.Tools {
-			key := toolsKey
+			prefix := toolsPrefix
 			if len(job.Versions) > 0 {
-				key = toolsVersionKey
+				prefix = toolsVersionPrefix
+			}
+			files := toolsFiles
+			if j.Setup != nil && j.Setup.VersionFiles != "" {
+				files += ", '" + j.Setup.VersionFiles + "'"
 			}
 			tools := workflow.Step{
 				Name: toolsStep,
+				ID:   toolsID,
 				Uses: o.CI.Actions.Cache,
-				With: map[string]string{"path": toolsPath, "key": key},
+				With: map[string]string{
+					"path":         toolsPath,
+					"key":          prefix + "${{ hashFiles(" + files + ") }}",
+					"restore-keys": prefix,
+				},
 			}
-			job.Steps = slices.Concat([]workflow.Step{tools}, j.Steps)
+			prune := workflow.Step{Name: pruneToolsStep, If: pruneToolsIf, Run: []string{pruneToolsRun}}
+			job.Steps = slices.Concat([]workflow.Step{tools}, j.Steps, []workflow.Step{prune})
 		}
 		for _, r := range job.Runners {
 			if !slices.Contains(o.Runners, r) {
@@ -262,20 +310,39 @@ func (o *Options) Jobs(c *workflow.Contribution) ([]Job, error) {
 // NightlyJobs returns the nightly jobs of c as nightly.yml renders them for o, in the order of c. It
 // renders each job as [Options.Jobs] does, but a job without a setup that lists runners runs on the
 // runner Linux: without a matrix and without a runner in its name, unless its setup lists versions,
-// which a matrix of Linux runs. It returns the errors of Options.Jobs.
+// which a matrix of Linux runs. When a job of c keeps the tools of ergon in the cache, the last job
+// is prune-tools. It runs ergon tool ci prune on the runner Linux with the permission actions:
+// write. The command deletes each cache of the tools that a newer cache of the same job replaced.
+// NightlyJobs returns the errors of Options.Jobs.
 func (o *Options) NightlyJobs(c *workflow.Contribution) ([]Job, error) {
-	jobs, err := o.Jobs(&workflow.Contribution{Jobs: c.Nightly})
+	nightly := c.Nightly
+	tools := func(j workflow.Job) bool { return j.Tools }
+	if slices.ContainsFunc(c.Jobs, tools) || slices.ContainsFunc(c.Nightly, tools) {
+		nightly = slices.Concat(nightly, []workflow.Job{{
+			ID:          pruneID,
+			Name:        pruneName,
+			Timeout:     o.CI.Timeout,
+			Permissions: map[string]string{"actions": "write", "contents": "read"},
+			Ergon:       true,
+			Steps: []workflow.Step{{
+				Name: pruneStep,
+				Env:  map[string]string{authVariable: authExpression},
+				Run:  []string{pruneRun},
+			}},
+		}})
+	}
+	jobs, err := o.Jobs(&workflow.Contribution{Jobs: nightly})
 	if err != nil {
 		return nil, err
 	}
 	for i := range jobs {
-		s := c.Nightly[i].Setup
+		s := nightly[i].Setup
 		switch {
 		case s != nil && len(s.Runners) > 0:
 		case s != nil && len(s.Versions) > 0:
 			jobs[i].Runners = []string{o.Linux}
 		default:
-			jobs[i].Runners, jobs[i].Name = nil, c.Nightly[i].Name
+			jobs[i].Runners, jobs[i].Name = nil, nightly[i].Name
 		}
 	}
 	return jobs, nil

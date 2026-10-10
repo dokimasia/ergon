@@ -5,6 +5,7 @@ package tool_test
 
 import (
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -197,6 +198,22 @@ func TestToolchain(t *testing.T) {
 				assert.Equal(t, out.String(), "golangci-lint --config\n"+tt.want+"\n", "the output of the program")
 			})
 		}
+
+		t.Run("builds golangci-lint with the plugins of a group of linters", func(t *testing.T) {
+			t.Parallel()
+			o := &grouped{Lint: linters{
+				Analyzers: "example.com/analyzers@v0.2.0",
+				Plugins:   option.Plugins{"assertlint": "go.dokimi.dev/assert/lint/golangci@v0.1.0"},
+			}}
+			o.Tools.Lint = "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0"
+			r, out, _ := runner(t, map[string][]byte{})
+			_, err := r.Run(t.Context(), section, o, "golangci-lint", []string{"--config"})
+			assert.NoError(t, err, "Run")
+			assert.Equal(t, out.String(), "golangci-lint --config\n"+
+				`{"version":"v2.14.0","name":"golangci-lint","plugins":[`+
+				`{"module":"example.com/analyzers","version":"v0.2.0"},`+
+				`{"module":"go.dokimi.dev/assert/lint/golangci","version":"v0.1.0"}]}`+"\n", "the output of the program")
+		})
 
 		t.Run("runs a program of golangci-lint custom without building it again", func(t *testing.T) {
 			t.Parallel()
@@ -421,6 +438,33 @@ type plugged struct {
 // Validate returns nil.
 func (*plugged) Validate() error {
 	return nil
+}
+
+// grouped are options whose golangci-lint builds with the module plugins of the group lint.
+type grouped struct {
+	Tools struct {
+		Lint option.Module `yaml:"golangci-lint" plugins:"lint"`
+	} `yaml:"tools"`
+	Lint linters `yaml:"lint"`
+}
+
+// Validate returns nil.
+func (*grouped) Validate() error {
+	return nil
+}
+
+// linters is a group of the module plugins of golangci-lint: the analyzers, which register the
+// linters errorprefix and skipexpiry, and the plugins of a repository.
+type linters struct {
+	Analyzers option.Module  `yaml:"analyzers"`
+	Plugins   option.Plugins `yaml:"plugins"`
+}
+
+// Linters returns errorprefix and skipexpiry of the analyzers of l, and the plugins of l.
+func (l linters) Linters() option.Plugins {
+	p := option.Plugins{"errorprefix": l.Analyzers, "skipexpiry": l.Analyzers}
+	maps.Copy(p, l.Plugins)
+	return p
 }
 
 // unplugged are options whose tags plugins name no option of plugins: a key that the options do not

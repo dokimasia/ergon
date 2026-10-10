@@ -41,44 +41,48 @@ const (
 )
 
 // release installs the release binary rel of the tool name into the cache, unless the cache has it,
-// and returns its program. The cache keeps the program under the name, the version, the platform
-// and the digest, so a pin with another digest installs again. It downloads the asset of the
+// and returns its program, which [Runner.releaseProgram] names. It downloads the asset of the
 // platform, checks it against the digest of the pin, and unpacks the program from a .tar.gz, a
-// .tar.xz or a .zip, or takes the asset as the program. It returns an error that wraps [ErrInstall] for a
-// platform without an asset or a digest, and the errors of the download.
+// .tar.xz or a .zip, or takes the asset as the program. It returns the error of releaseProgram, and
+// the errors of the download.
 func (r *Runner) release(ctx context.Context, rel option.Release, name string) (string, error) {
+	program, asset, err := r.releaseProgram(rel, name)
+	if err != nil {
+		return "", err
+	}
+	if exists(program) {
+		return program, nil
+	}
+	return program, r.download(ctx, asset, rel.Pin().SHA256[r.Platform], program)
+}
+
+// releaseProgram returns the program of the release binary rel of the tool name in the cache, and
+// the asset of the platform. The cache keeps the program under the name, the version, the platform
+// and the digest, so a pin with another digest installs again. It returns an error that wraps
+// [ErrInstall] for a platform without an asset or a digest.
+func (r *Runner) releaseProgram(rel option.Release, name string) (string, option.Asset, error) {
 	pin := rel.Pin()
 	asset, err := rel.Asset(r.Platform)
 	if err != nil {
-		return "", fmt.Errorf("%w: %s %s: %w", ErrInstall, name, pin.Version, err)
+		return "", option.Asset{}, fmt.Errorf("%w: %s %s: %w", ErrInstall, name, pin.Version, err)
 	}
 	digest, ok := pin.SHA256[r.Platform]
 	if !ok {
-		return "", fmt.Errorf("%w: %s %s has no digest for %s", ErrInstall, name, pin.Version, r.Platform)
+		return "", option.Asset{}, fmt.Errorf("%w: %s %s has no digest for %s", ErrInstall, name, pin.Version,
+			r.Platform)
 	}
 	base := path.Base(asset.Program)
 	if asset.Program == "" {
 		base = path.Base(asset.URL)
 	}
-	program := filepath.Join(r.Cache, "release", name, pin.Version, r.platform(), digest, base)
-	if exists(program) {
-		return program, nil
-	}
-	return program, r.download(ctx, asset, digest, program)
+	return filepath.Join(r.Cache, "release", name, pin.Version, r.platform(), digest, base), asset, nil
 }
 
 // maven installs the jar of the Maven artifact m, with the classifier, into the cache unless the
 // cache has it, and returns java and the arguments that run it. It checks the jar against the
 // .sha256 file beside it in Maven Central. It returns the errors of the download.
 func (r *Runner) maven(ctx context.Context, m option.Maven, classifier string) (string, []string, error) {
-	group, artifact, _ := strings.Cut(m.Package(), ":")
-	file := artifact + "-" + m.Version()
-	if classifier != "" {
-		file += "-" + classifier
-	}
-	file += ".jar"
-	address := central + strings.ReplaceAll(group, ".", "/") + "/" + artifact + "/" + m.Version() + "/" + file
-	jar := filepath.Join(r.Cache, "maven", group, artifact, m.Version(), file)
+	address, jar := r.mavenJar(m, classifier)
 	if exists(jar) {
 		return "java", []string{"-jar", jar}, nil
 	}
@@ -90,6 +94,20 @@ func (r *Runner) maven(ctx context.Context, m option.Maven, classifier string) (
 		return "", nil, err
 	}
 	return "java", []string{"-jar", jar}, nil
+}
+
+// mavenJar returns the address of the jar of the Maven artifact m with the classifier in Maven
+// Central, and the path of the jar in the cache, under the group, the artifact and the version. An
+// empty classifier names the jar of the artifact without a classifier.
+func (r *Runner) mavenJar(m option.Maven, classifier string) (string, string) {
+	group, artifact, _ := strings.Cut(m.Package(), ":")
+	file := artifact + "-" + m.Version()
+	if classifier != "" {
+		file += "-" + classifier
+	}
+	file += ".jar"
+	address := central + strings.ReplaceAll(group, ".", "/") + "/" + artifact + "/" + m.Version() + "/" + file
+	return address, filepath.Join(r.Cache, "maven", group, artifact, m.Version(), file)
 }
 
 // download downloads the asset into a temporary file of the directory of target, checks it

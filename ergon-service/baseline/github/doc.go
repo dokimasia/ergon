@@ -19,8 +19,9 @@
 //     tools, and the steps of the job, as [Options.Jobs] states.
 //   - nightly.yml runs the nightly jobs of the contributions on the schedule of the section github
 //     and on demand, each from the same skeleton, on the Linux runner unless its setup lists
-//     runners, as [Options.NightlyJobs] states. A repository without a nightly job has no
-//     nightly.yml.
+//     runners, as [Options.NightlyJobs] states. When a job keeps the tools of ergon in the cache,
+//     the job prune-tools deletes each cache of the tools that a newer cache of the same job
+//     replaced, through ergon tool ci prune. A repository without either job has no nightly.yml.
 //   - version.yml opens or updates the version pull request when the run of ci.yml for a push to
 //     main succeeds, from the commit of that run, through ergon release ci version. With the
 //     variable ERGON_APP_CLIENT_ID and the secret ERGON_APP_PRIVATE_KEY of a GitHub App, it opens
@@ -47,8 +48,11 @@
 // The setup steps of a job come before the installation of ergon, so a repository that builds ergon
 // from its own source builds it with the toolchain of the job. A job whose steps run tools restores
 // the tool directory of ergon from the cache of GitHub Actions, and saves it after a run that
-// succeeds, under a key of the system, the architecture, the job, the runtime version of its matrix
-// and the digest of .ergon.yaml and the lock.
+// succeeds, under a key of the system, the architecture, the job, the runtime version of its matrix,
+// and the digest of .ergon.yaml, the lock and the version files of its setup. [ToolsCache] starts
+// the key. When the key misses, the job restores the newest cache of the same system, architecture,
+// job and runtime version, and its last step runs ergon tool prune, so the cache saves only the
+// tools that the options name.
 //
 // Every workflow grants no permission at its top level, and each job grants only the scopes that
 // it needs. Every action is pinned to the commit of a release, with the release in a comment.

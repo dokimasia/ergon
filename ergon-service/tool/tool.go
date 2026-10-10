@@ -233,7 +233,8 @@ func (e *entry) program(fallback string) string {
 // of the group tools whose yaml key is name, with the plugins of the option that its tag plugins
 // names. It returns an error that wraps [ErrUnknown] for options without the group, and for a group
 // without the key, which lists the tools of the group as <section>.<tool>. It returns an error that
-// wraps [ErrInstall] for a tag plugins that names no option of the type [option.Plugins].
+// wraps [ErrInstall] when the field at the key of the tag plugins is neither an option of the type
+// [option.Plugins] nor a group that implements [option.Linters].
 func lookup(o language.Options, section, name string) (entry, error) {
 	v := reflect.ValueOf(o)
 	var tools entry
@@ -247,12 +248,9 @@ func lookup(o language.Options, section, name string) (entry, error) {
 	}
 	tool, ok := field(tools.value, name)
 	if !ok {
-		var names []string
-		for i := range tools.value.NumField() {
-			f := tools.value.Type().Field(i)
-			if key, _, _ := strings.Cut(f.Tag.Get(yamlTag), ","); key != "" && f.IsExported() {
-				names = append(names, section+"."+key)
-			}
+		names := toolNames(o)
+		for i, key := range names {
+			names[i] = section + "." + key
 		}
 		return entry{}, fmt.Errorf("%w: %s.%s, which is none of %s", ErrUnknown, section, name,
 			strings.Join(names, ", "))
@@ -267,9 +265,10 @@ func lookup(o language.Options, section, name string) (entry, error) {
 	return e, nil
 }
 
-// pluginsAt returns the option of the struct s at key, the yaml keys of the fields on its path
-// separated by dots, such as lint.plugins. It reports false when s has no option of the type
-// [option.Plugins] at key.
+// pluginsAt returns the module plugins of the option of the struct s at key, the yaml keys of the
+// fields on its path separated by dots, such as lint.plugins: the option of the type
+// [option.Plugins], or what the Linters method of a group that implements [option.Linters] returns.
+// It reports false when s has neither at key.
 func pluginsAt(s reflect.Value, key string) (option.Plugins, bool) {
 	for k := range strings.SplitSeq(key, ".") {
 		if s.Kind() != reflect.Struct {
@@ -280,6 +279,9 @@ func pluginsAt(s reflect.Value, key string) (option.Plugins, bool) {
 			return nil, false
 		}
 		s = f.value
+	}
+	if group, ok := reflect.TypeAssert[option.Linters](s); ok {
+		return group.Linters(), true
 	}
 	return reflect.TypeAssert[option.Plugins](s)
 }

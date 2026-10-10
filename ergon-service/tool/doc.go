@@ -33,14 +33,28 @@
 // [Runner.RunRelease] installs and runs a release binary of no section the same way, such as a
 // release of ergon itself.
 //
+// # Pruning
+//
+// [Runner.Prune] removes each file of the cache that is not the install of a tool of the sections
+// at the version that they name, such as an earlier version of a tool or the program of a Go module
+// for another version of the go command. ergon tool prune calls it.
+//
+// A job of the managed workflows keeps the tool directory in the cache of GitHub Actions, and saves
+// a new cache for each change of the files of its key. [PruneCaches] deletes each cache that a newer
+// cache of the same job replaced, through a [CacheForge]. ergon tool ci prune calls it.
+//
 // # Errors
 //
 // Run returns an error that wraps [ErrUnknown] for a tool that the section does not name, which
-// lists the tools of the section, and [ErrInstall] for a tool that does not install.
+// lists the tools of the section, and [ErrInstall] for a tool that does not install. Prune returns
+// an error that wraps ErrInstall when a section has no plugins at the key of the tag plugins of a
+// tool, and the error of a file that it cannot remove. PruneCaches returns the error of its
+// CacheForge.
 //
 // # Dependency position
 //
 // Imports the standard library, [go.dokimi.dev/ergon/core/language],
-// [go.dokimi.dev/ergon/core/option], and github.com/ulikunitz/xz for the .tar.xz of a release
-// binary. internal/cli of the root module imports it.
+// [go.dokimi.dev/ergon/core/option], [go.dokimi.dev/ergon/service/forge] for the type of a cache,
+// and github.com/ulikunitz/xz for the .tar.xz of a release binary. internal/cli of the root module
+// imports it.
 package tool
