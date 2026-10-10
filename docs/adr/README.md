@@ -44,3 +44,4 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 | [0033](0033-prune-the-tools-before-the-cache-saves.md) | A job removes the tools that the options do not name before its tool cache saves | Accepted |
 | [0034](0034-version-files-in-the-tool-cache-key.md) | The key of a tool cache covers the files that set the version of the toolchain | Accepted |
 | [0035](0035-lint-go-analyzers-as-module-plugins.md) | golangci-lint runs the analyzers of lint-go as module plugins in place of ergon-go-vet | Accepted |
+| [0036](0036-codeql-of-go-fetches-own-modules-from-origin.md) | The CodeQL analysis of Go fetches the modules of its repository from their origin | Accepted |

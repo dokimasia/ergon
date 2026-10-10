@@ -29,3 +29,4 @@ Go comes before JavaScript, because ergon releases its own modules through the f
 
 - The code structure that RFC-0008 proposes, with ADR-0024 to ADR-0028. It waits until the repositories have moved to the current ergon.
 - A format target for Java and one for Bash: `fmt-java` with google-java-format and `fmt-bash` with shfmt, each a pinned release binary in its section of `.ergon.yaml`. The other languages have a format target, which `make fmt` runs.
+- The skip of the CodeQL analysis of the version pull request: on a pull request, a job `skip` of `security.yml` runs `ergon release ci skip --workflow security.yml`, and the CodeQL jobs run only when it writes `false`. Every push to `main` keeps its analysis, because code scanning compares a pull request with the analysis of its base commit.
