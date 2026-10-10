@@ -14,6 +14,7 @@ import (
 	"path"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/core/workspace"
@@ -34,9 +35,14 @@ const (
 // The record of GoReleaser of the artifacts of a run, in its dist directory.
 const artifactsFile = "artifacts.json"
 
-// versionVariable is the variable of the environment of GoReleaser whose value the template of the
-// version of its snapshot mode reads: the version of the release, such as 0.6.0.
-const versionVariable = "ERGON_VERSION"
+// The variables of the environment of GoReleaser that the managed configuration reads: the version
+// of the release, such as 0.6.0, which the template of the version of its snapshot mode reads, and
+// the paths of the modules of the release, separated by commas, which it passes to syft as
+// GOPRIVATE.
+const (
+	versionVariable = "ERGON_VERSION"
+	modulesVariable = "ERGON_MODULES"
+)
 
 // assetTypes are the types of the artifacts of GoReleaser that a release attaches.
 var assetTypes = []string{"Archive", "Linux Package", "Source", "Checksum", "Signature", "SBOM"}
@@ -56,6 +62,22 @@ type artifact struct {
 	Type string `json:"type"`
 }
 
+// build is a module of a release whose directory has .goreleaser.yaml.
+type build struct {
+	// pkg is the module.
+	pkg *workspace.Package
+
+	// config is the path of the configuration of GoReleaser of the module, relative to the root of
+	// the repository and slash-separated.
+	config string
+
+	// dist is the dist directory of the configuration, relative to the root of the repository.
+	dist string
+
+	// tag is the tag of the module at its version.
+	tag string
+}
+
 // Packer builds the assets of the commands of Go modules with GoReleaser. A module has commands when
 // its directory has .goreleaser.yaml, which ergon init renders from the key binaries of the section
 // go. Each function is required.
@@ -65,6 +87,10 @@ type artifact struct {
 // A Packer is safe for concurrent use when its functions are, but two calls of Pack must not pack
 // one repository at once, because both write its tags and its dist directory.
 type Packer struct {
+	// Snapshot returns the tree of the working tree of a directory as git would commit it, which
+	// Pack writes the zips of the released modules from.
+	Snapshot func(ctx context.Context, dir string) (string, error)
+
 	// Tags returns the commit of each tag of the repository of dir.
 	Tags func(ctx context.Context, dir string) (map[string]string, error)
 
@@ -84,20 +110,29 @@ var _ language.Packer = Packer{}
 // Pack builds the assets of each module of pkgs whose directory under root has .goreleaser.yaml, in
 // the order of pkgs, and builds nothing for any other module:
 //
-//   - It creates the tag of the module at its Version at HEAD, as [Tagger] names it, unless the
-//     repository has the tag at HEAD. Go writes the version of the module into its binaries from
-//     that tag, and the publish creates the same tag on the host.
-//   - It runs goreleaser release --snapshot --clean with the configuration in root, with
-//     ERGON_VERSION set to the Version, which the template of the version of the configuration
-//     reads.
+//   - It reads the dist directory of each configuration, and creates the tag of each such module at
+//     its Version at HEAD, as [Tagger] names it, unless the repository has the tag at HEAD. Go
+//     writes the version of the module into its binaries from that tag, and the publish creates the
+//     same tag on the host.
+//   - It writes the zip of each module of pkgs at its Version into a module proxy in a temporary
+//     directory, from a snapshot of the working tree, as [Versioner.Apply] does, and removes the
+//     directory afterwards.
+//   - It runs goreleaser release --snapshot --clean with the configuration in root, outside the
+//     workspace, with the environment of a build against that proxy. The go command then resolves
+//     the modules of the repository at the versions that go install resolves, and writes those
+//     versions into the binaries. ERGON_VERSION is the Version, which the template of the version
+//     of the configuration reads. ERGON_MODULES are the paths of the modules of pkgs in order,
+//     separated by commas, which the managed configuration passes to syft as GOPRIVATE.
 //   - It copies the archives, the packages, the source archive, checksums.txt, its signature and the
 //     SBOMs into dir/assets/<tag>/, and the casks into dir/casks/<tag>/, as artifacts.json in the
 //     dist directory of the configuration records them, and then removes that dist directory.
 //
-// It returns an error that wraps [ErrTag] for a tag at another commit than HEAD, and the error of a
-// function of p, of reading the configuration or artifacts.json, and of copying an artifact, each
-// with the module.
+// It returns an error that wraps [ErrTag] for a tag at another commit than HEAD, an error for a
+// module of pkgs that the repository does not have, and the error of a function of p, of the
+// proxy, of go env, of reading the configuration or artifacts.json, and of copying an artifact, each
+// with the module or the file.
 func (p Packer) Pack(ctx context.Context, root string, pkgs []workspace.Package, dir string) error {
+	var builds []build
 	for i := range pkgs {
 		pkg := &pkgs[i]
 		config := path.Join(pkg.Dir, goreleaserConfig)
@@ -122,14 +157,32 @@ func (p Packer) Pack(ctx context.Context, root string, pkgs []workspace.Package,
 		if err := p.tagHead(ctx, root, tag); err != nil {
 			return err
 		}
-		args := []string{"release", "--snapshot", "--clean", "--config", config}
-		env := []string{versionVariable + "=" + pkg.Version.String()}
-		if err := p.Run(ctx, root, goreleaserTool, args, env); err != nil {
-			return fmt.Errorf("release: GoReleaser of %s: %w", pkg.Name, err)
+		builds = append(builds, build{pkg: pkg, config: config, dist: c.Dist, tag: tag})
+	}
+	if len(builds) == 0 {
+		return nil
+	}
+	r, err := newRun(p.Snapshot, root)
+	if err != nil {
+		return err
+	}
+	tmp, err := r.open()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = os.RemoveAll(tmp) }()
+	env, err := buildEnv(ctx, r, pkgs, filepath.Join(tmp, modcacheDir))
+	if err != nil {
+		return err
+	}
+	for _, b := range builds {
+		args := []string{"release", "--snapshot", "--clean", "--config", b.config}
+		vars := slices.Concat([]string{versionVariable + "=" + b.pkg.Version.String()}, env)
+		if err := p.Run(ctx, root, goreleaserTool, args, vars); err != nil {
+			return fmt.Errorf("release: GoReleaser of %s: %w", b.pkg.Name, err)
 		}
-		dist := filepath.Join(root, filepath.FromSlash(c.Dist))
-		if err := collect(root, dist, dir, tag); err != nil {
-			return fmt.Errorf("release: the assets of %s: %w", pkg.Name, err)
+		if err := collect(root, filepath.Join(root, filepath.FromSlash(b.dist)), dir, b.tag); err != nil {
+			return fmt.Errorf("release: the assets of %s: %w", b.pkg.Name, err)
 		}
 	}
 	return nil
@@ -155,6 +208,31 @@ func (p Packer) tagHead(ctx context.Context, root, name string) error {
 		return fmt.Errorf("%w: %s is at %s, and HEAD is at %s", ErrTag, name, commit, head)
 	}
 	return nil
+}
+
+// buildEnv serves the zip of each module of pkgs at its Version from the proxy of r, and returns
+// the variables of the environment of GoReleaser. These are the variables of a build against the
+// proxy with the module cache modcache, as [run.environment] returns them, and ERGON_MODULES. It
+// returns an error for a module of pkgs that the repository does not have, and the errors of
+// [run.serve] and of run.environment.
+func buildEnv(ctx context.Context, r *run, pkgs []workspace.Package, modcache string) ([]string, error) {
+	paths := make([]string, 0, len(pkgs))
+	for i := range pkgs {
+		name := pkgs[i].Name
+		if err := r.checkModule(name); err != nil {
+			return nil, err
+		}
+		r.released[name] = "v" + pkgs[i].Version.String()
+		if err := r.serve(ctx, r.modules[name]); err != nil {
+			return nil, err
+		}
+		paths = append(paths, name)
+	}
+	env, err := r.environment(ctx, modcache, buildFlags)
+	if err != nil {
+		return nil, err
+	}
+	return append(env, modulesVariable+"="+strings.Join(paths, ",")), nil
 }
 
 // collect copies the assets and the casks that artifacts.json of the dist directory dist records,

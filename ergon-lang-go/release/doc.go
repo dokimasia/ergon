@@ -44,9 +44,12 @@
 // A module whose directory has .goreleaser.yaml has commands, which ergon init lists from the key
 // binaries of the section go. [Packer.Pack] tags the commit of a release with the tag of such a
 // module, so that Go writes the version of the module into its binaries, and runs GoReleaser in
-// snapshot mode with the version of the release. It copies the archives, the packages, the
-// checksums, their signature and the SBOMs into the assets of the release of the tag, and the casks
-// beside them, where ergon release publish and ergon release ci homebrew find them.
+// snapshot mode with the version of the release. GoReleaser builds outside the workspace, against
+// the proxy of the released modules of [Versioner.Apply], so a binary records the versions of the
+// modules of the repository that go install resolves, and not the directories of go.work. Pack
+// copies the archives, the packages, the checksums, their signature and the SBOMs into the assets
+// of the release of the tag, and the casks beside them, where ergon release publish and ergon
+// release ci homebrew find them.
 //
 // # Errors
 //

@@ -69,7 +69,7 @@ func Register(c *language.Catalog, git Git, tools Tools) error {
 	}
 	versioner := release.Versioner{Snapshot: git.Snapshot}
 	locker := release.Locker{Snapshot: git.Snapshot}
-	packer := release.Packer{Tags: git.Tags, Head: git.Head, Tag: git.LightTag, Run: tools}
+	packer := release.Packer{Snapshot: git.Snapshot, Tags: git.Tags, Head: git.Head, Tag: git.LightTag, Run: tools}
 	if err := language.RegisterToolchain(c, toolchain, versioner, release.Tagger{}, locker, packer); err != nil {
 		return err
 	}

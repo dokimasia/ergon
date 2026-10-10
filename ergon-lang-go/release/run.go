@@ -26,9 +26,20 @@ import (
 	modzip "golang.org/x/mod/zip"
 )
 
-// run is one call of [Versioner.Apply], [Locker.Stale] or [Locker.Lock]: the modules of the
-// repository, the versions that it releases, the files that it changes, and the proxy that serves
-// the released modules to go mod tidy.
+// The flags of the go command against the proxy of a run. go mod tidy may write go.mod and go.sum,
+// while a build of [Packer.Pack] takes them as they are. Both leave the module cache writable, so
+// the temporary directory of the run can be removed.
+const (
+	tidyFlags  = "-mod=mod -modcacherw"
+	buildFlags = "-modcacherw"
+)
+
+// modcacheDir is the directory of the module cache of a run in its temporary directory.
+const modcacheDir = "modcache"
+
+// run is one call of [Versioner.Apply], [Locker.Stale], [Locker.Lock] or [Packer.Pack]: the modules
+// of the repository, the versions that it releases, the files that it changes, and the proxy that
+// serves the released modules to the go command.
 type run struct {
 	// snapshot returns the tree of the working tree of a directory as git would commit it.
 	snapshot func(ctx context.Context, dir string) (string, error)
@@ -148,7 +159,7 @@ func (r *run) tidyAll(ctx context.Context, pending []*goworkspace.Module) error 
 		return err
 	}
 	defer func() { _ = os.RemoveAll(tmp) }()
-	if r.env, err = r.environment(ctx, filepath.Join(tmp, "modcache")); err != nil {
+	if r.env, err = r.environment(ctx, filepath.Join(tmp, modcacheDir), tidyFlags); err != nil {
 		return err
 	}
 	for len(pending) > 0 {
@@ -275,9 +286,10 @@ func (r *run) zip(ctx context.Context, s *goworkspace.Module) (module.Version, [
 	return m, data.Bytes(), nil
 }
 
-// environment returns the variables of the environment of go mod tidy, with the module cache in
-// modcache, as [Versioner.Apply] states them. It returns the error of go env.
-func (r *run) environment(ctx context.Context, modcache string) ([]string, error) {
+// environment returns the variables of the environment of the go command against the proxy of r,
+// with the module cache in modcache and GOFLAGS set to flags, as [Versioner.Apply] states them. It
+// returns the error of go env.
+func (r *run) environment(ctx context.Context, modcache, flags string) ([]string, error) {
 	cmd := exec.CommandContext(ctx, "go", "env", "GOPROXY", "GONOSUMDB", "GOPRIVATE", "GOMODCACHE")
 	cmd.Dir = r.root
 	cmd.Env = append(os.Environ(), "GOWORK=off")
@@ -299,7 +311,7 @@ func (r *run) environment(ctx context.Context, modcache string) ([]string, error
 	patterns = slices.DeleteFunc(patterns, func(p string) bool { return p == "" })
 	return []string{
 		"GOWORK=off",
-		"GOFLAGS=-mod=mod -modcacherw",
+		"GOFLAGS=" + flags,
 		"GOMODCACHE=" + modcache,
 		"GOPROXY=" + strings.Join(append(proxies, goproxy), ","),
 		"GONOSUMDB=" + strings.Join(patterns, ","),
