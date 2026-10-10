@@ -27,7 +27,7 @@ import (
 const name = "bash"
 
 // workflows are the files of the GitHub files that the contribution of Bash changes.
-var workflows = []string{".github/workflows/ci.yml"}
+var workflows = []string{".github/workflows/ci.yml", ".github/workflows/nightly.yml"}
 
 func TestBaseline(t *testing.T) {
 	t.Parallel()

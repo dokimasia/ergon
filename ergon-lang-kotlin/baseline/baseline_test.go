@@ -29,7 +29,10 @@ const name = "kotlin"
 
 // workflows are the files of the GitHub files that the contributions of Kotlin and the jvm
 // toolchain change.
-var workflows = []string{".github/workflows/ci.yml", ".github/workflows/security.yml", ".github/dependabot.yml"}
+var workflows = []string{
+	".github/workflows/ci.yml", ".github/workflows/nightly.yml", ".github/workflows/security.yml",
+	".github/dependabot.yml",
+}
 
 func TestBaseline(t *testing.T) {
 	t.Parallel()

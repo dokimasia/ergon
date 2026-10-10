@@ -27,7 +27,10 @@ import (
 const name = "python"
 
 // workflows are the files of the GitHub files that the contribution of Python changes.
-var workflows = []string{".github/workflows/ci.yml", ".github/workflows/security.yml", ".github/dependabot.yml"}
+var workflows = []string{
+	".github/workflows/ci.yml", ".github/workflows/nightly.yml", ".github/workflows/security.yml",
+	".github/dependabot.yml",
+}
 
 func TestBaseline(t *testing.T) {
 	t.Parallel()
