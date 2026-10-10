@@ -34,10 +34,10 @@ github.com/subosito/gotenv v1.6.0 h1:9NlTDc1FTs4qu0DDq7AEtTPNw6SVm7uBMsUCUjABIf8
 github.com/subosito/gotenv v1.6.0/go.mod h1:Dk4QP5c2W3ibzajGcXpNraDfq2IrhjMIvMSWPKKo0FU=
 go.dokimi.dev/assert v0.0.0-20261007161809-4abc39fa6683 h1:Y94DTvliVi82NAMmsShaXGjhpYy8zqxeo5Y2mZmYh68=
 go.dokimi.dev/assert v0.0.0-20261007161809-4abc39fa6683/go.mod h1:Mr2lGt+AMXUIuqxAk7aGgGpTbdvFjuCd1qmUt0r091k=
-go.dokimi.dev/ergon/core v0.8.0 h1:5J291DihxSj7bDS8p/jE+YSVvBVz3fYoXaPDSJdoQQ0=
-go.dokimi.dev/ergon/core v0.8.0/go.mod h1:P8/0BJdTrjygv6CV0luYVyuk0SVAd7nSkXxCFZp+yzE=
-go.dokimi.dev/ergon/service v0.9.0 h1:dxdAEXAUp5WvIDxr0MsMG+w/YsC2xW/7gSSfQtzxBss=
-go.dokimi.dev/ergon/service v0.9.0/go.mod h1:lGxpk6i2xDPkw5uo54YlmSn+jROahmfBQaQZsTnFHFc=
+go.dokimi.dev/ergon/core v0.9.0 h1:33UkpCobnhUi1rEqC3KRwvxDnkWR4RTKQpwDV9I4Yec=
+go.dokimi.dev/ergon/core v0.9.0/go.mod h1:P8/0BJdTrjygv6CV0luYVyuk0SVAd7nSkXxCFZp+yzE=
+go.dokimi.dev/ergon/service v0.9.1 h1:2hfXx7BYMaSJQUvlqzQhcvHnqMYw93c7yfGs2abRu1M=
+go.dokimi.dev/ergon/service v0.9.1/go.mod h1:WodJ6lQKzRmIOy0aykPDOPKgBemo5ozYuS0IbfHcpFQ=
 go.yaml.in/yaml/v3 v3.0.5 h1:N6y/pJk8buWs9NY5ERU2HSMfm+IuD/OtfdAnq6kESPw=
 go.yaml.in/yaml/v3 v3.0.5/go.mod h1:HVTZu1O7/Vkt2N+BFy8Zza+lnLsABggaTM2ZpNIGuKg=
 golang.org/x/mod v0.41.0 h1:qJmnOUb4YB+FsEuM3HcWucdZASCPGhsX6uljO6pog0c=

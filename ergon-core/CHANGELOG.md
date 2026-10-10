@@ -1,5 +1,11 @@
 # go.dokimi.dev/ergon/core
 
+## 0.9.0
+
+### Minor Changes
+
+- ca0ca90: Add the key `ci.steps` of each toolchain, whose steps its jobs run after the setup of the toolchain.
+
 ## 0.8.0
 
 ### Minor Changes

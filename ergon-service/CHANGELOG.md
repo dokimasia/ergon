@@ -1,5 +1,12 @@
 # go.dokimi.dev/ergon/service
 
+## 0.9.1
+
+### Patch Changes
+
+- Updated dependencies [ca0ca90]
+  - go.dokimi.dev/ergon/core@0.9.0
+
 ## 0.9.0
 
 ### Minor Changes
