@@ -1,5 +1,19 @@
 # go.dokimi.dev/ergon/lang/go
 
+## 0.5.0
+
+### Minor Changes
+
+- c80cbcd: Add `go.lint.plugins`, the module plugins of golangci-lint that `ergon tool run` builds into golangci-lint and `.golangci.yml` enables.
+
+### Patch Changes
+
+- 8b59127: Run lint-go, test-go, race-go and audit-go in every module, and fail after the last module when one of them failed. The job check-go of ci.yml runs make --keep-going check-go, so a failed step does not skip the steps after it. The managed .golangci.yml does not run wrapcheck on test files and on the files of generators.
+- Updated dependencies [ccbcc8f]
+- Updated dependencies [ddcc0a1]
+  - go.dokimi.dev/ergon/core@0.6.0
+  - go.dokimi.dev/ergon/service@0.7.0
+
 ## 0.4.1
 
 ### Patch Changes

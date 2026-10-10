@@ -1,5 +1,11 @@
 # go.dokimi.dev/ergon/core
 
+## 0.6.0
+
+### Minor Changes
+
+- ccbcc8f: Add `option.Plugins`, the module plugins of golangci-lint by the name of their linters, and `option.PluginsTag`.
+
 ## 0.5.0
 
 ### Minor Changes
