@@ -70,9 +70,9 @@ type Resolution struct {
 // each section into a new value of its producer's options, which starts with the baseline value of
 // every option that the section lacks. An option whose value in file equals the value that recorded
 // records for it takes its baseline value, so an option that the repository never changed follows
-// the baseline of the installed ergon. Such an option that the producer no longer has is left out,
-// so the baseline of the installed ergon removes it. A field with an answer tag takes the answer's
-// value of a.
+// the baseline of the installed ergon. Resolve leaves out such an option that the producer no
+// longer has, and a group of such options alone, so the baseline of the installed ergon removes
+// them. A field with an answer tag takes the answer's value of a.
 // names are the names of every section that a producer of the catalog can have: a section of names
 // that no producer of producers states is dropped when recorded records an option of it.
 //
@@ -252,9 +252,10 @@ func stated(v reflect.Value) any {
 }
 
 // prune returns a copy of section, the section name of .ergon.yaml as viper parsed it, without each
-// option of the section that recorded records with the value that section states. The decoder then
-// keeps such an option at its baseline value. The decoder also does not see such an option when the
-// producer no longer has it. The copy does not share a map with section.
+// option of the section that recorded records with the value that section states, and without each
+// group that the removal of such options leaves empty. The decoder keeps a removed option at its
+// baseline value, and it does not see a removed option or group that the producer no longer has.
+// The copy does not share a map with section.
 func prune(section map[string]any, name string, recorded map[string]any) map[string]any {
 	out := clone(section)
 	for key, previous := range recorded {
@@ -262,14 +263,21 @@ func prune(section map[string]any, name string, recorded map[string]any) map[str
 		if !ok {
 			continue
 		}
-		parent := out
 		keys := strings.Split(path, ".")
+		parents := make([]map[string]any, 0, len(keys)-1)
+		parent := out
 		for _, key := range keys[:len(keys)-1] {
+			parents = append(parents, parent)
 			parent, _ = parent[key].(map[string]any)
 		}
 		last := keys[len(keys)-1]
-		if value, ok := parent[last]; ok && same(value, previous) {
-			delete(parent, last)
+		if value, ok := parent[last]; !ok || !same(value, previous) {
+			continue
+		}
+		delete(parent, last)
+		for i := len(parents) - 1; i >= 0 && len(parent) == 0; i-- {
+			delete(parents[i], keys[i])
+			parent = parents[i]
 		}
 	}
 	return out

@@ -78,7 +78,8 @@ var (
 )
 
 // Templates returns the templates of the GitHub files: the managed files under managed/.github/,
-// and CODEOWNERS under seeded/.github/.
+// CODEOWNERS under seeded/.github/, and the fragment of the Makefile with lint-github under
+// shared/.
 func (Producer) Templates() fs.FS {
 	// templates has the directory templates, so Sub returns no error.
 	sub, _ := fs.Sub(templates, "templates")
@@ -87,15 +88,23 @@ func (Producer) Templates() fs.FS {
 
 // Options returns the options of the GitHub files at the baseline: the runners ubuntu-26.04,
 // macos-26 and windows-2025, ubuntu-26.04 for the checks of text, the release of GNU make, the
-// releases of actions/checkout, github/codeql-action, actions/dependency-review-action,
-// ossf/scorecard-action, actions/upload-artifact, actions/download-artifact, actions/cache,
-// actions/create-github-app-token and actions/attest, a limit of 15 minutes for each job, and
-// nightly.yml at 03:00 UTC each day.
+// release of actionlint with the digests that it states, the releases of actions/checkout,
+// github/codeql-action, actions/dependency-review-action, ossf/scorecard-action,
+// actions/upload-artifact, actions/download-artifact, actions/cache, actions/create-github-app-token
+// and actions/attest, a limit of 15 minutes for each job, and nightly.yml at 03:00 UTC each day.
 func (Producer) Options() language.Options {
 	return &Options{
 		Runners: option.Runners{"ubuntu-26.04", "macos-26", "windows-2025"},
 		Linux:   "ubuntu-26.04",
 		Make:    "4.4.1",
+		Tools: Tools{Actionlint: Actionlint{Binary: option.Binary{
+			SHA256: map[option.Platform]string{
+				option.LinuxAMD64:   "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8",
+				option.DarwinARM64:  "aba9ced2dee8d27fecca3dc7feb1a7f9a52caefa1eb46f3271ea66b6e0e6953f",
+				option.WindowsAMD64: "6e7241b51e6817ea6a047693d8e6fed13b31819c9a0dd6c5a726e1592d22f6e9",
+			},
+			Version: "1.7.12",
+		}}},
 		CI: option.CI[Actions]{
 			Actions: Actions{
 				Checkout: workflow.Action{
@@ -176,20 +185,37 @@ func (Producer) Data(_ *language.Answers, o language.Options, c *workflow.Contri
 	return w, nil
 }
 
-// Contribution returns the job baseline of ci.yml for o, and for the options at the baseline when o
-// is not the options of the GitHub files. The job runs ergon init check on the Linux runner of the
-// section, as a check of text: the managed .gitattributes checks out every text file with LF on
-// each system, so the check compares the same bytes everywhere.
+// Contribution returns the jobs baseline and workflows of ci.yml for o, and for the options at the
+// baseline when o is not the options of the GitHub files. Both jobs check text, so they run on the
+// Linux runner of the section:
+//
+//   - baseline runs ergon init check. The managed .gitattributes checks out every text file with LF
+//     on each system, so the check compares the same bytes everywhere.
+//   - workflows lints the workflows with the actionlint of o through make lint-github, and keeps
+//     actionlint in the cache of GitHub Actions.
 func (Producer) Contribution(o language.Options) workflow.Contribution {
-	return workflow.Contribution{Jobs: []workflow.Job{{
-		ID:          "baseline",
-		Name:        "Baseline",
-		Text:        true,
-		Timeout:     own(o).CI.Timeout,
-		Permissions: map[string]string{"contents": "read"},
-		Ergon:       true,
-		Steps:       []workflow.Step{{Name: "Check the managed files", Run: []string{"ergon init check"}}},
-	}}}
+	timeout, read := own(o).CI.Timeout, map[string]string{"contents": "read"}
+	return workflow.Contribution{Jobs: []workflow.Job{
+		{
+			ID:          "baseline",
+			Name:        "Baseline",
+			Text:        true,
+			Timeout:     timeout,
+			Permissions: read,
+			Ergon:       true,
+			Steps:       []workflow.Step{{Name: "Check the managed files", Run: []string{"ergon init check"}}},
+		},
+		{
+			ID:          "workflows",
+			Name:        "Workflows",
+			Text:        true,
+			Timeout:     timeout,
+			Permissions: read,
+			Ergon:       true,
+			Tools:       true,
+			Steps:       []workflow.Step{{Name: "Lint the workflows", Run: []string{"make lint-github"}}},
+		},
+	}}
 }
 
 // CheckLocal returns an error that wraps [language.ErrInvalidLocal] for content, the configuration

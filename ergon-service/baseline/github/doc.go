@@ -2,12 +2,13 @@
 // SPDX-License-Identifier: MIT
 
 // Package github is the producer of the GitHub files of ergon init: the workflows, the actions
-// that install ergon and GNU make, the configuration of Dependabot, the issue forms, the template
-// of a pull request, and CODEOWNERS.
+// that install ergon and GNU make, the configuration of Dependabot, the configuration of
+// actionlint, the issue forms, the template of a pull request, and CODEOWNERS.
 //
 // [Producer] renders them from the templates under templates/, whose tree mirrors the paths in the
-// repository: templates/managed/.github/ for the managed files and templates/seeded/.github/ for
-// CODEOWNERS. Each template ends in .tmpl, so GitHub takes no template for a workflow.
+// repository: templates/managed/.github/ for the managed files, templates/seeded/.github/ for
+// CODEOWNERS, and templates/shared/ for the fragment of the Makefile with the target lint-github.
+// Each template ends in .tmpl, so GitHub takes no template for a workflow.
 //
 // # Workflows
 //
@@ -71,15 +72,24 @@
 // # Options
 //
 // The section github of .ergon.yaml, [Options], names the runners of the jobs, the Linux runner of
-// the checks of text and of CodeQL, the release of GNU make for Windows, the pins of the actions of
-// the GitHub files, the limit of their jobs, and the schedule of nightly.yml. It configures the
-// platform alone: the section of each toolchain configures the setup of its jobs.
+// the checks of text and of CodeQL, the release of GNU make for Windows, the release of actionlint,
+// the pins of the actions of the GitHub files, the limit of their jobs, and the schedule of
+// nightly.yml. It configures the platform alone: the section of each toolchain configures the setup
+// of its jobs.
+//
+// # Lint of the workflows
+//
+// The target lint-github of the Makefile runs [Actionlint] on the workflows, and ergon tool run
+// installs it as a release binary. The managed .github/actionlint.yaml contains the runners of the
+// section as labels, so actionlint accepts a runner image that is newer than its release.
+// lint-github turns off shellcheck and pyflakes. ergon pins neither program, so actionlint would
+// take them from the machine. The targets lint and check depend on lint-github.
 //
 // # Contribution
 //
-// [Producer.Contribution] returns the job baseline of ci.yml, which runs ergon init check on the
-// Linux runner as a check of text, so a managed file that differs from its rendering fails the
-// gate.
+// [Producer.Contribution] returns the jobs baseline and workflows of ci.yml, which run on the Linux
+// runner as checks of text. baseline runs ergon init check, so a managed file that differs from its
+// rendering fails the gate. workflows runs make lint-github.
 //
 // # Local files
 //

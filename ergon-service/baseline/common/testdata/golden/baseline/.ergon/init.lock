@@ -24,7 +24,12 @@
     {
       "path": ".markdownlint.yml",
       "producer": "common",
-      "sha256": "cf54e52b8bdd1fcfcc74679b59f5dc6494e168e7f01de2504fcbfd54cc0f0845"
+      "sha256": "ebb529758bc8537e5e88a8772020d015d2782c80202faf274d62b8f3b62162e4"
+    },
+    {
+      "path": ".markdownlintignore",
+      "producer": "common",
+      "sha256": "cd1c6710f77a903d1a44995a27c3f52c3327b5dfb493fddf87f130ae6b0f7f1f"
     },
     {
       "path": ".pre-commit-config.yaml",
@@ -39,13 +44,10 @@
     {
       "path": "Makefile",
       "producer": "common",
-      "sha256": "f64beaaa8d8d1e784cdcba77059c902a7a5d95ad61ba2fc2644949b80df4ba59"
+      "sha256": "a0875aa054f536578c986d6a09df1bc29ac3dbb78b05b7e0ccfda32fb20b35a2"
     }
   ],
   "settings": {
-    "common.ci.actions.markdownlint.commit": "21c1be1b93ad9ed58fa840aacc3f279cde2a72ff",
-    "common.ci.actions.markdownlint.release": "v24.2.0",
-    "common.ci.actions.markdownlint.uses": "DavidAnson/markdownlint-cli2-action",
     "common.ci.timeout": 10,
     "common.ergon": [
       "ergon"
@@ -63,7 +65,13 @@
       "linux/amd64": "bf9666441262bf8d31345a6d29d6f788d0dadea7d47e5b91890c3a651999c118",
       "windows/amd64": "e8f90d08616ab8cd987b2dbef7ae0ee7fd1cb43c97f5a1ad171e8a56d1bd2f3d"
     },
-    "common.tools.commitlint.version": "0.12.0"
+    "common.tools.commitlint.version": "0.12.0",
+    "common.tools.rumdl.sha256": {
+      "darwin/arm64": "8c0ecf93a61bf612df5f6c6f22813d066a6f51a5680f3c12da49b93ed892aebb",
+      "linux/amd64": "a85ae77c6880616118e10dda1e36292df59815bcfbf767201736ff6971213cf3",
+      "windows/amd64": "07d12118c143976fadaaf7d053ac6be328798ce3b59b3f774572ac946b123672"
+    },
+    "common.tools.rumdl.version": "0.2.79"
   },
   "answers": {
     "name": "demo",

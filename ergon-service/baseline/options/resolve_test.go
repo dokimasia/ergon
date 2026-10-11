@@ -339,6 +339,36 @@ func TestResolve(t *testing.T) {
 			assert.Equal(t, res.Sections, []options.Section{{Name: name, Options: want}}, "the sections")
 		})
 
+		t.Run("leaves out a group that the producer no longer has at the values of its record", func(t *testing.T) {
+			t.Parallel()
+			recorded := map[string]any{
+				"demo.ci.actions.gone.uses":    "example/gone",
+				"demo.ci.actions.gone.commit":  setup.Commit,
+				"demo.ci.actions.gone.release": "v1.0.0",
+			}
+			file := "demo:\n  ci:\n    actions:\n      gone:\n        uses: example/gone\n        commit: " + setup.Commit +
+				"\n        release: v1.0.0\n"
+			res, err := options.Resolve([]byte(file), recorded, nil, answers(), producers(), []string{name})
+			assert.NoError(t, err, "Resolve")
+			want := baseline()
+			want.Owner = "Dokimasia B.V."
+			assert.Equal(t, res.Sections, []options.Section{{Name: name, Options: want}}, "the sections")
+		})
+
+		t.Run("returns ErrInvalid for a group that the producer no longer has at another value", func(t *testing.T) {
+			t.Parallel()
+			recorded := map[string]any{
+				"demo.ci.actions.gone.uses":    "example/gone",
+				"demo.ci.actions.gone.commit":  setup.Commit,
+				"demo.ci.actions.gone.release": "v1.0.0",
+			}
+			file := "demo:\n  ci:\n    actions:\n      gone:\n        uses: example/gone\n        commit: " + setup.Commit +
+				"\n        release: v2.0.0\n"
+			_, err := options.Resolve([]byte(file), recorded, nil, answers(), producers(), []string{name})
+			assert.ErrorIs(t, err, options.ErrInvalid, "Resolve")
+			assert.Contains(t, err.Error(), "gone", "the error")
+		})
+
 		t.Run("returns ErrInvalid for an option that the producer no longer has at another value", func(t *testing.T) {
 			t.Parallel()
 			recorded := map[string]any{"demo.tools.gone": "example.com/gone@v1.0.0"}

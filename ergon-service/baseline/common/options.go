@@ -8,15 +8,30 @@ import (
 	"regexp"
 
 	"go.dokimi.dev/ergon/core/option"
-	"go.dokimi.dev/ergon/core/workflow"
 )
 
 // windows is the system of Windows, whose programs end in .exe.
 const windows = "windows"
 
+// The repositories on GitHub whose releases publish the release binaries of the section.
+const (
+	commitlintRepository = "conventionalcommit/commitlint"
+	rumdlRepository      = "rvben/rumdl"
+)
+
 // word matches a word of a command that the shell, make and pre-commit read as it is: letters,
 // digits and the characters _ @ % + = : , . / ^ -.
 var word = regexp.MustCompile(`^[A-Za-z0-9_@%+=:,./^-]+$`)
+
+// rumdlTargets are the target triples of the assets of rumdl, by platform. On Linux the assets are
+// the static builds of musl, and the release does not publish an asset for Windows on ARM.
+var rumdlTargets = map[option.Platform]string{
+	option.LinuxAMD64:   "x86_64-unknown-linux-musl",
+	option.LinuxARM64:   "aarch64-unknown-linux-musl",
+	option.DarwinAMD64:  "x86_64-apple-darwin",
+	option.DarwinARM64:  "aarch64-apple-darwin",
+	option.WindowsAMD64: "x86_64-pc-windows-msvc",
+}
 
 // Options are the options of the section common of .ergon.yaml.
 type Options struct {
@@ -32,8 +47,8 @@ type Options struct {
 	// Hooks are the targets of the Makefile that the hooks of .pre-commit-config.yaml run.
 	Hooks Hooks `yaml:"hooks" doc:"The targets of the Makefile that the hooks of .pre-commit-config.yaml run, at each stage of git. An empty list turns the hooks of its stage off."`
 
-	// CI are the pins of the actions of the jobs docs and commits, and their limit.
-	CI option.CI[Actions] `yaml:"ci" doc:"The pins of the actions of the jobs docs and commits of ci.yml, and the limit of each job in minutes."`
+	// CI is the limit of the jobs docs, commits and changeset.
+	CI option.CI[struct{}] `yaml:"ci" doc:"The limit in minutes of each job of the common files in ci.yml: docs, commits and changeset. The jobs run ergon, and they do not run an action of their own."`
 }
 
 // Command is a command as its words, such as go, run and the package of a program.
@@ -59,12 +74,9 @@ func (c Command) Validate() error {
 type Tools struct {
 	// Commitlint checks the commit messages.
 	Commitlint Commitlint `yaml:"commitlint" doc:"The release of commitlint, which checks each commit message in the commit-msg hook of .pre-commit-config.yaml and in the job commits of ci.yml."`
-}
 
-// Actions are the pins of the actions of the jobs of the common files.
-type Actions struct {
-	// Markdownlint lints the Markdown files.
-	Markdownlint workflow.Action `yaml:"markdownlint" doc:"The action that lints the Markdown files in the job docs, with the rules of .markdownlint.yml."`
+	// Rumdl lints the Markdown files.
+	Rumdl Rumdl `yaml:"rumdl" doc:"The release of rumdl, which lint-common runs on the Markdown files with the rules of .markdownlint.yml. It skips the files of .markdownlintignore."`
 }
 
 // Commitlint is the release binary of commitlint, conventionalcommit/commitlint on GitHub, whose
@@ -73,10 +85,16 @@ type Commitlint struct {
 	option.Binary `yaml:",inline"`
 }
 
-var _ option.Release = Commitlint{}
+// Rumdl is the release binary of rumdl, rvben/rumdl on GitHub. rumdl lints Markdown files with the
+// rules of markdownlint, and its release publishes an asset for every platform but Windows on ARM.
+type Rumdl struct {
+	option.Binary `yaml:",inline"`
+}
 
-// commitlintRepository is the repository on GitHub whose releases publish commitlint.
-const commitlintRepository = "conventionalcommit/commitlint"
+var (
+	_ option.Release = Commitlint{}
+	_ option.Release = Rumdl{}
+)
 
 // Validate returns nil. The options of the section common have no rule between them, and the
 // command checks each option by the Validate method of its type before it calls Validate.
@@ -106,4 +124,26 @@ func (c Commitlint) Asset(p option.Platform) (option.Asset, error) {
 // publish commitlint.
 func (Commitlint) Repository() string {
 	return commitlintRepository
+}
+
+// Asset returns the archive of rumdl for p from the release of the version of r on GitHub:
+// rumdl-v<version>-<target>.tar.gz with the program at its root, and a .zip with rumdl.exe on
+// Windows. It returns an error that wraps [option.ErrNoAsset] for Windows on ARM, whose asset the
+// release does not publish, and for a platform that is not valid.
+func (r Rumdl) Asset(p option.Platform) (option.Asset, error) {
+	target, ok := rumdlTargets[p]
+	if !ok {
+		return option.Asset{}, fmt.Errorf("%w: rumdl has no asset for %q", option.ErrNoAsset, p)
+	}
+	download := "https://github.com/" + rumdlRepository + "/releases/download/v" + r.Version + "/rumdl-v" +
+		r.Version + "-" + target
+	if p.OS() == windows {
+		return option.Asset{URL: download + ".zip", Program: "rumdl.exe"}, nil
+	}
+	return option.Asset{URL: download + ".tar.gz", Program: "rumdl"}, nil
+}
+
+// Repository returns rvben/rumdl, the repository on GitHub whose releases publish rumdl.
+func (Rumdl) Repository() string {
+	return rumdlRepository
 }

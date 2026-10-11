@@ -119,10 +119,18 @@ func TestGithub(t *testing.T) {
 				)
 			})
 
-			t.Run("renders no nightly.yml without a nightly job", func(t *testing.T) {
+			t.Run("renders the job prune-tools alone in nightly.yml without a nightly job", func(t *testing.T) {
 				t.Parallel()
 				dir := baselinetest.New(t, new(language.Catalog), baselinetest.Answers(), producer())
-				files.Absent(t, filepath.Join(dir, filepath.FromSlash(nightlyPath)), "the workflow nightly.yml")
+				got := files.Read(t, filepath.Join(dir, filepath.FromSlash(nightlyPath)))
+				assert.HasSuffix(t, got, "\njobs:\n  prune-tools:\n    name: Prune the tool caches\n"+
+					"    runs-on: ubuntu-26.04\n    timeout-minutes: 15\n    permissions:\n      actions: write\n"+
+					"      contents: read\n    steps:\n"+
+					"      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1\n"+
+					"        with:\n          persist-credentials: false\n      - uses: ./.github/actions/setup-ergon\n"+
+					"      - name: Delete the tool caches that newer caches replaced\n        env:\n"+
+					"          GITHUB_TOKEN: \"${{ github.token }}\"\n        run: |\n          ergon tool ci prune\n",
+					"the jobs of nightly.yml")
 			})
 		})
 
@@ -243,18 +251,32 @@ func TestGithub(t *testing.T) {
 		t.Run("Contribution", func(t *testing.T) {
 			t.Parallel()
 
-			t.Run("returns the job baseline, which runs ergon init check as a check of text", func(t *testing.T) {
+			t.Run("returns the jobs baseline and workflows as checks of text", func(t *testing.T) {
 				t.Parallel()
 				got := github.Producer{}.Contribution(github.Producer{}.Options())
-				assert.Equal(t, got, workflow.Contribution{Jobs: []workflow.Job{{
-					ID:          "baseline",
-					Name:        "Baseline",
-					Text:        true,
-					Timeout:     15,
-					Permissions: read,
-					Ergon:       true,
-					Steps:       []workflow.Step{{Name: "Check the managed files", Run: []string{"ergon init check"}}},
-				}}}, "the contribution")
+				assert.Equal(t, got, workflow.Contribution{Jobs: []workflow.Job{
+					{
+						ID:          "baseline",
+						Name:        "Baseline",
+						Text:        true,
+						Timeout:     15,
+						Permissions: read,
+						Ergon:       true,
+						Steps: []workflow.Step{
+							{Name: "Check the managed files", Run: []string{"ergon init check"}},
+						},
+					},
+					{
+						ID:          "workflows",
+						Name:        "Workflows",
+						Text:        true,
+						Timeout:     15,
+						Permissions: read,
+						Ergon:       true,
+						Tools:       true,
+						Steps:       []workflow.Step{{Name: "Lint the workflows", Run: []string{"make lint-github"}}},
+					},
+				}}, "the contribution")
 			})
 
 			t.Run("returns a valid contribution", func(t *testing.T) {
@@ -269,12 +291,14 @@ func TestGithub(t *testing.T) {
 				assert.Equal(t, github.Producer{}.Contribution(nil), want, "the contribution for nil options")
 			})
 
-			t.Run("returns the job with the timeout of the options", func(t *testing.T) {
+			t.Run("returns the jobs with the timeout of the options", func(t *testing.T) {
 				t.Parallel()
 				o, _ := github.Producer{}.Options().(*github.Options)
 				o.CI.Timeout = 25
 				got := github.Producer{}.Contribution(o)
-				assert.Equal(t, got.Jobs[0].Timeout, 25, "the timeout of baseline")
+				assert.Length(t, got.Jobs, 2, "the jobs")
+				expect.Equal(t, got.Jobs[0].Timeout, 25, "the timeout of baseline")
+				expect.Equal(t, got.Jobs[1].Timeout, 25, "the timeout of workflows")
 			})
 		})
 

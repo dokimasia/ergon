@@ -28,13 +28,6 @@ const (
 	makefile        = "Makefile"
 )
 
-// markdownlint is the pin of the action of markdownlint at the baseline.
-var markdownlint = workflow.Action{
-	Uses:    "DavidAnson/markdownlint-cli2-action",
-	Commit:  "21c1be1b93ad9ed58fa840aacc3f279cde2a72ff",
-	Release: "v24.2.0",
-}
-
 // read is the permission of the jobs of the common files.
 var read = map[string]string{"contents": "read"}
 
@@ -180,8 +173,10 @@ func TestCommon(t *testing.T) {
 						Text:        true,
 						Timeout:     10,
 						Permissions: read,
+						Ergon:       true,
+						Tools:       true,
 						Steps: []workflow.Step{
-							{Uses: markdownlint, With: map[string]string{"globs": "**/*.md\n#node_modules"}},
+							{Name: "Lint the Markdown files", Run: []string{"make lint-common"}},
 						},
 					},
 					{

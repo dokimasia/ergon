@@ -7,6 +7,16 @@ github:
   # The release of GNU make that the action setup-make installs from Chocolatey on a Windows runner,
   # whose image has no make.
   make: 4.4.1
+  # The tools of the GitHub files.
+  tools:
+    # The release of actionlint, which lint-github runs on the workflows with the configuration of
+    # .github/actionlint.yaml.
+    actionlint:
+      sha256:
+        darwin/arm64: aba9ced2dee8d27fecca3dc7feb1a7f9a52caefa1eb46f3271ea66b6e0e6953f
+        linux/amd64: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        windows/amd64: 6e7241b51e6817ea6a047693d8e6fed13b31819c9a0dd6c5a726e1592d22f6e9
+      version: 1.7.12
   # The options of nightly.yml, which runs the steps under the key nightly of each language on a
   # schedule, each in a job of its own.
   nightly:

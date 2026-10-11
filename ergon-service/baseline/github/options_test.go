@@ -17,6 +17,9 @@ import (
 // The runners of the section github at the baseline.
 var runners = option.Runners{"ubuntu-26.04", "macos-26", "windows-2025"}
 
+// actionlintRelease is the address of the assets of actionlint 1.7.12.
+const actionlintRelease = "https://github.com/rhysd/actionlint/releases/download/v1.7.12/"
+
 // The step that keeps the tools of ergon in the cache: its name and its ID, the tool directory of
 // ergon on each system, the start of its keys, the prefix that a job without and with the runtime
 // versions of a matrix restores, and the key of each of those jobs and of a job whose setup has
@@ -84,6 +87,68 @@ func TestOptions(t *testing.T) {
 				assert.ErrorIs(t, o.Validate(), option.ErrInvalid, "Validate")
 			})
 		}
+	})
+
+	t.Run("Actionlint", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Asset", func(t *testing.T) {
+			t.Parallel()
+
+			tests := []struct {
+				name string
+				give option.Platform
+				want option.Asset
+			}{
+				{
+					name: "returns the archive of Linux on x86-64",
+					give: option.LinuxAMD64,
+					want: option.Asset{
+						URL:     actionlintRelease + "actionlint_1.7.12_linux_amd64.tar.gz",
+						Program: "actionlint",
+					},
+				},
+				{
+					name: "returns the archive of macOS on Apple silicon",
+					give: option.DarwinARM64,
+					want: option.Asset{
+						URL:     actionlintRelease + "actionlint_1.7.12_darwin_arm64.tar.gz",
+						Program: "actionlint",
+					},
+				},
+				{
+					name: "returns the zip of Windows with the program of the suffix exe",
+					give: option.WindowsAMD64,
+					want: option.Asset{
+						URL:     actionlintRelease + "actionlint_1.7.12_windows_amd64.zip",
+						Program: "actionlint.exe",
+					},
+				},
+			}
+			for _, tt := range tests {
+				t.Run(tt.name, func(t *testing.T) {
+					t.Parallel()
+					got, err := baselineOptions().Tools.Actionlint.Asset(tt.give)
+					assert.NoError(t, err, "Asset")
+					assert.Equal(t, got, tt.want, "the asset")
+				})
+			}
+
+			t.Run("returns ErrNoAsset for an invalid platform", func(t *testing.T) {
+				t.Parallel()
+				_, err := baselineOptions().Tools.Actionlint.Asset("plan9/amd64")
+				assert.ErrorIs(t, err, option.ErrNoAsset, "Asset")
+			})
+		})
+
+		t.Run("Repository", func(t *testing.T) {
+			t.Parallel()
+
+			t.Run("returns the repository of the releases of actionlint", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, github.Actionlint{}.Repository(), "rhysd/actionlint", "Repository")
+			})
+		})
 	})
 
 	t.Run("Nightly", func(t *testing.T) {

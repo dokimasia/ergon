@@ -44,30 +44,33 @@ func (Producer) Templates() fs.FS {
 }
 
 // Options returns the options of the common files at the baseline: the ergon on the PATH as the
-// command of ergon, the release of commitlint with the digests that it states, the releases of
-// pre-commit-hooks and markdownlint-cli2-action, the hooks lint and test before each commit and
-// check before each push, and a limit of 10 minutes for each job.
+// command of ergon, the releases of commitlint and rumdl with the digests that they state, the
+// release of pre-commit-hooks, the hooks lint and test before each commit and check before each
+// push, and a limit of 10 minutes for each job.
 func (Producer) Options() language.Options {
 	return &Options{
 		Ergon: Command{"ergon"},
-		Tools: Tools{Commitlint: Commitlint{Binary: option.Binary{
-			SHA256: map[option.Platform]string{
-				option.LinuxAMD64:   "bf9666441262bf8d31345a6d29d6f788d0dadea7d47e5b91890c3a651999c118",
-				option.DarwinARM64:  "35f25a55947031db016177ac0211d479c1fca21ccb87b368b6a429629524436c",
-				option.WindowsAMD64: "e8f90d08616ab8cd987b2dbef7ae0ee7fd1cb43c97f5a1ad171e8a56d1bd2f3d",
-			},
-			Version: "0.12.0",
-		}}},
+		Tools: Tools{
+			Commitlint: Commitlint{Binary: option.Binary{
+				SHA256: map[option.Platform]string{
+					option.LinuxAMD64:   "bf9666441262bf8d31345a6d29d6f788d0dadea7d47e5b91890c3a651999c118",
+					option.DarwinARM64:  "35f25a55947031db016177ac0211d479c1fca21ccb87b368b6a429629524436c",
+					option.WindowsAMD64: "e8f90d08616ab8cd987b2dbef7ae0ee7fd1cb43c97f5a1ad171e8a56d1bd2f3d",
+				},
+				Version: "0.12.0",
+			}},
+			Rumdl: Rumdl{Binary: option.Binary{
+				SHA256: map[option.Platform]string{
+					option.LinuxAMD64:   "a85ae77c6880616118e10dda1e36292df59815bcfbf767201736ff6971213cf3",
+					option.DarwinARM64:  "8c0ecf93a61bf612df5f6c6f22813d066a6f51a5680f3c12da49b93ed892aebb",
+					option.WindowsAMD64: "07d12118c143976fadaaf7d053ac6be328798ce3b59b3f774572ac946b123672",
+				},
+				Version: "0.2.79",
+			}},
+		},
 		PreCommitHooks: "v6.0.0",
 		Hooks:          Hooks{PreCommit: Targets{TargetLint, TargetTest}, PrePush: Targets{TargetCheck}},
-		CI: option.CI[Actions]{
-			Actions: Actions{Markdownlint: workflow.Action{
-				Uses:    "DavidAnson/markdownlint-cli2-action",
-				Commit:  "21c1be1b93ad9ed58fa840aacc3f279cde2a72ff",
-				Release: "v24.2.0",
-			}},
-			Timeout: 10,
-		},
+		CI:             option.CI[struct{}]{Timeout: 10},
 	}
 }
 
@@ -75,7 +78,8 @@ func (Producer) Options() language.Options {
 // baseline when o is not the options of the common files. The jobs check text, so they run on the
 // Linux runner of the section github:
 //
-//   - docs lints the Markdown files with the markdownlint of o.
+//   - docs lints the Markdown files with the rumdl of o through make lint-common, and keeps rumdl
+//     in the cache of GitHub Actions.
 //   - commits checks each commit message of a pull request with the commitlint of o, through ergon
 //     tool run, and keeps commitlint in the cache of GitHub Actions. It skips the pull requests of
 //     Dependabot, whose bodies exceed the length of a line.
@@ -95,10 +99,9 @@ func (p Producer) Contribution(o language.Options) workflow.Contribution {
 		Text:        true,
 		Timeout:     opts.CI.Timeout,
 		Permissions: read,
-		Steps: []workflow.Step{{
-			Uses: opts.CI.Actions.Markdownlint,
-			With: map[string]string{"globs": "**/*.md\n#node_modules"},
-		}},
+		Ergon:       true,
+		Tools:       true,
+		Steps:       []workflow.Step{{Name: "Lint the Markdown files", Run: []string{"make lint-common"}}},
 	}
 	commits := workflow.Job{
 		ID:          "commits",

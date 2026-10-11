@@ -74,6 +74,13 @@ const (
 	authExpression = "${{ github.token }}"
 )
 
+// windows is the system of Windows, whose asset of actionlint is a .zip with a program that ends in
+// .exe.
+const windows = "windows"
+
+// actionlintRepository is the repository on GitHub whose releases publish actionlint.
+const actionlintRepository = "rhysd/actionlint"
+
 // Job is a job of ci.yml as its template renders it: the values of a [workflow.Job] that the
 // section github, the job's setup and the checkout determine. The template renders the checkout and
 // the installation of GNU make before Setup, and the installation of ergon between Setup and Steps.
@@ -139,11 +146,52 @@ type Options struct {
 	// Make is the release of GNU make that a Windows runner installs.
 	Make option.Version `yaml:"make" source:"chocolatey:make" doc:"The release of GNU make that the action setup-make installs from Chocolatey on a Windows runner, whose image has no make."`
 
+	// Tools are the tools of the GitHub files.
+	Tools Tools `yaml:"tools" doc:"The tools of the GitHub files."`
+
 	// Nightly are the options of nightly.yml.
 	Nightly Nightly `yaml:"nightly" doc:"The options of nightly.yml, which runs the steps under the key nightly of each language on a schedule, each in a job of its own."`
 
 	// CI are the pins of the actions of the GitHub files, and the limit of their jobs.
 	CI option.CI[Actions] `yaml:"ci" doc:"The pins of the actions of the workflows, and the limit in minutes of each job of the GitHub files."`
+}
+
+// Tools are the tools of the GitHub files.
+type Tools struct {
+	// Actionlint lints the workflows.
+	Actionlint Actionlint `yaml:"actionlint" doc:"The release of actionlint, which lint-github runs on the workflows with the configuration of .github/actionlint.yaml."`
+}
+
+// Actionlint is the release binary of actionlint, rhysd/actionlint on GitHub. actionlint checks the
+// workflows of GitHub Actions, and its release publishes an asset for every platform.
+type Actionlint struct {
+	option.Binary `yaml:",inline"`
+}
+
+var _ option.Release = Actionlint{}
+
+// Asset returns the archive of actionlint for p from the release of the version of a on GitHub:
+// actionlint_<version>_<os>_<arch>.tar.gz with the program at its root, and a .zip with
+// actionlint.exe on Windows. It returns an error that wraps [option.ErrNoAsset] for a platform that
+// is not valid.
+func (a Actionlint) Asset(p option.Platform) (option.Asset, error) {
+	if p.Validate() != nil {
+		return option.Asset{}, fmt.Errorf("%w: actionlint has no asset for %q", option.ErrNoAsset, p)
+	}
+	program, ext := "actionlint", ".tar.gz"
+	if p.OS() == windows {
+		program, ext = program+".exe", ".zip"
+	}
+	download := "https://github.com/" + actionlintRepository + "/releases/download/v" + a.Version
+	return option.Asset{
+		URL:     download + "/actionlint_" + a.Version + "_" + p.OS() + "_" + p.Arch() + ext,
+		Program: program,
+	}, nil
+}
+
+// Repository returns rhysd/actionlint, the repository on GitHub whose releases publish actionlint.
+func (Actionlint) Repository() string {
+	return actionlintRepository
 }
 
 // Nightly are the options of nightly.yml.

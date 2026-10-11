@@ -22,6 +22,11 @@
       "sha256": "847a27513a667c4b096a937d209b6403718968d300cd7353a38091dd403ffb94"
     },
     {
+      "path": ".github/actionlint.yaml",
+      "producer": "github",
+      "sha256": "1b1fca0de871f5975557a62370b65ab114cd19c0adf2735ccba2c7947961867e"
+    },
+    {
       "path": ".github/actions/setup-ergon/action.yml",
       "producer": "github",
       "sha256": "4aaa13da8da70d09dea1654946ca0badb00a13e00999eaef1a780e9230acad93"
@@ -39,12 +44,17 @@
     {
       "path": ".github/workflows/ci.yml",
       "producer": "github",
-      "sha256": "8da2db6e26ce14c75fa99909fec6868b1a9b5efb4faf19eb7259ed9d99a688e9"
+      "sha256": "bd68f5fdee18ebbf61591e12bc1a4956cc38f09c30b396ef79787ddaf475def3"
     },
     {
       "path": ".github/workflows/codeql.yml",
       "producer": "github",
       "sha256": "c6316ee5a953f3fde2df3f268b125fe4680290fda2624ecedd9ea412cf661e1e"
+    },
+    {
+      "path": ".github/workflows/nightly.yml",
+      "producer": "github",
+      "sha256": "79be51dcbe60f5ef9197ca4c11d9d400dd0bef45c9ac981f1fad7059c816f2c5"
     },
     {
       "path": ".github/workflows/release.yml",
@@ -60,6 +70,11 @@
       "path": ".github/workflows/version.yml",
       "producer": "github",
       "sha256": "3cd99e2ba16943fc1b4804263f298e2e6b5c7f1665a4d46c7426165b15bf60fe"
+    },
+    {
+      "path": "Makefile",
+      "producer": "github",
+      "sha256": "d548be74c671b42e02e7e1f3f5f79663b8852b0637dbb4995fbc3f6e21a40c1f"
     }
   ],
   "settings": {
@@ -98,7 +113,13 @@
       "ubuntu-26.04",
       "macos-26",
       "windows-2025"
-    ]
+    ],
+    "github.tools.actionlint.sha256": {
+      "darwin/arm64": "aba9ced2dee8d27fecca3dc7feb1a7f9a52caefa1eb46f3271ea66b6e0e6953f",
+      "linux/amd64": "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8",
+      "windows/amd64": "6e7241b51e6817ea6a047693d8e6fed13b31819c9a0dd6c5a726e1592d22f6e9"
+    },
+    "github.tools.actionlint.version": "1.7.12"
   },
   "answers": {
     "name": "demo",

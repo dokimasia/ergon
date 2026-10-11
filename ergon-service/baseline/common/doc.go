@@ -12,13 +12,20 @@
 //
 // # Options
 //
-// The section common of .ergon.yaml, [Options], names the command of ergon, the release of
-// commitlint, the release of pre-commit-hooks, the targets of the hooks, the pin of the action of
-// markdownlint, and the limit of the jobs of the common files. commitlint is a release binary: ergon
-// tool run installs it and checks its archive against the digest of the platform.
+// The section common of .ergon.yaml, [Options], names the command of ergon, the releases of
+// commitlint and rumdl, the release of pre-commit-hooks, the targets of the hooks, and the limit of
+// the jobs of the common files. commitlint and rumdl are release binaries: ergon tool run installs
+// each one and checks its archive against the digest of the platform.
 //
 // The Makefile and the commit-msg hook run ergon with the [Command] of the key ergon: the ergon on
 // the PATH at the baseline. The repository of ergon runs the ergon of its own source with go run.
+//
+// # Markdown
+//
+// The target lint-common of the Makefile runs [Rumdl] with the rules of the managed .markdownlint.yml
+// on the Markdown files of the repository. rumdl does not lint a file that .gitignore or the managed
+// .markdownlintignore ignores. The managed .markdownlintignore ignores the test data. The targets
+// lint and check depend on lint-common.
 //
 // # Hooks
 //
@@ -30,12 +37,12 @@
 // # Workflows
 //
 // [Producer.Contribution] returns the jobs docs, commits and changeset of ci.yml. They check text,
-// so they run on the Linux runner of the section github. commits checks the commit messages of a
-// pull request with the commitlint of the section, the release that the commit-msg hook of
-// .pre-commit-config.yaml runs. changeset runs ergon release status against the base of a pull
-// request, with the configuration .changeset/config.json, which the common files seed. Both skip
-// the pull requests of Dependabot, and changeset also skips the version pull request of the
-// repository.
+// so they run on the Linux runner of the section github. docs runs make lint-common, as make lint
+// does in the hooks. commits checks the commit messages of a pull request with the commitlint of
+// the section, the release that the commit-msg hook of .pre-commit-config.yaml runs. changeset runs
+// ergon release status against the base of a pull request, with the configuration
+// .changeset/config.json, which the common files seed. commits and changeset skip the pull requests
+// of Dependabot, and changeset also skips the version pull request of the repository.
 //
 // # Dependency position
 //
