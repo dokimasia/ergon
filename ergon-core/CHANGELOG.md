@@ -1,5 +1,11 @@
 # go.dokimi.dev/ergon/core
 
+## 0.10.0
+
+### Minor Changes
+
+- 9f8ee46: Add option.PackageManager and the interface option.PackageManaged of the section that sets it.
+
 ## 0.9.0
 
 ### Minor Changes
