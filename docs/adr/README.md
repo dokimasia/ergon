@@ -51,3 +51,4 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 | [0040](0040-releases-include-the-notice.md) | The archives and the packages of a release include the NOTICE of a repository under Apache-2.0 | Accepted |
 | [0041](0041-package-manager-of-the-js-toolchain.md) | The key package-manager of the section js selects npm or pnpm | Accepted |
 | [0042](0042-vite-plus-toolkit-of-the-js-toolchain.md) | The toolkit vite-plus runs the gates of JavaScript and TypeScript through vp | Accepted |
+| [0043](0043-lint-of-markdown-and-workflows.md) | The targets lint-common and lint-github lint the Markdown files and the workflows | Accepted |
