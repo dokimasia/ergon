@@ -1,5 +1,16 @@
 # go.dokimi.dev/ergon/service
 
+## 0.11.0
+
+### Minor Changes
+
+- c82c878: Replace the action `common.ci.actions.markdownlint` with `common.tools.rumdl` in the target `lint-common` and the job `docs`.
+- c82c878: Lint the workflows with `github.tools.actionlint` in the target `lint-github` and the job `workflows`.
+
+### Patch Changes
+
+- c82c878: Leave out a group of `.ergon.yaml` whose options the producer no longer has at the values of the lock.
+
 ## 0.10.0
 
 ### Minor Changes

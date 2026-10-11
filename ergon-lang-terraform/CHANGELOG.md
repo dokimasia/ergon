@@ -1,5 +1,14 @@
 # go.dokimi.dev/ergon/lang/terraform
 
+## 0.4.2
+
+### Patch Changes
+
+- Updated dependencies [c82c878]
+- Updated dependencies [c82c878]
+- Updated dependencies [c82c878]
+  - go.dokimi.dev/ergon/service@0.11.0
+
 ## 0.4.1
 
 ### Patch Changes
