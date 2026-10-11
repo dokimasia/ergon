@@ -16,7 +16,8 @@
 //
 //   - [Module]: a Go module, through go install
 //   - [PyPI]: a PyPI package, through the [UV] of the same section
-//   - [NPM]: an npm package, through npx
+//   - [NPM]: an npm package, through npx, or through pnpm dlx in a repository whose section of
+//     [PackageManaged] sets [PackageManagerPNPM]
 //   - [Crate]: a crate, through cargo install
 //   - [Maven]: a Maven artifact, through java -jar
 //   - [Composer]: a Composer package, through Composer

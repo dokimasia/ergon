@@ -22,7 +22,8 @@
 //     golangci-lint custom when the option that the tag names lists a module plugin. The cache
 //     keeps the program of each set of plugins beside the program of go install.
 //   - A PyPI package runs through the release binary of uv of its section, and an npm package with
-//     npx, which install it into their own caches.
+//     npx, or with pnpm dlx for the package manager pnpm. Each installs the package into its own
+//     cache.
 //   - The Composer packages of a section install together into one project, so a package such as
 //     phpstan-strict-rules extends another, and run with php. The project allows the plugins of
 //     its packages, such as the extension installer of PHPStan.

@@ -417,9 +417,9 @@ func (r *Repository) targets(a *language.Answers, previous *lock.Lock) (renderin
 
 // units returns the producers of a, the base producers and then the toolchain and the producer of
 // each language of a in the order of the catalog, and the lock that follows them without its
-// entries of files and its record: a copy of a with its languages in the order of the catalog. It
-// reads a and does not modify it. It returns the errors that [Repository.targets] states for the
-// answers and the languages.
+// entries of files and its record: a copy of a with its languages in the order of the catalog. Each
+// unit of a language has the name of the unit of its toolchain. It reads a and does not modify it.
+// It returns the errors that [Repository.targets] states for the answers and the languages.
 func (r *Repository) units(a *language.Answers) ([]render.Unit, lock.Lock, error) {
 	if err := a.Validate(); err != nil {
 		return nil, lock.Lock{}, err
@@ -454,7 +454,7 @@ func (r *Repository) units(a *language.Answers) ([]render.Unit, lock.Lock, error
 			}
 		}
 		languages = append(languages, d.Name)
-		units = append(units, render.Unit{Name: string(d.Name), Producer: producer})
+		units = append(units, render.Unit{Name: string(d.Name), Producer: producer, Toolchain: string(d.Toolchain)})
 	}
 	next.Answers.Languages = languages
 	return units, next, nil

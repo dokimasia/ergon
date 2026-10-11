@@ -72,19 +72,46 @@ func TestBaseline(t *testing.T) {
 				t.Parallel()
 				o, _ := baseline.Producer{}.Options().(*baseline.Options)
 				o.Check = option.Check{option.StepAudit}
-				makefile := rendered(t, render.Unit{Name: baseline.Name, Producer: baseline.Producer{}, Options: o},
-					"Makefile")
+				makefile := rendered(t, "Makefile", jsOptions(),
+					render.Unit{Name: baseline.Name, Producer: baseline.Producer{}, Options: o})
 				assert.Contains(t, makefile, "\ncheck-javascript: audit-javascript ## Run the gate of JavaScript\n",
 					"the Makefile")
 			})
 
-			t.Run("runs npm test with the arguments of the section javascript", func(t *testing.T) {
+			t.Run("runs the tests of the section js with the arguments of the section javascript", func(t *testing.T) {
 				t.Parallel()
 				o, _ := baseline.Producer{}.Options().(*baseline.Options)
 				o.Test.Args = []string{"test/unit", "test/e2e"}
-				makefile := rendered(t, render.Unit{Name: baseline.Name, Producer: baseline.Producer{}, Options: o},
-					"Makefile")
-				assert.Contains(t, makefile, "\nJAVASCRIPT_TEST_ARGS ?= test/unit test/e2e\n", "the Makefile")
+				makefile := rendered(t, "Makefile", jsOptions(),
+					render.Unit{Name: baseline.Name, Producer: baseline.Producer{}, Options: o})
+				expect.That(t, makefile).
+					Contains("\nJAVASCRIPT_TEST_ARGS ?= test/unit test/e2e\n", "the arguments of the tests").
+					Contains("\ntest-javascript: ## Run the JavaScript tests\n"+
+						"\t$(JS_TEST)$(if $(JAVASCRIPT_TEST_ARGS), $(JAVASCRIPT_TEST_ARGS))\n", "the target of the tests")
+			})
+
+			t.Run("names Biome in the help of lint-javascript at the baseline", func(t *testing.T) {
+				t.Parallel()
+				unit := render.Unit{
+					Name:     baseline.Name,
+					Producer: baseline.Producer{},
+					Options:  baseline.Producer{}.Options(),
+				}
+				assert.Contains(t, rendered(t, "Makefile", jsOptions(), unit),
+					"\nlint-javascript: lint-js ## Check the JavaScript sources with Biome\n", "the Makefile")
+			})
+
+			t.Run("names vp check in the help of lint-javascript for the toolkit vite-plus", func(t *testing.T) {
+				t.Parallel()
+				js := jsOptions()
+				js.Toolkit = baseline.ToolkitVitePlus
+				unit := render.Unit{
+					Name:     baseline.Name,
+					Producer: baseline.Producer{},
+					Options:  baseline.Producer{}.Options(),
+				}
+				assert.Contains(t, rendered(t, "Makefile", js, unit),
+					"\nlint-javascript: lint-js ## Check the JavaScript sources with vp check\n", "the Makefile")
 			})
 
 			t.Run("runs the command of the generators and checks their files in the step generate", func(t *testing.T) {
@@ -92,8 +119,8 @@ func TestBaseline(t *testing.T) {
 				o, _ := baseline.Producer{}.Options().(*baseline.Options)
 				o.Generate = option.Generate{Command: []string{"npm", "run", "generate"}, Args: []string{}}
 				o.Check = option.Check{option.StepGenerate}
-				makefile := rendered(t, render.Unit{Name: baseline.Name, Producer: baseline.Producer{}, Options: o},
-					"Makefile")
+				makefile := rendered(t, "Makefile", jsOptions(),
+					render.Unit{Name: baseline.Name, Producer: baseline.Producer{}, Options: o})
 				expect.That(t, makefile).
 					Contains("\nJAVASCRIPT_GENERATE ?= npm run generate\n", "the command of the generators").
 					Contains("\ngenerate: generate-javascript\n", "the aggregate generate").
@@ -111,7 +138,7 @@ func TestBaseline(t *testing.T) {
 					Producer: baseline.Producer{},
 					Options:  baseline.Producer{}.Options(),
 				}
-				assert.NotContains(t, rendered(t, unit, "Makefile"), "generate", "the Makefile")
+				assert.NotContains(t, rendered(t, "Makefile", jsOptions(), unit), "generate", "the Makefile")
 			})
 		})
 
@@ -154,13 +181,19 @@ func catalog(t *testing.T) *language.Catalog {
 	return c
 }
 
-// rendered returns the file name that the unit u renders for the answers of the cases, and stops
-// the test when it renders none.
-func rendered(t *testing.T, u render.Unit, name string) string {
+// rendered returns the file name that the js toolchain with the options o and units, whose toolchain
+// it is, render for the answers of the cases. It stops the test when they render none.
+func rendered(t *testing.T, name string, o *baseline.ToolchainOptions, units ...render.Unit) string {
 	t.Helper()
-	files, err := render.Render([]render.Unit{u}, baselinetest.Answers(javascript.Language), &workflow.Contribution{})
+	all := make([]render.Unit, 0, 1+len(units))
+	all = append(all, render.Unit{Name: baseline.ToolchainName, Producer: baseline.Toolchain{}, Options: o})
+	for _, u := range units {
+		u.Toolchain = baseline.ToolchainName
+		all = append(all, u)
+	}
+	files, err := render.Render(all, baselinetest.Answers(javascript.Language), &workflow.Contribution{})
 	assert.NoError(t, err, "Render")
 	i := slices.IndexFunc(files, func(f render.File) bool { return f.Path == name })
-	assert.InRange(t, i, 0, float64(len(files)-1), u.Name+" renders "+name)
+	assert.InRange(t, i, 0, float64(len(files)-1), "the units render "+name)
 	return string(files[i].Content)
 }

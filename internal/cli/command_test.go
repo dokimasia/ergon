@@ -96,8 +96,8 @@ func (f fixed) Templates() fs.FS {
 }
 
 // TestMain acts as a fake program when fakeEnv is set, as [fake] states. Otherwise it isolates git
-// from the configuration of the user, puts the fake npx first on the PATH of the process, from
-// which exec resolves a program, and runs the tests.
+// from the configuration of the user, puts the fake npx and pnpm first on the PATH of the process,
+// from which exec resolves a program, and runs the tests.
 func TestMain(m *testing.M) {
 	if os.Getenv(fakeEnv) != "" {
 		os.Exit(fake(os.Args, os.Stdin, os.Stdout))
@@ -109,13 +109,16 @@ func TestMain(m *testing.M) {
 		content, err = os.ReadFile(self)
 	}
 	dir, err2 := os.MkdirTemp("", "ergon-cli-fakes-")
-	npx := filepath.Join(dir, "npx")
-	if runtime.GOOS == "windows" {
-		npx += ".exe"
+	var err3 error
+	for _, name := range []string{"npx", "pnpm"} {
+		program := filepath.Join(dir, name)
+		if runtime.GOOS == "windows" {
+			program += ".exe"
+		}
+		err3 = errors.Join(err3, os.WriteFile(program, content, 0o755))
 	}
-	err3 := os.WriteFile(npx, content, 0o755)
 	if joined := errors.Join(err, err2, err3); joined != nil {
-		fmt.Fprintln(os.Stderr, "cli_test: the fake npx does not install:", joined)
+		fmt.Fprintln(os.Stderr, "cli_test: the fakes of npx and pnpm do not install:", joined)
 		os.Exit(2)
 	}
 	_ = os.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))

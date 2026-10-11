@@ -14,6 +14,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"go.dokimi.dev/ergon/core/language"
+	"go.dokimi.dev/ergon/core/option"
 	"go.dokimi.dev/ergon/service/baseline"
 	"go.dokimi.dev/ergon/service/baseline/github"
 	"go.dokimi.dev/ergon/service/tool"
@@ -74,9 +75,10 @@ func toolCommand(ctx context.Context, s *session) *cobra.Command {
 
 // runCommand returns ergon tool run, which runs the tool <section>.<tool> of its first argument
 // with the arguments that follow it, through the runner of s under ctx in the working directory of
-// s, and records the exit status of the tool in s. It returns a [usageError] for a first argument
-// without a dot, for a section of no producer of the repository and for a tool that the section
-// does not name, and the errors of the runner, of the options and of [tool.Runner.Run].
+// s, and records the exit status of the tool in s. The runner starts an npm package with the package
+// manager that the section of [option.PackageManaged] sets. It returns a [usageError] for a first
+// argument without a dot, for a section of no producer of the repository and for a tool that the
+// section does not name, and the errors of the runner, of the sections and of [tool.Runner.Run].
 func runCommand(ctx context.Context, s *session) *cobra.Command {
 	return &cobra.Command{
 		Use:     "run <section>.<tool> [-- <argument>...]",
@@ -94,12 +96,21 @@ func runCommand(ctx context.Context, s *session) *cobra.Command {
 				return err
 			}
 			return s.open(s.root(), func(r *baseline.Repository) error {
-				o, err := r.Options(section)
-				if errors.Is(err, baseline.ErrUnknownSection) {
-					return usageError{err: err}
-				}
+				sections, err := r.Sections()
 				if err != nil {
 					return err
+				}
+				var o language.Options
+				for _, sec := range sections {
+					if sec.Name == section {
+						o = sec.Options
+					}
+					if m, ok := sec.Options.(option.PackageManaged); ok {
+						runner.PackageManager = m.Manager()
+					}
+				}
+				if o == nil {
+					return usageError{err: fmt.Errorf("%w: %q", baseline.ErrUnknownSection, section)}
 				}
 				s.status, err = runner.Run(ctx, section, o, name, args[1:])
 				if errors.Is(err, tool.ErrUnknown) {

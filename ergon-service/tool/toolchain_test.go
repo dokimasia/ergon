@@ -31,6 +31,7 @@ func TestToolchain(t *testing.T) {
 			name     string
 			give     func(*options)
 			platform option.Platform
+			manager  option.PackageManager
 			tool     string
 			args     []string
 			want     string
@@ -77,6 +78,27 @@ func TestToolchain(t *testing.T) {
 				args: []string{"--noEmit"},
 				want: "npx --yes --package=typescript@7.0.2 -- tsc --noEmit\n",
 			},
+			{
+				name:    "runs an npm package with npx for the package manager npm",
+				manager: option.PackageManagerNPM,
+				tool:    "biome",
+				args:    []string{"check"},
+				want:    "npx --yes --package=@biomejs/biome@2.5.15 -- biome check\n",
+			},
+			{
+				name:    "runs an npm package with pnpm dlx for the package manager pnpm",
+				manager: option.PackageManagerPNPM,
+				tool:    "biome",
+				args:    []string{"check"},
+				want:    "pnpm --package=@biomejs/biome@2.5.15 dlx biome check\n",
+			},
+			{
+				name:    "runs the program of the tag program of an npm package with pnpm dlx",
+				manager: option.PackageManagerPNPM,
+				tool:    "typescript",
+				args:    []string{"--noEmit"},
+				want:    "pnpm --package=typescript@7.0.2 dlx tsc --noEmit\n",
+			},
 		}
 		for _, tt := range runs {
 			t.Run(tt.name, func(t *testing.T) {
@@ -89,6 +111,7 @@ func TestToolchain(t *testing.T) {
 				if tt.platform != "" {
 					r.Platform = tt.platform
 				}
+				r.PackageManager = tt.manager
 				_, err := r.Run(t.Context(), section, o, tt.tool, tt.args)
 				assert.NoError(t, err, "Run")
 				assert.Equal(t, out.String(), tt.want, "the output of the tool")

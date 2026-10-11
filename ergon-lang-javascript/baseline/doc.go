@@ -5,29 +5,47 @@
 // toolchain, which renders what JavaScript shares with TypeScript.
 //
 // [Producer] renders the fragments of JavaScript of .editorconfig and the Makefile from
-// templates/javascript/. [Toolchain] renders biome.json as a managed file, and its fragments of
-// .gitattributes, .gitignore and the Makefile, from templates/js/, once for a repository with
-// JavaScript, TypeScript or both. biome.json is JSON, so it opens with no managed comment.
+// templates/javascript/. [Toolchain] renders its managed file and its fragments of .gitattributes,
+// .gitignore and the Makefile from templates/js/, once for a repository with JavaScript,
+// TypeScript or both. The managed file is biome.json for the toolkit biome, and .prettierignore
+// for the toolkit vite-plus. biome.json is JSON, so it opens with no managed comment.
+// .prettierignore lists .ergon/, .ergon.yaml and every managed file of the rendering, so vp fmt
+// leaves them as ergon init renders them.
+//
+// # Package manager and toolkit
+//
+// The section js sets the package manager, npm or pnpm, and the toolkit, biome or vite-plus.
+// [Toolchain.Data] returns them as [Choices], which the templates of the js toolchain read as .Data
+// and the templates of JavaScript and TypeScript as .Toolchain. [ToolchainOptions] implements
+// [go.dokimi.dev/ergon/core/option.PackageManaged], so ergon tool run starts the npm packages of
+// every section with npx for npm and with pnpm dlx for pnpm.
 //
 // # Makefile
 //
-// The fragment of the js toolchain runs fmt-js and lint-js with Biome through ergon tool run, and
-// audit-js with npm audit. The fragment of JavaScript runs test-javascript with npm test, and
-// check-javascript, which requires the targets of the steps that the key check of the section
-// names. lint-javascript and audit-javascript require lint-js and audit-js. With a command in the
-// key generate, the fragment of JavaScript also renders generate-javascript, which runs it, and
-// verify-generate-javascript, which fails when it changes a file. In make help, the line
+// The fragment of the js toolchain runs fmt-js and lint-js, and sets JS_TEST, the command of the
+// tests of JavaScript and TypeScript:
+//
+//   - For biome, fmt-js and lint-js run Biome through ergon tool run, and JS_TEST runs the test
+//     script of package.json with the package manager.
+//   - For vite-plus, fmt-js runs vp fmt, lint-js runs vp check, and JS_TEST runs vp test --run. The
+//     package manager runs the vp of the packages of the repository.
+//
+// audit-js runs npm audit or pnpm audit. The fragment of JavaScript runs test-javascript with
+// JS_TEST, and check-javascript, which requires the targets of the steps that the key check of the
+// section names. lint-javascript and audit-javascript require lint-js and audit-js. With a command
+// in the key generate, the fragment of JavaScript also renders generate-javascript, which runs it,
+// and verify-generate-javascript, which fails when it changes a file. In make help, the line
 // ##@ JavaScript and TypeScript starts the group of the js toolchain, and the line ##@ JavaScript
 // starts the group of JavaScript.
 //
 // # Options
 //
-// [ToolchainOptions] is the section js: the version of Biome, the paths that it checks, the lowest
-// severity that fails npm audit, and the key ci of the setup of Node.js.
-// [ToolchainOptions.Contribution] returns that setup, the CodeQL analysis of javascript-typescript
-// and the updates of the npm packages. [Options] is the section javascript: the steps of the gate,
-// and the options of test-javascript and of the generators. [Options.Contribution] returns the job
-// check-javascript, which runs the setup of the js toolchain.
+// [ToolchainOptions] is the section js: the package manager and the toolkit, the version of Biome,
+// the paths that it checks, the lowest severity that fails the scan, and the key ci of the setup of
+// Node.js. [ToolchainOptions.Contribution] returns that setup, the CodeQL analysis of
+// javascript-typescript and the updates of the npm packages. [Options] is the section javascript:
+// the steps of the gate, and the options of test-javascript and of the generators.
+// [Options.Contribution] returns the job check-javascript, which runs the setup of the js toolchain.
 //
 // # Dependency position
 //

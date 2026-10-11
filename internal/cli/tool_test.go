@@ -313,6 +313,18 @@ func TestTool(t *testing.T) {
 			assert.Equal(t, stdout, biome+" check --write\n", "the output of the tool")
 		})
 
+		t.Run("runs an npm package with pnpm dlx for the package manager pnpm of the section js", func(t *testing.T) {
+			t.Parallel()
+			dir := javascriptRepository(t)
+			config := read(t, dir, ".ergon.yaml")
+			assert.Contains(t, config, "\n  package-manager: npm\n", "the package manager of .ergon.yaml")
+			write(t, dir, ".ergon.yaml", strings.Replace(config, "\n  package-manager: npm\n",
+				"\n  package-manager: pnpm\n", 1))
+			status, stdout, stderr := runWith(t, app.Register, dir, "tool", "run", "js.biome", "--", "check")
+			assert.Equal(t, status, statusOK, "the exit status: "+stderr)
+			assert.Equal(t, stdout, "pnpm --package=@biomejs/biome@2.5.15 dlx biome check\n", "the output of the tool")
+		})
+
 		t.Run("returns the exit status of the tool without an error", func(t *testing.T) {
 			t.Parallel()
 			status, stdout, stderr := runWith(t, app.Register, javascriptRepository(t),

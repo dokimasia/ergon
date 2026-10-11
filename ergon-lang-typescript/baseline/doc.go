@@ -5,18 +5,21 @@
 // shared files, the section typescript of .ergon.yaml, and the job of TypeScript in the workflows.
 //
 // [Producer] renders its fragments of .editorconfig, .gitignore and the Makefile from
-// templates/shared/. The js toolchain of the JavaScript module renders biome.json, the targets
-// fmt-js, lint-js and audit-js, the CodeQL analysis of javascript-typescript and the npm updates,
-// once for a repository with JavaScript, TypeScript or both.
+// templates/shared/. The js toolchain of the JavaScript module renders biome.json or
+// .prettierignore, the targets fmt-js, lint-js and audit-js, the CodeQL analysis of
+// javascript-typescript and the npm updates, once for a repository with JavaScript, TypeScript or
+// both. The templates read the package manager and the toolkit of the section js as .Toolchain.
 //
 // # Makefile
 //
-// The fragment of the Makefile runs lint-typescript, which requires lint-js and runs tsc through
-// ergon tool run with the type-safety options of tsc, test-typescript with npm test, and
-// check-typescript, which requires the targets of the steps that the key check of the section
-// names. audit-typescript requires audit-js. With a command in the key generate, the fragment also
-// renders generate-typescript, which runs it, and verify-generate-typescript, which fails when it
-// changes a file. A line ##@ TypeScript starts the group of TypeScript in make help.
+// The fragment of the Makefile runs lint-typescript, which requires lint-js. For the toolkit biome,
+// lint-typescript then runs tsc through ergon tool run with the type-safety options of tsc. For
+// vite-plus, vp check of lint-js checks the types. test-typescript runs JS_TEST, the command of the
+// tests of the js toolchain, and check-typescript requires the targets of the steps that the key
+// check of the section names. audit-typescript requires audit-js. With a command in the key
+// generate, the fragment also renders generate-typescript, which runs it, and
+// verify-generate-typescript, which fails when it changes a file. A line ##@ TypeScript starts the
+// group of TypeScript in make help.
 //
 // # Options
 //

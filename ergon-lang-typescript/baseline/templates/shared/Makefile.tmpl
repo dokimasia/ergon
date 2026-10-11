@@ -4,9 +4,11 @@
 # The section typescript of .ergon.yaml sets the tools and the options of the TypeScript targets,
 # and the steps of check-typescript. One run overrides an option on the command line, such as
 # make test-typescript TYPESCRIPT_TEST_ARGS=test/unit.
+{{%- if not .Toolchain.VitePlus %}}
 
 # The tools of the TypeScript targets, which ergon runs at the versions of the section typescript.
 TSC := $(ERGON) tool run typescript.typescript --
+{{%- end %}}
 
 # The options of the section typescript.
 TYPESCRIPT_TEST_ARGS ?={{% with words .Options.Test.Args %}} {{% . %}}{{% end %}}
@@ -21,12 +23,17 @@ test: test-typescript
 generate: generate-typescript
 {{%- end %}}
 check: check-typescript
+{{%- if .Toolchain.VitePlus %}}
+
+lint-typescript: lint-js ## Check the TypeScript sources with vp check
+{{%- else %}}
 
 lint-typescript: lint-js ## Check the TypeScript sources with Biome, and with tsc in its strictest mode
 	$(TSC) --noEmit --strict --noUncheckedIndexedAccess --noImplicitOverride --noImplicitReturns \
 		--noFallthroughCasesInSwitch --noPropertyAccessFromIndexSignature --exactOptionalPropertyTypes
+{{%- end %}}
 test-typescript: ## Run the TypeScript tests
-	npm test $(if $(TYPESCRIPT_TEST_ARGS),-- $(TYPESCRIPT_TEST_ARGS))
+	$(JS_TEST)$(if $(TYPESCRIPT_TEST_ARGS), $(TYPESCRIPT_TEST_ARGS))
 {{%- if .Options.Generate.Command %}}
 generate-typescript: ## Run the generators of TypeScript
 	$(TYPESCRIPT_GENERATE)

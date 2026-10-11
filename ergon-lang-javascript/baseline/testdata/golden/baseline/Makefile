@@ -1,12 +1,15 @@
 
 ##@ JavaScript and TypeScript
 #
-# The section js of .ergon.yaml sets the tools and the options of the targets that JavaScript and
-# TypeScript share. One run overrides an option on the command line, such as
-# make audit-js JS_AUDIT_SEVERITY=high.
+# The section js of .ergon.yaml sets the package manager, the toolkit, the tools and the options of
+# the targets that JavaScript and TypeScript share. One run overrides an option on the command line,
+# such as make audit-js JS_AUDIT_SEVERITY=high.
 
 # The tools of the shared targets, which ergon runs at the versions of the section js.
 BIOME := $(ERGON) tool run js.biome --
+
+# The command that runs the tests of JavaScript and TypeScript, before the arguments of a run.
+JS_TEST := npm test --
 
 # The options of the section js.
 JS_PATHS ?= .
@@ -39,6 +42,6 @@ check: check-javascript
 
 lint-javascript: lint-js ## Check the JavaScript sources with Biome
 test-javascript: ## Run the JavaScript tests
-	npm test $(if $(JAVASCRIPT_TEST_ARGS),-- $(JAVASCRIPT_TEST_ARGS))
+	$(JS_TEST)$(if $(JAVASCRIPT_TEST_ARGS), $(JAVASCRIPT_TEST_ARGS))
 audit-javascript: audit-js ## Scan the packages of JavaScript for known vulnerabilities
 check-javascript: lint-javascript test-javascript audit-javascript ## Run the gate of JavaScript

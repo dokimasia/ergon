@@ -12,10 +12,19 @@
 //
 // [Render] executes every template of every [Unit] with text/template, under the delimiters {{% and
 // %}}, so the ${{ }} of a workflow and the {{.Dir}} of go list -f remain text. A template reads
-// .Answers, .Options, which are the options of its producer, .Data, which are the values that its
-// producer computes, and .Contributions, which [Collect] gathers from every producer. A key that
-// the data lacks is an error. Render skips a template that renders no byte, and joins the fragments
-// of a shared file in the order of the units.
+// these keys, and a key that the data lacks is an error:
+//
+//   - .Answers are the answers of ergon init.
+//   - .Options are the options of its producer.
+//   - .Data are the values that its producer computes.
+//   - .Toolchain are the values that the producer of the toolchain of its language computes, such
+//     as the package manager of the js toolchain in a template of TypeScript.
+//   - .Managed are the paths of the managed files of the rendering, which Render renders twice to
+//     know.
+//   - .Contributions are the contributions that [Collect] gathers from every producer.
+//
+// Render skips a template that renders no byte, and joins the fragments of a shared file in the
+// order of the units.
 //
 // A [go.dokimi.dev/ergon/core/language.Placer] renders managed files at paths that its options
 // state, such as the LICENSE of a directory, which no template tree can mirror. Render adds them as
@@ -33,8 +42,9 @@
 // # Errors
 //
 // Templates and placed files that a producer declares wrong return an error that wraps
-// [ErrInvalidTemplate], and a contribution that a producer declares wrong an error that wraps
-// [ErrInvalidContribution]. Both are defects of the producer. A template that does not execute
+// [ErrInvalidTemplate], as does a template that renders a managed file for one value of .Managed
+// alone. A contribution that a producer declares wrong returns an error that wraps
+// [ErrInvalidContribution]. Each is a defect of the producer. A template that does not execute
 // returns its error, which wraps the error of a function that it calls.
 //
 // # Dependency position

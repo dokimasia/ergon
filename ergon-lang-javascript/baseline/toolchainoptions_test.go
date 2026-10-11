@@ -20,6 +20,13 @@ var setupNode = workflow.Action{
 	Release: "v7.0.0",
 }
 
+// setupPNPM is the pin of pnpm/setup at the baseline.
+var setupPNPM = workflow.Action{
+	Uses:    "pnpm/setup",
+	Commit:  "a0881977cd8ea73b1ed212236c99ca10dcc80cf4",
+	Release: "v3.1.1",
+}
+
 // installTypeScript is a step of ci.steps, which installs a compiler that the tests run.
 var installTypeScript = workflow.Step{Name: "Install TypeScript", Run: []string{"npm install --global typescript"}}
 
@@ -37,6 +44,17 @@ func TestToolchainOptions(t *testing.T) {
 		t.Run("returns nil for options without a value", func(t *testing.T) {
 			t.Parallel()
 			assert.NoError(t, new(baseline.ToolchainOptions).Validate(), "Validate")
+		})
+	})
+
+	t.Run("Manager", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("returns the package manager of the options", func(t *testing.T) {
+			t.Parallel()
+			o := jsOptions()
+			o.PackageManager = option.PackageManagerPNPM
+			assert.Equal(t, o.Manager(), option.PackageManagerPNPM, "Manager")
 		})
 	})
 
@@ -93,6 +111,38 @@ func TestToolchainOptions(t *testing.T) {
 			setup := o.Contribution().Setup
 			assert.Equal(t, setup.Steps[0].With, map[string]string{"node-version": "${{ matrix.version }}"},
 				"the inputs of setup-node")
+		})
+
+		t.Run("installs pnpm, Node.js and the packages of the lockfile with pnpm/setup for pnpm", func(t *testing.T) {
+			t.Parallel()
+			o := jsOptions()
+			o.PackageManager = option.PackageManagerPNPM
+			assert.Equal(t, o.Contribution().Setup.Steps, []workflow.Step{{
+				Name: "Set up pnpm, Node.js and the packages",
+				Uses: setupPNPM,
+				With: map[string]string{"require-lockfile": "true"},
+			}}, "the steps of the setup")
+		})
+
+		t.Run("installs the Node.js of the matrix with pnpm/setup for pnpm and versions of the options",
+			func(t *testing.T) {
+				t.Parallel()
+				o := jsOptions()
+				o.PackageManager = option.PackageManagerPNPM
+				o.CI.Versions = []string{"24", "26"}
+				setup := o.Contribution().Setup
+				assert.Equal(t, setup.Steps[0].With, map[string]string{
+					"require-lockfile": "true",
+					"runtime":          "node@${{ matrix.version }}",
+				}, "the inputs of pnpm/setup")
+			})
+
+		t.Run("returns a valid contribution for pnpm", func(t *testing.T) {
+			t.Parallel()
+			o := jsOptions()
+			o.PackageManager = option.PackageManagerPNPM
+			got := o.Contribution()
+			assert.NoError(t, got.Validate(), "Validate of the contribution")
 		})
 	})
 }

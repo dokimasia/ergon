@@ -19,9 +19,9 @@ generate: generate-javascript
 {{%- end %}}
 check: check-javascript
 
-lint-javascript: lint-js ## Check the JavaScript sources with Biome
+lint-javascript: lint-js ## Check the JavaScript sources with {{% if .Toolchain.VitePlus %}}vp check{{% else %}}Biome{{% end %}}
 test-javascript: ## Run the JavaScript tests
-	npm test $(if $(JAVASCRIPT_TEST_ARGS),-- $(JAVASCRIPT_TEST_ARGS))
+	$(JS_TEST)$(if $(JAVASCRIPT_TEST_ARGS), $(JAVASCRIPT_TEST_ARGS))
 {{%- if .Options.Generate.Command %}}
 generate-javascript: ## Run the generators of JavaScript
 	$(JAVASCRIPT_GENERATE)

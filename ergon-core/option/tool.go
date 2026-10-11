@@ -123,8 +123,8 @@ func (p PyPI) Validate() error {
 }
 
 // NPM is an npm package and its version, as <package>@<version>, such as @biomejs/biome@2.5.15.
-// The package of a scope keeps its own @. ergon tool run runs it with npx, in the gates of
-// JavaScript and TypeScript alone.
+// The package of a scope keeps its own @. ergon tool run starts it with the [PackageManager] of the
+// repository, in the gates of JavaScript and TypeScript alone.
 type NPM string
 
 // Package returns the name of the package of n, the text before its last @.

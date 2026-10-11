@@ -1,3 +1,4 @@
+{{%- if not .Data.VitePlus -%}}
 {
   "$schema": "https://biomejs.dev/schemas/{{% .Options.Tools.Biome.Version %}}/schema.json",
   "vcs": {
@@ -70,3 +71,4 @@
     }
   ]
 }
+{{% end -%}}

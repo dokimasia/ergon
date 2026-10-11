@@ -19,7 +19,7 @@
     {
       "path": "Makefile",
       "producer": "js",
-      "sha256": "a3d373cad45cadaa1463fd2ae51a9c68f64a5d9d94d1d89aec1b743700afec6c"
+      "sha256": "a564e80bafaf85cf8c941bc278b288f8e76e59aabe0691331c7034b713bc15b9"
     },
     {
       "path": "biome.json",
@@ -40,13 +40,18 @@
     "js.ci.actions.setup-node.commit": "820762786026740c76f36085b0efc47a31fe5020",
     "js.ci.actions.setup-node.release": "v7.0.0",
     "js.ci.actions.setup-node.uses": "actions/setup-node",
+    "js.ci.actions.setup-pnpm.commit": "a0881977cd8ea73b1ed212236c99ca10dcc80cf4",
+    "js.ci.actions.setup-pnpm.release": "v3.1.1",
+    "js.ci.actions.setup-pnpm.uses": "pnpm/setup",
     "js.ci.runners": [],
     "js.ci.steps": [],
     "js.ci.timeout": 30,
     "js.ci.versions": [],
+    "js.package-manager": "npm",
     "js.paths": [
       "."
     ],
+    "js.toolkit": "biome",
     "js.tools.biome": "@biomejs/biome@2.5.15",
     "typescript.check": [
       "lint",

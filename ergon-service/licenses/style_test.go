@@ -128,6 +128,7 @@ func TestStyle(t *testing.T) {
 			{name: "skips the wrapper of Gradle", path: "gradlew"},
 			{name: "skips the properties of the wrapper of Gradle", path: "gradle/wrapper/gradle-wrapper.properties"},
 			{name: "skips the lock of Terraform", path: ".terraform.lock.hcl"},
+			{name: "skips the lockfile of pnpm", path: "pnpm-lock.yaml"},
 			{name: "skips a license file of Markdown", path: "LICENSE.md"},
 			{name: "skips a file of JSON", path: "package.json"},
 			{name: "skips go.sum", path: "go.sum"},

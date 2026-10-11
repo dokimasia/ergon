@@ -216,7 +216,7 @@ func TestMain(m *testing.M) {
 		fmt.Fprintln(os.Stderr, "tool_test: the fakes do not install:", err, err2)
 		os.Exit(2)
 	}
-	for _, fake := range []string{"go", "cargo", "composer", "npx", "java", "php"} {
+	for _, fake := range []string{"go", "cargo", "composer", "npx", "pnpm", "java", "php"} {
 		if err := os.WriteFile(filepath.Join(dir, fake+suffix), self, 0o755); err != nil {
 			fmt.Fprintln(os.Stderr, "tool_test: the fakes do not install:", err)
 			os.Exit(2)

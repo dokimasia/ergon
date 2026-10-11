@@ -1,0 +1,10 @@
+{{%- if .Data.VitePlus -%}}
+# Managed by ergon init. Add repository settings to .ergon/local/.prettierignore and run ergon init sync.
+#
+# The files that ergon init writes, which vp fmt leaves as ergon renders them.
+/.ergon/
+/.ergon.yaml
+{{%- range .Managed %}}
+/{{% . %}}
+{{%- end %}}
+{{% end -%}}

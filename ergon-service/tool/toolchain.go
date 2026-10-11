@@ -198,9 +198,13 @@ func (r *Runner) pypi(ctx context.Context, e *entry, p option.PyPI) (string, []s
 	return program, []string{"tool", "run", "--from", spec, name}, nil
 }
 
-// npm returns npx and the arguments that run the program name of the npm package n, which npx
-// installs into its cache.
-func npm(n option.NPM, name string) (string, []string) {
+// npm returns the program and the arguments that run the program name of the npm package n with the
+// package manager of r: pnpm dlx for pnpm, and npx for any other. Each installs the package into its
+// own cache.
+func (r *Runner) npm(n option.NPM, name string) (string, []string) {
+	if r.PackageManager == option.PackageManagerPNPM {
+		return "pnpm", []string{"--package=" + string(n), "dlx", name}
+	}
 	return "npx", []string{"--yes", "--package=" + string(n), "--", name}
 }
 

@@ -11,14 +11,15 @@ import (
 // steps are the steps of the gate of JavaScript, which the key check of the section names.
 var steps = []option.Step{option.StepLint, option.StepTest, option.StepGenerate, option.StepAudit}
 
-// Options are the options of the section javascript of .ergon.yaml. The section js sets the tools,
-// the paths and the scan that JavaScript shares with TypeScript, and the setup of their jobs.
+// Options are the options of the section javascript of .ergon.yaml. The section js sets the
+// package manager, the toolkit, the tools, the paths and the scan that JavaScript shares with
+// TypeScript, and the setup of their jobs.
 type Options struct {
 	// Check are the steps of check-javascript.
 	Check option.Check `yaml:"check" doc:"The steps that check-javascript runs, in order: lint, test, generate or audit. lint runs lint-js of the section js, and audit runs audit-js."`
 
 	// Test are the options of test-javascript.
-	Test option.Run `yaml:"test" doc:"test-javascript runs npm test with args."`
+	Test option.Run `yaml:"test" doc:"test-javascript runs the tests with args: the test script of package.json through the package manager of the section js, or vp test --run for the toolkit vite-plus."`
 
 	// Generate are the options of generate-javascript and verify-generate-javascript.
 	Generate option.Generate `yaml:"generate" doc:"generate-javascript runs command with args at the root of the repository, such as npm run generate. verify-generate-javascript, the step generate of check, runs the same and fails when the run changes a file of the repository. Without a command JavaScript has neither target."`

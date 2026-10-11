@@ -259,6 +259,55 @@ func TestRender(t *testing.T) {
 			assert.Equal(t, string(files[0].Content), "none\n", "the rendering")
 		})
 
+		t.Run("renders the data of the unit of the toolchain of a unit as .Toolchain", func(t *testing.T) {
+			t.Parallel()
+			js := render.Unit{Name: "js", Producer: fixture{
+				data:      map[string]string{"exec": "pnpm exec"},
+				templates: fstest.MapFS{},
+			}}
+			typescript := render.Unit{Name: "typescript", Toolchain: "js", Producer: fixture{templates: fstest.MapFS{
+				"managed/x.tmpl": {Data: []byte("{{% .Toolchain.exec %}}\n")},
+			}}}
+			files, err := render.Render([]render.Unit{js, typescript}, answers(), &workflow.Contribution{})
+			assert.NoError(t, err, "Render")
+			assert.Length(t, files, 1, "the files")
+			assert.Equal(t, string(files[0].Content), "pnpm exec\n", "the rendering")
+		})
+
+		t.Run("renders no data of a toolchain for a unit without a toolchain", func(t *testing.T) {
+			t.Parallel()
+			u := render.Unit{Name: "go", Producer: fixture{
+				data: map[string]string{"pin": "go.work"},
+				templates: fstest.MapFS{
+					"managed/x.tmpl": {Data: []byte("{{% if .Toolchain %}}toolchain{{% else %}}none{{% end %}}\n")},
+				},
+			}}
+			files, err := render.Render([]render.Unit{u}, answers(), &workflow.Contribution{})
+			assert.NoError(t, err, "Render")
+			assert.Length(t, files, 1, "the files")
+			assert.Equal(t, string(files[0].Content), "none\n", "the rendering")
+		})
+
+		t.Run("renders the paths of the managed files of the rendering as .Managed", func(t *testing.T) {
+			t.Parallel()
+			ignore := "# ignored\n{{% range .Managed %}}{{% . %}}\n{{% end %}}"
+			u := render.Unit{Name: "js", Producer: placer{
+				templates: fstest.MapFS{
+					"managed/.prettierignore.tmpl": {Data: []byte(ignore)},
+					"managed/LICENSE.tmpl":         {Data: []byte("MIT\n")},
+					"seeded/README.md.tmpl":        {Data: []byte("# demo\n")},
+					"shared/Makefile.tmpl":         {Data: []byte("all:\n")},
+				},
+				files: []language.File{{Path: "sdk/LICENSE", Content: []byte(placed)}},
+			}}
+			files, err := render.Render([]render.Unit{u}, answers(), &workflow.Contribution{})
+			assert.NoError(t, err, "Render")
+			assert.Length(t, files, 5, "the files")
+			assert.Equal(t, files[0].Path, ".prettierignore", "the path of the first file")
+			assert.Equal(t, string(files[0].Content), "# ignored\n.prettierignore\nLICENSE\nMakefile\nsdk/LICENSE\n",
+				"the rendering of the managed files")
+		})
+
 		t.Run("adds the files of a placer as managed files of its producer", func(t *testing.T) {
 			t.Parallel()
 			u := render.Unit{Name: "license", Producer: placer{
@@ -359,6 +408,20 @@ func TestRender(t *testing.T) {
 					unit("common", fstest.MapFS{"shared/Makefile.tmpl": {Data: []byte("a\n")}}),
 					unit("go", fstest.MapFS{"managed/Makefile.tmpl": {Data: []byte("b\n")}}),
 				},
+			},
+			{
+				name: "returns ErrInvalidTemplate for a managed file that renders with the managed files alone",
+				units: []render.Unit{unit("js", fstest.MapFS{
+					"managed/LICENSE.tmpl":         {Data: []byte("MIT\n")},
+					"managed/.prettierignore.tmpl": {Data: []byte("{{% range .Managed %}}{{% . %}}\n{{% end %}}")},
+				})},
+			},
+			{
+				name: "returns ErrInvalidTemplate for a managed file that renders without the managed files alone",
+				units: []render.Unit{unit("js", fstest.MapFS{
+					"managed/LICENSE.tmpl": {Data: []byte("MIT\n")},
+					"managed/first.tmpl":   {Data: []byte("{{% if not .Managed %}}first\n{{% end %}}")},
+				})},
 			},
 			{
 				name:  "returns ErrInvalidTemplate for a placed file without a path",

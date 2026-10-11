@@ -51,8 +51,9 @@ const frontMatter = `(?ms)\A---[ \t]*\n.*?^---[ \t]*$(?:\n[ \t]*$)*`
 //   - The queries of tree-sitter take ; comments.
 //   - A Dockerfile keeps its parser directives above the header, and a Markdown file its YAML
 //     front matter.
-//   - A tool writes the lock of Terraform and the wrapper of Gradle, MDX 2 rejects HTML comments,
-//     a Go template renders its header itself, and the other files have no comment syntax.
+//   - A tool writes the lock of Terraform, the lockfile of pnpm and the wrapper of Gradle, MDX 2
+//     rejects HTML comments, a Go template renders its header itself, and the other files have no
+//     comment syntax.
 var overrides = map[string]string{
 	".ts":                       slashesAfterShebang,
 	".tsx":                      slashesAfterShebang,
@@ -77,6 +78,7 @@ var overrides = map[string]string{
 	".md":                       angleAfterFrontMatter,
 	".markdown":                 angleAfterFrontMatter,
 	".terraform.lock.hcl":       none,
+	"pnpm-lock.yaml":            none,
 	".mdx":                      none,
 	".tmpl":                     none,
 	"gradlew":                   none,

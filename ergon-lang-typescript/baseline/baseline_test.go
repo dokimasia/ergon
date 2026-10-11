@@ -16,6 +16,7 @@ import (
 	"go.dokimi.dev/ergon/core/option"
 	"go.dokimi.dev/ergon/core/workflow"
 	"go.dokimi.dev/ergon/lang/javascript"
+	jsbaseline "go.dokimi.dev/ergon/lang/javascript/baseline"
 	"go.dokimi.dev/ergon/lang/typescript"
 	"go.dokimi.dev/ergon/lang/typescript/baseline"
 	service "go.dokimi.dev/ergon/service/baseline"
@@ -76,13 +77,52 @@ func TestBaseline(t *testing.T) {
 					}
 				})
 
+			t.Run("renders the Makefile and .prettierignore of TypeScript for pnpm and vite-plus", func(t *testing.T) {
+				t.Parallel()
+				js := jsOptions()
+				js.PackageManager = option.PackageManagerPNPM
+				js.Toolkit = jsbaseline.ToolkitVitePlus
+				for _, file := range []string{"Makefile", ".prettierignore"} {
+					got := rendered(t, file, js, baseline.Producer{}.Options())
+					golden.Match(t, path.Join("vite-plus", file), []byte(got), golden.ShouldUpdate())
+				}
+			})
+
 			t.Run("runs the steps that check of the section typescript names", func(t *testing.T) {
 				t.Parallel()
 				o, _ := baseline.Producer{}.Options().(*baseline.Options)
 				o.Check = option.Check{option.StepAudit}
-				makefile := rendered(t, o, "Makefile")
+				makefile := rendered(t, "Makefile", jsOptions(), o)
 				assert.Contains(t, makefile, "\ncheck-typescript: audit-typescript ## Run the gate of TypeScript\n",
 					"the Makefile")
+			})
+
+			t.Run("runs the tests of the section js with the arguments of the section typescript", func(t *testing.T) {
+				t.Parallel()
+				o, _ := baseline.Producer{}.Options().(*baseline.Options)
+				o.Test.Args = []string{"test/unit"}
+				expect.That(t, rendered(t, "Makefile", jsOptions(), o)).
+					Contains("\nTYPESCRIPT_TEST_ARGS ?= test/unit\n", "the arguments of the tests").
+					Contains("\ntest-typescript: ## Run the TypeScript tests\n"+
+						"\t$(JS_TEST)$(if $(TYPESCRIPT_TEST_ARGS), $(TYPESCRIPT_TEST_ARGS))\n", "the target of the tests")
+			})
+
+			t.Run("runs tsc in its strictest mode for the toolkit biome", func(t *testing.T) {
+				t.Parallel()
+				expect.That(t, rendered(t, "Makefile", jsOptions(), baseline.Producer{}.Options())).
+					Contains("\nTSC := $(ERGON) tool run typescript.typescript --\n", "the tsc of the section").
+					Contains("\nlint-typescript: lint-js ## Check the TypeScript sources with Biome, and with tsc in its "+
+						"strictest mode\n\t$(TSC) --noEmit --strict ", "the target of the lint")
+			})
+
+			t.Run("runs no tsc for the toolkit vite-plus", func(t *testing.T) {
+				t.Parallel()
+				js := jsOptions()
+				js.Toolkit = jsbaseline.ToolkitVitePlus
+				expect.That(t, rendered(t, "Makefile", js, baseline.Producer{}.Options())).
+					Contains("\nlint-typescript: lint-js ## Check the TypeScript sources with vp check\n"+
+						"test-typescript: ", "the target of the lint").
+					NotContains("TSC", "the tsc of the section")
 			})
 
 			t.Run("runs the command of the generators and checks their files in the step generate", func(t *testing.T) {
@@ -90,7 +130,7 @@ func TestBaseline(t *testing.T) {
 				o, _ := baseline.Producer{}.Options().(*baseline.Options)
 				o.Generate = option.Generate{Command: []string{"npm", "run", "generate"}, Args: []string{}}
 				o.Check = option.Check{option.StepGenerate}
-				expect.That(t, rendered(t, o, "Makefile")).
+				expect.That(t, rendered(t, "Makefile", jsOptions(), o)).
 					Contains("\nTYPESCRIPT_GENERATE ?= npm run generate\n", "the command of the generators").
 					Contains("\ngenerate: generate-typescript\n", "the aggregate generate").
 					Contains("\ngenerate-typescript: ## Run the generators of TypeScript\n\t$(TYPESCRIPT_GENERATE)\n",
@@ -102,7 +142,7 @@ func TestBaseline(t *testing.T) {
 
 			t.Run("renders no target of the generators without a command", func(t *testing.T) {
 				t.Parallel()
-				makefile := rendered(t, baseline.Producer{}.Options(), "Makefile")
+				makefile := rendered(t, "Makefile", jsOptions(), baseline.Producer{}.Options())
 				assert.NotContains(t, makefile, "generate", "the Makefile")
 			})
 		})
@@ -147,14 +187,24 @@ func catalog(t *testing.T) *language.Catalog {
 	return c
 }
 
-// rendered returns the file name that the producer of TypeScript renders for the options o and the
-// answers of the cases, and stops the test when it renders none.
-func rendered(t *testing.T, o language.Options, name string) string {
+// rendered returns the file name that the js toolchain with the options js and the producer of
+// TypeScript with the options o render for the answers of the cases. It stops the test when they
+// render none.
+func rendered(t *testing.T, name string, js *jsbaseline.ToolchainOptions, o language.Options) string {
 	t.Helper()
-	files, err := render.Render([]render.Unit{{Name: baseline.Name, Producer: baseline.Producer{}, Options: o}},
-		baselinetest.Answers(typescript.Language), &workflow.Contribution{})
+	units := []render.Unit{
+		{Name: jsbaseline.ToolchainName, Producer: jsbaseline.Toolchain{}, Options: js},
+		{Name: baseline.Name, Producer: baseline.Producer{}, Options: o, Toolchain: jsbaseline.ToolchainName},
+	}
+	files, err := render.Render(units, baselinetest.Answers(typescript.Language), &workflow.Contribution{})
 	assert.NoError(t, err, "Render")
 	i := slices.IndexFunc(files, func(f render.File) bool { return f.Path == name })
-	assert.InRange(t, i, 0, float64(len(files)-1), "TypeScript renders "+name)
+	assert.InRange(t, i, 0, float64(len(files)-1), "the units render "+name)
 	return string(files[i].Content)
+}
+
+// jsOptions returns new options of the section js at the baseline.
+func jsOptions() *jsbaseline.ToolchainOptions {
+	o, _ := jsbaseline.Toolchain{}.Options().(*jsbaseline.ToolchainOptions)
+	return o
 }

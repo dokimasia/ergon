@@ -20,8 +20,9 @@ import (
 // managed/, seeded/ and shared/, a name that does not end in .tmpl, a path that is not relative,
 // clean and slash-separated or that is under .ergon, a template that does not parse, and a path
 // that two producers render, unless each renders a fragment of a shared file. It is also the error
-// for a file of a [language.Placer] at such a path, or at the path of another file. It is a defect
-// of the producer.
+// for a file of a [language.Placer] at such a path, or at the path of another file, and for a
+// template that renders a managed file for one value of .Managed alone. It is a defect of the
+// producer.
 var ErrInvalidTemplate = errors.New("render: invalid template")
 
 // The delimiters of every template, so the ${{ }} of a workflow and the {{.Dir}} of go list -f in a
@@ -74,7 +75,8 @@ const shared = "shared/"
 // trees are the directories of a producer's templates.
 var trees = []tree{{dir: "managed/", class: Managed}, {dir: "seeded/", class: Seeded}, {dir: shared, class: Managed}}
 
-// Unit is a producer of a rendering: its name, the producer, and its resolved options.
+// Unit is a producer of a rendering with its name and its resolved options. A unit of a language
+// also has the name of the unit of its toolchain.
 type Unit struct {
 	// Producer renders the templates of the unit.
 	Producer language.Producer
@@ -85,6 +87,10 @@ type Unit struct {
 
 	// Name is the name of the producer in the lock, such as common or go.
 	Name string
+
+	// Toolchain is the name of the unit of the toolchain of a language, such as js for typescript,
+	// whose data the templates of the unit read as .Toolchain. It is empty for any other producer.
+	Toolchain string
 }
 
 // File is a file of a rendering: the rendering of a template, or the joined fragments of a shared
@@ -117,32 +123,82 @@ type data struct {
 	// Data are the values that the template's producer computes, or nil.
 	Data any
 
+	// Toolchain are the values that the producer of the toolchain of the template's language
+	// computes, or nil.
+	Toolchain any
+
+	// Managed are the paths of the managed files of the rendering, sorted.
+	Managed []string
+
 	// Contributions are the contributions of every producer to the workflows.
 	Contributions workflow.Contribution
 }
 
 // Render returns the files that units render for a and the contributions c, sorted by path. It
 // executes the templates of each unit with the delimiters {{% and %}}, the functions words, make,
-// yaml and steps, and the data .Answers, .Options, .Data and .Contributions, where a key that the
-// data lacks is an error. .Data are the values that a [language.Calculator] computes from a, its
-// options and c, and nil for any other producer. Render skips a template that renders no byte, and
-// joins the fragments of a shared file in the order of units. It adds the files of a
-// [language.Placer] as managed files of its unit, after the templates of the unit.
+// yaml and steps, and the data .Answers, .Options, .Data, .Toolchain, .Managed and .Contributions,
+// where a key that the data lacks is an error:
+//
+//   - .Data are the values that a [language.Calculator] computes from a, its options and c, and nil
+//     for any other producer.
+//   - .Toolchain are the .Data of the unit with the name of [Unit.Toolchain], and nil for a unit
+//     without one.
+//   - .Managed are the paths of the managed files of the rendering, sorted, such as the paths that
+//     the ignore file of a formatter lists. Render renders the units twice for them: first with
+//     .Managed nil, then with the managed files of the first rendering.
+//
+// Render skips a template that renders no byte, and joins the fragments of a shared file in the
+// order of units. It adds the files of a [language.Placer] as managed files of its unit, after the
+// templates of the unit.
 //
 // It returns an error that wraps [ErrInvalidTemplate] for templates or placed files that a
-// producer declares wrong, the error of the Data or the Files of a producer, and the error of a
+// producer declares wrong, and for a template that renders a managed file in one of the two
+// renderings alone. It returns the error of the Data or the Files of a producer, and the error of a
 // template that does not execute, which wraps the error of a function that it calls. Render reads a
 // and c, and modifies neither.
 func Render(units []Unit, a *language.Answers, c *workflow.Contribution) ([]File, error) {
+	values := make(map[string]any, len(units))
+	for _, u := range units {
+		calculator, ok := u.Producer.(language.Calculator)
+		if !ok {
+			continue
+		}
+		v, err := calculator.Data(a, u.Options, c)
+		if err != nil {
+			return nil, fmt.Errorf("render: the data of %s: %w", u.Name, err)
+		}
+		values[u.Name] = v
+	}
+	first, err := pass(units, a, c, values, nil)
+	if err != nil {
+		return nil, err
+	}
+	managed := managedPaths(first)
+	files, err := pass(units, a, c, values, managed)
+	if err != nil {
+		return nil, err
+	}
+	if !slices.Equal(managedPaths(files), managed) {
+		return nil, fmt.Errorf("%w: a template renders a managed file with one .Managed alone", ErrInvalidTemplate)
+	}
+	return files, nil
+}
+
+// pass returns the files of one rendering of units for a, c and managed, the paths of the managed
+// files for .Managed, sorted by path, as [Render] states. values are the .Data of the units, by
+// their names. It returns the errors that Render states for the templates and the placed files.
+func pass(units []Unit, a *language.Answers, c *workflow.Contribution, values map[string]any, managed []string) (
+	[]File, error,
+) {
 	var files []File
 	for _, u := range units {
-		d := data{Answers: a, Options: u.Options, Contributions: *c}
-		if calculator, ok := u.Producer.(language.Calculator); ok {
-			values, err := calculator.Data(a, u.Options, c)
-			if err != nil {
-				return nil, fmt.Errorf("render: the data of %s: %w", u.Name, err)
-			}
-			d.Data = values
+		d := data{
+			Answers:       a,
+			Options:       u.Options,
+			Data:          values[u.Name],
+			Toolchain:     values[u.Toolchain],
+			Managed:       managed,
+			Contributions: *c,
 		}
 		err := fs.WalkDir(u.Producer.Templates(), ".", func(name string, entry fs.DirEntry, err error) error {
 			if err != nil || entry.IsDir() {
@@ -173,6 +229,17 @@ func Render(units []Unit, a *language.Answers, c *workflow.Contribution) ([]File
 	}
 	slices.SortFunc(files, func(a, b File) int { return strings.Compare(a.Path, b.Path) })
 	return files, nil
+}
+
+// managedPaths returns the paths of the managed files of files, in their order.
+func managedPaths(files []File) []string {
+	var paths []string
+	for _, f := range files {
+		if f.Class == Managed {
+			paths = append(paths, f.Path)
+		}
+	}
+	return paths
 }
 
 // place returns files with the files that the producer of u places for a and c, as managed files of

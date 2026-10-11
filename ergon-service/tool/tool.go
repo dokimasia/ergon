@@ -52,7 +52,7 @@ const busyWait = 10 * time.Millisecond
 var major = regexp.MustCompile(`^v[0-9]+$`)
 
 // Runner installs the tools of the sections of .ergon.yaml into its cache, and runs them. Each
-// field is required, and the zero value runs nothing.
+// field but PackageManager is required, and the zero value runs nothing.
 //
 // # Concurrency
 //
@@ -81,6 +81,10 @@ type Runner struct {
 
 	// Platform is the platform that the runner installs for, such as linux/amd64.
 	Platform option.Platform
+
+	// PackageManager is the package manager of the npm packages of the repository, which starts an
+	// [option.NPM] tool: pnpm dlx for pnpm, and npx for npm and for the zero value.
+	PackageManager option.PackageManager
 
 	// Env is the environment of a tool and of a toolchain, such as the environment of the process.
 	Env []string
@@ -118,7 +122,7 @@ type entry struct {
 //     builds with golangci-lint custom when the option that the tag names lists a plugin
 //   - a [option.PyPI] runs through the [option.UV] of the section, with uv tool run, or with uv run
 //     in the environment of the project for a tool tagged run:"project"
-//   - an [option.NPM] runs with npx
+//   - an [option.NPM] runs with npx, or with pnpm dlx for the package manager pnpm
 //   - an [option.Crate] installs with cargo install --locked
 //   - a [option.Maven] downloads its jar, which Run checks against the .sha256 file beside it, and
 //     runs with java -jar
@@ -205,7 +209,7 @@ func (r *Runner) install(ctx context.Context, section string, e *entry) (string,
 	case option.PyPI:
 		return r.pypi(ctx, e, tool)
 	case option.NPM:
-		program, args := npm(tool, e.program(path.Base(tool.Package())))
+		program, args := r.npm(tool, e.program(path.Base(tool.Package())))
 		return program, args, nil
 	case option.Crate:
 		program, err := r.crate(ctx, tool, e.program(tool.Package()))

@@ -12,17 +12,18 @@ import (
 // steps are the steps of the gate of TypeScript, which the key check of the section names.
 var steps = []option.Step{option.StepLint, option.StepTest, option.StepGenerate, option.StepAudit}
 
-// Options are the options of the section typescript of .ergon.yaml. The section js sets the tools,
-// the paths and the scan that TypeScript shares with JavaScript, and the setup of their jobs.
+// Options are the options of the section typescript of .ergon.yaml. The section js sets the
+// package manager, the toolkit, the tools, the paths and the scan that TypeScript shares with
+// JavaScript, and the setup of their jobs.
 type Options struct {
 	// Tools are the tools of the targets of TypeScript.
-	Tools Tools `yaml:"tools" doc:"The tools of the targets of TypeScript, as <package>@<version> of npm, which ergon tool run runs with npx."`
+	Tools Tools `yaml:"tools" doc:"The tools of the targets of TypeScript, as <package>@<version> of npm, which ergon tool run starts with the package manager of the section js."`
 
 	// Check are the steps of check-typescript.
-	Check option.Check `yaml:"check" doc:"The steps that check-typescript runs, in order: lint, test, generate or audit. lint runs lint-js of the section js before tsc, and audit runs audit-js."`
+	Check option.Check `yaml:"check" doc:"The steps that check-typescript runs, in order: lint, test, generate or audit. lint runs lint-js of the section js, and then tsc for the toolkit biome. audit runs audit-js."`
 
 	// Test are the options of test-typescript.
-	Test option.Run `yaml:"test" doc:"test-typescript runs npm test with args."`
+	Test option.Run `yaml:"test" doc:"test-typescript runs the tests with args: the test script of package.json through the package manager of the section js, or vp test --run for the toolkit vite-plus."`
 
 	// Generate are the options of generate-typescript and verify-generate-typescript.
 	Generate option.Generate `yaml:"generate" doc:"generate-typescript runs command with args at the root of the repository, such as npm run generate. verify-generate-typescript, the step generate of check, runs the same and fails when the run changes a file of the repository. Without a command TypeScript has neither target."`
@@ -31,7 +32,7 @@ type Options struct {
 // Tools are the tools of the targets of TypeScript.
 type Tools struct {
 	// TypeScript checks the types of the sources.
-	TypeScript option.NPM `yaml:"typescript" program:"tsc" doc:"The type checker of lint-typescript, tsc, with its type-safety options."`
+	TypeScript option.NPM `yaml:"typescript" program:"tsc" doc:"The type checker of lint-typescript, tsc, with its type-safety options, for the toolkit biome."`
 }
 
 // Validate returns an error that wraps [option.ErrInvalid] for a step of check that TypeScript does
