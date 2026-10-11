@@ -49,3 +49,5 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 | [0038](0038-binaries-build-outside-the-workspace.md) | The binaries of a release build outside the workspace against a proxy of the released modules | Accepted |
 | [0039](0039-setup-steps-of-each-toolchain.md) | The key ci.steps of each toolchain adds steps to the setup of its jobs | Accepted |
 | [0040](0040-releases-include-the-notice.md) | The archives and the packages of a release include the NOTICE of a repository under Apache-2.0 | Accepted |
+| [0041](0041-package-manager-of-the-js-toolchain.md) | The key package-manager of the section js selects npm or pnpm | Accepted |
+| [0042](0042-vite-plus-toolkit-of-the-js-toolchain.md) | The toolkit vite-plus runs the gates of JavaScript and TypeScript through vp | Accepted |
