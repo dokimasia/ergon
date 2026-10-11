@@ -1,5 +1,21 @@
 # go.dokimi.dev/ergon/lang/javascript
 
+## 0.4.0
+
+### Minor Changes
+
+- 9f8ee46: Add js.package-manager to install, test and scan the packages with npm or pnpm.
+- 9f8ee46: Add js.toolkit to run vp fmt, vp check and vp test --run in place of Biome and tsc for vite-plus.
+
+### Patch Changes
+
+- Updated dependencies [9f8ee46]
+- Updated dependencies [9f8ee46]
+- Updated dependencies [9f8ee46]
+- Updated dependencies [9f8ee46]
+  - go.dokimi.dev/ergon/core@0.10.0
+  - go.dokimi.dev/ergon/service@0.10.0
+
 ## 0.3.0
 
 ### Minor Changes

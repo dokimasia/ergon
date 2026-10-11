@@ -1,5 +1,33 @@
 # go.dokimi.dev/ergon
 
+## 0.9.0
+
+### Minor Changes
+
+- 9f8ee46: Start the npm packages of ergon tool run with the package manager of the section js.
+
+### Patch Changes
+
+- Updated dependencies [9f8ee46]
+- Updated dependencies [9f8ee46]
+- Updated dependencies [9f8ee46]
+- Updated dependencies [9f8ee46]
+- Updated dependencies [9f8ee46]
+- Updated dependencies [9f8ee46]
+  - go.dokimi.dev/ergon/lang/javascript@0.4.0
+  - go.dokimi.dev/ergon/lang/typescript@0.3.0
+  - go.dokimi.dev/ergon/core@0.10.0
+  - go.dokimi.dev/ergon/service@0.10.0
+  - go.dokimi.dev/ergon/lang/bash@0.4.1
+  - go.dokimi.dev/ergon/lang/csharp@0.3.1
+  - go.dokimi.dev/ergon/lang/go@0.7.2
+  - go.dokimi.dev/ergon/lang/java@0.4.1
+  - go.dokimi.dev/ergon/lang/kotlin@0.3.8
+  - go.dokimi.dev/ergon/lang/php@0.4.1
+  - go.dokimi.dev/ergon/lang/python@0.4.1
+  - go.dokimi.dev/ergon/lang/rust@0.4.1
+  - go.dokimi.dev/ergon/lang/terraform@0.4.1
+
 ## 0.8.4
 
 ### Patch Changes

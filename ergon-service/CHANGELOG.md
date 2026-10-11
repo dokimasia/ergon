@@ -1,5 +1,18 @@
 # go.dokimi.dev/ergon/service
 
+## 0.10.0
+
+### Minor Changes
+
+- 9f8ee46: Add the template data .Toolchain and .Managed for the toolchain of a language and the managed files of a rendering.
+- 9f8ee46: Start the npm packages of ergon tool run with pnpm dlx when the package manager is pnpm.
+
+### Patch Changes
+
+- 9f8ee46: Leave pnpm-lock.yaml without a license header.
+- Updated dependencies [9f8ee46]
+  - go.dokimi.dev/ergon/core@0.10.0
+
 ## 0.9.1
 
 ### Patch Changes
