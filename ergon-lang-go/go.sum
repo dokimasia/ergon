@@ -36,8 +36,8 @@ go.dokimi.dev/assert v0.0.0-20261007161809-4abc39fa6683 h1:Y94DTvliVi82NAMmsShaX
 go.dokimi.dev/assert v0.0.0-20261007161809-4abc39fa6683/go.mod h1:Mr2lGt+AMXUIuqxAk7aGgGpTbdvFjuCd1qmUt0r091k=
 go.dokimi.dev/ergon/core v0.10.0 h1:AQxdXgnfVAgl0UJo3mBr8lV7ZH8J8cQTldINPJtdT1A=
 go.dokimi.dev/ergon/core v0.10.0/go.mod h1:P8/0BJdTrjygv6CV0luYVyuk0SVAd7nSkXxCFZp+yzE=
-go.dokimi.dev/ergon/service v0.10.0 h1:hJCd92LZOYK4Fud4dfyqe6K0nvSLIkbr+YqZov0XRco=
-go.dokimi.dev/ergon/service v0.10.0/go.mod h1:n/0SBlzhx6vQIfUxRqbKmhWT1Fjah1hICtLlBw7T2Vk=
+go.dokimi.dev/ergon/service v0.11.0 h1:7JclDdRxVieyM8DWi+7V/T3e5XrpFYGBZVmMYpgNRHU=
+go.dokimi.dev/ergon/service v0.11.0/go.mod h1:n/0SBlzhx6vQIfUxRqbKmhWT1Fjah1hICtLlBw7T2Vk=
 go.yaml.in/yaml/v3 v3.0.5 h1:N6y/pJk8buWs9NY5ERU2HSMfm+IuD/OtfdAnq6kESPw=
 go.yaml.in/yaml/v3 v3.0.5/go.mod h1:HVTZu1O7/Vkt2N+BFy8Zza+lnLsABggaTM2ZpNIGuKg=
 golang.org/x/mod v0.41.0 h1:qJmnOUb4YB+FsEuM3HcWucdZASCPGhsX6uljO6pog0c=
