@@ -49,7 +49,7 @@
     "php.tools.php-cs-fixer": "php-cs-fixer/shim@3.95.27",
     "php.tools.phpstan": "phpstan/phpstan@2.2.17",
     "php.tools.phpstan-extension-installer": "phpstan/extension-installer@1.4.3",
-    "php.tools.phpstan-strict-rules": "phpstan/phpstan-strict-rules@2.0.12"
+    "php.tools.phpstan-strict-rules": "phpstan/phpstan-strict-rules@2.1.0"
   },
   "answers": {
     "name": "demo",
