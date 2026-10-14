@@ -7,16 +7,16 @@ go 1.27.2
 
 require (
 	github.com/apache/skywalking-eyes v0.9.0
-	github.com/bmatcuk/doublestar/v4 v4.10.2
+	github.com/bmatcuk/doublestar/v4 v4.10.3
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/pelletier/go-toml/v2 v2.4.3
 	github.com/sirupsen/logrus v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/ulikunitz/xz v0.5.17
-	go.dokimi.dev/assert v0.0.0-20261007161809-4abc39fa6683
+	go.dokimi.dev/assert v0.2.0
 	go.dokimi.dev/ergon/core v0.10.0
 	go.yaml.in/yaml/v3 v3.0.5
-	golang.org/x/mod v0.41.0
+	golang.org/x/mod v0.42.0
 )
 
 require (
