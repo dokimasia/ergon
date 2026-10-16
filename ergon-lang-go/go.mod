@@ -7,13 +7,14 @@ go 1.27.2
 
 require (
 	go.dokimi.dev/assert v0.3.0
-	go.dokimi.dev/ergon/core v0.10.0
-	go.dokimi.dev/ergon/service v0.11.0
+	go.dokimi.dev/ergon/core v0.11.0
+	go.dokimi.dev/ergon/service v0.12.0
 	go.yaml.in/yaml/v3 v3.0.5
 	golang.org/x/mod v0.41.0
 )
 
 require (
+	github.com/creachadair/tomledit v0.0.29 // indirect
 	github.com/fsnotify/fsnotify v1.10.1 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.4.3 // indirect

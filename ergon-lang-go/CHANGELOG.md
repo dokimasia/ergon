@@ -1,5 +1,28 @@
 # go.dokimi.dev/ergon/lang/go
 
+## 0.7.4
+
+### Patch Changes
+
+- c62ac29: Describe `completions` as the command completion of a program of cobra or of go.stealthscale.io/cli.
+- 5260d20: Turn off the padding of struct tags by golines in `.golangci.yml`.
+- Updated dependencies [27a850e]
+- Updated dependencies [27a850e]
+- Updated dependencies [a2520a3]
+- Updated dependencies [0a55b7d]
+- Updated dependencies [5394d3c]
+- Updated dependencies [0a819fb]
+- Updated dependencies [0a819fb]
+- Updated dependencies [27a850e]
+- Updated dependencies [27a850e]
+- Updated dependencies [0a55b7d]
+- Updated dependencies [5394d3c]
+- Updated dependencies [0a55b7d]
+- Updated dependencies [8b78d7a]
+- Updated dependencies [0a819fb]
+  - go.dokimi.dev/ergon/service@0.12.0
+  - go.dokimi.dev/ergon/core@0.11.0
+
 ## 0.7.3
 
 ### Patch Changes

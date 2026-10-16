@@ -15,7 +15,7 @@ require (
 	github.com/spf13/viper v1.21.0
 	github.com/ulikunitz/xz v0.5.17
 	go.dokimi.dev/assert v0.3.0
-	go.dokimi.dev/ergon/core v0.10.0
+	go.dokimi.dev/ergon/core v0.11.0
 	go.yaml.in/yaml/v3 v3.0.5
 	golang.org/x/mod v0.41.0
 )

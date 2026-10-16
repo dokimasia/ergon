@@ -1,5 +1,12 @@
 # go.dokimi.dev/ergon/core
 
+## 0.11.0
+
+### Minor Changes
+
+- a2520a3: Add `changeset.Latest` to return the highest version of the headings of a changelog.
+- 0a819fb: Add `language.Annotator`, the role of a producer that adds text to the files that ergon init creates for a repository.
+
 ## 0.10.0
 
 ### Minor Changes

@@ -1,5 +1,32 @@
 # go.dokimi.dev/ergon/lang/rust
 
+## 0.5.0
+
+### Minor Changes
+
+- 4295f7e: Add `rust.tools.cargo-llvm-cov` and the variable `CARGO_LLVM_COV` of the Makefile.
+
+### Patch Changes
+
+- 4295f7e: Fix `test-rust` to run the doc tests of the library crates of the workspace.
+- 4295f7e: Test every crate of the workspace in `test-rust` at the baseline.
+- Updated dependencies [27a850e]
+- Updated dependencies [27a850e]
+- Updated dependencies [a2520a3]
+- Updated dependencies [0a55b7d]
+- Updated dependencies [5394d3c]
+- Updated dependencies [0a819fb]
+- Updated dependencies [0a819fb]
+- Updated dependencies [27a850e]
+- Updated dependencies [27a850e]
+- Updated dependencies [0a55b7d]
+- Updated dependencies [5394d3c]
+- Updated dependencies [0a55b7d]
+- Updated dependencies [8b78d7a]
+- Updated dependencies [0a819fb]
+  - go.dokimi.dev/ergon/service@0.12.0
+  - go.dokimi.dev/ergon/core@0.11.0
+
 ## 0.4.2
 
 ### Patch Changes
