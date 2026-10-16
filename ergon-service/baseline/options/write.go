@@ -38,8 +38,7 @@ const (
 // other key of existing with its comments, and the key of each section with its comments.
 //
 // Write writes each option of a section under a comment with the doc tag of the option. It writes a
-// list of scalars in flow style. viper parses the keys of .ergon.yaml in lowercase, so a section has
-// the keys of its maps in lowercase. Write reports whether the result differs from existing in more
+// list of scalars in flow style. Write reports whether the result differs from existing in more
 // than the layout of existing.
 //
 // It returns an error that wraps [ErrInvalid] for an existing that does not parse or whose root is

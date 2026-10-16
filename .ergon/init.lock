@@ -100,8 +100,8 @@
     {
       "path": ".golangci.yml",
       "producer": "go",
-      "local": "117dff31407417b1b60d307d9825497c633425d0f2edb0bdcbad22013abddea6",
-      "sha256": "ca412f515b61dfcdae00a6a02467bc414fdea4b2d32348735cef04bb5b2af860"
+      "local": "2ec22af2a8628828fba25384e1e33f54cf4123f25c02e83433bf4f30dae0313b",
+      "sha256": "9f0de63fcf977b5d8b6a886a04707caade36422491c70154e36db3624cac3bdf"
     },
     {
       "path": ".goreleaser.yaml",

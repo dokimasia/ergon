@@ -13,17 +13,24 @@ import (
 	"go.dokimi.dev/ergon/service/baseline/options"
 )
 
-// layout is options with an unexported field, a field tagged yaml:"-", and a group that embeds a
-// struct inline.
+// layout is options with an unexported field and a group that embeds a struct inline.
 type layout struct {
 	// hidden is unexported, so it is no key.
 	hidden string
 
-	// Skipped is tagged yaml:"-", so it is no key.
-	Skipped string `yaml:"-"`
-
 	// Tool embeds option.Binary inline.
 	Tool option.UV `yaml:"tool" doc:"A release binary."`
+}
+
+// dashed is options with an exported field tagged yaml:"-", which go-cli decodes as an option.
+type dashed struct {
+	// Skipped is exported and tagged yaml:"-".
+	Skipped string `yaml:"-"`
+}
+
+// Validate returns nil.
+func (*dashed) Validate() error {
+	return nil
 }
 
 // Validate returns nil.
@@ -95,9 +102,9 @@ func TestField(t *testing.T) {
 			got, err := options.Fields(&layout{})
 			assert.NoError(t, err, "Fields")
 			assert.Equal(t, got, []options.Field{
-				{Type: reflect.TypeFor[option.UV](), Key: "tool", Doc: "A release binary.", Index: []int{2}},
-				{Type: reflect.TypeFor[map[option.Platform]string](), Key: "tool.sha256", Index: []int{2, 0, 0}},
-				{Type: reflect.TypeFor[string](), Key: "tool.version", Index: []int{2, 0, 1}},
+				{Type: reflect.TypeFor[option.UV](), Key: "tool", Doc: "A release binary.", Index: []int{1}},
+				{Type: reflect.TypeFor[map[option.Platform]string](), Key: "tool.sha256", Index: []int{1, 0, 0}},
+				{Type: reflect.TypeFor[string](), Key: "tool.version", Index: []int{1, 0, 1}},
 			}, "the fields")
 		})
 
@@ -118,6 +125,7 @@ func TestField(t *testing.T) {
 			{name: "returns ErrDefect for nil options", give: nil},
 			{name: "returns ErrDefect for a pointer to options that are no struct", give: new(word)},
 			{name: "returns ErrDefect for a field without a yaml key", give: &noKey{}},
+			{name: "returns ErrDefect for an exported field tagged with a dash", give: &dashed{}},
 		}
 		for _, tt := range defects {
 			t.Run(tt.name, func(t *testing.T) {
@@ -150,13 +158,6 @@ func TestField(t *testing.T) {
 				"layout.tool.sha256":  map[option.Platform]string{option.LinuxAMD64: digest},
 				"layout.tool.version": "0.12.23",
 			}, "the record")
-		})
-
-		t.Run("returns ErrInvalid for the key of a field tagged with a dash", func(t *testing.T) {
-			t.Parallel()
-			_, err := options.Resolve([]byte("layout:\n  skipped: x\n"), nil, nil, answers(), layoutProducer(),
-				[]string{"layout"})
-			assert.ErrorIs(t, err, options.ErrInvalid, "Resolve")
 		})
 
 		defects := []struct {

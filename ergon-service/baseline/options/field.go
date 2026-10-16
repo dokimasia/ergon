@@ -13,9 +13,15 @@ import (
 	"go.dokimi.dev/ergon/core/option"
 )
 
-// inline is the option of a yaml tag that puts the keys of a struct field into the mapping of its
-// parent.
-const inline = "inline"
+// The yaml tag of a field of the options and its option inline.
+const (
+	// keyTag is the struct tag whose value is the key of a field in .ergon.yaml.
+	keyTag = "yaml"
+
+	// inline is the option of a yaml tag that puts the keys of a struct field into the mapping of
+	// its parent.
+	inline = "inline"
+)
 
 // stateless are the kinds of a value that no document of YAML states. The encoder of YAML panics
 // for them.
@@ -44,12 +50,16 @@ type Field struct {
 }
 
 // Fields returns every key of the options o at every depth, in the order of the fields: a group
-// before its keys, and the keys of an inline struct in place of the struct. It skips a field tagged
-// yaml:"-" and an unexported field that its struct does not embed. It returns an error that wraps
-// [ErrDefect] for options that are not a pointer to a struct, for an exported field without a key,
-// for an inline field that is not a struct, for an embedded field without the option inline, which
-// YAML and viper read in different ways, and for a field of a kind that no document of YAML states,
-// such as a function.
+// before its keys, and the keys of an inline struct in place of the struct. It skips an unexported
+// field that its struct does not embed. It returns an error that wraps [ErrDefect] for each of
+// these:
+//
+//   - options that are not a pointer to a struct
+//   - an exported field without a key
+//   - a field tagged yaml:"-", which go-cli decodes as an option
+//   - an inline field that is not a struct
+//   - an embedded field without the option inline, which yaml.v3 and go-cli read in different ways
+//   - a field of a kind that no document of YAML states, such as a function
 func Fields(o language.Options) ([]Field, error) {
 	t := reflect.TypeOf(o)
 	if t == nil || t.Kind() != reflect.Pointer || t.Elem().Kind() != reflect.Struct {
@@ -64,9 +74,13 @@ func fields(t reflect.Type, prefix string, index []int) ([]Field, error) {
 	var out []Field
 	for i := range t.NumField() {
 		f := t.Field(i)
-		tag := f.Tag.Get(configType)
-		if tag == "-" || (!f.IsExported() && !f.Anonymous) {
+		tag := f.Tag.Get(keyTag)
+		if !f.IsExported() && !f.Anonymous {
 			continue
+		}
+		if tag == "-" {
+			return nil, fmt.Errorf(`%w: the field %s of %s is tagged yaml:"-", and go-cli decodes it as an option`,
+				ErrDefect, f.Name, t)
 		}
 		at := append(slices.Clone(index), i)
 		name, opts, _ := strings.Cut(tag, ",")

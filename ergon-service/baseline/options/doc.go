@@ -12,11 +12,13 @@
 //
 // # Resolution
 //
-// [Resolve] parses .ergon.yaml with viper, and decodes each producer's section into a new value of
-// its options, strictly: a key that the struct does not have, and a value of another kind than its
-// field, are errors. The value starts at the baseline, so each option takes one value:
+// [Resolve] parses .ergon.yaml with yaml.v3, and decodes each producer's section into a new value of
+// its options with go.stealthscale.io/cli. A key that the struct does not have and a value that
+// does not convert to its field are errors. A scalar converts from its text as the file writes it,
+// so an option that is a string receives an unquoted 1.20 or 2030-01-01 unchanged. A key of a map
+// keeps its case. The value starts at the baseline, so each option takes one value:
 //
-//   - An option that the section lacks keeps its baseline value.
+//   - An option that the section lacks or states without a value keeps its baseline value.
 //   - An option whose value equals the value that the lock records for it takes the baseline value
 //     of the installed ergon, so an option that the repository never changed follows the baseline.
 //   - Any other option takes the value of the section.
@@ -25,14 +27,17 @@
 //     and any other value is an error.
 //
 // Resolve then calls the Validate method of every option whose type has one, and the Validate of
-// the producer's options last, for the rules between its options. viper reads every key in
-// lowercase.
+// the producer's options last, for the rules between its options.
+//
+// go-cli reads the key of a field from its name tag or from the kebab case of its Go name, and the
+// key of a group from its prefix tag. A field whose yaml key differs from that kebab case has the
+// key again in its name or prefix tag, such as name:"golangci-lint" on GolangCILint.
 //
 // # Writing
 //
 // [Write] replaces each section of .ergon.yaml with its resolution, under the comment of each doc
 // tag, removes the sections of the producers that the repository no longer has, and keeps every
-// other key of the file. viper cannot write the file, because its writer drops every comment.
+// other key of the file with its comments.
 //
 // [Set] writes values into the content of .ergon.yaml as strings, so a command can set an option
 // before Resolve reads the file.
@@ -44,8 +49,8 @@
 //
 // # Dependency position
 //
-// Imports the standard library, github.com/spf13/viper, github.com/go-viper/mapstructure/v2,
-// go.yaml.in/yaml/v3, [go.dokimi.dev/ergon/core/language] and [go.dokimi.dev/ergon/core/option].
+// Imports the standard library, go.stealthscale.io/cli, go.yaml.in/yaml/v3,
+// [go.dokimi.dev/ergon/core/language] and [go.dokimi.dev/ergon/core/option].
 // The packages [go.dokimi.dev/ergon/service/baseline] and [go.dokimi.dev/ergon/service/pin] import
 // it.
 package options

@@ -34,10 +34,9 @@ linters:
             - go.dokimi.dev/ergon/service
             # The YAML of the configured files and of the local files, with its comments.
             - go.yaml.in/yaml/v3
-            # The configuration of ergon, which viper parses and decodes into the options of each
-            # producer.
-            - github.com/spf13/viper
-            - github.com/go-viper/mapstructure/v2
+            # The configuration of ergon: go-cli decodes each section of .ergon.yaml into the options
+            # of its producer.
+            - go.stealthscale.io/cli
             # The TOML that the test kit of the producers parses, such as ruff.toml, and that the
             # merge of a local TOML file checks.
             - github.com/pelletier/go-toml/v2

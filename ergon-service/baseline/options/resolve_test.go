@@ -13,6 +13,7 @@ import (
 	"go.dokimi.dev/ergon/core/workflow"
 	"go.dokimi.dev/ergon/core/workspace"
 	"go.dokimi.dev/ergon/service/baseline/options"
+	"go.stealthscale.io/cli"
 )
 
 // name is the section of the producer of the cases.
@@ -147,6 +148,18 @@ func (*moodGroup) Validate() error {
 	return nil
 }
 
+// misnamed is options with a name tag that go-cli does not accept, because the name is not in lower
+// case.
+type misnamed struct {
+	// Value has its key in upper case in its name tag.
+	Value string `yaml:"value" name:"Value"`
+}
+
+// Validate returns nil.
+func (*misnamed) Validate() error {
+	return nil
+}
+
 func TestResolve(t *testing.T) {
 	t.Parallel()
 
@@ -226,6 +239,12 @@ func TestResolve(t *testing.T) {
 				want: func(d *demo) { d.Check = option.Check{option.StepTest} },
 			},
 			{
+				name:     "takes the value of the section beside a recorded option that the section lacks",
+				file:     "demo:\n  check: [test]\n",
+				recorded: map[string]any{"demo.fuzz.time": "10s"},
+				want:     func(d *demo) { d.Check = option.Check{option.StepTest} },
+			},
+			{
 				name: "replaces the map of the baseline with the map of the section",
 				file: "demo:\n  tools:\n    uv:\n      sha256:\n        linux/arm64: " + digest + "\n",
 				want: func(d *demo) { d.Tools.UV.SHA256 = map[option.Platform]string{option.LinuxARM64: digest} },
@@ -259,9 +278,24 @@ func TestResolve(t *testing.T) {
 				want:     func(*demo) {},
 			},
 			{
-				name: "reads a key of a map in lowercase",
+				name: "keeps the case of a key of a map",
 				file: "demo:\n  styles:\n    Dockerfile: Hashtag\n",
-				want: func(d *demo) { d.Styles = map[string]string{"dockerfile": "Hashtag"} },
+				want: func(d *demo) { d.Styles = map[string]string{"Dockerfile": "Hashtag"} },
+			},
+			{
+				name: "takes an unquoted date for a string option as the file writes it",
+				file: "demo:\n  fuzz:\n    match: 2030-01-01\n",
+				want: func(d *demo) { d.Fuzz.Match = "2030-01-01" },
+			},
+			{
+				name: "takes an unquoted decimal for a string option as the file writes it",
+				file: "demo:\n  fuzz:\n    match: 1.20\n",
+				want: func(d *demo) { d.Fuzz.Match = "1.20" },
+			},
+			{
+				name: "keeps the baseline of an option without a value",
+				file: "demo:\n  fuzz:\n    match:\n",
+				want: func(*demo) {},
 			},
 			{
 				name: "returns the baseline for a section without a value",
@@ -405,12 +439,27 @@ func TestResolve(t *testing.T) {
 			{
 				name: "returns ErrInvalid for a key that the section does not have",
 				file: "demo:\n  fuzz:\n    tme: 1s\n",
-				want: "tme",
+				want: "cli: unknown key demo.fuzz.tme (did you mean demo.fuzz.time?)",
+			},
+			{
+				name: "returns ErrInvalid for a key in another case",
+				file: "demo:\n  Fuzz:\n    time: 60s\n",
+				want: "cli: unknown key demo.Fuzz (did you mean demo.fuzz?)",
 			},
 			{
 				name: "returns ErrInvalid for a value of another kind",
 				file: "demo:\n  fuzz:\n    time: [1s]\n",
-				want: "demo: ",
+				want: "cli: invalid demo.fuzz.time: want a value",
+			},
+			{
+				name: "returns ErrInvalid for a list with a null element",
+				file: "demo:\n  check: [lint, ~]\n",
+				want: "cli: invalid demo.check[1]: want a value",
+			},
+			{
+				name: "returns ErrInvalid for an element of a list with a key twice",
+				file: "demo:\n  ci:\n    steps:\n      - {name: Build, name: Test}\n",
+				want: `mapping key "name" already defined`,
 			},
 			{
 				name: "returns ErrInvalid for a value that its option does not accept",
@@ -444,6 +493,22 @@ func TestResolve(t *testing.T) {
 			})
 		}
 
+		t.Run("returns ErrInvalid for a map with a key twice that the lock records", func(t *testing.T) {
+			t.Parallel()
+			recorded := map[string]any{"demo.styles": map[string]any{}}
+			_, err := options.Resolve([]byte("demo:\n  styles: {Makefile: Hashtag, Makefile: Hashtag}\n"), recorded,
+				nil, answers(), producers(), []string{name})
+			assert.ErrorIs(t, err, options.ErrInvalid, "Resolve")
+			assert.Contains(t, err.Error(), `mapping key "Makefile" already defined`, "the error")
+		})
+
+		t.Run("returns the error of go-cli for a key that the section does not have", func(t *testing.T) {
+			t.Parallel()
+			_, err := options.Resolve([]byte("demo:\n  fuzz:\n    tme: 1s\n"), nil, nil, answers(), producers(),
+				[]string{name})
+			assert.ErrorIs(t, err, cli.ErrUnknownKey, "Resolve")
+		})
+
 		t.Run("returns the error of the option for a value that its option does not accept", func(t *testing.T) {
 			t.Parallel()
 			_, err := options.Resolve(
@@ -476,6 +541,10 @@ func TestResolve(t *testing.T) {
 			{
 				name:    "returns ErrDefect for an answer in a group that ergon init does not have",
 				options: func() language.Options { return &moodGroup{} },
+			},
+			{
+				name:    "returns ErrDefect for a field whose name go-cli does not accept",
+				options: func() language.Options { return &misnamed{} },
 			},
 		}
 		for _, tt := range defects {
