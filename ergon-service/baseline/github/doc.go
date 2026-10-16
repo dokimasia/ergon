@@ -40,7 +40,10 @@
 //   - security.yml runs the dependency review on a pull request, the OpenSSF Scorecard weekly, and
 //     a job codeql-<language> for each CodeQL analysis of the contributions, which calls
 //     codeql.yml. codeql.yml runs the steps of each analysis before CodeQL, in the runs of the
-//     language of that analysis alone.
+//     language of that analysis alone. A private repository needs GitHub Code Security for the
+//     analyses and the review, so ergon init renders neither workflow when the key code-security is
+//     false. The job visibility queries the API of GitHub for the visibility of the repository,
+//     because a scheduled run has no event payload. The Scorecard runs only in a public repository.
 //   - baseline.yml runs ergon init ci upgrade weekly, which moves the managed files to the newest
 //     release of ergon and opens or updates the pull request of the change.
 //   - dependabot.yml updates the package manager of each update of the contributions weekly, with
@@ -73,9 +76,9 @@
 //
 // The section github of .ergon.yaml, [Options], names the runners of the jobs, the Linux runner of
 // the checks of text and of CodeQL, the release of GNU make for Windows, the release of actionlint,
-// the pins of the actions of the GitHub files, the limit of their jobs, and the schedule of
-// nightly.yml. It configures the platform alone: the section of each toolchain configures the setup
-// of its jobs.
+// the pins of the actions of the GitHub files, the limit of their jobs, the schedule of nightly.yml,
+// and whether the repository has GitHub Code Security. It configures the platform alone: the
+// section of each toolchain configures the setup of its jobs.
 //
 // # Lint of the workflows
 //

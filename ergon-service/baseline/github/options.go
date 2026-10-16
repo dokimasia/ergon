@@ -154,6 +154,10 @@ type Options struct {
 
 	// CI are the pins of the actions of the GitHub files, and the limit of their jobs.
 	CI option.CI[Actions] `yaml:"ci" doc:"The pins of the actions of the workflows, and the limit in minutes of each job of the GitHub files."`
+
+	// CodeSecurity reports that the repository has GitHub Code Security, as every public repository
+	// has.
+	CodeSecurity bool `yaml:"code-security" doc:"When true, ergon init renders security.yml with the CodeQL analysis of each language, the dependency review of each pull request and the weekly Scorecard, and codeql.yml. A private repository needs GitHub Code Security for the analysis and the review, so a private repository without it sets false. The Scorecard runs in a public repository alone."`
 }
 
 // Tools are the tools of the GitHub files.

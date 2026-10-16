@@ -64,6 +64,23 @@ func (p part) Contribution(language.Options) workflow.Contribution {
 	return p.contribution
 }
 
+// adjusted is the producer of the GitHub files whose options are the options at the baseline that
+// its function changes.
+type adjusted struct {
+	github.Producer
+
+	// adjust changes the options at the baseline.
+	adjust func(*github.Options)
+}
+
+// Options returns the options of the GitHub files at the baseline, after the function of a changes
+// them.
+func (a adjusted) Options() language.Options {
+	o, _ := a.Producer.Options().(*github.Options)
+	a.adjust(o)
+	return o
+}
+
 func TestGithub(t *testing.T) {
 	t.Parallel()
 
@@ -117,6 +134,18 @@ func TestGithub(t *testing.T) {
 					filepath.Join(dir, filepath.FromSlash(dependabotPath)),
 					"the configuration of Dependabot",
 				)
+			})
+
+			t.Run("renders neither security.yml nor codeql.yml without GitHub Code Security", func(t *testing.T) {
+				t.Parallel()
+				private := adjusted{adjust: func(o *github.Options) { o.CodeSecurity = false }}
+				dir := baselinetest.New(t, new(language.Catalog), baselinetest.Answers(),
+					baseline.Producer{Name: github.Name, Producer: private},
+					baseline.Producer{Name: "tool", Producer: part{contribution: toolchain()}},
+				)
+				baselinetest.Hygiene(t, dir)
+				files.Absent(t, filepath.Join(dir, filepath.FromSlash(securityPath)), "the workflow security.yml")
+				files.Absent(t, filepath.Join(dir, filepath.FromSlash(codeqlPath)), "the workflow codeql.yml")
 			})
 
 			t.Run("renders the job prune-tools alone in nightly.yml without a nightly job", func(t *testing.T) {

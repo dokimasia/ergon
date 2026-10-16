@@ -91,7 +91,8 @@ func (Producer) Templates() fs.FS {
 // release of actionlint with the digests that it states, the releases of actions/checkout,
 // github/codeql-action, actions/dependency-review-action, ossf/scorecard-action,
 // actions/upload-artifact, actions/download-artifact, actions/cache, actions/create-github-app-token
-// and actions/attest, a limit of 15 minutes for each job, and nightly.yml at 03:00 UTC each day.
+// and actions/attest, a limit of 15 minutes for each job, nightly.yml at 03:00 UTC each day, and
+// GitHub Code Security, as a public repository has it.
 func (Producer) Options() language.Options {
 	return &Options{
 		Runners: option.Runners{"ubuntu-26.04", "macos-26", "windows-2025"},
@@ -155,7 +156,8 @@ func (Producer) Options() language.Options {
 			},
 			Timeout: 15,
 		},
-		Nightly: Nightly{Schedule: "0 3 * * *"},
+		Nightly:      Nightly{Schedule: "0 3 * * *"},
+		CodeSecurity: true,
 	}
 }
 

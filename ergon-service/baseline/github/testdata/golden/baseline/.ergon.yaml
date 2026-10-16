@@ -82,3 +82,8 @@ github:
         commit: 1e69f48acb82d1966a394da916b4c1698aa569d6
         release: v4.2.2
     timeout: 15
+  # When true, ergon init renders security.yml with the CodeQL analysis of each language, the
+  # dependency review of each pull request and the weekly Scorecard, and codeql.yml. A private
+  # repository needs GitHub Code Security for the analysis and the review, so a private repository
+  # without it sets false. The Scorecard runs in a public repository alone.
+  code-security: true

@@ -1,9 +1,12 @@
+{{% if .Options.CodeSecurity -%}}
 # Managed by ergon init. Add repository settings to .ergon/local/.github/workflows/codeql.yml and run ergon init sync.
 #
 # The CodeQL analysis of one language, which security.yml calls for each analysis that a producer
 # of ergon init contributes. The analysis runs once the repository has a file of the pattern
 # files, which pins the toolchain of the language. The steps that a producer contributes to its
-# analysis, such as the setup of its toolchain, run before CodeQL in the runs of its language.
+# analysis, such as the setup of its toolchain, run before CodeQL in the runs of its language. The
+# analysis reads the run of its workflow, which needs the permission actions: read in a private
+# repository.
 
 name: CodeQL
 
@@ -35,6 +38,7 @@ jobs:
     runs-on: {{% yaml .Options.Linux %}}
     timeout-minutes: ${{ inputs.timeout }}
     permissions:
+      actions: read
       contents: read
       security-events: write
     steps:
@@ -51,3 +55,4 @@ jobs:
         uses: {{% .Options.CI.Actions.CodeQL.Path "analyze" %}}
         with:
           category: /language:${{ inputs.language }}
+{{% end -%}}
