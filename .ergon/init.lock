@@ -70,7 +70,7 @@
     {
       "path": ".github/workflows/codeql.yml",
       "producer": "github",
-      "sha256": "219b2a3e23e5b10b2e7ea9e33cb6bfb937d97c93ac9886df9d86793370e4af8b"
+      "sha256": "5e07fa561318aaf54ca5a6d3edab8644647d25de75225b40cf3fe2474fb1abaa"
     },
     {
       "path": ".github/workflows/nightly.yml",
@@ -85,7 +85,7 @@
     {
       "path": ".github/workflows/security.yml",
       "producer": "github",
-      "sha256": "623fd26152fc68d822fcf30ffb781d146bd8efb3a94d3ec0ed709b5c2a67f45b"
+      "sha256": "d8e417da7c7c24961381966bc06f18d494867fc77fde0d3925910253f1a5b2e3"
     },
     {
       "path": ".github/workflows/version.yml",
@@ -100,13 +100,13 @@
     {
       "path": ".golangci.yml",
       "producer": "go",
-      "local": "563475ebb1f46288f3027620504287a590b8fb3b861f645527d512dfc018314f",
-      "sha256": "2e704709a1f3e615d6a9d9111d23a886cb4684440074445bdab79ef395a8592a"
+      "local": "d6c6f6f93105ab2de827f2140d9a3fabeec73c6fb51119feeefc273f26b0de68",
+      "sha256": "d5a7137e9a2efc642462f3f890526f97963f6a22b47f368ad721713b37dc4a01"
     },
     {
       "path": ".goreleaser.yaml",
       "producer": "go",
-      "sha256": "743adcdad4af9291c425c29f344c6ac1a106c0f7e349552b1721e7a4a163fa7d"
+      "sha256": "0b00045e9af01bf863005d9698ba87a38ed06bd6815a004a3254a815de603fbe"
     },
     {
       "path": ".markdownlint.yml",
@@ -121,7 +121,7 @@
     {
       "path": ".pre-commit-config.yaml",
       "producer": "common",
-      "sha256": "92566c4e8492d11b6855037a92795b9552c071bfd1f507298eafb9a888a1bbaf"
+      "sha256": "9c361694c7db7e83256c405a1d5a8f14bb98b1e4431f1ad2937676c3a939bd81"
     },
     {
       "path": "CODE_OF_CONDUCT.md",
@@ -145,6 +145,7 @@
     "common.ergon": [
       "ergon"
     ],
+    "common.hooks.exclude": "",
     "common.hooks.pre-commit": [
       "lint",
       "test"
@@ -193,6 +194,7 @@
     "github.ci.actions.upload-artifact.release": "v7.0.2",
     "github.ci.actions.upload-artifact.uses": "actions/upload-artifact",
     "github.ci.timeout": 15,
+    "github.code-security": true,
     "github.linux": "ubuntu-26.04",
     "github.make": "4.4.1",
     "github.nightly.schedule": "0 3 * * *",
