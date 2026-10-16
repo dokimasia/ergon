@@ -22,7 +22,7 @@ require (
 	go.dokimi.dev/ergon/service v0.11.0
 	go.stealthscale.io/cli v0.5.1
 	go.yaml.in/yaml/v3 v3.0.5
-	golang.org/x/mod v0.41.0
+	golang.org/x/mod v0.42.0
 )
 
 require (
@@ -31,7 +31,7 @@ require (
 	github.com/ProtonMail/go-crypto v1.5.2 // indirect
 	github.com/apache/skywalking-eyes v0.9.0 // indirect
 	github.com/bmatcuk/doublestar/v2 v2.0.4 // indirect
-	github.com/bmatcuk/doublestar/v4 v4.10.2 // indirect
+	github.com/bmatcuk/doublestar/v4 v4.10.3 // indirect
 	github.com/cloudflare/circl v1.6.5 // indirect
 	github.com/cyphar/filepath-securejoin v0.7.0 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
