@@ -9,10 +9,10 @@ Proposals, and the argument that produced them. An RFC is written to be argued w
 
 | RFC | Title | Status |
 |---|---|---|
-| [0001](0001-module-boundaries.md) | Module boundaries | Accepted |
+| [0001](0001-module-boundaries.md) | Module boundaries | Accepted, superseded in part by ADR-0052 |
 | [0002](0002-release.md) | Release | Accepted, superseded in part by RFC-0007, ADR-0016 and ADR-0018 |
 | [0003](0003-license-headers.md) | Licenses | Accepted, superseded in part by ADR-0051 |
-| [0004](0004-repository-initialization.md) | Repository initialization | Accepted, superseded in part by RFC-0005, RFC-0006, RFC-0007, ADR-0016, ADR-0017, ADR-0018 and ADR-0029 |
+| [0004](0004-repository-initialization.md) | Repository initialization | Accepted, superseded in part by RFC-0005, RFC-0006, RFC-0007, ADR-0016, ADR-0017, ADR-0018, ADR-0029 and ADR-0052 |
 | [0005](0005-baseline-updates.md) | Baseline updates | Accepted |
 | [0006](0006-configurable-hooks.md) | Configurable hooks | Accepted |
 | [0007](0007-binary-releases.md) | Binary releases | Accepted, superseded in part by ADR-0022 and ADR-0023 |

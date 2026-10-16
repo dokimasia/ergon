@@ -60,3 +60,4 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 | [0049](0049-hooks-exclude-of-the-common-files.md) | The key common.hooks.exclude keeps paths out of the hooks that change or refuse a file | Accepted |
 | [0050](0050-busl-parameters-from-init-new-flags.md) | ergon init new sets the parameters of BUSL-1.1 from its flags | Accepted |
 | [0051](0051-empty-busl-parameters.md) | A parameter of BUSL-1.1 may be empty | Accepted |
+| [0052](0052-ergon-yaml-decode-on-go-cli.md) | ergon decodes the sections of .ergon.yaml with go.stealthscale.io/cli | Accepted |
