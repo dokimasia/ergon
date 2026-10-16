@@ -27,6 +27,7 @@ import (
 	"go.dokimi.dev/ergon/lang/rust"
 	"go.dokimi.dev/ergon/lang/terraform"
 	"go.dokimi.dev/ergon/lang/typescript"
+	"go.dokimi.dev/ergon/service/baseline/baselinetest"
 	"go.dokimi.dev/ergon/service/vcs/vcstest"
 )
 
@@ -92,6 +93,31 @@ func TestRegister(t *testing.T) {
 				{Name: terraform.Language, Toolchain: terraform.Toolchain},
 				{Name: bash.Language, Toolchain: bash.Toolchain},
 			}, "the languages of the catalog")
+		})
+
+		t.Run("adds producers whose sections go-cli decodes with every key", func(t *testing.T) {
+			t.Parallel()
+			var c language.Catalog
+			assert.NoError(t, app.Register(&c), "Register of every language module")
+			var names []string
+			for d := range c.Languages() {
+				p, _ := language.Role[language.Producer](&c, d.Name)
+				if conf, ok := p.(language.Configurable); ok {
+					baselinetest.Keys(t, string(d.Name), conf)
+					names = append(names, string(d.Name))
+				}
+			}
+			for tc := range c.Toolchains() {
+				p, _ := language.ToolchainRole[language.Producer](&c, tc.Name)
+				if conf, ok := p.(language.Configurable); ok {
+					baselinetest.Keys(t, string(tc.Name), conf)
+					names = append(names, string(tc.Name))
+				}
+			}
+			assert.Equal(t, names, []string{
+				"csharp", "java", "kotlin", "php", "javascript", "typescript", "go", "python", "rust", "terraform",
+				"bash", "jvm", "js",
+			}, "the sections of the catalog")
 		})
 
 		t.Run("returns ErrRegistered for a catalog that has a language of ergon", func(t *testing.T) {
