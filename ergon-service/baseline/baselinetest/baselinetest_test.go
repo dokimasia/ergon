@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"runtime"
+	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -24,6 +25,59 @@ type templates fstest.MapFS
 // Templates returns the templates.
 func (t templates) Templates() fs.FS {
 	return fstest.MapFS(t)
+}
+
+// configurable is a producer of the cases whose options are the result of a function.
+type configurable func() language.Options
+
+// Options returns the options of c.
+func (c configurable) Options() language.Options {
+	return c()
+}
+
+// accepted gives the options of the cases a Validate method that returns nil.
+type accepted struct{}
+
+// Validate returns nil.
+func (accepted) Validate() error {
+	return nil
+}
+
+// Step is a group of the options of the cases, which a list and a map also contain.
+type Step struct {
+	// Name is a string of the group.
+	Name string `yaml:"name"`
+
+	// Run is a list of the group.
+	Run []string `yaml:"run"`
+}
+
+// keyed is options with a value of each kind that Keys sets, a group, a list and a map of groups, a
+// struct inline, an unexported field, and a key that the tag name of go-cli states.
+type keyed struct {
+	accepted `yaml:",inline"`
+
+	Step `yaml:",inline"`
+
+	Text   string            `yaml:"text"`
+	Flag   bool              `yaml:"flag"`
+	Count  int               `yaml:"count"`
+	List   []string          `yaml:"list"`
+	Map    map[string]string `yaml:"map"`
+	Group  Step              `yaml:"group"`
+	Steps  []Step            `yaml:"steps"`
+	ByName map[string]Step   `yaml:"by-name"`
+	Lint   string            `yaml:"golangci-lint" name:"golangci-lint"`
+	hidden string
+}
+
+// lower is a string that its decode turns into lower case.
+type lower string
+
+// UnmarshalText sets l to b in lower case.
+func (l *lower) UnmarshalText(b []byte) error {
+	*l = lower(strings.ToLower(string(b)))
+	return nil
 }
 
 func TestBaselinetest(t *testing.T) {
@@ -140,5 +194,96 @@ func TestBaselinetest(t *testing.T) {
 			assert.Length(t, got, 1, "the failures")
 			assert.Equal(t, got[0].Contract, "the walk of "+dir, "the failure")
 		})
+	})
+
+	t.Run("Keys", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("passes options whose every key go-cli decodes", func(t *testing.T) {
+			t.Parallel()
+			baselinetest.Keys(t, "demo", configurable(func() language.Options { return &keyed{hidden: "kept"} }))
+		})
+
+		tests := []struct {
+			name     string
+			giveOpts func() language.Options
+			want     string
+		}{
+			{
+				name: "rejects a key that go-cli reads under another name",
+				giveOpts: func() language.Options {
+					return &struct {
+						accepted `yaml:",inline"`
+						CodeQL   string `yaml:"codeql"`
+					}{}
+				},
+				want: "Decode of the section demo",
+			},
+			{
+				name:     "rejects options that are not a pointer to a struct",
+				giveOpts: func() language.Options { return accepted{} },
+				want:     "the fields of the options of demo",
+			},
+			{
+				name: "rejects a value of a kind without a sample",
+				giveOpts: func() language.Options {
+					return &struct {
+						accepted `yaml:",inline"`
+						Ratio    float64 `yaml:"ratio"`
+					}{}
+				},
+				want: "the values of the options of demo",
+			},
+			{
+				name: "rejects a list of a kind without a sample",
+				giveOpts: func() language.Options {
+					return &struct {
+						accepted `yaml:",inline"`
+						Ratios   []float64 `yaml:"ratios"`
+					}{}
+				},
+				want: "the values of the options of demo",
+			},
+			{
+				name: "rejects a map whose key has no sample",
+				giveOpts: func() language.Options {
+					return &struct {
+						accepted `yaml:",inline"`
+						Names    map[float64]string `yaml:"names"`
+					}{}
+				},
+				want: "the values of the options of demo",
+			},
+			{
+				name: "rejects a map whose value has no sample",
+				giveOpts: func() language.Options {
+					return &struct {
+						accepted `yaml:",inline"`
+						Ratios   map[string]float64 `yaml:"ratios"`
+					}{}
+				},
+				want: "the values of the options of demo",
+			},
+			{
+				name: "rejects a value that the decode changes",
+				giveOpts: func() language.Options {
+					return &struct {
+						accepted `yaml:",inline"`
+						Text     lower `yaml:"text"`
+					}{}
+				},
+				want: "the options of demo after the decode",
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+				got := assert.Rejects(t, "the options fail the check", func(tb assert.TB) {
+					baselinetest.Keys(tb, "demo", configurable(tt.giveOpts))
+				})
+				assert.Length(t, got, 1, "the failures")
+				assert.Equal(t, got[0].Contract, tt.want, "the step of the check that fails")
+			})
+		}
 	})
 }
