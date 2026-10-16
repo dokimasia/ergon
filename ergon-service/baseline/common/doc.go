@@ -34,6 +34,12 @@
 // hook for each target of each stage, whose id is the target, in the order of the list. A stage
 // with no target has no hook.
 //
+// The hooks of pre-commit-hooks that change or refuse the content of a file are trailing-whitespace,
+// end-of-file-fixer, mixed-line-ending and check-added-large-files. The template writes the regular
+// expression of [Hooks.Exclude] as the key exclude of each of them, so a repository keeps files
+// such as the copies of a model checkpoint byte for byte. trailing-whitespace skips the Markdown
+// files by their type, so its key exclude has no pattern of its own to join.
+//
 // # Workflows
 //
 // [Producer.Contribution] returns the jobs docs, commits and changeset of ci.yml. They check text,

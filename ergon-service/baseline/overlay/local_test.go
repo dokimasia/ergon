@@ -23,6 +23,9 @@ const (
 	toolsHeader = "Managed by ergon init. Add repository settings to .ergon/local/tools.yml and run ergon init sync."
 	toolsMerged = "Managed by ergon init, with .ergon/local/tools.yml merged in. " +
 		"Change the repository's settings there and run ergon init sync."
+	ruffHeader = "Managed by ergon init. Add repository settings to .ergon/local/ruff.toml and run ergon init sync."
+	ruffMerged = "Managed by ergon init, with .ergon/local/ruff.toml merged in. " +
+		"Change the repository's settings there and run ergon init sync."
 )
 
 // dir pins the directory of the local files.
@@ -242,6 +245,20 @@ func TestLocal(t *testing.T) {
 				local:   "a: 2\n",
 				want:    "# notes\na: 2\n",
 			},
+			{
+				name:    "merges a TOML file without the license header of its local file",
+				path:    "ruff.toml",
+				content: "[lint]\nselect = [\"ALL\"]\n",
+				local:   "# Copyright Example B.V. 2026\n# SPDX-License-Identifier: MIT\n\n[lint]\nignore = [\"D\"]\n",
+				want:    "[lint]\nselect = [\"ALL\"]\nignore = [\"D\"]\n",
+			},
+			{
+				name:    "names the local file in the header of a merged TOML file",
+				path:    "ruff.toml",
+				content: "# " + ruffHeader + "\n\n[lint]\nselect = [\"ALL\"]\n",
+				local:   "[lint]\nignore = [\"D\"]\n",
+				want:    "# " + ruffMerged + "\n\n[lint]\nselect = [\"ALL\"]\nignore = [\"D\"]\n",
+			},
 		}
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
@@ -257,6 +274,13 @@ func TestLocal(t *testing.T) {
 			_, err := overlay.Apply("tools.yml", []byte("a: 1\n"), []byte("a: [\n"))
 			assert.HasError(t, err, "Apply")
 			assert.Contains(t, err.Error(), "overlay: merge .ergon/local/tools.yml: parse: ", "the error")
+		})
+
+		t.Run("returns an error that names the local file of a TOML file that is not valid TOML", func(t *testing.T) {
+			t.Parallel()
+			_, err := overlay.Apply("ruff.toml", []byte("a = 1\n"), []byte("b = 1\nb = 2\n"))
+			assert.HasError(t, err, "Apply")
+			assert.Contains(t, err.Error(), "overlay: merge .ergon/local/ruff.toml: invalid: ", "the error")
 		})
 	})
 
@@ -277,6 +301,26 @@ func TestLocal(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, overlay.IsYAML(tt.give), tt.want, "IsYAML of "+tt.give)
+			})
+		}
+	})
+
+	t.Run("IsTOML", func(t *testing.T) {
+		t.Parallel()
+
+		tests := []struct {
+			name string
+			give string
+			want bool
+		}{
+			{name: "reports true for the extension toml", give: "ruff.toml", want: true},
+			{name: "reports false for another extension", give: ".golangci.yml", want: false},
+			{name: "reports false for a name without an extension", give: "Makefile", want: false},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, overlay.IsTOML(tt.give), tt.want, "IsTOML of "+tt.give)
 			})
 		}
 	})

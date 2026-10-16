@@ -38,8 +38,11 @@ linters:
             # producer.
             - github.com/spf13/viper
             - github.com/go-viper/mapstructure/v2
-            # The TOML that the test kit of the producers parses, such as ruff.toml.
+            # The TOML that the test kit of the producers parses, such as ruff.toml, and that the
+            # merge of a local TOML file checks.
             - github.com/pelletier/go-toml/v2
+            # The merge of a local TOML file into a managed TOML file, which keeps its comments.
+            - github.com/creachadair/tomledit
             # The comment styles, the check and the insertion of the license headers, the logger
             # that the license headers silence, and the globs of the files without a header.
             - github.com/apache/skywalking-eyes

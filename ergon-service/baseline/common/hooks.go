@@ -62,9 +62,16 @@ func (t Targets) Validate() error {
 	return nil
 }
 
-// Hooks are the targets that the hooks of .pre-commit-config.yaml run at each stage of git. A
-// target may appear at both stages.
+// Hooks are the hooks of .pre-commit-config.yaml: the paths whose content the hooks of file hygiene
+// keep as it is, and the targets that the hooks run at each stage of git. A target may appear at
+// both stages.
 type Hooks struct {
+	// Exclude is a regular expression of Python's re module, as pre-commit reads the key exclude of
+	// a hook. The hooks trailing-whitespace, end-of-file-fixer, mixed-line-ending and
+	// check-added-large-files skip each path that it matches. The empty string turns the exclusion
+	// off.
+	Exclude string `yaml:"exclude" doc:"A regular expression of the paths whose content the hooks trailing-whitespace, end-of-file-fixer, mixed-line-ending and check-added-large-files keep as it is, such as ^models/. pre-commit matches it with the re module of Python. The other hooks still check those paths. The empty string turns the exclusion off."`
+
 	// PreCommit are the targets that the hooks run before each commit.
 	PreCommit Targets `yaml:"pre-commit" doc:"The targets that run before each commit, in order: fmt, lint, test, audit or check."`
 

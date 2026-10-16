@@ -86,25 +86,29 @@ func Read(fsys fs.FS) ([]Local, error) {
 }
 
 // Apply returns the rendering content of the managed file at path with local merged into it: by
-// [Merge] for a YAML file, and appended after a newline that content lacks for any other file. An
-// appended local file loses the license header on its first lines: the lines that each have a
-// copyright notice or a tag of SPDX, when one of them has a tag of SPDX. Apply replaces the
-// [Header] of path on the first line of the result with the [MergedHeader] of path, and leaves a
-// first line without the header unchanged. It returns the error of Merge, after the path of the
-// local file, for a YAML file of which a document does not parse.
+// [Merge] for a YAML file, by [MergeTOML] for a TOML file, and appended after a newline that content
+// lacks for any other file. A local file that merges into a TOML file or that Apply appends loses the
+// license header on its first lines: the lines that each have a copyright notice or a tag of SPDX,
+// when one of them has a tag of SPDX. Apply replaces the [Header] of path on the first line of the
+// result with the [MergedHeader] of path, and leaves a first line without the header unchanged. It
+// returns the error of Merge or MergeTOML, after the path of the local file, for a local file that
+// does not merge.
 func Apply(path string, content, local []byte) ([]byte, error) {
 	var merged []byte
+	var err error
 	if IsYAML(path) {
-		var err error
-		if merged, err = Merge(content, local); err != nil {
-			return nil, fmt.Errorf("overlay: merge %s/%s: %w", Dir, path, err)
-		}
+		merged, err = Merge(content, local)
+	} else if IsTOML(path) {
+		merged, err = MergeTOML(content, withoutHeader(local))
 	} else {
 		merged = slices.Clone(content)
 		if len(merged) > 0 && !bytes.HasSuffix(merged, []byte("\n")) {
 			merged = append(merged, '\n')
 		}
 		merged = append(merged, withoutHeader(local)...)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("overlay: merge %s/%s: %w", Dir, path, err)
 	}
 	first, _, _ := bytes.Cut(merged, []byte("\n"))
 	before, after, found := bytes.Cut(first, []byte(Header(path)))
@@ -137,4 +141,9 @@ func withoutHeader(local []byte) []byte {
 func IsYAML(name string) bool {
 	ext := path.Ext(name)
 	return ext == ".yml" || ext == ".yaml"
+}
+
+// IsTOML reports whether name is a TOML file, by its extension .toml.
+func IsTOML(name string) bool {
+	return path.Ext(name) == ".toml"
 }

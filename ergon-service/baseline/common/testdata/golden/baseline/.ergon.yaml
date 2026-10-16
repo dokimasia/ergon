@@ -24,9 +24,15 @@ common:
   # The release of github.com/pre-commit/pre-commit-hooks, whose hooks check the hygiene of the
   # files before each commit.
   pre-commit-hooks: v6.0.0
-  # The targets of the Makefile that the hooks of .pre-commit-config.yaml run, at each stage of git.
-  # An empty list turns the hooks of its stage off.
+  # The hooks of .pre-commit-config.yaml: the paths that the hooks of file hygiene keep as they are,
+  # and the targets of the Makefile that the hooks run at each stage of git. An empty list of
+  # targets turns the hooks of its stage off.
   hooks:
+    # A regular expression of the paths whose content the hooks trailing-whitespace,
+    # end-of-file-fixer, mixed-line-ending and check-added-large-files keep as it is, such as
+    # ^models/. pre-commit matches it with the re module of Python. The other hooks still check
+    # those paths. The empty string turns the exclusion off.
+    exclude: ""
     # The targets that run before each commit, in order: fmt, lint, test, audit or check.
     pre-commit: [lint, test]
     # The targets that run before each push, in order: fmt, lint, test, audit or check.

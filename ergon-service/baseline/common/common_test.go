@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"go.dokimi.dev/assert"
+	"go.dokimi.dev/assert/expect"
 	"go.dokimi.dev/assert/files"
 	"go.dokimi.dev/assert/golden"
 	"go.dokimi.dev/ergon/core/language"
@@ -16,6 +17,7 @@ import (
 	"go.dokimi.dev/ergon/service/baseline"
 	"go.dokimi.dev/ergon/service/baseline/baselinetest"
 	"go.dokimi.dev/ergon/service/baseline/common"
+	"go.yaml.in/yaml/v3"
 )
 
 // name pins the name of the producer of the common files.
@@ -28,8 +30,34 @@ const (
 	makefile        = "Makefile"
 )
 
+// models is a value of common.hooks.exclude: the copies of the files of a model checkpoint, which a
+// hook must leave byte for byte.
+const models = `^models/[^/]+/(tokenizer\.json|chat_template\.jinja)$`
+
 // read is the permission of the jobs of the common files.
 var read = map[string]string{"contents": "read"}
+
+// hygiene are the hooks of pre-commit-hooks that change or refuse the content of a file.
+var hygiene = []string{"trailing-whitespace", "end-of-file-fixer", "mixed-line-ending", "check-added-large-files"}
+
+// preCommit is the part of .pre-commit-config.yaml that the cases read: the id of each hook of each
+// repository, and the paths and the types of file that the hook excludes.
+type preCommit struct {
+	// Repos are the repositories of the hooks, in their order.
+	Repos []struct {
+		// Hooks are the hooks of the repository, in their order.
+		Hooks []struct {
+			// ID is the id of the hook.
+			ID string `yaml:"id"`
+
+			// Exclude is the regular expression of the paths that the hook excludes.
+			Exclude string `yaml:"exclude"`
+
+			// ExcludeTypes are the types of file that the hook excludes.
+			ExcludeTypes []string `yaml:"exclude_types"`
+		} `yaml:"hooks"`
+	} `yaml:"repos"`
+}
 
 // adjusted is the producer of the common files whose options are the options at the baseline that
 // its function changes.
@@ -114,6 +142,29 @@ func TestCommon(t *testing.T) {
 						golden.ShouldUpdate())
 				})
 			}
+
+			t.Run("renders exclude into the hooks that change or refuse the content of a file", func(t *testing.T) {
+				t.Parallel()
+				excluded := adjusted{adjust: func(o *common.Options) { o.Hooks.Exclude = models }}
+				p := baseline.Producer{Name: common.Name, Producer: excluded}
+				dir := baselinetest.New(t, new(language.Catalog), baselinetest.Answers(), p)
+				baselinetest.Hygiene(t, dir)
+				var config preCommit
+				err := yaml.Unmarshal([]byte(files.Read(t, filepath.Join(dir, preCommitConfig))), &config)
+				assert.NoError(t, err, "Unmarshal of "+preCommitConfig)
+				assert.NotEmpty(t, config.Repos, "the repositories of the hooks")
+				assert.NotEmpty(t, config.Repos[0].Hooks, "the hooks of pre-commit-hooks")
+				var excluding []string
+				for _, hook := range config.Repos[0].Hooks {
+					if hook.Exclude != "" {
+						expect.Equal(t, hook.Exclude, models, "the paths that "+hook.ID+" excludes")
+						excluding = append(excluding, hook.ID)
+					}
+				}
+				expect.Equal(t, excluding, hygiene, "the hooks that exclude the paths")
+				expect.Equal(t, config.Repos[0].Hooks[0].ExcludeTypes, []string{"markdown"},
+					"the types of file that trailing-whitespace excludes")
+			})
 
 			t.Run("runs ergon with the command of the options in the Makefile and the hooks", func(t *testing.T) {
 				t.Parallel()

@@ -44,8 +44,8 @@ type Options struct {
 	// PreCommitHooks is the release of github.com/pre-commit/pre-commit-hooks.
 	PreCommitHooks option.Version `yaml:"pre-commit-hooks" source:"github:pre-commit/pre-commit-hooks" doc:"The release of github.com/pre-commit/pre-commit-hooks, whose hooks check the hygiene of the files before each commit."`
 
-	// Hooks are the targets of the Makefile that the hooks of .pre-commit-config.yaml run.
-	Hooks Hooks `yaml:"hooks" doc:"The targets of the Makefile that the hooks of .pre-commit-config.yaml run, at each stage of git. An empty list turns the hooks of its stage off."`
+	// Hooks are the hooks of .pre-commit-config.yaml.
+	Hooks Hooks `yaml:"hooks" doc:"The hooks of .pre-commit-config.yaml: the paths that the hooks of file hygiene keep as they are, and the targets of the Makefile that the hooks run at each stage of git. An empty list of targets turns the hooks of its stage off."`
 
 	// CI is the limit of the jobs docs, commits and changeset.
 	CI option.CI[struct{}] `yaml:"ci" doc:"The limit in minutes of each job of the common files in ci.yml: docs, commits and changeset. The jobs run ergon, and they do not run an action of their own."`

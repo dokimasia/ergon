@@ -45,8 +45,8 @@ func (Producer) Templates() fs.FS {
 
 // Options returns the options of the common files at the baseline: the ergon on the PATH as the
 // command of ergon, the releases of commitlint and rumdl with the digests that they state, the
-// release of pre-commit-hooks, the hooks lint and test before each commit and check before each
-// push, and a limit of 10 minutes for each job.
+// release of pre-commit-hooks, no path that the hooks of file hygiene skip, the hooks lint and test
+// before each commit and check before each push, and a limit of 10 minutes for each job.
 func (Producer) Options() language.Options {
 	return &Options{
 		Ergon: Command{"ergon"},

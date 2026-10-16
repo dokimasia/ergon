@@ -8,21 +8,36 @@ default_stages: [pre-commit]
 repos:
   # File hygiene, without a language toolchain, at the release of the section common of
   # .ergon.yaml, before each commit. pre-commit-hooks declares three of these hooks for the stage
-  # pre-push as well, so this configuration limits each of them to the stage pre-commit.
+  # pre-push as well, so this configuration limits each of them to the stage pre-commit. The hooks
+  # that change or refuse the content of a file skip the paths of common.hooks.exclude of
+  # .ergon.yaml. trailing-whitespace also skips the Markdown files, in which two trailing spaces
+  # break a line.
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: {{% yaml .Options.PreCommitHooks %}}
     hooks:
       - id: trailing-whitespace
-        exclude: '\.md$'
+        exclude_types: [markdown]
+{{%- with .Options.Hooks.Exclude %}}
+        exclude: {{% yaml . %}}
+{{%- end %}}
         stages: [pre-commit]
       - id: end-of-file-fixer
+{{%- with .Options.Hooks.Exclude %}}
+        exclude: {{% yaml . %}}
+{{%- end %}}
         stages: [pre-commit]
       - id: mixed-line-ending
         args: ["--fix=lf"]
+{{%- with .Options.Hooks.Exclude %}}
+        exclude: {{% yaml . %}}
+{{%- end %}}
       - id: check-merge-conflict
       - id: detect-private-key
       - id: check-added-large-files
         args: ["--maxkb=500"]
+{{%- with .Options.Hooks.Exclude %}}
+        exclude: {{% yaml . %}}
+{{%- end %}}
         stages: [pre-commit]
       - id: check-yaml
         args: ["--allow-multiple-documents"]
