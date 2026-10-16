@@ -20,6 +20,7 @@ import (
 	service "go.dokimi.dev/ergon/service/baseline"
 	"go.dokimi.dev/ergon/service/baseline/baselinetest"
 	"go.dokimi.dev/ergon/service/baseline/github"
+	"go.dokimi.dev/ergon/service/baseline/overlay"
 	"go.dokimi.dev/ergon/service/baseline/render"
 )
 
@@ -94,10 +95,29 @@ func TestBaseline(t *testing.T) {
 					Contains("\ncheck-python: verify-generate-python ## Run the gate of Python\n", "the gate")
 			})
 
+			t.Run("leaves the packages of audit.skip out of the export of audit-python", func(t *testing.T) {
+				t.Parallel()
+				o, _ := baseline.Producer{}.Options().(*baseline.Options)
+				o.Audit.Skip = []string{"dokimi-assert", "torch"}
+				expect.That(t, rendered(t, o, "Makefile")).
+					Contains("\nPYTHON_AUDIT_SKIP ?= dokimi-assert torch\n", "the packages of audit.skip").
+					Contains("\t\t$(foreach package,$(PYTHON_AUDIT_SKIP),--no-emit-package $(package)) --format pylock.toml",
+						"the export without the packages")
+			})
+
 			t.Run("renders no target of the generators without a command", func(t *testing.T) {
 				t.Parallel()
 				makefile := rendered(t, baseline.Producer{}.Options(), "Makefile")
 				assert.NotContains(t, makefile, "generate", "the Makefile")
+			})
+
+			t.Run("renders a ruff.toml that a local file merges into without other changes", func(t *testing.T) {
+				t.Parallel()
+				ruff := rendered(t, baseline.Producer{}.Options(), "ruff.toml")
+				local := "[lint.per-file-ignores]\n\"src/demo/**\" = [\"N803\"]\n"
+				got, err := overlay.MergeTOML([]byte(ruff), []byte(local))
+				assert.NoError(t, err, "MergeTOML of the local ruff.toml")
+				assert.Equal(t, string(got), ruff+"\"src/demo/**\" = [\"N803\"]\n", "the merged ruff.toml")
 			})
 		})
 

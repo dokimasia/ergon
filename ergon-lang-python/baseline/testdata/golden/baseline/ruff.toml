@@ -2,12 +2,17 @@
 #
 # The configuration of ruff for every package of the repository: every stable rule, with the
 # rules that conflict with ruff's formatter left out. ruff reads this file in place of the table
-# [tool.ruff] of pyproject.toml. The local file of a repository follows this file, so its lines
-# add entries to the table [lint.per-file-ignores], which ends this file, or add tables of their
-# own.
+# [tool.ruff] of pyproject.toml. The local file of a repository is a valid TOML document of its
+# own, such as the table [lint.per-file-ignores] with the entries of the repository. ergon init
+# merges each table of the local file into the table of this file with the same name.
+
+# ruff reads the local ruff.toml under .ergon as the configuration of a project of its own, and
+# writes the cache of that project there, so ruff skips the directory .ergon.
+extend-exclude = [".ergon"]
 
 [lint]
 select = ["ALL"]
+
 # The formatter of ruff writes the trailing commas that COM812 asks for.
 ignore = ["COM812"]
 

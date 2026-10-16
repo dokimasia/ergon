@@ -16,6 +16,7 @@ PIP_AUDIT := $(ERGON) tool run python.pip-audit --
 PYTHON_PATHS ?={{% with words .Options.Paths %}} {{% . %}}{{% end %}}
 PYTHON_TEST_ARGS ?={{% with words .Options.Test.Args %}} {{% . %}}{{% end %}}
 PYTHON_AUDIT_IGNORE ?={{% with words .Options.Audit.Ignore %}} {{% . %}}{{% end %}}
+PYTHON_AUDIT_SKIP ?={{% with words .Options.Audit.Skip %}} {{% . %}}{{% end %}}
 {{%- with .Options.Generate.Command %}}
 PYTHON_GENERATE ?={{% with words $.Options.Generate.Command %}} {{% . %}}{{% end %}}{{% with words $.Options.Generate.Args %}} {{% . %}}{{% end %}}
 {{%- end %}}
@@ -51,7 +52,8 @@ verify-generate-python: ## Fail when the generators of Python change a file of t
 {{%- end %}}
 audit-python: ## Scan the packages of uv.lock for known vulnerabilities
 	@dir="$$(mktemp -d)"; \
-	$(UV) export --frozen --all-packages --all-extras --all-groups --no-emit-local --format pylock.toml \
+	$(UV) export --frozen --all-packages --all-extras --all-groups --no-emit-local \
+		$(foreach package,$(PYTHON_AUDIT_SKIP),--no-emit-package $(package)) --format pylock.toml \
 		--quiet --output-file "$$dir/pylock.toml"; status=$$?; \
 	if [ $$status -eq 0 ] && ! grep -q '^\[\[packages\]\]' "$$dir/pylock.toml"; then \
 		echo "audit-python: uv.lock has no package to scan"; \

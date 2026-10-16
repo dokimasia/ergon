@@ -15,7 +15,8 @@
 // Every tool runs through ergon tool run: uv is a release binary of the section, and the packages
 // of PyPI run through it. mypy and pytest run in the environment of the project, and ruff and
 // pip-audit in environments of their own. audit-python scans the packages of uv.lock, which uv
-// exports to a pylock.toml, because uv audit is a preview command. With a command in the key
+// exports to a pylock.toml, because uv audit is a preview command. The export leaves out the
+// packages of the key audit.skip, which PyPI has no release of. With a command in the key
 // generate, the fragment also renders generate-python, which runs it, and verify-generate-python,
 // which fails when it changes a file. A line ##@ Python starts the group of Python in make help.
 //

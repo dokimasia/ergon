@@ -19,16 +19,17 @@
     {
       "path": "Makefile",
       "producer": "python",
-      "sha256": "4702f56eb83c123fd66ac442087b2fb23f305225f5f5697e99818a1c4abc04b8"
+      "sha256": "60ba7edba590e6e9385197996729d3880f34051cb20512c29af1006d03c628f4"
     },
     {
       "path": "ruff.toml",
       "producer": "python",
-      "sha256": "919807ba7d2b292daf6ac587a56a0708d3882503109d06fd2e8ccd970558cdbc"
+      "sha256": "232b8e82a71cebeff5bb3d5c13b895cf2be003208ab286ea85b82575bd1f8bd2"
     }
   ],
   "settings": {
     "python.audit.ignore": [],
+    "python.audit.skip": [],
     "python.check": [
       "lint",
       "test",

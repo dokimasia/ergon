@@ -16,6 +16,7 @@ PIP_AUDIT := $(ERGON) tool run python.pip-audit --
 PYTHON_PATHS ?= .
 PYTHON_TEST_ARGS ?=
 PYTHON_AUDIT_IGNORE ?=
+PYTHON_AUDIT_SKIP ?=
 
 # The error codes of mypy that neither its defaults nor --strict turn on.
 MYPY_CODES := $(foreach code,redundant-expr possibly-undefined truthy-bool truthy-iterable ignore-without-code \
@@ -39,7 +40,8 @@ test-python: ## Run the Python tests
 	$(PYTEST) $(PYTHON_TEST_ARGS)
 audit-python: ## Scan the packages of uv.lock for known vulnerabilities
 	@dir="$$(mktemp -d)"; \
-	$(UV) export --frozen --all-packages --all-extras --all-groups --no-emit-local --format pylock.toml \
+	$(UV) export --frozen --all-packages --all-extras --all-groups --no-emit-local \
+		$(foreach package,$(PYTHON_AUDIT_SKIP),--no-emit-package $(package)) --format pylock.toml \
 		--quiet --output-file "$$dir/pylock.toml"; status=$$?; \
 	if [ $$status -eq 0 ] && ! grep -q '^\[\[packages\]\]' "$$dir/pylock.toml"; then \
 		echo "audit-python: uv.lock has no package to scan"; \

@@ -35,6 +35,10 @@ python:
   # by its identifier, such as PYSEC-2024-1.
   audit:
     ignore: []
+    # The packages of uv.lock without a release on PyPI, such as a package from a git repository or
+    # from another index. audit-python leaves them out of the scan, because pip-audit fails for
+    # them.
+    skip: []
   # The runners and the versions of Python of the job check-python, and its limit in minutes. uv
   # installs Python, so the job runs no action of its own. Empty runners select every runner of the
   # section github, and empty versions the version of pyproject.toml.

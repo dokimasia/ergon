@@ -4,6 +4,10 @@
 package baseline
 
 import (
+	"fmt"
+	"regexp"
+	"slices"
+
 	"go.dokimi.dev/ergon/core/option"
 	"go.dokimi.dev/ergon/core/workflow"
 )
@@ -13,6 +17,10 @@ const project = "pyproject.toml"
 
 // steps are the steps of the gate of Python, which the key check of the section names.
 var steps = []option.Step{option.StepLint, option.StepTest, option.StepGenerate, option.StepAudit}
+
+// pypiName matches the name of a PyPI package, as PEP 508 defines it: letters and digits, with dots,
+// hyphens and underscores between them.
+var pypiName = regexp.MustCompile(`^[A-Za-z0-9]([A-Za-z0-9._-]*[A-Za-z0-9])?$`)
 
 // Options are the options of the section python of .ergon.yaml.
 type Options struct {
@@ -32,7 +40,7 @@ type Options struct {
 	Generate option.Generate `yaml:"generate" doc:"generate-python runs command with args at the root of the repository. verify-generate-python, the step generate of check, runs the same and fails when the run changes a file of the repository. Without a command Python has neither target."`
 
 	// Audit are the options of audit-python.
-	Audit option.Audit `yaml:"audit" doc:"audit-python scans the packages of uv.lock with pip-audit, and accepts each advisory of ignore, by its identifier, such as PYSEC-2024-1."`
+	Audit Audit `yaml:"audit" doc:"audit-python scans the packages of uv.lock with pip-audit, and accepts each advisory of ignore, by its identifier, such as PYSEC-2024-1."`
 
 	// CI are the runners, the versions of Python and the limit of the job check-python.
 	CI option.MatrixCI[struct{}] `yaml:"ci" doc:"The runners and the versions of Python of the job check-python, and its limit in minutes. uv installs Python, so the job runs no action of its own. Empty runners select every runner of the section github, and empty versions the version of pyproject.toml."`
@@ -54,6 +62,33 @@ type Tools struct {
 
 	// PipAudit scans the packages for known vulnerabilities.
 	PipAudit option.PyPI `yaml:"pip-audit" doc:"The vulnerability scan of audit-python, over the packages of uv.lock."`
+}
+
+// Audit are the options of audit-python: the advisories that the scan accepts, and the packages of
+// uv.lock that it leaves out.
+type Audit struct {
+	option.Audit `yaml:",inline"`
+
+	// Skip are the packages of uv.lock without a release on PyPI, such as a package from a git
+	// repository or from another index. pip-audit audits a package through its release on PyPI, and
+	// fails for a package without one.
+	Skip []string `yaml:"skip" doc:"The packages of uv.lock without a release on PyPI, such as a package from a git repository or from another index. audit-python leaves them out of the scan, because pip-audit fails for them."`
+}
+
+// Validate returns the error of [option.Audit.Validate] for the advisories of a. It returns an
+// error that wraps [option.ErrInvalid] for a package of Skip that is not the name of a PyPI
+// package, and for a package that Skip names twice.
+func (a Audit) Validate() error {
+	if err := a.Audit.Validate(); err != nil {
+		return err
+	}
+	for i, pkg := range a.Skip {
+		if !pypiName.MatchString(pkg) || slices.Contains(a.Skip[:i], pkg) {
+			return fmt.Errorf("%w: skip %q, which is not the name of a PyPI package or is named twice",
+				option.ErrInvalid, pkg)
+		}
+	}
+	return nil
 }
 
 // Validate returns an error that wraps [option.ErrInvalid] for a step of check that Python does

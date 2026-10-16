@@ -49,6 +49,44 @@ func TestOptions(t *testing.T) {
 		})
 	})
 
+	t.Run("Audit", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Validate", func(t *testing.T) {
+			t.Parallel()
+
+			t.Run("returns nil for the names of PyPI packages in skip", func(t *testing.T) {
+				t.Parallel()
+				a := baseline.Audit{Skip: []string{"dokimi-assert", "torch"}}
+				assert.NoError(t, a.Validate(), "Validate")
+			})
+
+			tests := []struct {
+				name string
+				give baseline.Audit
+			}{
+				{
+					name: "returns ErrInvalid for a package of skip that is not the name of a PyPI package",
+					give: baseline.Audit{Skip: []string{"torch; true"}},
+				},
+				{
+					name: "returns ErrInvalid for a package that skip names twice",
+					give: baseline.Audit{Skip: []string{"torch", "torch"}},
+				},
+				{
+					name: "returns ErrInvalid for an advisory of ignore that is not an identifier",
+					give: baseline.Audit{Audit: option.Audit{Ignore: []string{"PYSEC 2024"}}},
+				},
+			}
+			for _, tt := range tests {
+				t.Run(tt.name, func(t *testing.T) {
+					t.Parallel()
+					assert.ErrorIs(t, tt.give.Validate(), option.ErrInvalid, "Validate")
+				})
+			}
+		})
+	})
+
 	t.Run("Contribution", func(t *testing.T) {
 		t.Parallel()
 
