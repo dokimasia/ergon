@@ -333,6 +333,120 @@ func TestHeader(t *testing.T) {
 			assert.ErrorIs(t, err, fs.ErrPermission, "Fix")
 		})
 	})
+
+	t.Run("FixContent", func(t *testing.T) {
+		t.Parallel()
+
+		excluded := config()
+		excluded.Exclude = []string{"docs/**"}
+		changed := []struct {
+			name        string
+			giveConfig  *licenses.Config
+			givePath    string
+			giveContent string
+			want        string
+		}{
+			{
+				name:        "adds the header in the comment style of a Markdown file",
+				giveConfig:  config(),
+				givePath:    "README.md",
+				giveContent: "# demo\n",
+				want:        angles + "# demo\n",
+			},
+			{
+				name:        "adds the header in the comment style of .ergon.yaml",
+				giveConfig:  config(),
+				givePath:    ".ergon.yaml",
+				giveContent: "common:\n  ergon: [ergon]\n",
+				want:        hashtags + "common:\n  ergon: [ergon]\n",
+			},
+			{
+				name:        "adds the header of the license of the deepest directory of the file",
+				giveConfig:  directories(),
+				givePath:    "enterprise/sdk/c.go",
+				giveContent: "package c\n",
+				want:        apache + "package c\n",
+			},
+			{
+				name:        "replaces an outdated header with the years of the header",
+				giveConfig:  config(),
+				givePath:    "old.go",
+				giveContent: "// Copyright ThesmOS B.V. 2024\n// SPDX-License-Identifier: MIT\n\npackage main\n",
+				want:        "// Copyright Dokimasia B.V. 2024\n// SPDX-License-Identifier: MIT\n\npackage main\n",
+			},
+			{
+				name:        "keeps the byte-order mark before the header",
+				giveConfig:  config(),
+				givePath:    "Demo.cs",
+				giveContent: mark + "namespace Demo;\n",
+				want:        mark + slashes + "namespace Demo;\n",
+			},
+		}
+		for _, tt := range changed {
+			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+				got := licenses.FixContent(tt.giveConfig, tt.givePath, []byte(tt.giveContent), 2026)
+				assert.Equal(t, string(got), tt.want, "the content")
+			})
+		}
+
+		unchanged := []struct {
+			name        string
+			giveConfig  *licenses.Config
+			givePath    string
+			giveContent string
+		}{
+			{
+				name:        "returns the content of a file that the configuration excludes",
+				giveConfig:  excluded,
+				givePath:    "docs/README.md",
+				giveContent: "# Documentation\n",
+			},
+			{
+				name:        "returns the content of a file without a comment style",
+				giveConfig:  config(),
+				givePath:    ".changeset/config.json",
+				giveContent: "{}\n",
+			},
+			{
+				name:        "returns the content of a changeset",
+				giveConfig:  config(),
+				givePath:    ".changeset/fix-a-typo-abcd.md",
+				giveContent: "---\n\"example.com/demo\": patch\n---\n\nFix a typo.\n",
+			},
+			{
+				name:        "returns the content of a file that ergon init manages",
+				giveConfig:  config(),
+				givePath:    ".gitignore",
+				giveContent: "# Managed by ergon init. Add repository settings to .ergon/local/.gitignore.\nbin/\n",
+			},
+			{
+				name:        "returns the content of a file whose header matches",
+				giveConfig:  config(),
+				givePath:    "main.go",
+				giveContent: slashes + "package main\n",
+			},
+			{
+				name:        "returns the content of a file whose header has a conflict",
+				giveConfig:  config(),
+				givePath:    "main.go",
+				giveContent: "// Copyright ThesmOS B.V. 2024\n// All rights reserved.\n\npackage main\n",
+			},
+			{
+				name:        "returns the content of a file that is not text",
+				giveConfig:  config(),
+				givePath:    "blob.go",
+				giveContent: "\x00\x01\x02\x03",
+			},
+		}
+		for _, tt := range unchanged {
+			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+				got := licenses.FixContent(tt.giveConfig, tt.givePath, []byte(tt.giveContent), 2026)
+				assert.Equal(t, string(got), tt.giveContent, "the content")
+			})
+		}
+	})
 }
 
 // directories returns the configuration of the cases with two directories: enterprise under

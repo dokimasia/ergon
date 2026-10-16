@@ -19,6 +19,13 @@
 // a header. ergon init fails for BUSL-1.1 until the section sets each parameter, at the root and in
 // each directory.
 //
+// # Headers
+//
+// [Producer.Annotate] adds the license header of the section to each file that ergon init creates
+// for the repository to maintain: the seeded files, and .ergon.yaml when the repository has none.
+// It writes the header that ergon license fix writes, with the year of the answers, so a new
+// repository passes ergon license check.
+//
 // # Workflows
 //
 // [Producer.Contribution] returns the job license of ci.yml, which runs ergon license check on the

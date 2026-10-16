@@ -135,13 +135,13 @@ type file struct {
 	// path is the path of the file in the repository, slash-separated.
 	path string
 
-	// name is the path of the file on the system.
+	// name is the path of the file on the system, or empty for the content of [FixContent].
 	name string
 
 	// content is the content of the file without its byte-order mark.
 	content []byte
 
-	// mode is the mode of the file.
+	// mode is the mode of the file, or 0 for the content of FixContent.
 	mode fs.FileMode
 
 	// bom reports that the file starts with the byte-order mark of UTF-8.
@@ -170,7 +170,7 @@ func (f *file) inspect() (Kind, int) {
 	return Outdated, 0
 }
 
-// run is a check or a fix of the headers of a repository.
+// run is a check or a fix of the headers of a repository, or the fix of the content of one file.
 type run struct {
 	// c is the configuration.
 	c *Config
@@ -181,7 +181,7 @@ type run struct {
 	// section is the header of the license of the section.
 	section *license
 
-	// root is the directory of the repository.
+	// root is the directory of the repository, or empty for the content of FixContent.
 	root string
 
 	// directories are the directories of c, each with the header of its license, the deepest
@@ -239,13 +239,35 @@ func Fix(ctx context.Context, root string, c *Config, year int) (Report, error) 
 			r.report.Findings = append(r.report.Findings, Finding{Path: f.path, Kind: kind, Line: line})
 			return nil
 		}
-		if err := r.fix(f, year); err != nil {
-			return err
+		if err := os.WriteFile(f.name, r.headed(f, year), f.mode); err != nil {
+			return fmt.Errorf("licenses: write %s: %w", f.path, err)
 		}
 		r.report.Fixed = append(r.report.Fixed, f.path)
 		return nil
 	})
 	return r.report, err
+}
+
+// FixContent returns content, the content of the file at p, a slash-separated path of the
+// repository, as [Fix] writes the file for c. It adds the header with year to a file that [Check]
+// reports missing. It replaces the header of a file that Check reports outdated. It returns content
+// unchanged for a file that c does not give a header, a file whose header matches, a conflict and a
+// file that is not text. FixContent does not access the file system, and it leaves content
+// unchanged.
+func FixContent(c *Config, p string, content []byte, year int) []byte {
+	r := start("", c)
+	style, ok := r.style(p)
+	if !ok {
+		return content
+	}
+	f, ok := r.file(p, &style, content)
+	if !ok {
+		return content
+	}
+	if kind, _ := f.inspect(); kind != Missing && kind != Outdated {
+		return content
+	}
+	return r.headed(f, year)
 }
 
 // start returns a run of c over the repository at root, with the logger of the library silenced. It
@@ -297,22 +319,11 @@ func (r *run) walk(ctx context.Context, visit func(*file) error) error {
 }
 
 // open returns the file at p, a path of the repository, and reports whether the configuration
-// gives it a header: a regular file that c does not exclude, that is no changeset and no changelog,
-// that has a comment style, and whose first line has no marker of a generated or a managed file. A
-// tracked file that the working tree deleted has none. It returns the error of a path that does
-// not stat, other than a missing one, and of a file that does not read.
+// gives it a header. A regular file has a header when style accepts its path and file accepts its
+// content. A tracked file that the working tree deleted has none. It returns the error of a path
+// that does not stat, other than a missing one, and of a file that does not read.
 func (r *run) open(p string) (*file, bool, error) {
-	dir, base := path.Split(p)
-	excluded := (dir == changeset.Dir+"/" && strings.HasSuffix(base, changeset.Ext) &&
-		!strings.EqualFold(base, changeset.Readme)) || base == changeset.Changelog ||
-		slices.ContainsFunc(r.c.Exclude, func(glob string) bool {
-			matched, _ := doublestar.Match(glob, p)
-			return matched
-		})
-	if excluded {
-		return nil, false, nil
-	}
-	style, ok := r.t.resolve(p, r.c.Styles)
+	style, ok := r.style(p)
 	if !ok {
 		return nil, false, nil
 	}
@@ -331,33 +342,55 @@ func (r *run) open(p string) (*file, bool, error) {
 	if err != nil {
 		return nil, false, fmt.Errorf("licenses: read %s: %w", p, err)
 	}
-	content, marked := bytes.CutPrefix(content, bom)
-	first, _, _ := bytes.Cut(content, []byte("\n"))
-	if generated.Match(first) {
+	f, ok := r.file(p, &style, content)
+	if !ok {
 		return nil, false, nil
 	}
-	f := &file{
-		style:   style,
-		header:  r.section,
-		after:   r.t.after[style.ID],
-		path:    p,
-		name:    name,
-		content: content,
-		mode:    info.Mode(),
-		bom:     marked,
-	}
-	if i := slices.IndexFunc(r.directories, func(d directory) bool { return strings.HasPrefix(p, d.prefix) }); i >= 0 {
-		f.header = r.directories[i].header
-	}
+	f.name, f.mode = name, info.Mode()
 	return f, true, nil
 }
 
-// fix writes the header of the license of f into f, which has no header or an outdated one, in one
-// write. It removes an outdated header and keeps its years, renders the header in the style of f
-// with the library, and inserts it after the preamble of the style, as the library inserts it. A new
-// header states year. fix keeps the byte-order mark and the mode of f. It returns the error of the
-// write.
-func (r *run) fix(f *file, year int) error {
+// style returns the comment style of the header of the file at p, a path of the repository. It
+// reports false for a file that c excludes, a changeset, a changelog and a file without a comment
+// style.
+func (r *run) style(p string) (comments.CommentStyle, bool) {
+	dir, base := path.Split(p)
+	excluded := (dir == changeset.Dir+"/" && strings.HasSuffix(base, changeset.Ext) &&
+		!strings.EqualFold(base, changeset.Readme)) || base == changeset.Changelog ||
+		slices.ContainsFunc(r.c.Exclude, func(glob string) bool {
+			matched, _ := doublestar.Match(glob, p)
+			return matched
+		})
+	if excluded {
+		return comments.CommentStyle{}, false
+	}
+	return r.t.resolve(p, r.c.Styles)
+}
+
+// file returns the file at p, a path of the repository, with the comment style s and content, its
+// content with any byte-order mark. It reports whether the configuration gives the file a header by
+// its content: a file whose first line has no marker of a generated or a managed file. The file
+// takes the header of the license of the deepest directory that contains it, or of the section. It
+// has no name and no mode.
+func (r *run) file(p string, s *comments.CommentStyle, content []byte) (*file, bool) {
+	content, marked := bytes.CutPrefix(content, bom)
+	first, _, _ := bytes.Cut(content, []byte("\n"))
+	if generated.Match(first) {
+		return nil, false
+	}
+	f := &file{style: *s, header: r.section, after: r.t.after[s.ID], path: p, content: content, bom: marked}
+	if i := slices.IndexFunc(r.directories, func(d directory) bool { return strings.HasPrefix(p, d.prefix) }); i >= 0 {
+		f.header = r.directories[i].header
+	}
+	return f, true
+}
+
+// headed returns the content of f, which has no header or an outdated one, with the header of its
+// license. It removes an outdated header and keeps its years. It renders the header in the style of
+// f with the library, and inserts it after the preamble of the style at the place where the library
+// inserts it. A new header states year. headed keeps the byte-order mark of f, and it does not
+// modify the content of f.
+func (r *run) headed(f *file, year int) []byte {
 	stated := strconv.Itoa(year)
 	content := f.content
 	if b, ok := find(f.content, &f.style, f.after); ok {
@@ -377,8 +410,5 @@ func (r *run) fix(f *file, year int) error {
 	if f.bom {
 		content = slices.Concat(bom, content)
 	}
-	if err := os.WriteFile(f.name, content, f.mode); err != nil {
-		return fmt.Errorf("licenses: write %s: %w", f.path, err)
-	}
-	return nil
+	return content
 }

@@ -1,3 +1,6 @@
+# Copyright Dokimasia B.V. 2026
+# SPDX-License-Identifier: Apache-2.0
+
 license:
   # The copyright holder of the headers and of the license files. ergon init writes it from --owner,
   # and ergon init sync --owner changes it.

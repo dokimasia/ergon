@@ -37,6 +37,10 @@
 //     sets.
 //   - A seeded file is written when it is absent, and never again.
 //
+// A producer that is a [language.Annotator] adds its text to each seeded file, and to .ergon.yaml
+// when the repository has none, such as the license header that the producer of the license files
+// adds. A file that the repository has keeps its content.
+//
 // # Writes
 //
 // Every command computes its whole change before it writes. It writes each file to a temporary

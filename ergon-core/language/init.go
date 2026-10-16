@@ -108,9 +108,9 @@ type Producer interface {
 type Calculator interface {
 	// Data returns the values that the templates of the producer read as .Data. a are the answers,
 	// o are the producer's options, nil for a producer that is not [Configurable], and c are the
-	// contributions of every producer to the workflows. Data reads no file and runs no command, so a
-	// rendering depends on a, o, c and the release of ergon alone, and it modifies none of them. It
-	// returns an error for answers, options or contributions that the producer cannot render.
+	// contributions of every producer to the workflows. Data does not read a file or run a command,
+	// so a rendering depends on a, o, c and the release of ergon alone. It does not modify a, o or c.
+	// It returns an error for answers, options or contributions that the producer cannot render.
 	Data(a *Answers, o Options, c *workflow.Contribution) (any, error)
 }
 
@@ -143,8 +143,8 @@ type Contributor interface {
 // template tree cannot mirror a path that an option states.
 type Placer interface {
 	// Files returns the files of the producer for the answers a, its options o, nil for a producer
-	// that is not [Configurable], and the contributions c of every producer to the workflows. Files
-	// reads no file and runs no command, as [Calculator.Data] does, and it modifies none of a, o and
+	// that is not [Configurable], and the contributions c of every producer to the workflows. Like
+	// [Calculator.Data], Files does not read a file or run a command, and it does not modify a, o or
 	// c. It returns an error for answers or options that the producer cannot render.
 	Files(a *Answers, o Options, c *workflow.Contribution) ([]File, error)
 }
@@ -159,11 +159,24 @@ type File struct {
 	Content []byte
 }
 
+// Annotator is a producer that adds text to each file that ergon init creates for the repository to
+// maintain: a seeded file, and .ergon.yaml when the repository has none. The producer of the license
+// files adds the license header of each such file.
+type Annotator interface {
+	// Annotate returns content, the content of the file at path that ergon init creates, with the
+	// text of the producer for the answers a and its options o, nil for a producer that is not
+	// [Configurable]. path is relative, clean and slash-separated. Annotate returns content for a
+	// file that it leaves as it is. It does not read a file or run a command, and it does not modify
+	// a, o or content.
+	Annotate(a *Answers, o Options, path string, content []byte) []byte
+}
+
 // LocalChecker is a producer that checks the local files of the managed files that it renders,
 // such as a local file that would let a tool edit another managed file.
 type LocalChecker interface {
 	// CheckLocal returns an error that wraps [ErrInvalidLocal] for content, the managed file at path
 	// with its local file merged in, that the producer refuses. path is relative, clean and
-	// slash-separated. CheckLocal reads no file and runs no command, and it modifies no content.
+	// slash-separated. CheckLocal does not read a file or run a command, and it does not modify
+	// content.
 	CheckLocal(path string, content []byte) error
 }

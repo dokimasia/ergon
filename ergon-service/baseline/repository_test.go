@@ -189,6 +189,19 @@ func (owner) Options() language.Options {
 	return &ownership{}
 }
 
+// annotating is a base producer of the cases with options, which adds a line to each file that
+// ergon init creates for the repository to maintain.
+type annotating struct {
+	configurable
+}
+
+// Annotate returns content after the line "# <greeting> <owner> <path>", with the greeting of o and
+// the owner of a.
+func (annotating) Annotate(a *language.Answers, o language.Options, path string, content []byte) []byte {
+	g, _ := o.(*greetings)
+	return append([]byte("# "+g.Greeting+" "+a.Owner+" "+path+"\n"), content...)
+}
+
 func TestRepository(t *testing.T) {
 	t.Parallel()
 
@@ -451,6 +464,31 @@ func TestRepository(t *testing.T) {
 			assert.Equal(t, content(t, root, readme), "# Our own README\n", "the README.md")
 		})
 
+		t.Run("writes the text of an annotator into each seeded file and into .ergon.yaml", func(t *testing.T) {
+			t.Parallel()
+			root := directory(t)
+			_, err := annotated(t, root).New(answers(), baseline.Options{})
+			assert.NoError(t, err, "New")
+			assert.Equal(t, content(t, root, readme), "# note Dokimasia B.V. README.md\n# demo\n", "the README.md")
+			assert.HasPrefix(t, content(t, root, config), "# note Dokimasia B.V. .ergon.yaml\ncommon:\n",
+				"the .ergon.yaml")
+			assert.Equal(t, content(t, root, license), "Copyright Dokimasia B.V.\n", "the managed LICENSE")
+		})
+
+		t.Run("leaves an existing .ergon.yaml without the text of an annotator", func(t *testing.T) {
+			t.Parallel()
+			root := directory(t)
+			put(t, root, config, "# ours\nchecks:\n  coverage: 100\n")
+			_, err := annotated(t, root).New(answers(), baseline.Options{})
+			assert.NoError(t, err, "New")
+			assert.HasPrefix(
+				t,
+				content(t, root, config),
+				"# ours\nchecks:\n  coverage: 100\ncommon:\n",
+				"the .ergon.yaml",
+			)
+		})
+
 		t.Run("leaves a managed file that equals the rendering", func(t *testing.T) {
 			t.Parallel()
 			root := directory(t)
@@ -683,6 +721,19 @@ func TestRepository(t *testing.T) {
 			changes, err := r.Sync(nil, baseline.Options{})
 			assert.NoError(t, err, "Sync")
 			assert.Empty(t, changes, "the changes of Sync")
+		})
+
+		t.Run("writes the text of an annotator into a seeded file that it writes", func(t *testing.T) {
+			t.Parallel()
+			root := directory(t)
+			r := annotated(t, root)
+			_, err := r.New(answers(), baseline.Options{})
+			assert.NoError(t, err, "New")
+			assert.NoError(t, root.Remove(readme), "Remove of the README.md")
+			changes, err := r.Sync(nil, baseline.Options{})
+			assert.NoError(t, err, "Sync")
+			assert.Equal(t, paths(changes), []string{readme}, "the files that Sync wrote")
+			assert.Equal(t, content(t, root, readme), "# note Dokimasia B.V. README.md\n# demo\n", "the README.md")
 		})
 
 		t.Run("returns ErrDevelopmentBuild for a lock of a release and a build without a release", func(t *testing.T) {
@@ -1079,6 +1130,22 @@ func repository(t *testing.T, fsys baseline.FS) *baseline.Repository {
 	t.Helper()
 	r, err := baseline.Open(fsys, catalog(t), version, common("hello"))
 	assert.NoError(t, err, "Open of the repository")
+	return r
+}
+
+// annotated returns the repository of the cases on fsys, with the producer common at the greeting
+// hello and the producer notes, which annotates with its greeting note at the baseline.
+func annotated(t *testing.T, fsys baseline.FS) *baseline.Repository {
+	t.Helper()
+	notes := annotating{greeting: "note", templates: fstest.MapFS{}}
+	r, err := baseline.Open(
+		fsys,
+		catalog(t),
+		version,
+		common("hello"),
+		baseline.Producer{Name: "notes", Producer: notes},
+	)
+	assert.NoError(t, err, "Open with the producer notes")
 	return r
 }
 

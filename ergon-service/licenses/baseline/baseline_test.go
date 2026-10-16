@@ -180,6 +180,41 @@ func TestBaseline(t *testing.T) {
 			})
 		})
 
+		t.Run("Annotate", func(t *testing.T) {
+			t.Parallel()
+
+			t.Run("adds the header of the section with the year of the answers", func(t *testing.T) {
+				t.Parallel()
+				a := baselinetest.Answers()
+				a.Year = 2024
+				got := licensebaseline.Producer{}.Annotate(a, section(a), "README.md", []byte("# demo\n"))
+				assert.Equal(t, string(got),
+					"<!--\n  ~ Copyright Dokimasia B.V. 2024\n  ~ SPDX-License-Identifier: MIT\n-->\n\n# demo\n",
+					"the README.md")
+			})
+
+			t.Run("adds the header of the license of a directory of the section", func(t *testing.T) {
+				t.Parallel()
+				a := baselinetest.Answers()
+				c := section(a)
+				c.Directories = []licenses.Directory{{Path: "docs", SPDX: spdx.Apache20}}
+				got := licensebaseline.Producer{}.Annotate(a, c, "docs/README.md", []byte("# Documentation\n"))
+				assert.Equal(t, string(got),
+					"<!--\n  ~ Copyright Dokimasia B.V. 2026\n  ~ SPDX-License-Identifier: Apache-2.0\n-->\n\n"+
+						"# Documentation\n",
+					"the README.md of docs")
+			})
+
+			t.Run("adds the header of the answers for options of another type", func(t *testing.T) {
+				t.Parallel()
+				a := baselinetest.Answers()
+				a.Owner = "Example B.V."
+				got := licensebaseline.Producer{}.Annotate(a, nil, language.Config, []byte("common: {}\n"))
+				assert.Equal(t, string(got),
+					"# Copyright Example B.V. 2026\n# SPDX-License-Identifier: MIT\n\ncommon: {}\n", "the .ergon.yaml")
+			})
+		})
+
 		t.Run("Contribution", func(t *testing.T) {
 			t.Parallel()
 

@@ -49,6 +49,7 @@ var (
 	_ language.Calculator   = Producer{}
 	_ language.Contributor  = Producer{}
 	_ language.Placer       = Producer{}
+	_ language.Annotator    = Producer{}
 )
 
 // Templates returns the templates of the license files: LICENSE and NOTICE under managed/. The
@@ -107,6 +108,15 @@ func (Producer) Files(a *language.Answers, o language.Options, _ *workflow.Contr
 		}
 	}
 	return files, nil
+}
+
+// Annotate returns content, the content of the file at path that ergon init creates, with the
+// header that ergon license fix writes into it for o, as [licenses.FixContent] returns it with the
+// year of a. It takes the options at the baseline, with the owner and the license of a, when o is
+// not the section license. It returns content for a file without a header, such as a file without
+// a comment syntax.
+func (Producer) Annotate(a *language.Answers, o language.Options, path string, content []byte) []byte {
+	return licenses.FixContent(own(o, a), path, content, a.Year)
 }
 
 // Contribution returns the job license of ci.yml for o, and for the options at the baseline when o

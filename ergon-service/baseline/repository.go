@@ -360,7 +360,7 @@ func (r *Repository) Sections() ([]options.Section, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, res, err := r.resolve(units, &next.Answers, &l)
+	_, _, res, err := r.resolve(units, &next.Answers, &l)
 	if err != nil {
 		return nil, err
 	}
@@ -460,15 +460,16 @@ func (r *Repository) units(a *language.Answers) ([]render.Unit, lock.Lock, error
 	return units, next, nil
 }
 
-// resolve returns the content of .ergon.yaml, and the options of the configurable producers of
-// units resolved from it and from previous, the lock of the repository or nil, for a. It returns
-// the error of a file that does not read, and the errors of [options.Resolve].
+// resolve returns the content of .ergon.yaml, whether the repository has the file, and the options
+// of the configurable producers of units resolved from it and from previous, the lock of the
+// repository or nil, for a. It returns the error of a file that does not read, and the errors of
+// [options.Resolve].
 func (r *Repository) resolve(units []render.Unit, a *language.Answers, previous *lock.Lock) (
-	[]byte, options.Resolution, error,
+	[]byte, bool, options.Resolution, error,
 ) {
-	file, _, err := r.read(language.Config)
+	file, exists, err := r.read(language.Config)
 	if err != nil {
-		return nil, options.Resolution{}, err
+		return nil, false, options.Resolution{}, err
 	}
 	var configurables []options.Producer
 	for _, u := range units {
@@ -482,7 +483,7 @@ func (r *Repository) resolve(units []render.Unit, a *language.Answers, previous 
 		recorded, answered = previous.Settings, &previous.Answers
 	}
 	res, err := options.Resolve(file, recorded, answered, a, configurables, r.sections())
-	return file, res, err
+	return file, exists, res, err
 }
 
 // resolved is a rendering and the record of the options that it rendered with.
@@ -495,10 +496,12 @@ type resolved struct {
 
 // render resolves the options of units from .ergon.yaml and previous, the lock of the repository or
 // nil, writes their sections into the content of .ergon.yaml, collects their contributions, renders
-// their files for a, and merges the local files into them. It returns the errors that
-// [Repository.targets] states for the options, the rendering and the local files.
+// their files for a, and merges the local files into them. Each unit that is a
+// [language.Annotator] then annotates each seeded file, and .ergon.yaml when the repository has
+// none, in the order of units. It returns the errors that [Repository.targets] states for the
+// options, the rendering and the local files.
 func (r *Repository) render(units []render.Unit, a *language.Answers, previous *lock.Lock) (resolved, error) {
-	file, res, err := r.resolve(units, a, previous)
+	file, exists, res, err := r.resolve(units, a, previous)
 	if err != nil {
 		return resolved{}, err
 	}
@@ -533,6 +536,20 @@ func (r *Repository) render(units []render.Unit, a *language.Answers, previous *
 	}
 	if err := r.applyLocal(rend.files, units); err != nil {
 		return resolved{}, err
+	}
+	for _, u := range units {
+		annotator, ok := u.Producer.(language.Annotator)
+		if !ok {
+			continue
+		}
+		for i := range rend.files {
+			if rend.files[i].Class == render.Seeded {
+				rend.files[i].Content = annotator.Annotate(a, u.Options, rend.files[i].Path, rend.files[i].Content)
+			}
+		}
+		if !exists && rend.config != nil {
+			rend.config = annotator.Annotate(a, u.Options, language.Config, rend.config)
+		}
 	}
 	return resolved{rendering: rend, record: res.Record}, nil
 }

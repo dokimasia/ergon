@@ -23,8 +23,9 @@
 // # Headers
 //
 // [Check] reports each file whose header does not match the configuration, and [Fix] writes the
-// header of each file that has none or an outdated one. A header states two lines in the comment
-// style of its file:
+// header of each file that has none or an outdated one. [FixContent] returns the content that Fix
+// writes into one file. The producer of the license files calls it for the files that ergon init
+// creates. A header states two lines in the comment style of its file:
 //
 //	Copyright <owner> <years>
 //	SPDX-License-Identifier: <spdx>

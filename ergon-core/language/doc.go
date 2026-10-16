@@ -26,6 +26,8 @@
 //     directory, which no template tree can mirror.
 //   - A [LocalChecker] refuses the local file of one of its managed files, such as a local file of
 //     the configuration of Dependabot that would let Dependabot edit another managed file.
+//   - An [Annotator] adds text to each file that ergon init creates for the repository to maintain,
+//     such as the license header of a seeded file.
 //
 // A producer configures its own concern alone: a section names the tools, the actions and the
 // runtime versions of its own producer, and never those of another ecosystem.
