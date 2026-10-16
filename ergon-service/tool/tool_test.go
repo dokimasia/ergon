@@ -123,15 +123,15 @@ type tools struct {
 	UV      option.UV       `yaml:"uv"`
 	Lint    option.Module   `yaml:"golangci-lint"`
 	Ruff    option.PyPI     `yaml:"ruff"`
-	Mypy    option.PyPI     `yaml:"mypy"                 run:"project"`
+	Mypy    option.PyPI     `yaml:"mypy" run:"project"`
 	Biome   option.NPM      `yaml:"biome"`
-	TSC     option.NPM      `yaml:"typescript"                         program:"tsc"`
+	TSC     option.NPM      `yaml:"typescript" program:"tsc"`
 	Audit   option.Crate    `yaml:"cargo-audit"`
 	PMD     option.Maven    `yaml:"pmd"`
-	Ktlint  option.Maven    `yaml:"ktlint"                                                    classifier:"all"`
+	Ktlint  option.Maven    `yaml:"ktlint" classifier:"all"`
 	PHPStan option.Composer `yaml:"phpstan"`
 	Strict  option.Composer `yaml:"phpstan-strict-rules"`
-	Fixer   option.Composer `yaml:"php-cs-fixer"                       program:"php-cs-fixer"`
+	Fixer   option.Composer `yaml:"php-cs-fixer" program:"php-cs-fixer"`
 	Odd     string          `yaml:"odd"`
 	hidden  option.Composer
 }

@@ -19,7 +19,7 @@
     {
       "path": ".golangci.yml",
       "producer": "go",
-      "sha256": "1357f799a72c35c283a26506609e4e1ab6a93db6e45de2e31eea2504b6b7753b"
+      "sha256": "b2d824915cacbed6fa4e4eb7f8a06a9d5b81f6951d95fc565beafd8021127bb7"
     },
     {
       "path": "Makefile",

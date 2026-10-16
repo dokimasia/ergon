@@ -76,7 +76,7 @@ of a pull request are separate.`
 
 // runOptions are the options of ergon tool run: the tool and its arguments.
 type runOptions struct {
-	Tool      string   `help:"Tool to run, as <section>.<tool>."          arg:""`
+	Tool      string   `help:"Tool to run, as <section>.<tool>." arg:""`
 	Arguments []string `help:"Arguments of the tool. Pass them after --." arg:"" default:""`
 }
 

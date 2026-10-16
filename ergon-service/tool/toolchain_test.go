@@ -495,8 +495,8 @@ func (l linters) Linters() option.Plugins {
 type unplugged struct {
 	Tools struct {
 		Missing option.Module `yaml:"missing" plugins:"lint.missing"`
-		Typed   option.Module `yaml:"typed"   plugins:"tools.typed"`
-		Deep    option.Module `yaml:"deep"    plugins:"tools.deep.plugins"`
+		Typed   option.Module `yaml:"typed" plugins:"tools.typed"`
+		Deep    option.Module `yaml:"deep" plugins:"tools.deep.plugins"`
 	} `yaml:"tools"`
 	Lint struct{} `yaml:"lint"`
 }

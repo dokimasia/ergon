@@ -47,12 +47,12 @@ type actions struct {
 // a step, a map and the key ci.
 type demo struct {
 	Styles map[string]string        `yaml:"styles" doc:"The styles, by the name of a file."`
-	Owner  string                   `yaml:"owner"  doc:"The owner, an answer of ergon init."                                 answer:"owner"`
-	Tools  tools                    `yaml:"tools"  doc:"The tools of the targets."`
-	Paths  option.Paths             `yaml:"paths"  doc:"The paths of the targets."`
-	Check  option.Check             `yaml:"check"  doc:"The steps of check-demo."`
-	Fuzz   option.Fuzz              `yaml:"fuzz"   doc:"The options of fuzz-demo."`
-	CI     option.MatrixCI[actions] `yaml:"ci"     doc:"The pins of the actions, the runners, the versions and the timeout."`
+	Owner  string                   `yaml:"owner" doc:"The owner, an answer of ergon init." answer:"owner"`
+	Tools  tools                    `yaml:"tools" doc:"The tools of the targets."`
+	Paths  option.Paths             `yaml:"paths" doc:"The paths of the targets."`
+	Check  option.Check             `yaml:"check" doc:"The steps of check-demo."`
+	Fuzz   option.Fuzz              `yaml:"fuzz" doc:"The options of fuzz-demo."`
+	CI     option.MatrixCI[actions] `yaml:"ci" doc:"The pins of the actions, the runners, the versions and the timeout."`
 }
 
 // Validate returns an error for a step of check that demo does not have.

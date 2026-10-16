@@ -211,8 +211,8 @@ once and waits for none. The exit status is 1 without such a run.`
 
 // changesetOptions are the options of ergon release add.
 type changesetOptions struct {
-	Message string   `help:"Summary of the changeset."                                                        short:"m"`
-	Bumps   []string `help:"Release of a package, as name=level, where level is major, minor, patch or none."           name:"bump"`
+	Message string   `help:"Summary of the changeset." short:"m"`
+	Bumps   []string `help:"Release of a package, as name=level, where level is major, minor, patch or none." name:"bump"`
 	Empty   bool     `help:"Write a changeset without packages."`
 	Open    bool     `help:"Open the changeset in the editor."`
 }
@@ -243,7 +243,7 @@ type packOptions struct {
 // publishOptions are the options of ergon release publish.
 type publishOptions struct {
 	FromPublishPlan string `help:"File that contains the publish plan."`
-	FromPackDir     string `help:"Directory of the artifacts to upload."             default:"dist"`
+	FromPackDir     string `help:"Directory of the artifacts to upload." default:"dist"`
 	Output          string `help:"File that receives the released packages as JSON."`
 	NoGitTag        bool   `help:"Do not create a tag."`
 }
@@ -257,7 +257,7 @@ type ciVersionOptions struct {
 
 // ciSkipOptions are the options of ergon release ci skip.
 type ciSkipOptions struct {
-	Workflow string `help:"Workflow file whose passed runs count."              default:"ci.yml"`
+	Workflow string `help:"Workflow file whose passed runs count." default:"ci.yml"`
 	Commit   string `help:"Commit to test, such as the head of a pull request."`
 }
 
@@ -270,7 +270,7 @@ type ciVerifyOptions struct {
 type ciHomebrewOptions struct {
 	Tap             string `help:"Tap that receives the casks, as owner/name." required:""`
 	FromPublishPlan string `help:"File that contains the publish plan."`
-	FromPackDir     string `help:"Directory of the casks."                                 default:"dist"`
+	FromPackDir     string `help:"Directory of the casks." default:"dist"`
 }
 
 // releaseRepository is a repository that a release command works on.
