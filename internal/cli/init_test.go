@@ -4,24 +4,26 @@
 package cli_test
 
 import (
-	"bytes"
 	"encoding/json"
-	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
 	"go.dokimi.dev/assert"
+	"go.dokimi.dev/assert/files"
+	"go.dokimi.dev/assert/golden"
 	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/core/workspace"
 	"go.dokimi.dev/ergon/internal/app"
-	"go.dokimi.dev/ergon/internal/cli"
 	"go.dokimi.dev/ergon/service/baseline/baselinetest"
 	"go.dokimi.dev/ergon/service/baseline/github"
+	"go.dokimi.dev/ergon/service/vcs/vcstest"
+	"go.stealthscale.io/cli/clitest"
 	"go.yaml.in/yaml/v3"
 )
 
@@ -43,187 +45,13 @@ const (
 // resultJob is the job of ci.yml that reads the results of the other jobs, and checks out nothing.
 const resultJob = "result"
 
+// visibilityJob is the job of security.yml that reads the visibility of the repository from the API
+// of GitHub, and checks out nothing.
+const visibilityJob = "visibility"
+
 // conflict is the start of the error of a command that leaves a managed file that was edited by
 // hand or exists with other content.
 const conflict = "ergon: baseline: managed files edited by hand or existing with other content: "
-
-// initHelp is the help of ergon init, pinned because a person reads it.
-const initHelp = `ergon init sets up a repository with the baseline of ergon. The baseline
-consists of the common files, the GitHub files and the license files of every
-repository, and the files of each language of the repository. ergon init
-records its answers, the baseline value of each option and the digest of each
-managed file in .ergon/init.lock. Commit the lock with the files.
-
-ergon init treats a file by its class:
-
-  - A managed file is the rendering of ergon. ergon init check reports a
-    managed file that differs from the rendering. To add a setting of the
-    repository to the managed file at a path, write the setting to the same
-    path under .ergon/local. ergon merges that local file into the rendering.
-  - A seeded file, such as README.md, is written when it is absent. The
-    repository maintains it from then on.
-  - ergon init writes the keys of its answers into .ergon.yaml, and a section
-    for each language with options, such as the versions of its tools. The
-    repository changes an option there, and ergon init renders the managed
-    files from it. The flags of ergon init sync change the key of an answer,
-    such as license.spdx, and every command fails while such a key differs
-    from the lock. ergon init keeps every other key.
-
-Usage:
-  ergon init [flags]
-  ergon init [command]
-
-Available Commands:
-  add         Add languages to the repository
-  check       Report the managed files that differ from the baseline
-  ci          Run the job of the workflow baseline.yml
-  new         Write the baseline into a repository without a lock
-  remove      Remove languages from the repository
-  sync        Bring the managed files to the baseline of this ergon
-  upgrade     Move the repository to the baseline of the newest release of ergon
-
-Global Flags:
-      --config file   read the configuration from file (default ".ergon.yaml")
-  -h, --help          show the help of the command
-
-Use "ergon init [command] --help" for more information about a command.
-`
-
-// newHelp is the help of ergon init new for a catalog of alpha and beta, pinned because a person
-// reads it.
-const newHelp = `ergon init new writes the baseline into a repository that has no lock: the
-managed files, the seeded files that are absent, the keys and the options of
-.ergon.yaml, and .ergon/init.lock. It prints the path of each file that it
-writes.
-
-When a managed file exists with other content, the command fails and does not
-write a file. With --force, it overwrites such a file.
-
---name defaults to the name of the working directory, and --year to the
-current year. The languages are:
-
-  alpha, beta
-
-Usage:
-  ergon init new [flags]
-
-Examples:
-  ergon init new --language go --owner "Example B.V." --license MIT \
-    --repository example/demo --security-contact security@example.com
-
-Flags:
-      --force                      overwrite the managed files that exist with other content
-      --language language          a language of the repository, once for each language
-      --license identifier         the license, as an SPDX identifier that ergon license --help lists
-      --name name                  the name of the repository
-      --owner holder               the copyright holder, such as "Example B.V."
-      --repository owner/name      the repository on GitHub, as owner/name
-      --security-contact address   the address that receives reports of vulnerabilities
-      --year year                  the year of the copyright notice (default 2026)
-
-Global Flags:
-      --config file   read the configuration from file (default ".ergon.yaml")
-  -h, --help          show the help of the command
-`
-
-// addHelp is the help of ergon init add, pinned because a person reads it.
-const addHelp = `ergon init add adds languages to the answers of .ergon/init.lock. It writes
-the files of each language, its fragments of the shared files and its section
-of .ergon.yaml. It prints the path of each file that it writes.
-
-When a file that the command changes was edited by hand, the command fails and
-does not write a file. With --force, it overwrites such a file.
-
-Usage:
-  ergon init add <language>... [flags]
-
-Examples:
-  ergon init add typescript
-
-Flags:
-      --force   overwrite the managed files that were edited by hand
-
-Global Flags:
-      --config file   read the configuration from file (default ".ergon.yaml")
-  -h, --help          show the help of the command
-`
-
-// removeHelp is the help of ergon init remove, pinned because a person reads it.
-const removeHelp = `ergon init remove removes languages from the answers of .ergon/init.lock. It
-removes the files of each language and its section of .ergon.yaml, and
-rewrites the shared files. It prints the path of each file that it writes or
-removes.
-
-When a file that the command changes or removes was edited by hand, the
-command fails and does not change a file. Move the edit into the local file of
-the path, and run ergon init sync --force first.
-
-Usage:
-  ergon init remove <language>... [flags]
-
-Examples:
-  ergon init remove typescript
-
-Global Flags:
-      --config file   read the configuration from file (default ".ergon.yaml")
-  -h, --help          show the help of the command
-`
-
-// checkHelp is the help of ergon init check, pinned because a person reads it.
-const checkHelp = `ergon init check compares the managed files with the rendering of this ergon
-for the answers of .ergon/init.lock and the options of .ergon.yaml. It does
-not write a file. It prints the problem and the path of each managed file that
-is missing, edited by hand or outdated. The exit status is 1 when it prints a
-file, and when .ergon.yaml has an option that its section does not accept.
-
-Usage:
-  ergon init check [flags]
-
-Examples:
-  ergon init check --json
-
-Flags:
-      --json   write the findings as a JSON array
-
-Global Flags:
-      --config file   read the configuration from file (default ".ergon.yaml")
-  -h, --help          show the help of the command
-`
-
-// syncHelp is the help of ergon init sync, pinned because a person reads it.
-const syncHelp = `ergon init sync brings the managed files to the rendering of this ergon. It
-writes each missing and outdated file and .ergon/init.lock, and removes each
-file that the rendering no longer contains. It prints the path of each file
-that it writes or removes.
-
-A flag of ergon init sync changes its answer in the lock. An answer without a
-flag keeps its value. An option of .ergon.yaml that still has the baseline
-value of the lock moves to the baseline value of this ergon, and an option
-that the repository changed keeps its value.
-
-The command does not change a file that was edited by hand. It writes every
-other file, and then exits with the status 1. With --force, it overwrites such
-a file.
-
-Usage:
-  ergon init sync [flags]
-
-Examples:
-  ergon init sync --owner "Example B.V."
-
-Flags:
-      --force                      overwrite the managed files that were edited by hand
-      --license identifier         the license, as an SPDX identifier that ergon license --help lists
-      --name name                  the name of the repository
-      --owner holder               the copyright holder, such as "Example B.V."
-      --repository owner/name      the repository on GitHub, as owner/name
-      --security-contact address   the address that receives reports of vulnerabilities
-      --year year                  the year of the copyright notice
-
-Global Flags:
-      --config file   read the configuration from file (default ".ergon.yaml")
-  -h, --help          show the help of the command
-`
 
 // required are the flags of init new without a default, with the values of the cases.
 var required = []string{
@@ -233,8 +61,26 @@ var required = []string{
 	"--security-contact", contact,
 }
 
-// errWrite is the error of a writer that fails.
-var errWrite = errors.New("write: failed")
+// initRuns are the command lines of the transcript of ergon init: the help of each subcommand, and
+// the command lines that the subcommands refuse, such as init new without each required flag.
+var initRuns = []clitest.Input{
+	{Args: []string{"init", "--help"}},
+	{Args: []string{"init"}},
+	{Args: []string{"init", "new", "--help"}},
+	{Args: []string{"init", "add", "--help"}},
+	{Args: []string{"init", "remove", "--help"}},
+	{Args: []string{"init", "check", "--help"}},
+	{Args: []string{"init", "sync", "--help"}},
+	{Args: []string{"init", "bogus"}},
+	{Args: slices.Concat([]string{"init", "new", "--year", "next"}, required)},
+	{Args: slices.Concat([]string{"init", "new"}, required[2:])},
+	{Args: slices.Concat([]string{"init", "new"}, required[:2], required[4:])},
+	{Args: slices.Concat([]string{"init", "new"}, required[:4], required[6:])},
+	{Args: slices.Concat([]string{"init", "new"}, required[:6])},
+	{Args: []string{"init", "add"}},
+	{Args: []string{"init", "remove"}},
+	{Args: []string{"init", "remove", "--force", "alpha"}},
+}
 
 // uses matches a line that runs an action, and captures the reference of the action with its
 // comment.
@@ -305,102 +151,31 @@ type workflow struct {
 	} `yaml:"jobs"`
 }
 
-// failing is a writer whose every write returns errWrite.
-type failing struct{}
-
-// Write returns errWrite and writes nothing.
-func (failing) Write([]byte) (int, error) {
-	return 0, errWrite
-}
-
 func TestInit(t *testing.T) {
 	t.Parallel()
 
-	t.Run("Run", func(t *testing.T) {
+	t.Run("Main", func(t *testing.T) {
 		t.Parallel()
 
-		help := []struct {
-			name   string
-			args   []string
-			stdout string
-		}{
-			{name: "writes the help of init", args: []string{"init", "--help"}, stdout: initHelp},
-			{name: "writes the help of init new", args: []string{"init", "new", "--help"}, stdout: newHelp},
-			{name: "writes the help of init add", args: []string{"init", "add", "--help"}, stdout: addHelp},
-			{name: "writes the help of init remove", args: []string{"init", "remove", "--help"}, stdout: removeHelp},
-			{name: "writes the help of init check", args: []string{"init", "check", "--help"}, stdout: checkHelp},
-			{name: "writes the help of init sync", args: []string{"init", "sync", "--help"}, stdout: syncHelp},
-		}
-		for _, tt := range help {
-			t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
-				status, stdout, stderr := run(t, t.TempDir(), tt.args...)
-				assert.Equal(t, status, statusOK, "the exit status")
-				assert.Equal(t, stdout, tt.stdout, "the standard output")
-				assert.Empty(t, stderr, "the standard error")
-			})
-		}
+		t.Run("writes the transcript of the runs", func(t *testing.T) {
+			t.Parallel()
+			dir := t.TempDir()
+			got := clitest.Transcript(t.Context(), "ergon", program(dir, register).Main, initRuns...)
+			golden.Match(t, "init.txt", got, golden.ShouldUpdate())
+			assert.Empty(t, paths(t, dir), "the files of the repository, which no run of the transcript writes")
+		})
 
-		usage := []struct {
-			name   string
-			args   []string
-			stderr string
-		}{
-			{
-				name: "returns 2 for init without a subcommand", args: []string{"init"},
-				stderr: "ergon: cli: init needs a subcommand: add, check, ci, new, remove, sync, upgrade\n" +
-					"Run 'ergon init --help' for usage.\n",
-			},
-			{
-				name: "returns 2 for an unknown subcommand of init", args: []string{"init", "bogus"},
-				stderr: "ergon: unknown command \"bogus\" for \"ergon init\"\nRun 'ergon init --help' for usage.\n",
-			},
-			{
-				name: "returns 2 for init new with a --year that is not a number",
-				args: slices.Concat([]string{"init", "new", "--year", "next"}, required),
-				stderr: "ergon: invalid argument \"next\" for \"--year\" flag: strconv.ParseInt: parsing \"next\": " +
-					"invalid syntax\nRun 'ergon init new --help' for usage.\n",
-			},
-			{
-				name: "returns 2 for init add without a language", args: []string{"init", "add"},
-				stderr: "ergon: requires at least 1 arg(s), only received 0\nRun 'ergon init add --help' for usage.\n",
-			},
-			{
-				name: "returns 2 for init remove without a language", args: []string{"init", "remove"},
-				stderr: "ergon: requires at least 1 arg(s), only received 0\n" +
-					"Run 'ergon init remove --help' for usage.\n",
-			},
-			{
-				name: "returns 2 for init remove with --force", args: []string{"init", "remove", "--force", "alpha"},
-				stderr: "ergon: unknown flag: --force\nRun 'ergon init remove --help' for usage.\n",
-			},
-		}
-		for _, tt := range usage {
-			t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
-				dir := t.TempDir()
-				status, stdout, stderr := run(t, dir, tt.args...)
-				assert.Equal(t, status, statusUsage, "the exit status")
-				assert.Empty(t, stdout, "the standard output")
-				assert.Equal(t, stderr, tt.stderr, "the standard error")
-				assert.Empty(t, paths(t, dir), "the files of the repository")
+		t.Run("init new reads an answer from its variable of the environment", func(t *testing.T) {
+			t.Parallel()
+			dir := t.TempDir()
+			vars := environ()
+			vars["ERGON_INIT_NEW_NAME"] = "demo"
+			res := clitest.Main(t.Context(), program(dir, register).Main, &clitest.Input{
+				Args: slices.Concat([]string{"init", "new"}, required), Vars: vars,
 			})
-		}
-
-		for i := range len(required) / 2 {
-			flag := required[2*i]
-			t.Run("returns 2 for init new without "+flag, func(t *testing.T) {
-				t.Parallel()
-				dir := t.TempDir()
-				args := slices.Concat([]string{"init", "new"}, required[:2*i], required[2*i+2:])
-				status, stdout, stderr := run(t, dir, args...)
-				assert.Equal(t, status, statusUsage, "the exit status")
-				assert.Empty(t, stdout, "the standard output")
-				assert.Equal(t, stderr, "ergon: cli: the flag "+flag+" is required\n"+
-					"Run 'ergon init new --help' for usage.\n", "the standard error")
-				assert.Empty(t, paths(t, dir), "the files of the repository")
-			})
-		}
+			assert.Equal(t, res.Status, statusOK, "the exit status: "+res.Stderr)
+			assert.Equal(t, readLock(t, dir).Answers.Name, "demo", "the name in the lock")
+		})
 
 		t.Run("init new writes the files that it reports", func(t *testing.T) {
 			t.Parallel()
@@ -586,10 +361,11 @@ func TestInit(t *testing.T) {
 
 		t.Run("init check returns 1 when the JSON array cannot be written", func(t *testing.T) {
 			t.Parallel()
-			var stderr bytes.Buffer
-			p := process(initialized(t, alpha), failing{}, &stderr, "init", "check", "--json")
-			assert.Equal(t, cli.Run(t.Context(), p, register, version), statusFailure, "the exit status")
-			assert.Equal(t, stderr.String(), "ergon: cli: write the findings: "+errWrite.Error()+"\n",
+			res := clitest.Main(t.Context(), program(initialized(t, alpha), register).Main, &clitest.Input{
+				Args: []string{"init", "check", "--json"}, Vars: environ(), FailStdout: true,
+			})
+			assert.Equal(t, res.Status, statusFailure, "the exit status")
+			assert.Equal(t, res.Stderr, "ergon: cli: write the findings: "+clitest.ErrStdout.Error()+"\n",
 				"the standard error")
 		})
 
@@ -787,6 +563,12 @@ func TestInit(t *testing.T) {
 						continue
 					}
 					assert.NotEmpty(t, job.TimeoutMinutes, "the timeout of "+id)
+					if filepath.Base(path) == "security.yml" && id == visibilityJob {
+						// The job queries the API of GitHub alone.
+						assert.Empty(t, job.Steps[0].Uses, "the first step of "+id)
+						assert.Equal(t, job.RunsOn, platform.Linux, "the runner of "+id)
+						continue
+					}
 					assert.HasPrefix(t, job.Steps[0].Uses, checkout.Uses+"@", "the first step of "+id)
 					assert.Equal(t, job.Steps[0].With["persist-credentials"], any(false), "persist-credentials of "+id)
 					matrix := gate && strings.HasPrefix(id, "check-")
@@ -828,6 +610,32 @@ func TestInit(t *testing.T) {
 			assert.Equal(t, ecosystems, []string{
 				"nuget", "gradle", "composer", "npm", "gomod", "uv", "cargo", "terraform",
 			}, "the ecosystems of dependabot.yml")
+		})
+
+		t.Run("init new writes the license header into each file that license check reads", func(t *testing.T) {
+			t.Parallel()
+			dir := vcstest.Repository(t, files.Tree{})
+			args := slices.Concat([]string{"init", "new"}, required)
+			for _, name := range names {
+				args = append(args, "--language", name)
+			}
+			status, _, stderr := runWith(t, app.Register, dir, args...)
+			assert.Equal(t, status, statusOK, "the exit status of init new: "+stderr)
+			status, stdout, stderr := runWith(t, app.Register, dir, "license", "check")
+			assert.Equal(t, status, statusOK, "the exit status of license check: "+stdout+stderr)
+		})
+
+		t.Run("init add keeps the license header of .ergon.yaml", func(t *testing.T) {
+			t.Parallel()
+			dir := vcstest.Repository(t, files.Tree{})
+			status, _, stderr := runWith(t, app.Register, dir, slices.Concat([]string{"init", "new"}, required)...)
+			assert.Equal(t, status, statusOK, "the exit status of init new: "+stderr)
+			status, stdout, stderr := runWith(t, app.Register, dir, "init", "add", names[0])
+			assert.Equal(t, status, statusOK, "the exit status of init add: "+stderr)
+			assert.Contains(t, stdout, "wrote .ergon.yaml\n", "the files of init add")
+			header := "# Copyright " + owner + " " + strconv.Itoa(now.Year()) +
+				"\n# SPDX-License-Identifier: " + spdxID + "\n\n"
+			assert.HasPrefix(t, read(t, dir, ".ergon.yaml"), header, "the .ergon.yaml")
 		})
 
 		for i, first := range names {

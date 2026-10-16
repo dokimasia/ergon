@@ -114,8 +114,8 @@ type Command struct {
 	// Packages are the Linux packages of the command.
 	Packages []Package `yaml:"packages"`
 
-	// Completions reports that the command is a cobra program, whose command completion writes the
-	// completions of bash, zsh and fish.
+	// Completions reports that the command has a command completion that writes the completion
+	// script of bash, zsh and fish, as a program of cobra or of go.stealthscale.io/cli has.
 	Completions bool `yaml:"completions"`
 
 	// Homebrew reports that the tap of the section receives a cask of the command.

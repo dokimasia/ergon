@@ -1,0 +1,77 @@
+$ ergon --help
+Usage: ergon <command> [options]
+
+ergon works on repositories with code in one or more of these languages:
+
+  alpha, beta
+
+Commands:
+  init        Set up a repository with the baseline of ergon.
+  license     Add and check the license header of every file.
+  release     Plan, write and publish the releases of the packages of the repository.
+  tool        Run the tools that the sections of .ergon.yaml name.
+  completion  Write the completion script of a shell.
+
+Options:
+      --flag-debug  Print the value and the source of each option before the command runs.  env ERGON_FLAG_DEBUG
+  -h, --help        Show the help.
+      --version     Show the version.
+[exit 0]
+
+$ ergon -h
+Usage: ergon <command> [options]
+
+ergon works on repositories with code in one or more of these languages:
+
+  alpha, beta
+
+Commands:
+  init        Set up a repository with the baseline of ergon.
+  license     Add and check the license header of every file.
+  release     Plan, write and publish the releases of the packages of the repository.
+  tool        Run the tools that the sections of .ergon.yaml name.
+  completion  Write the completion script of a shell.
+
+Options:
+      --flag-debug  Print the value and the source of each option before the command runs.  env ERGON_FLAG_DEBUG
+  -h, --help        Show the help.
+      --version     Show the version.
+[exit 0]
+
+$ ergon
+Usage: ergon <command> [options]
+
+ergon works on repositories with code in one or more of these languages:
+
+  alpha, beta
+
+Commands:
+  init        Set up a repository with the baseline of ergon.
+  license     Add and check the license header of every file.
+  release     Plan, write and publish the releases of the packages of the repository.
+  tool        Run the tools that the sections of .ergon.yaml name.
+  completion  Write the completion script of a shell.
+
+Options:
+      --flag-debug  Print the value and the source of each option before the command runs.  env ERGON_FLAG_DEBUG
+  -h, --help        Show the help.
+      --version     Show the version.
+
+ergon: missing command
+[exit 2]
+
+$ ergon --version
+ergon 1.2.3 (abc123, built 2026-10-05)
+[exit 0]
+
+$ ergon init --version
+ergon 1.2.3 (abc123, built 2026-10-05)
+[exit 0]
+
+$ ergon bogus
+ergon: unknown command "bogus"
+[exit 2]
+
+$ ergon --bogus
+ergon: unknown flag --bogus
+[exit 2]

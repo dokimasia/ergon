@@ -4,7 +4,6 @@
 package cli_test
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"io"
@@ -22,10 +21,11 @@ import (
 	"go.dokimi.dev/assert"
 	"go.dokimi.dev/assert/expect"
 	"go.dokimi.dev/assert/files"
+	"go.dokimi.dev/assert/golden"
 	"go.dokimi.dev/ergon/internal/app"
-	"go.dokimi.dev/ergon/internal/cli"
 	"go.dokimi.dev/ergon/service/release"
 	"go.dokimi.dev/ergon/service/vcs/vcstest"
+	"go.stealthscale.io/cli/clitest"
 )
 
 // The module of the release cases, at the root of its repository, and its files.
@@ -99,300 +99,30 @@ const (
 	noRun     = `{"workflow_runs":[]}`
 )
 
-// releaseHelp is the help of ergon release, pinned because a person reads it.
-const releaseHelp = `ergon release releases the packages of the repository with the changesets of
-.changeset and the configuration .changeset/config.json, in the format of
-changesets: a pull request adds a changeset that names the packages it changes
-with their bumps, the version pull request writes the new versions and the
-changelogs, and its merge publishes and tags the packages. The packages are the
-packages that each toolchain of ergon discovers, such as the modules of go.work.
-
-Usage:
-  ergon release [flags]
-  ergon release [command]
-
-Available Commands:
-  add          Add a changeset
-  ci           Run the jobs of the release workflow
-  git-tag      Tag the packages whose tags are missing
-  pack         Build the artifacts of the packages of a publish plan
-  publish      Publish and tag the packages of a publish plan
-  publish-plan Write the packages that a publish uploads or tags
-  status       Report the changes of the branch that no changeset releases
-  version      Write the new versions, the requirements and the changelogs
-
-Global Flags:
-      --config file   read the configuration from file (default ".ergon.yaml")
-  -h, --help          show the help of the command
-
-Use "ergon release [command] --help" for more information about a command.
-`
-
-// addChangesetHelp is the help of ergon release add, pinned because a person reads it.
-const addChangesetHelp = `ergon release add writes a changeset into .changeset: the packages that --bump
-names, each with its bump, and the summary of --message as the entry of their
-changelogs. --empty writes a changeset without packages, which satisfies ergon
-release status for a change that releases nothing. --open opens the changeset
-in the editor of VISUAL or EDITOR after it writes it.
-
-Usage:
-  ergon release add [flags]
-
-Examples:
-  ergon release add --bump go.dokimi.dev/ergon/core=minor -m "Add the Unit type."
-
-Flags:
-      --bump name=level   release name=level, where level is major, minor, patch or none
-      --empty             write a changeset without packages
-  -m, --message summary   the summary of the changeset
-      --open              open the changeset in the editor
-
-Global Flags:
-      --config file   read the configuration from file (default ".ergon.yaml")
-  -h, --help          show the help of the command
-`
-
-// statusHelp is the help of ergon release status, pinned because a person reads it.
-const statusHelp = `ergon release status writes the release plan of the changesets that the branch
-added since --since, the base branch by default. It reports each package that
-the branch changed without a changeset that names it, and each requirement of a
-package on another package of the repository that excludes the current version
-of the other. The exit status is 1 when it reports either. --output writes the
-plan as JSON into a file.
-
-Usage:
-  ergon release status [flags]
-
-Flags:
-      --output file   write the release plan as JSON into file
-      --since ref     compare against ref, the base branch by default
-      --verbose       list the changesets of each release
-
-Global Flags:
-      --config file   read the configuration from file (default ".ergon.yaml")
-  -h, --help          show the help of the command
-`
-
-// versionHelp is the help of ergon release version, pinned because a person reads it.
-const versionHelp = `ergon release version writes the release plan of the changesets into the
-repository: the new version of each package, the rewritten requirements of its
-dependents, the entries of the changelogs and the refreshed lockfiles. It
-removes the changesets that it consumed, and restores every file when a step
-fails. Without changesets it rewrites the lockfiles that record the earlier
-content of a package whose release waits for its publish. --dry-run writes the
-plan and changes nothing.
-
-Usage:
-  ergon release version [flags]
-
-Flags:
-      --dry-run   write the release plan and change nothing
-
-Global Flags:
-      --config file   read the configuration from file (default ".ergon.yaml")
-  -h, --help          show the help of the command
-`
-
-// publishPlanHelp is the help of ergon release publish-plan, pinned because a person reads it.
-const publishPlanHelp = `ergon release publish-plan writes the publish plan as JSON: each package whose
-registry lacks its version, and each package whose tag is its release and is
-missing, in chunks of dependency order. --output writes the plan into a file.
-
-Usage:
-  ergon release publish-plan [flags]
-
-Flags:
-      --output file   write the publish plan into file
-
-Global Flags:
-      --config file   read the configuration from file (default ".ergon.yaml")
-  -h, --help          show the help of the command
-`
-
-// packHelp is the help of ergon release pack, pinned because a person reads it.
-const packHelp = `ergon release pack builds the artifacts of each package of the publish plan
-into --out-dir: the files that its registry receives, and the assets of its
-release under assets/<tag>/, such as the archives, the packages and the
-checksums of the commands of a Go module, which GoReleaser builds and signs.
-
-Usage:
-  ergon release pack [flags]
-
-Flags:
-      --from-publish-plan file   read the publish plan from file
-      --out-dir dir              build the artifacts into dir (default "dist")
-
-Global Flags:
-      --config file   read the configuration from file (default ".ergon.yaml")
-  -h, --help          show the help of the command
-`
-
-// publishHelp is the help of ergon release publish, pinned because a person reads it.
-const publishHelp = `ergon release publish uploads each package of the publish plan whose registry
-lacks its version, and then tags each package at HEAD with the section of its
-changelog as the notes. On a workstation it creates annotated tags and pushes
-them to origin in one push. In GitHub Actions it creates the tags and the
-GitHub Releases through the API of GitHub: each release as a draft, then its
-assets from assets/<tag>/ of --from-pack-dir, and then the publish of the
-draft. A run after a failed upload completes the draft. It refuses a plan whose
-lockfiles record other content of its packages than the working tree, and on a
-workstation a release with assets. --no-git-tag creates no tag.
-
-Usage:
-  ergon release publish [flags]
-
-Flags:
-      --from-pack-dir dir        upload the artifacts of dir (default "dist")
-      --from-publish-plan file   read the publish plan from file
-      --no-git-tag               create no tag
-      --output file              write the released packages as JSON into file
-
-Global Flags:
-      --config file   read the configuration from file (default ".ergon.yaml")
-  -h, --help          show the help of the command
-`
-
-// gitTagHelp is the help of ergon release git-tag, pinned because a person reads it.
-const gitTagHelp = `ergon release git-tag creates the annotated tag of each package whose tag at
-its version is missing, at HEAD, and pushes the tags to origin in one push. It
-refuses a plan whose lockfiles record other content of its packages than the
-working tree.
-
-Usage:
-  ergon release git-tag [flags]
-
-Global Flags:
-      --config file   read the configuration from file (default ".ergon.yaml")
-  -h, --help          show the help of the command
-`
-
-// ciHelp is the help of ergon release ci, pinned because a person reads it.
-const ciHelp = `ergon release ci runs the steps of the jobs of the release workflows and of the
-first job of ci.yml in GitHub Actions, and writes their outputs into the file
-of GITHUB_OUTPUT.
-
-Usage:
-  ergon release ci [flags]
-  ergon release ci [command]
-
-Available Commands:
-  homebrew    Commit the casks of a publish to the Homebrew tap
-  select-mode Choose the job that the release workflow runs
-  skip        Decide whether a CI run skips its jobs
-  verify      Verify that a CI run passed on the content of the commit
-  version     Write the release and open the version pull request
-
-Global Flags:
-      --config file   read the configuration from file (default ".ergon.yaml")
-  -h, --help          show the help of the command
-
-Use "ergon release ci [command] --help" for more information about a command.
-`
-
-// selectModeHelp is the help of ergon release ci select-mode, pinned because a person reads it.
-const selectModeHelp = `ergon release ci select-mode writes the mode of the release workflow: version
-for a repository with changesets or with lockfiles that record the earlier
-content of a package of the publish plan, publish for a publish plan with a
-package, and none otherwise. It writes each such lockfile. --output writes the
-publish plan into a file for the job publish.
-
-Usage:
-  ergon release ci select-mode [flags]
-
-Flags:
-      --output file   write the publish plan into file
-
-Global Flags:
-      --config file   read the configuration from file (default ".ergon.yaml")
-  -h, --help          show the help of the command
-`
-
-// ciVersionHelp is the help of ergon release ci version, pinned because a person reads it.
-const ciVersionHelp = `ergon release ci version writes the release plan of the changesets as ergon
-release version does. It then commits the changes on the branch
-ergon-release/<base> through the API of GitHub, which signs the commits, and
-opens or updates the version pull request into the base branch. It marks the
-head of the branch with the status ergon/version, with which ergon release ci
-skip recognises the version commit. Without changesets it proposes the
-lockfiles that ergon release version rewrites, and otherwise changes nothing.
-It skips a commit of HEAD that is no longer the head of the base branch, and
-leaves the pull request to the run of the newer head.
-
-Usage:
-  ergon release ci version [flags]
-
-Flags:
-      --title title   the title of the pull request and its commits (default "chore: version packages")
-
-Global Flags:
-      --config file   read the configuration from file (default ".ergon.yaml")
-  -h, --help          show the help of the command
-`
-
-// ciSkipHelp is the help of ergon release ci skip, pinned because a person reads it.
-const ciSkipHelp = `ergon release ci skip writes the output skip of the first job of ci.yml: true
-when a passed run of the workflow --workflow already covers the content of the
-checkout, and false otherwise, through the API of GitHub. A run of a push skips
-when a run passed on its content, as ergon release ci verify finds it. A run
-skips when its commit is a version commit, which ergon release ci version marks
-with the status ergon/version, and a run passed on the parent of that commit.
---commit names the head of a pull request, whose checkout merges it into its
-base. Without GITHUB_TOKEN or GITHUB_REPOSITORY, and on an error of GitHub, it
-writes a warning and false, so that the run tests the commit.
-
-Usage:
-  ergon release ci skip [flags]
-
-Flags:
-      --commit sha      test the commit sha, such as the head of a pull request
-      --workflow file   find a passed run of the workflow file (default "ci.yml")
-
-Global Flags:
-      --config file   read the configuration from file (default ".ergon.yaml")
-  -h, --help          show the help of the command
-`
-
-// ciVerifyHelp is the help of ergon release ci verify, pinned because a person reads it.
-const ciVerifyHelp = `ergon release ci verify finds a run of the workflow --workflow that passed on the
-content of the commit of HEAD, through the API of GitHub: a run of the commit
-itself, such as the run of its push or of its merge group, or a run of the head
-of a pull request that merged the commit with the same tree. It reads each run
-once and waits for none. The exit status is 1 without such a run.
-
-Usage:
-  ergon release ci verify [flags]
-
-Flags:
-      --workflow file   find a passed run of the workflow file (default "ci.yml")
-
-Global Flags:
-      --config file   read the configuration from file (default ".ergon.yaml")
-  -h, --help          show the help of the command
-`
-
-// ciHomebrewHelp is the help of ergon release ci homebrew, pinned because a person reads it.
-const ciHomebrewHelp = `ergon release ci homebrew commits each cask that ergon release pack wrote for a
-release of the publish plan, casks/<tag>/<name>.rb of --from-pack-dir, to
-Casks/<name>.rb of the tap --tap, through the API of GitHub with the token of
-GITHUB_TOKEN, which needs write access to the contents of the tap. Each cask is
-one commit, which GitHub signs, and a cask that the tap already has is no
-commit.
-
-Usage:
-  ergon release ci homebrew [flags]
-
-Examples:
-  ergon release ci homebrew --tap dokimasia/homebrew-tap --from-publish-plan publish-plan.json
-
-Flags:
-      --from-pack-dir dir        read the casks of dir (default "dist")
-      --from-publish-plan file   read the publish plan from file
-      --tap owner/name           commit the casks to the tap owner/name
-
-Global Flags:
-      --config file   read the configuration from file (default ".ergon.yaml")
-  -h, --help          show the help of the command
-`
+// releaseRuns are the command lines of the transcript of ergon release: the help of each
+// subcommand, and the command lines that the subcommands refuse.
+var releaseRuns = []clitest.Input{
+	{Args: []string{"release", "--help"}},
+	{Args: []string{"release"}},
+	{Args: []string{"release", "ci", "--help"}},
+	{Args: []string{"release", "ci"}},
+	{Args: []string{"release", "add", "--help"}},
+	{Args: []string{"release", "status", "--help"}},
+	{Args: []string{"release", "version", "--help"}},
+	{Args: []string{"release", "publish-plan", "--help"}},
+	{Args: []string{"release", "pack", "--help"}},
+	{Args: []string{"release", "publish", "--help"}},
+	{Args: []string{"release", "git-tag", "--help"}},
+	{Args: []string{"release", "ci", "select-mode", "--help"}},
+	{Args: []string{"release", "ci", "skip", "--help"}},
+	{Args: []string{"release", "ci", "verify", "--help"}},
+	{Args: []string{"release", "ci", "version", "--help"}},
+	{Args: []string{"release", "ci", "homebrew", "--help"}},
+	{Args: []string{"release", "add"}},
+	{Args: []string{"release", "add", "--bump", modulePath, "-m", "x"}},
+	{Args: []string{"release", "add", "--bump", modulePath + "=huge", "-m", "x"}},
+	{Args: []string{"release", "ci", "homebrew"}},
+}
 
 // tapRepo is the Homebrew tap of the release cases.
 const tapRepo = "o/homebrew-tap"
@@ -586,119 +316,14 @@ func (h *hub) marks() []string {
 func TestRelease(t *testing.T) {
 	t.Parallel()
 
-	t.Run("Run", func(t *testing.T) {
+	t.Run("Main", func(t *testing.T) {
 		t.Parallel()
 
-		help := []struct {
-			name   string
-			args   []string
-			stdout string
-		}{
-			{name: "writes the help of release", args: []string{"release", "--help"}, stdout: releaseHelp},
-			{
-				name:   "writes the help of release add",
-				args:   []string{"release", "add", "--help"},
-				stdout: addChangesetHelp,
-			},
-			{
-				name:   "writes the help of release status",
-				args:   []string{"release", "status", "--help"},
-				stdout: statusHelp,
-			},
-			{
-				name: "writes the help of release version", args: []string{"release", "version", "--help"},
-				stdout: versionHelp,
-			},
-			{
-				name: "writes the help of release publish-plan", args: []string{"release", "publish-plan", "--help"},
-				stdout: publishPlanHelp,
-			},
-			{name: "writes the help of release pack", args: []string{"release", "pack", "--help"}, stdout: packHelp},
-			{
-				name: "writes the help of release publish", args: []string{"release", "publish", "--help"},
-				stdout: publishHelp,
-			},
-			{
-				name: "writes the help of release git-tag", args: []string{"release", "git-tag", "--help"},
-				stdout: gitTagHelp,
-			},
-			{name: "writes the help of release ci", args: []string{"release", "ci", "--help"}, stdout: ciHelp},
-			{
-				name:   "writes the help of release ci select-mode",
-				args:   []string{"release", "ci", "select-mode", "--help"},
-				stdout: selectModeHelp,
-			},
-			{
-				name: "writes the help of release ci version", args: []string{"release", "ci", "version", "--help"},
-				stdout: ciVersionHelp,
-			},
-			{
-				name: "writes the help of release ci verify", args: []string{"release", "ci", "verify", "--help"},
-				stdout: ciVerifyHelp,
-			},
-			{
-				name: "writes the help of release ci skip", args: []string{"release", "ci", "skip", "--help"},
-				stdout: ciSkipHelp,
-			},
-			{
-				name: "writes the help of release ci homebrew", args: []string{"release", "ci", "homebrew", "--help"},
-				stdout: ciHomebrewHelp,
-			},
-		}
-		for _, tt := range help {
-			t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
-				status, stdout, stderr := run(t, t.TempDir(), tt.args...)
-				assert.Equal(t, status, statusOK, "the exit status")
-				assert.Equal(t, stdout, tt.stdout, "the standard output")
-				assert.Empty(t, stderr, "the standard error")
-			})
-		}
-
-		usage := []struct {
-			name   string
-			args   []string
-			stderr string
-		}{
-			{
-				name: "returns 2 for release without a subcommand",
-				args: []string{"release"},
-				stderr: "ergon: cli: release needs a subcommand: add, ci, git-tag, pack, publish, publish-plan, status, " +
-					"version\nRun 'ergon release --help' for usage.\n",
-			},
-			{
-				name: "returns 2 for release ci without a subcommand",
-				args: []string{"release", "ci"},
-				stderr: "ergon: cli: ci needs a subcommand: homebrew, select-mode, skip, verify, version\n" +
-					"Run 'ergon release ci --help' for usage.\n",
-			},
-			{
-				name: "returns 2 for release add without --bump and without --empty", args: []string{"release", "add"},
-				stderr: "ergon: cli: name the packages with --bump, or pass --empty\n" +
-					"Run 'ergon release add --help' for usage.\n",
-			},
-			{
-				name: "returns 2 for a --bump without a level",
-				args: []string{"release", "add", "--bump", modulePath, "-m", "x"},
-				stderr: `ergon: cli: --bump "example.com/demo", which is not <name>=<major|minor|patch|none>` + "\n" +
-					"Run 'ergon release add --help' for usage.\n",
-			},
-			{
-				name: "returns 2 for a --bump with a level that does not exist",
-				args: []string{"release", "add", "--bump", modulePath + "=huge", "-m", "x"},
-				stderr: `ergon: cli: --bump "example.com/demo=huge", which is not <name>=<major|minor|patch|none>` +
-					"\nRun 'ergon release add --help' for usage.\n",
-			},
-		}
-		for _, tt := range usage {
-			t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
-				status, stdout, stderr := runRelease(t, t.TempDir(), nil, tt.args...)
-				assert.Equal(t, status, statusUsage, "the exit status")
-				assert.Empty(t, stdout, "the standard output")
-				assert.Equal(t, stderr, tt.stderr, "the standard error")
-			})
-		}
+		t.Run("writes the transcript of the runs", func(t *testing.T) {
+			t.Parallel()
+			got := clitest.Transcript(t.Context(), "ergon", program(t.TempDir(), app.Register).Main, releaseRuns...)
+			golden.Match(t, "release.txt", got, golden.ShouldUpdate())
+		})
 
 		t.Run("add writes a changeset of the packages of --bump", func(t *testing.T) {
 			t.Parallel()
@@ -734,12 +359,14 @@ func TestRelease(t *testing.T) {
 
 		t.Run("add returns 1 when the random digits cannot be read", func(t *testing.T) {
 			t.Parallel()
-			var stdout, stderr bytes.Buffer
-			p := releaseProcess(goModule(t, gitConfig, nil), nil, &stdout, &stderr, "release", "add", "--bump",
-				modulePath+"=minor", "-m", "Add the Unit type.")
+			p := program(goModule(t, gitConfig, nil), app.Register)
 			p.Random = iotest.ErrReader(errRandom)
-			assert.Equal(t, cli.Run(t.Context(), p, app.Register, version), statusFailure, "the exit status")
-			assert.Equal(t, stderr.String(), "ergon: release: read the random digits of a changeset: "+
+			res := clitest.Main(t.Context(), p.Main, &clitest.Input{
+				Args: []string{"release", "add", "--bump", modulePath + "=minor", "-m", "Add the Unit type."},
+				Vars: releaseVars(nil),
+			})
+			assert.Equal(t, res.Status, statusFailure, "the exit status")
+			assert.Equal(t, res.Stderr, "ergon: release: read the random digits of a changeset: "+
 				errRandom.Error()+"\n", "the standard error")
 		})
 
@@ -1110,10 +737,12 @@ func TestRelease(t *testing.T) {
 
 		t.Run("publish-plan returns 1 when the plan cannot be written", func(t *testing.T) {
 			t.Parallel()
-			var stderr bytes.Buffer
-			p := releaseProcess(goModule(t, gitConfig, nil), nil, failing{}, &stderr, "release", "publish-plan")
-			assert.Equal(t, cli.Run(t.Context(), p, app.Register, version), statusFailure, "the exit status")
-			assert.Equal(t, stderr.String(), "ergon: cli: write the JSON: "+errWrite.Error()+"\n", "the standard error")
+			res := clitest.Main(t.Context(), program(goModule(t, gitConfig, nil), app.Register).Main, &clitest.Input{
+				Args: []string{"release", "publish-plan"}, Vars: releaseVars(nil), FailStdout: true,
+			})
+			assert.Equal(t, res.Status, statusFailure, "the exit status")
+			assert.Equal(t, res.Stderr, "ergon: cli: write the JSON: "+clitest.ErrStdout.Error()+"\n",
+				"the standard error")
 		})
 
 		t.Run("publish-plan returns 1 outside a working tree of git", func(t *testing.T) {
@@ -1262,12 +891,24 @@ func TestRelease(t *testing.T) {
 			assert.Contains(t, h.commits()[0], `"headline":"demo 1.0.0"`, "the message of the commit")
 		})
 
-		t.Run("ci homebrew returns 2 without --tap", func(t *testing.T) {
+		t.Run("ci homebrew returns 1 for a plan file that does not exist", func(t *testing.T) {
 			t.Parallel()
-			status, stdout, stderr := runRelease(t, t.TempDir(), nil, "release", "ci", "homebrew")
-			assert.Equal(t, status, statusUsage, "the exit status")
+			plan := filepath.Join(t.TempDir(), "absent.json")
+			status, stdout, stderr := runRelease(t, goModule(t, gitConfig, nil), nil, "release", "ci", "homebrew",
+				"--tap", tapRepo, "--from-publish-plan", plan)
+			assert.Equal(t, status, statusFailure, "the exit status")
 			assert.Empty(t, stdout, "the standard output")
-			assert.HasPrefix(t, stderr, "ergon: cli: set --tap to the tap, as owner/name\n", "the standard error")
+			assert.HasPrefix(t, stderr, "ergon: cli: read the publish plan: ", "the standard error")
+		})
+
+		t.Run("ci homebrew returns 1 without GITHUB_REPOSITORY", func(t *testing.T) {
+			t.Parallel()
+			status, stdout, stderr := runRelease(t, goModule(t, gitConfig, nil), nil, "release", "ci", "homebrew",
+				"--tap", tapRepo)
+			assert.Equal(t, status, statusFailure, "the exit status")
+			assert.Empty(t, stdout, "the standard output")
+			assert.Equal(t, stderr, "ergon: cli: set GITHUB_REPOSITORY to the repository on GitHub, as owner/name\n",
+				"the standard error")
 		})
 
 		t.Run("publish returns 1 in GitHub Actions without GITHUB_REPOSITORY", func(t *testing.T) {
@@ -1859,21 +1500,22 @@ func withOrigin(t *testing.T, dir string) string {
 // standard error.
 func runRelease(t *testing.T, dir string, env map[string]string, args ...string) (status int, stdout, stderr string) {
 	t.Helper()
-	var out, errs bytes.Buffer
-	status = cli.Run(t.Context(), releaseProcess(dir, env, &out, &errs, args...), app.Register, version)
-	return status, out.String(), errs.String()
+	res := clitest.Main(
+		t.Context(),
+		program(dir, app.Register).Main,
+		&clitest.Input{Args: args, Vars: releaseVars(env)},
+	)
+	return res.Status, res.Stdout, res.Stderr
 }
 
-// releaseProcess returns the process of a release case, as process states it, with each variable
-// of releaseVariables set to an empty value and then the variables of env, so the environment of
-// the test sets none of the variables that the release commands read.
-func releaseProcess(dir string, env map[string]string, stdout, stderr io.Writer, args ...string) *cli.Process {
-	p := process(dir, stdout, stderr, args...)
+// releaseVars returns the environment of a release case: the environment of environ with each
+// variable of releaseVariables set to an empty value and then the variables of env, so the
+// environment of the test sets none of the variables that the release commands read.
+func releaseVars(env map[string]string) map[string]string {
+	vars := environ()
 	for _, name := range releaseVariables {
-		p.Env = append(p.Env, name+"=")
+		vars[name] = ""
 	}
-	for name, value := range env {
-		p.Env = append(p.Env, name+"="+value)
-	}
-	return p
+	maps.Copy(vars, env)
+	return vars
 }

@@ -4,7 +4,6 @@
 package cli_test
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -12,7 +11,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -21,9 +19,10 @@ import (
 
 	"go.dokimi.dev/assert"
 	"go.dokimi.dev/assert/files"
+	"go.dokimi.dev/assert/golden"
 	"go.dokimi.dev/ergon/core/option"
 	"go.dokimi.dev/ergon/internal/app"
-	"go.dokimi.dev/ergon/internal/cli"
+	"go.stealthscale.io/cli/clitest"
 )
 
 // fakeEnv is the variable of the environment that makes the test binary act as the program that the
@@ -53,78 +52,23 @@ const (
 // before the arguments of the tool.
 const biome = "npx --yes --package=@biomejs/biome@2.5.15 -- biome"
 
-// toolHelp is the help of ergon tool, pinned because a person reads it.
-const toolHelp = `ergon tool runs the tools that the sections of .ergon.yaml name, at the
-versions that they name. Every target of the Makefile and every hook of the
-baseline of ergon init runs its tools this way.
-
-Usage:
-  ergon tool [flags]
-  ergon tool [command]
-
-Available Commands:
-  ci          Run the jobs that keep the tools of ergon in GitHub Actions
-  prune       Remove the tools that no section of .ergon.yaml names
-  run         Install a tool of a section and run it
-
-Global Flags:
-      --config file   read the configuration from file (default ".ergon.yaml")
-  -h, --help          show the help of the command
-
-Use "ergon tool [command] --help" for more information about a command.
-`
-
-// pruneHelp is the help of ergon tool prune, pinned because a person reads it.
-const pruneHelp = `ergon tool prune removes each file from ergon/tools in the cache directory of
-the user that installs no tool of the sections of .ergon.yaml at the version
-that they name: the earlier versions of the tools, the programs of a Go module
-for another version of the go command, the programs of golangci-lint for other
-plugins, and the files of an install that did not finish. It also removes the
-tools of other repositories that share the directory. Each job of the managed
-workflows that keeps the tools of ergon in the cache of GitHub Actions runs it
-before the cache saves the directory.
-
-Usage:
-  ergon tool prune [flags]
-
-Global Flags:
-      --config file   read the configuration from file (default ".ergon.yaml")
-  -h, --help          show the help of the command
-`
-
-// toolCIHelp is the help of ergon tool ci, pinned because a person reads it.
-const toolCIHelp = `ergon tool ci runs the steps of the jobs of the managed workflows that keep the
-tool directory of ergon in the cache of GitHub Actions.
-
-Usage:
-  ergon tool ci [flags]
-  ergon tool ci [command]
-
-Available Commands:
-  prune       Delete the tool caches that newer caches replaced
-
-Global Flags:
-      --config file   read the configuration from file (default ".ergon.yaml")
-  -h, --help          show the help of the command
-
-Use "ergon tool ci [command] --help" for more information about a command.
-`
-
-// ciPruneHelp is the help of ergon tool ci prune, pinned because a person reads it.
-const ciPruneHelp = `ergon tool ci prune deletes each cache of the tools of ergon in GitHub Actions
-that a newer cache of the same job replaced, through the API of GitHub with the
-token of GITHUB_TOKEN, which needs the permission actions: write. A job saves a
-cache under a new key for each change of the files of its key, and restores
-only the newest cache of its own when its key misses. The caches of a branch and
-of a pull request are separate.
-
-Usage:
-  ergon tool ci prune [flags]
-
-Global Flags:
-      --config file   read the configuration from file (default ".ergon.yaml")
-  -h, --help          show the help of the command
-`
+// toolRuns are the command lines of the transcript of ergon tool, which run in a repository after
+// init new with JavaScript.
+var toolRuns = []clitest.Input{
+	{Args: []string{"tool", "--help"}},
+	{Args: []string{"tool"}},
+	{Args: []string{"tool", "ci", "--help"}},
+	{Args: []string{"tool", "ci"}},
+	{Args: []string{"tool", "run", "--help"}},
+	{Args: []string{"tool", "prune", "--help"}},
+	{Args: []string{"tool", "ci", "prune", "--help"}},
+	{Args: []string{"tool", "run"}},
+	{Args: []string{"tool", "run", "biome"}},
+	{Args: []string{"tool", "run", "js.prettier"}},
+	{Args: []string{"tool", "run", "go.vet"}},
+	{Args: []string{"tool", "prune", "main"}},
+	{Args: []string{"tool", "ci", "prune", "main"}},
+}
 
 // The caches of the prune cases, as the API of GitHub lists them: two caches of the job check-go of
 // main, of which the second is newer, and a cache of the job commits.
@@ -139,28 +83,6 @@ const (
 
 // cachesRoute is the request of the first page of the caches of the tools of ergon of hubRepo.
 const cachesRoute = "GET /repos/" + hubRepo + "/actions/caches?key=ergon-tools-&page=1&per_page=100"
-
-// runHelp is the help of ergon tool run, pinned because a person reads it.
-const runHelp = `ergon tool run installs the tool that a section of .ergon.yaml names, unless
-the cache has it, and runs it in the working directory with the arguments that
-follow the tool. It installs the tool under ergon/tools in the cache directory
-of the user, and checks a release binary against the digest that the section
-states for the platform. It reads the options of the repository of the working
-directory or of the nearest of its parents with .ergon/init.lock.
-
-The exit status is the exit status of the tool. It is 1 when the tool does not
-install, and 2 when the section or the tool does not exist.
-
-Usage:
-  ergon tool run <section>.<tool> [-- <argument>...] [flags]
-
-Examples:
-  ergon tool run go.golangci-lint -- run ./...
-
-Global Flags:
-      --config file   read the configuration from file (default ".ergon.yaml")
-  -h, --help          show the help of the command
-`
 
 // errCache is the error of a cache directory that cannot be found.
 var errCache = errors.New("cache: $HOME is not defined")
@@ -223,87 +145,23 @@ func (h *cacheHub) calls() []string {
 func TestTool(t *testing.T) {
 	t.Parallel()
 
-	t.Run("Run", func(t *testing.T) {
+	t.Run("Main", func(t *testing.T) {
 		t.Parallel()
 
-		help := []struct {
-			name   string
-			args   []string
-			stdout string
-		}{
-			{name: "writes the help of tool", args: []string{"tool", "--help"}, stdout: toolHelp},
-			{name: "writes the help of tool run", args: []string{"tool", "run", "--help"}, stdout: runHelp},
-			{name: "writes the help of tool prune", args: []string{"tool", "prune", "--help"}, stdout: pruneHelp},
-			{name: "writes the help of tool ci", args: []string{"tool", "ci", "--help"}, stdout: toolCIHelp},
-			{
-				name: "writes the help of tool ci prune", args: []string{"tool", "ci", "prune", "--help"},
-				stdout: ciPruneHelp,
-			},
-		}
-		for _, tt := range help {
-			t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
-				status, stdout, stderr := run(t, t.TempDir(), tt.args...)
-				assert.Equal(t, status, statusOK, "the exit status")
-				assert.Equal(t, stdout, tt.stdout, "the standard output")
-				assert.Empty(t, stderr, "the standard error")
-			})
-		}
+		t.Run("writes the transcript of the runs", func(t *testing.T) {
+			t.Parallel()
+			got := clitest.Transcript(t.Context(), "ergon", program(javascriptRepository(t), app.Register).Main,
+				toolRuns...)
+			golden.Match(t, "tool.txt", got, golden.ShouldUpdate())
+		})
 
-		usage := []struct {
-			name   string
-			args   []string
-			stderr string
-		}{
-			{
-				name: "returns 2 for tool without a subcommand", args: []string{"tool"},
-				stderr: "ergon: cli: tool needs a subcommand: ci, prune, run\nRun 'ergon tool --help' for usage.\n",
-			},
-			{
-				name: "returns 2 for tool prune with an argument", args: []string{"tool", "prune", "main"},
-				stderr: "ergon: unknown command \"main\" for \"ergon tool prune\"\n" +
-					"Run 'ergon tool prune --help' for usage.\n",
-			},
-			{
-				name: "returns 2 for tool ci without a subcommand", args: []string{"tool", "ci"},
-				stderr: "ergon: cli: ci needs a subcommand: prune\nRun 'ergon tool ci --help' for usage.\n",
-			},
-			{
-				name: "returns 2 for tool ci prune with an argument", args: []string{"tool", "ci", "prune", "main"},
-				stderr: "ergon: unknown command \"main\" for \"ergon tool ci prune\"\n" +
-					"Run 'ergon tool ci prune --help' for usage.\n",
-			},
-			{
-				name: "returns 2 for tool run without a tool", args: []string{"tool", "run"},
-				stderr: "ergon: requires at least 1 arg(s), only received 0\nRun 'ergon tool run --help' for usage.\n",
-			},
-			{
-				name:   "returns 2 for a tool without a section",
-				args:   []string{"tool", "run", "biome"},
-				stderr: "ergon: cli: \"biome\", which is not <section>.<tool>\nRun 'ergon tool run --help' for usage.\n",
-			},
-			{
-				name: "returns 2 for a tool that the section does not name",
-				args: []string{"tool", "run", "js.prettier"},
-				stderr: "ergon: tool: the section names no such tool: js.prettier, which is none of js.biome\n" +
-					"Run 'ergon tool run --help' for usage.\n",
-			},
-			{
-				name: "returns 2 for a section of no producer of the repository",
-				args: []string{"tool", "run", "go.vet"},
-				stderr: "ergon: baseline: no producer of the repository has the section: \"go\"\n" +
-					"Run 'ergon tool run --help' for usage.\n",
-			},
-		}
-		for _, tt := range usage {
-			t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
-				status, stdout, stderr := runWith(t, app.Register, javascriptRepository(t), tt.args...)
-				assert.Equal(t, status, statusUsage, "the exit status")
-				assert.Empty(t, stdout, "the standard output")
-				assert.Equal(t, stderr, tt.stderr, "the standard error")
-			})
-		}
+		t.Run("returns 2 for a tool that the section does not name", func(t *testing.T) {
+			t.Parallel()
+			status, stdout, stderr := runWith(t, app.Register, javascriptRepository(t), "tool", "run", "js.prettier")
+			assert.Equal(t, status, statusUsage, "the exit status")
+			assert.Empty(t, stdout, "the standard output")
+			assert.HasPrefix(t, stderr, "ergon: tool: the section names no such tool: ", "the standard error")
+		})
 
 		t.Run("runs the tool of the section with the arguments after the tool", func(t *testing.T) {
 			t.Parallel()
@@ -347,17 +205,17 @@ func TestTool(t *testing.T) {
 
 		t.Run("passes the standard input of the process to the tool", func(t *testing.T) {
 			t.Parallel()
-			var stdout, stderr bytes.Buffer
-			p := process(javascriptRepository(t), &stdout, &stderr, "tool", "run", "js.biome", "--", stdinFlag)
-			p.Stdin = strings.NewReader("src/index.js\n")
-			assert.Equal(t, cli.Run(t.Context(), p, app.Register, version), statusOK, "the exit status")
-			assert.Equal(t, stdout.String(), biome+" "+stdinFlag+"\nsrc/index.js\n", "the output of the tool")
+			res := clitest.Main(t.Context(), program(javascriptRepository(t), app.Register).Main, &clitest.Input{
+				Args: []string{"tool", "run", "js.biome", "--", stdinFlag}, Vars: environ(), Stdin: "src/index.js\n",
+			})
+			assert.Equal(t, res.Status, statusOK, "the exit status: "+res.Stderr)
+			assert.Equal(t, res.Stdout, biome+" "+stdinFlag+"\nsrc/index.js\n", "the output of the tool")
 		})
 
 		t.Run("returns 1 for a tool without a digest for the platform", func(t *testing.T) {
 			t.Parallel()
 			dir := javascriptRepository(t)
-			host := option.Platform(runtime.GOOS + "/" + runtime.GOARCH)
+			host := native
 			other := option.LinuxARM64
 			if host == other {
 				other = option.LinuxAMD64
@@ -377,13 +235,15 @@ func TestTool(t *testing.T) {
 
 		t.Run("returns 1 for a cache directory that cannot be found", func(t *testing.T) {
 			t.Parallel()
-			var stdout, stderr bytes.Buffer
-			p := process(javascriptRepository(t), &stdout, &stderr, "tool", "run", "js.biome")
+			p := program(javascriptRepository(t), app.Register)
 			// The error comes with a directory of the test, which a run that went on would install into.
 			cache := t.TempDir()
 			p.CacheDir = func() (string, error) { return cache, errCache }
-			assert.Equal(t, cli.Run(t.Context(), p, app.Register, version), statusFailure, "the exit status")
-			assert.Equal(t, stderr.String(), "ergon: cli: find the cache directory: "+errCache.Error()+"\n",
+			res := clitest.Main(t.Context(), p.Main, &clitest.Input{
+				Args: []string{"tool", "run", "js.biome"}, Vars: environ(),
+			})
+			assert.Equal(t, res.Status, statusFailure, "the exit status")
+			assert.Equal(t, res.Stderr, "ergon: cli: find the cache directory: "+errCache.Error()+"\n",
 				"the standard error")
 		})
 
@@ -418,8 +278,7 @@ func TestTool(t *testing.T) {
 
 		t.Run("prune removes the tools that no section of the repository names", func(t *testing.T) {
 			t.Parallel()
-			var stdout, stderr bytes.Buffer
-			p := process(javascriptRepository(t), &stdout, &stderr, "tool", "prune")
+			p := program(javascriptRepository(t), app.Register)
 			cache := t.TempDir()
 			p.CacheDir = func() (string, error) { return cache, nil }
 			tools := filepath.Join(cache, "ergon", "tools")
@@ -428,21 +287,31 @@ func TestTool(t *testing.T) {
 				"module/example.com/gone/v1.0.0/gone": files.Text("stale"),
 				"release/gone/1.0/gone":               files.Text("stale"),
 			})
-			status := cli.Run(t.Context(), p, app.Register, version)
-			assert.Equal(t, status, statusOK, "the exit status: "+stderr.String())
-			assert.Equal(t, stdout.String(), "removed module\nremoved "+filepath.Join("release", "gone")+"\n",
+			res := clitest.Main(t.Context(), p.Main, &clitest.Input{Args: []string{"tool", "prune"}, Vars: environ()})
+			assert.Equal(t, res.Status, statusOK, "the exit status: "+res.Stderr)
+			assert.Equal(t, res.Stdout, "removed module\nremoved "+filepath.Join("release", "gone")+"\n",
 				"the standard output")
 			files.Absent(t, filepath.Join(tools, "release", "gone"), "the release binary that no section names")
 		})
 
+		t.Run("prune returns 1 for a .ergon.yaml that does not parse", func(t *testing.T) {
+			t.Parallel()
+			dir := javascriptRepository(t)
+			write(t, dir, ".ergon.yaml", "js: [\n")
+			status, stdout, stderr := runWith(t, app.Register, dir, "tool", "prune")
+			assert.Equal(t, status, statusFailure, "the exit status")
+			assert.Empty(t, stdout, "the standard output")
+			assert.HasPrefix(t, stderr, "ergon: options: invalid .ergon.yaml: ", "the standard error")
+		})
+
 		t.Run("prune returns 1 for a cache directory that cannot be found", func(t *testing.T) {
 			t.Parallel()
-			var stdout, stderr bytes.Buffer
-			p := process(javascriptRepository(t), &stdout, &stderr, "tool", "prune")
+			p := program(javascriptRepository(t), app.Register)
 			cache := t.TempDir()
 			p.CacheDir = func() (string, error) { return cache, errCache }
-			assert.Equal(t, cli.Run(t.Context(), p, app.Register, version), statusFailure, "the exit status")
-			assert.Equal(t, stderr.String(), "ergon: cli: find the cache directory: "+errCache.Error()+"\n",
+			res := clitest.Main(t.Context(), p.Main, &clitest.Input{Args: []string{"tool", "prune"}, Vars: environ()})
+			assert.Equal(t, res.Status, statusFailure, "the exit status")
+			assert.Equal(t, res.Stderr, "ergon: cli: find the cache directory: "+errCache.Error()+"\n",
 				"the standard error")
 		})
 

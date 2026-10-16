@@ -11,17 +11,19 @@ import (
 	"io"
 	"slices"
 
-	"github.com/spf13/cobra"
 	"go.dokimi.dev/ergon/core/spdx"
 	"go.dokimi.dev/ergon/service/baseline"
 	"go.dokimi.dev/ergon/service/licenses"
 	licensefiles "go.dokimi.dev/ergon/service/licenses/baseline"
+	gocli "go.stealthscale.io/cli"
 )
 
-// The help texts of the license commands.
+// The help texts of the license commands. The first line of each is its summary in the list of the
+// commands of its parent.
 const (
-	licenseShort = "Add and check the license header of every file"
-	licenseLong  = `ergon license adds and checks the license header of each file of the
+	licenseHelp = `Add and check the license header of every file.
+
+ergon license adds and checks the license header of each file of the
 repository that has a comment syntax: the copyright of the owner and the SPDX
 identifier of the license, as the section license of .ergon.yaml states them.
 It reads the files that git tracks or would track, in the repository of the
@@ -39,17 +41,21 @@ The licenses are:
 
 %s`
 
-	licenseCheckShort = "Report the files whose license header differs from the configuration"
-	licenseCheckLong  = `ergon license check reports each file whose license header is missing, states
+	licenseCheckHelp = `Report the files whose license header differs from the configuration.
+
+ergon license check reports each file whose license header is missing, states
 another owner or license, or has a line that is neither a copyright notice nor
 an SPDX tag nor empty. It does not write a file. It prints the problem and the
 path of each such file, and then the number of files that it checked and
 skipped. A header accepts any year, list of years or range of years. The exit
-status is 1 when it reports a missing, outdated or conflicting header.`
-	licenseCheckExample = "  ergon license check --json"
+status is 1 when it reports a missing, outdated or conflicting header.
 
-	licenseFixShort = "Add the missing license headers and replace the outdated ones"
-	licenseFixLong  = `ergon license fix adds the license header to each file without one, with the
+Example:
+  ergon license check --json`
+
+	licenseFixHelp = `Add the missing license headers and replace the outdated ones.
+
+ergon license fix adds the license header to each file without one, with the
 current year, and replaces each header that states another owner or license,
 with its years. It keeps a preamble such as a shebang line above the header. It
 prints the path of each file that it wrote, then the problem and the path of
@@ -58,83 +64,68 @@ skipped. The exit status is 1 when a file has a header with a line that is
 neither a copyright notice nor an SPDX tag nor empty, which the command leaves.`
 )
 
-// licenseCommand returns ergon license with its subcommands, which work on the repository of the
-// working directory of s under ctx.
-func licenseCommand(ctx context.Context, s *session) *cobra.Command {
+// licenseCheckOptions are the options of ergon license check.
+type licenseCheckOptions struct {
+	JSON bool `help:"Write the report as JSON."`
+}
+
+// licenseCommands adds ergon license to app, with its subcommands check and fix, which work on the
+// repository of the working directory of s.
+func (s *session) licenseCommands(app *gocli.App[noOptions]) {
 	ids := slices.Collect(spdx.IDs())
 	names := make([]string, 0, len(ids))
 	for _, id := range ids {
 		names = append(names, string(id))
 	}
-	return group(s, "license", licenseShort, fmt.Sprintf(licenseLong, list(names)),
-		licenseCheckCommand(ctx, s), licenseFixCommand(ctx, s))
+	parent := app.Command[noOptions]("license", fmt.Sprintf(licenseHelp, list(names)), nil)
+	parent.Command("check", licenseCheckHelp, s.licenseCheck)
+	parent.Command("fix", licenseFixHelp, s.licenseFix)
 }
 
-// licenseCheckCommand returns ergon license check, which writes the report of [licenses.Check]
-// under ctx for the repository of s: a line of the kind and the path of each finding, and a line
-// of the counts, or the report as JSON with --json. It returns an error for a finding that is not
-// of the kind unsupported, and when the JSON cannot be written.
-func licenseCheckCommand(ctx context.Context, s *session) *cobra.Command {
-	var asJSON bool
-	cmd := &cobra.Command{
-		Use:     "check",
-		Short:   licenseCheckShort,
-		Long:    licenseCheckLong,
-		Example: licenseCheckExample,
-		Args:    usage(cobra.NoArgs),
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			return s.license(func(dir string, c *licenses.Config) error {
-				report, err := licenses.Check(ctx, dir, c)
-				if err != nil {
-					return err
-				}
-				out := cmd.OutOrStdout()
-				if asJSON {
-					// A repository whose headers match writes an empty array, not null.
-					report.Findings = append([]licenses.Finding{}, report.Findings...)
-					if err := json.NewEncoder(out).Encode(report); err != nil {
-						return fmt.Errorf("cli: write the report: %w", err)
-					}
-				} else {
-					write(out, &report)
-				}
-				failing := func(f licenses.Finding) bool { return f.Kind != licenses.Unsupported }
-				if slices.ContainsFunc(report.Findings, failing) {
-					return errors.New("cli: files have no license header of the section license")
-				}
-				return nil
-			})
-		},
-	}
-	cmd.Flags().BoolVar(&asJSON, jsonFlag, false, "write the report as JSON")
-	return cmd
+// licenseCheck writes the report of [licenses.Check] under ctx for the repository of s: a line of
+// the kind and the path of each finding, and a line of the counts, or the report as JSON with
+// --json. It returns an error for a finding that is not of the kind unsupported, and when the JSON
+// cannot be written.
+func (s *session) licenseCheck(ctx context.Context, run *gocli.Run[noOptions, licenseCheckOptions]) error {
+	return s.license(func(dir string, c *licenses.Config) error {
+		report, err := licenses.Check(ctx, dir, c)
+		if err != nil {
+			return err
+		}
+		if run.Config().JSON {
+			// A repository whose headers match writes an empty array, not null.
+			report.Findings = append([]licenses.Finding{}, report.Findings...)
+			if err := json.NewEncoder(s.stdout).Encode(report); err != nil {
+				return fmt.Errorf("cli: write the report: %w", err)
+			}
+		} else {
+			write(s.stdout, &report)
+		}
+		failing := func(f licenses.Finding) bool { return f.Kind != licenses.Unsupported }
+		if slices.ContainsFunc(report.Findings, failing) {
+			return errors.New("cli: files have no license header of the section license")
+		}
+		return nil
+	})
 }
 
-// licenseFixCommand returns ergon license fix, which fixes the headers of the repository of s with
-// [licenses.Fix] under ctx, with the year of s.now, and writes its report: a line of each file that
-// it wrote, a line of the kind and the path of each file that it leaves, and a line of the counts.
-// It returns an error for a file with a conflicting header.
-func licenseFixCommand(ctx context.Context, s *session) *cobra.Command {
-	return &cobra.Command{
-		Use:   "fix",
-		Short: licenseFixShort,
-		Long:  licenseFixLong,
-		Args:  usage(cobra.NoArgs),
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			return s.license(func(dir string, c *licenses.Config) error {
-				report, err := licenses.Fix(ctx, dir, c, s.now().Year())
-				write(cmd.OutOrStdout(), &report)
-				if err != nil {
-					return err
-				}
-				conflicting := func(f licenses.Finding) bool { return f.Kind == licenses.Conflict }
-				if slices.ContainsFunc(report.Findings, conflicting) {
-					return errors.New("cli: files have a conflicting license header, which ergon license fix leaves")
-				}
-				return nil
-			})
-		},
-	}
+// licenseFix fixes the headers of the repository of s with [licenses.Fix] under ctx, with the year
+// of s.now, and writes its report: a line of each file that it wrote, a line of the kind and the path
+// of each file that it leaves, and a line of the counts. It returns an error for a file with a
+// conflicting header.
+func (s *session) licenseFix(ctx context.Context, _ *gocli.Run[noOptions, noOptions]) error {
+	return s.license(func(dir string, c *licenses.Config) error {
+		report, err := licenses.Fix(ctx, dir, c, s.now().Year())
+		write(s.stdout, &report)
+		if err != nil {
+			return err
+		}
+		conflicting := func(f licenses.Finding) bool { return f.Kind == licenses.Conflict }
+		if slices.ContainsFunc(report.Findings, conflicting) {
+			return errors.New("cli: files have a conflicting license header, which ergon license fix leaves")
+		}
+		return nil
+	})
 }
 
 // license runs run with the directory of the repository of s and the options of its section

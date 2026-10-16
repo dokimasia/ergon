@@ -1,0 +1,386 @@
+$ ergon release --help
+Usage: ergon release <command> [options]
+
+Plan, write and publish the releases of the packages of the repository.
+
+ergon release releases the packages of the repository with the changesets of
+.changeset and the configuration .changeset/config.json, in the format of
+changesets: a pull request adds a changeset that names the packages it changes
+with their bumps, the version pull request writes the new versions and the
+changelogs, and its merge publishes and tags the packages. The packages are the
+packages that each toolchain of ergon discovers, such as the modules of go.work.
+
+Commands:
+  add           Add a changeset.
+  status        Report the changes of the branch that no changeset releases.
+  version       Write the new versions, the requirements and the changelogs.
+  publish-plan  Write the packages that a publish uploads or tags.
+  pack          Build the artifacts of the packages of a publish plan.
+  publish       Publish and tag the packages of a publish plan.
+  git-tag       Tag the packages whose tags are missing.
+  ci            Run the jobs of the release workflow.
+
+Global options:
+      --flag-debug  Print the value and the source of each option before the command runs.  env ERGON_FLAG_DEBUG
+  -h, --help        Show the help.
+      --version     Show the version.
+[exit 0]
+
+$ ergon release
+Usage: ergon release <command> [options]
+
+Plan, write and publish the releases of the packages of the repository.
+
+ergon release releases the packages of the repository with the changesets of
+.changeset and the configuration .changeset/config.json, in the format of
+changesets: a pull request adds a changeset that names the packages it changes
+with their bumps, the version pull request writes the new versions and the
+changelogs, and its merge publishes and tags the packages. The packages are the
+packages that each toolchain of ergon discovers, such as the modules of go.work.
+
+Commands:
+  add           Add a changeset.
+  status        Report the changes of the branch that no changeset releases.
+  version       Write the new versions, the requirements and the changelogs.
+  publish-plan  Write the packages that a publish uploads or tags.
+  pack          Build the artifacts of the packages of a publish plan.
+  publish       Publish and tag the packages of a publish plan.
+  git-tag       Tag the packages whose tags are missing.
+  ci            Run the jobs of the release workflow.
+
+Global options:
+      --flag-debug  Print the value and the source of each option before the command runs.  env ERGON_FLAG_DEBUG
+  -h, --help        Show the help.
+      --version     Show the version.
+
+ergon: release: missing command
+[exit 2]
+
+$ ergon release ci --help
+Usage: ergon release ci <command> [options]
+
+Run the jobs of the release workflow.
+
+ergon release ci runs the steps of the jobs of the release workflows and of the
+first job of ci.yml in GitHub Actions, and writes their outputs into the file
+of GITHUB_OUTPUT.
+
+Commands:
+  select-mode  Choose the job that the release workflow runs.
+  skip         Decide whether a CI run skips its jobs.
+  verify       Verify that a CI run passed on the content of the commit.
+  version      Write the release and open the version pull request.
+  homebrew     Commit the casks of a publish to the Homebrew tap.
+
+Global options:
+      --flag-debug  Print the value and the source of each option before the command runs.  env ERGON_FLAG_DEBUG
+  -h, --help        Show the help.
+      --version     Show the version.
+[exit 0]
+
+$ ergon release ci
+Usage: ergon release ci <command> [options]
+
+Run the jobs of the release workflow.
+
+ergon release ci runs the steps of the jobs of the release workflows and of the
+first job of ci.yml in GitHub Actions, and writes their outputs into the file
+of GITHUB_OUTPUT.
+
+Commands:
+  select-mode  Choose the job that the release workflow runs.
+  skip         Decide whether a CI run skips its jobs.
+  verify       Verify that a CI run passed on the content of the commit.
+  version      Write the release and open the version pull request.
+  homebrew     Commit the casks of a publish to the Homebrew tap.
+
+Global options:
+      --flag-debug  Print the value and the source of each option before the command runs.  env ERGON_FLAG_DEBUG
+  -h, --help        Show the help.
+      --version     Show the version.
+
+ergon: release ci: missing command
+[exit 2]
+
+$ ergon release add --help
+Usage: ergon release add [options]
+
+Add a changeset.
+
+ergon release add writes a changeset into .changeset: the packages that --bump
+names, each with its bump, and the summary of --message as the entry of their
+changelogs. --empty writes a changeset without packages, which satisfies ergon
+release status for a change that releases nothing. --open opens the changeset
+in the editor of VISUAL or EDITOR after it writes it.
+
+Example:
+  ergon release add --bump go.dokimi.dev/ergon/core=minor -m "Add the Unit type."
+
+Options:
+      --bump string,...  Release of a package, as name=level, where level is major, minor, patch or none.  env ERGON_RELEASE_ADD_BUMP
+      --empty            Write a changeset without packages.                                               env ERGON_RELEASE_ADD_EMPTY
+  -m, --message string   Summary of the changeset.                                                         env ERGON_RELEASE_ADD_MESSAGE
+      --open             Open the changeset in the editor.                                                 env ERGON_RELEASE_ADD_OPEN
+
+Global options:
+      --flag-debug  Print the value and the source of each option before the command runs.  env ERGON_FLAG_DEBUG
+  -h, --help        Show the help.
+      --version     Show the version.
+[exit 0]
+
+$ ergon release status --help
+Usage: ergon release status [options]
+
+Report the changes of the branch that no changeset releases.
+
+ergon release status writes the release plan of the changesets that the branch
+added since --since, the base branch by default. It reports each package that
+the branch changed without a changeset that names it, and each requirement of a
+package on another package of the repository that excludes the current version
+of the other. The exit status is 1 when it reports either. --output writes the
+plan as JSON into a file.
+
+Options:
+      --output string  File that receives the release plan as JSON.            env ERGON_RELEASE_STATUS_OUTPUT
+      --since string   Commit to compare against, the base branch by default.  env ERGON_RELEASE_STATUS_SINCE
+      --verbose        List the changesets of each release.                    env ERGON_RELEASE_STATUS_VERBOSE
+
+Global options:
+      --flag-debug  Print the value and the source of each option before the command runs.  env ERGON_FLAG_DEBUG
+  -h, --help        Show the help.
+      --version     Show the version.
+[exit 0]
+
+$ ergon release version --help
+Usage: ergon release version [options]
+
+Write the new versions, the requirements and the changelogs.
+
+ergon release version writes the release plan of the changesets into the
+repository: the new version of each package, the rewritten requirements of its
+dependents, the entries of the changelogs and the refreshed lockfiles. It
+removes the changesets that it consumed, and restores every file when a step
+fails. Without changesets it rewrites the lockfiles that record the earlier
+content of a package whose release waits for its publish. --dry-run writes the
+plan and changes nothing.
+
+Options:
+      --dry-run  Write the release plan and change nothing.  env ERGON_RELEASE_VERSION_DRY_RUN
+
+Global options:
+      --flag-debug  Print the value and the source of each option before the command runs.  env ERGON_FLAG_DEBUG
+  -h, --help        Show the help.
+      --version     Show the version.
+[exit 0]
+
+$ ergon release publish-plan --help
+Usage: ergon release publish-plan [options]
+
+Write the packages that a publish uploads or tags.
+
+ergon release publish-plan writes the publish plan as JSON: each package whose
+registry lacks its version, and each package whose tag is its release and is
+missing, in chunks of dependency order. --output writes the plan into a file.
+
+Options:
+      --output string  File that receives the publish plan.  env ERGON_RELEASE_PUBLISH_PLAN_OUTPUT
+
+Global options:
+      --flag-debug  Print the value and the source of each option before the command runs.  env ERGON_FLAG_DEBUG
+  -h, --help        Show the help.
+      --version     Show the version.
+[exit 0]
+
+$ ergon release pack --help
+Usage: ergon release pack [options]
+
+Build the artifacts of the packages of a publish plan.
+
+ergon release pack builds the artifacts of each package of the publish plan
+into --out-dir: the files that its registry receives, and the assets of its
+release under assets/<tag>/, such as the archives, the packages and the
+checksums of the commands of a Go module, which GoReleaser builds and signs.
+
+Options:
+      --from-publish-plan string  File that contains the publish plan.    env ERGON_RELEASE_PACK_FROM_PUBLISH_PLAN
+      --out-dir string            Directory that receives the artifacts.  default "dist", env ERGON_RELEASE_PACK_OUT_DIR
+
+Global options:
+      --flag-debug  Print the value and the source of each option before the command runs.  env ERGON_FLAG_DEBUG
+  -h, --help        Show the help.
+      --version     Show the version.
+[exit 0]
+
+$ ergon release publish --help
+Usage: ergon release publish [options]
+
+Publish and tag the packages of a publish plan.
+
+ergon release publish uploads each package of the publish plan whose registry
+lacks its version, and then tags each package at HEAD with the section of its
+changelog as the notes. On a workstation it creates annotated tags and pushes
+them to origin in one push. In GitHub Actions it creates the tags and the
+GitHub Releases through the API of GitHub: each release as a draft, then its
+assets from assets/<tag>/ of --from-pack-dir, and then the publish of the
+draft. A run after a failed upload completes the draft. It refuses a plan whose
+lockfiles record other content of its packages than the working tree, and on a
+workstation a release with assets. --no-git-tag creates no tag.
+
+Options:
+      --from-pack-dir string      Directory of the artifacts to upload.              default "dist", env ERGON_RELEASE_PUBLISH_FROM_PACK_DIR
+      --from-publish-plan string  File that contains the publish plan.               env ERGON_RELEASE_PUBLISH_FROM_PUBLISH_PLAN
+      --no-git-tag                Do not create a tag.                               env ERGON_RELEASE_PUBLISH_NO_GIT_TAG
+      --output string             File that receives the released packages as JSON.  env ERGON_RELEASE_PUBLISH_OUTPUT
+
+Global options:
+      --flag-debug  Print the value and the source of each option before the command runs.  env ERGON_FLAG_DEBUG
+  -h, --help        Show the help.
+      --version     Show the version.
+[exit 0]
+
+$ ergon release git-tag --help
+Usage: ergon release git-tag [options]
+
+Tag the packages whose tags are missing.
+
+ergon release git-tag creates the annotated tag of each package whose tag at
+its version is missing, at HEAD, and pushes the tags to origin in one push. It
+refuses a plan whose lockfiles record other content of its packages than the
+working tree.
+
+Global options:
+      --flag-debug  Print the value and the source of each option before the command runs.  env ERGON_FLAG_DEBUG
+  -h, --help        Show the help.
+      --version     Show the version.
+[exit 0]
+
+$ ergon release ci select-mode --help
+Usage: ergon release ci select-mode [options]
+
+Choose the job that the release workflow runs.
+
+ergon release ci select-mode writes the mode of the release workflow: version
+for a repository with changesets or with lockfiles that record the earlier
+content of a package of the publish plan, publish for a publish plan with a
+package, and none otherwise. It writes each such lockfile. --output writes the
+publish plan into a file for the job publish.
+
+Options:
+      --output string  File that receives the publish plan.  env ERGON_RELEASE_CI_SELECT_MODE_OUTPUT
+
+Global options:
+      --flag-debug  Print the value and the source of each option before the command runs.  env ERGON_FLAG_DEBUG
+  -h, --help        Show the help.
+      --version     Show the version.
+[exit 0]
+
+$ ergon release ci skip --help
+Usage: ergon release ci skip [options]
+
+Decide whether a CI run skips its jobs.
+
+ergon release ci skip writes the output skip of the first job of ci.yml: true
+when a passed run of the workflow --workflow already covers the content of the
+checkout, and false otherwise, through the API of GitHub. A run of a push skips
+when a run passed on its content, as ergon release ci verify finds it. A run
+skips when its commit is a version commit, which ergon release ci version marks
+with the status ergon/version, and a run passed on the parent of that commit.
+--commit names the head of a pull request, whose checkout merges it into its
+base. Without GITHUB_TOKEN or GITHUB_REPOSITORY, and on an error of GitHub, it
+writes a warning and false, so that the run tests the commit.
+
+Options:
+      --commit string    Commit to test, such as the head of a pull request.  env ERGON_RELEASE_CI_SKIP_COMMIT
+      --workflow string  Workflow file whose passed runs count.               default "ci.yml", env ERGON_RELEASE_CI_SKIP_WORKFLOW
+
+Global options:
+      --flag-debug  Print the value and the source of each option before the command runs.  env ERGON_FLAG_DEBUG
+  -h, --help        Show the help.
+      --version     Show the version.
+[exit 0]
+
+$ ergon release ci verify --help
+Usage: ergon release ci verify [options]
+
+Verify that a CI run passed on the content of the commit.
+
+ergon release ci verify finds a run of the workflow --workflow that passed on the
+content of the commit of HEAD, through the API of GitHub: a run of the commit
+itself, such as the run of its push or of its merge group, or a run of the head
+of a pull request that merged the commit with the same tree. It reads each run
+once and waits for none. The exit status is 1 without such a run.
+
+Options:
+      --workflow string  Workflow file whose passed runs count.  default "ci.yml", env ERGON_RELEASE_CI_VERIFY_WORKFLOW
+
+Global options:
+      --flag-debug  Print the value and the source of each option before the command runs.  env ERGON_FLAG_DEBUG
+  -h, --help        Show the help.
+      --version     Show the version.
+[exit 0]
+
+$ ergon release ci version --help
+Usage: ergon release ci version [options]
+
+Write the release and open the version pull request.
+
+ergon release ci version writes the release plan of the changesets as ergon
+release version does. It then commits the changes on the branch
+ergon-release/<base> through the API of GitHub, which signs the commits, and
+opens or updates the version pull request into the base branch. It marks the
+head of the branch with the status ergon/version, with which ergon release ci
+skip recognises the version commit. Without changesets it proposes the
+lockfiles that ergon release version rewrites, and otherwise changes nothing.
+It skips a commit of HEAD that is no longer the head of the base branch, and
+leaves the pull request to the run of the newer head.
+
+Options:
+      --title string  Title of the pull request and of its commits.  default "chore: version packages", env ERGON_RELEASE_CI_VERSION_TITLE
+
+Global options:
+      --flag-debug  Print the value and the source of each option before the command runs.  env ERGON_FLAG_DEBUG
+  -h, --help        Show the help.
+      --version     Show the version.
+[exit 0]
+
+$ ergon release ci homebrew --help
+Usage: ergon release ci homebrew [options]
+
+Commit the casks of a publish to the Homebrew tap.
+
+ergon release ci homebrew commits each cask that ergon release pack wrote for a
+release of the publish plan, casks/<tag>/<name>.rb of --from-pack-dir, to
+Casks/<name>.rb of the tap --tap, through the API of GitHub with the token of
+GITHUB_TOKEN, which needs write access to the contents of the tap. Each cask is
+one commit, which GitHub signs, and a cask that the tap already has is no
+commit.
+
+Example:
+  ergon release ci homebrew --tap dokimasia/homebrew-tap --from-publish-plan publish-plan.json
+
+Options:
+      --from-pack-dir string      Directory of the casks.                      default "dist", env ERGON_RELEASE_CI_HOMEBREW_FROM_PACK_DIR
+      --from-publish-plan string  File that contains the publish plan.         env ERGON_RELEASE_CI_HOMEBREW_FROM_PUBLISH_PLAN
+      --tap string                Tap that receives the casks, as owner/name.  required, env ERGON_RELEASE_CI_HOMEBREW_TAP
+
+Global options:
+      --flag-debug  Print the value and the source of each option before the command runs.  env ERGON_FLAG_DEBUG
+  -h, --help        Show the help.
+      --version     Show the version.
+[exit 0]
+
+$ ergon release add
+ergon: cli: name the packages with --bump, or pass --empty
+[exit 2]
+
+$ ergon release add --bump example.com/demo -m x
+ergon: cli: --bump "example.com/demo", which is not <name>=<major|minor|patch|none>
+[exit 2]
+
+$ ergon release add --bump example.com/demo=huge -m x
+ergon: cli: --bump "example.com/demo=huge", which is not <name>=<major|minor|patch|none>
+[exit 2]
+
+$ ergon release ci homebrew
+ergon: release ci homebrew: missing --tap
+[exit 2]

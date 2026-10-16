@@ -16,8 +16,8 @@ snapshot:
   version_template: "{{ .Env.ERGON_VERSION }}"
 {{%- if .Completions %}}
 
-# Each cobra program writes its completions of bash, zsh and fish, which its archives, packages and
-# cask contain.
+# Each command with completions writes the scripts of bash, zsh and fish with its command
+# completion, and its archives, packages and cask contain them.
 before:
   hooks:
 {{%- range .Commands %}}{{% if .Completions %}}

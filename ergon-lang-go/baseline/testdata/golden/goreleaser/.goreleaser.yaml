@@ -15,8 +15,8 @@ dist: dist/goreleaser/demo
 snapshot:
   version_template: "{{ .Env.ERGON_VERSION }}"
 
-# Each cobra program writes its completions of bash, zsh and fish, which its archives, packages and
-# cask contain.
+# Each command with completions writes the scripts of bash, zsh and fish with its command
+# completion, and its archives, packages and cask contain them.
 before:
   hooks:
     - sh -c 'mkdir -p dist/completions/ergon && for s in bash zsh fish; do go -C . run ./cmd/ergon completion "$s" > "dist/completions/ergon/ergon.$s"; done'

@@ -1,0 +1,122 @@
+$ ergon license --help
+Usage: ergon license <command> [options]
+
+Add and check the license header of every file.
+
+ergon license adds and checks the license header of each file of the
+repository that has a comment syntax: the copyright of the owner and the SPDX
+identifier of the license, as the section license of .ergon.yaml states them.
+It reads the files that git tracks or would track, in the repository of the
+working directory or of the nearest of its parents with .ergon/init.lock. It
+skips the files that the section excludes, the changesets of .changeset, the
+files that a tool generated or that ergon init manages, and the files without
+a comment syntax.
+
+A header states the owner and the license, such as:
+
+  // Copyright Example B.V. 2026
+  // SPDX-License-Identifier: MIT
+
+The licenses are:
+
+  0BSD, AFL-3.0, AGPL-3.0-only, AGPL-3.0-or-later, Apache-2.0, Artistic-2.0,
+  BlueOak-1.0.0, BSD-2-Clause, BSD-2-Clause-Patent, BSD-3-Clause,
+  BSD-3-Clause-Clear, BSD-4-Clause, BSL-1.0, BUSL-1.1, CC0-1.0, CECILL-2.1,
+  ECL-2.0, EPL-1.0, EPL-2.0, EUPL-1.1, EUPL-1.2, GPL-2.0-only, GPL-2.0-or-later,
+  GPL-3.0-only, GPL-3.0-or-later, ISC, LGPL-2.1-only, LGPL-2.1-or-later,
+  LGPL-3.0-only, LGPL-3.0-or-later, MIT, MIT-0, MPL-2.0, MS-PL, MS-RL,
+  MulanPSL-2.0, NCSA, OSL-3.0, PostgreSQL, Unlicense, UPL-1.0, Vim, WTFPL, Zlib
+
+Commands:
+  check  Report the files whose license header differs from the configuration.
+  fix    Add the missing license headers and replace the outdated ones.
+
+Global options:
+      --flag-debug  Print the value and the source of each option before the command runs.  env ERGON_FLAG_DEBUG
+  -h, --help        Show the help.
+      --version     Show the version.
+[exit 0]
+
+$ ergon license
+Usage: ergon license <command> [options]
+
+Add and check the license header of every file.
+
+ergon license adds and checks the license header of each file of the
+repository that has a comment syntax: the copyright of the owner and the SPDX
+identifier of the license, as the section license of .ergon.yaml states them.
+It reads the files that git tracks or would track, in the repository of the
+working directory or of the nearest of its parents with .ergon/init.lock. It
+skips the files that the section excludes, the changesets of .changeset, the
+files that a tool generated or that ergon init manages, and the files without
+a comment syntax.
+
+A header states the owner and the license, such as:
+
+  // Copyright Example B.V. 2026
+  // SPDX-License-Identifier: MIT
+
+The licenses are:
+
+  0BSD, AFL-3.0, AGPL-3.0-only, AGPL-3.0-or-later, Apache-2.0, Artistic-2.0,
+  BlueOak-1.0.0, BSD-2-Clause, BSD-2-Clause-Patent, BSD-3-Clause,
+  BSD-3-Clause-Clear, BSD-4-Clause, BSL-1.0, BUSL-1.1, CC0-1.0, CECILL-2.1,
+  ECL-2.0, EPL-1.0, EPL-2.0, EUPL-1.1, EUPL-1.2, GPL-2.0-only, GPL-2.0-or-later,
+  GPL-3.0-only, GPL-3.0-or-later, ISC, LGPL-2.1-only, LGPL-2.1-or-later,
+  LGPL-3.0-only, LGPL-3.0-or-later, MIT, MIT-0, MPL-2.0, MS-PL, MS-RL,
+  MulanPSL-2.0, NCSA, OSL-3.0, PostgreSQL, Unlicense, UPL-1.0, Vim, WTFPL, Zlib
+
+Commands:
+  check  Report the files whose license header differs from the configuration.
+  fix    Add the missing license headers and replace the outdated ones.
+
+Global options:
+      --flag-debug  Print the value and the source of each option before the command runs.  env ERGON_FLAG_DEBUG
+  -h, --help        Show the help.
+      --version     Show the version.
+
+ergon: license: missing command
+[exit 2]
+
+$ ergon license check --help
+Usage: ergon license check [options]
+
+Report the files whose license header differs from the configuration.
+
+ergon license check reports each file whose license header is missing, states
+another owner or license, or has a line that is neither a copyright notice nor
+an SPDX tag nor empty. It does not write a file. It prints the problem and the
+path of each such file, and then the number of files that it checked and
+skipped. A header accepts any year, list of years or range of years. The exit
+status is 1 when it reports a missing, outdated or conflicting header.
+
+Example:
+  ergon license check --json
+
+Options:
+      --json  Write the report as JSON.  env ERGON_LICENSE_CHECK_JSON
+
+Global options:
+      --flag-debug  Print the value and the source of each option before the command runs.  env ERGON_FLAG_DEBUG
+  -h, --help        Show the help.
+      --version     Show the version.
+[exit 0]
+
+$ ergon license fix --help
+Usage: ergon license fix [options]
+
+Add the missing license headers and replace the outdated ones.
+
+ergon license fix adds the license header to each file without one, with the
+current year, and replaces each header that states another owner or license,
+with its years. It keeps a preamble such as a shebang line above the header. It
+prints the path of each file that it wrote, then the problem and the path of
+each file that it leaves, and then the number of files that it checked and
+skipped. The exit status is 1 when a file has a header with a line that is
+neither a copyright notice nor an SPDX tag nor empty, which the command leaves.
+
+Global options:
+      --flag-debug  Print the value and the source of each option before the command runs.  env ERGON_FLAG_DEBUG
+  -h, --help        Show the help.
+      --version     Show the version.
+[exit 0]

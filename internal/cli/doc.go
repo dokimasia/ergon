@@ -1,12 +1,12 @@
 // Copyright Dokimasia B.V. 2026
 // SPDX-License-Identifier: MIT
 
-// Package cli runs the command line of ergon, with cobra for the commands and viper for the
-// configuration.
+// Package cli runs the command line of ergon on go.stealthscale.io/cli.
 //
-// [Run] builds the root command, runs it over the arguments under the caller's context, and
-// returns the exit status. The help lists the languages of the catalog that the caller's
-// registration fills.
+// [Program] is what ergon needs of the process that runs it, the registration of its languages and
+// its version. [Program.Main] runs the command line of a [gocli.Env] under the caller's context and
+// returns the exit status, as the method Main of a program of go-cli does. The help lists the
+// languages of the catalog that the registration fills.
 //
 // # Commands
 //
@@ -31,37 +31,38 @@
 //   - ergon tool run installs and runs a tool of a section of .ergon.yaml with
 //     [go.dokimi.dev/ergon/service/tool], in the working directory, and exits with the exit status
 //     of the tool.
+//   - ergon completion writes the completion script of a shell. go-cli adds the command.
 //
 // ergon license and ergon tool work on the repository of the working directory or of the nearest
 // of its parents with .ergon/init.lock, so a target of the Makefile that runs in a directory of
 // the repository, such as a module of Go, finds the options.
 //
-// # Configuration
+// # Options
 //
-// Before a command runs, the root command resolves the working directory with the Getwd function
-// of the [Process], and reads the configuration file as YAML: the file that --config names, or
-// .ergon.yaml in the working directory. A missing .ergon.yaml is no error. ergon init, ergon
-// license and ergon tool read no configuration through viper, because they read the options of
-// .ergon.yaml through the baseline of ergon init.
+// The options of each command are the fields of a struct, from which go-cli derives the flag and
+// the variable of the environment of each option, such as --owner and ERGON_INIT_NEW_OWNER. A flag
+// replaces the value of the variable. The commands read the options of .ergon.yaml through the
+// baseline of ergon init, and no option of the command line comes from a file. The hook of the app
+// resolves the working directory with the Getwd function of the [Program] before a command runs.
 //
 // # Errors
 //
-// Run writes every error to standard error after the name of the program. An error of the
-// command line itself, such as an unknown command or flag, a missing required flag, or a section
-// or a tool that ergon tool run does not find, ends with a pointer to the help and the exit status
-// 2. Every other error has the exit status 1, among them a managed file that ergon init check finds
-// edited or outdated and a file without the license header of the section license. A tool that
-// ergon tool run runs sets the exit status itself.
+// Main writes every error to standard error after the name of the program. An error of the command
+// line itself, such as an unknown command or flag, a missing required flag, or a section or a tool
+// that ergon tool run does not find, has the exit status 2. A command line that ends at a command
+// without its subcommand, such as ergon init, writes the help of that command first. Every other
+// error has the exit status 1, among them a managed file that ergon init check finds edited or
+// outdated and a file without the license header of the section license. A tool that ergon tool run
+// runs sets the exit status itself.
 //
 // # Dependency position
 //
-// Imports the standard library, github.com/spf13/cobra, github.com/spf13/viper,
-// [go.dokimi.dev/ergon/core/changeset], [go.dokimi.dev/ergon/core/language],
-// [go.dokimi.dev/ergon/core/option], [go.dokimi.dev/ergon/core/spdx],
-// [go.dokimi.dev/ergon/core/version], [go.dokimi.dev/ergon/core/workspace],
-// [go.dokimi.dev/ergon/service/baseline] with its producers common and github and its package
-// lock, [go.dokimi.dev/ergon/service/forge], [go.dokimi.dev/ergon/service/licenses] with its
-// producer of the license files, [go.dokimi.dev/ergon/service/pin],
-// [go.dokimi.dev/ergon/service/release], [go.dokimi.dev/ergon/service/tool] and
-// [go.dokimi.dev/ergon/service/vcs]. cmd/ergon imports it.
+// Imports the standard library, go.stealthscale.io/cli, [go.dokimi.dev/ergon/core/changeset],
+// [go.dokimi.dev/ergon/core/language], [go.dokimi.dev/ergon/core/option],
+// [go.dokimi.dev/ergon/core/spdx], [go.dokimi.dev/ergon/core/version],
+// [go.dokimi.dev/ergon/core/workspace], [go.dokimi.dev/ergon/service/baseline] with its producers
+// common and github and its package lock, [go.dokimi.dev/ergon/service/forge],
+// [go.dokimi.dev/ergon/service/licenses] with its producer of the license files,
+// [go.dokimi.dev/ergon/service/pin], [go.dokimi.dev/ergon/service/release],
+// [go.dokimi.dev/ergon/service/tool] and [go.dokimi.dev/ergon/service/vcs]. cmd/ergon imports it.
 package cli

@@ -15,7 +15,7 @@ import (
 func TestRepository(t *testing.T) {
 	t.Parallel()
 
-	t.Run("Run", func(t *testing.T) {
+	t.Run("Main", func(t *testing.T) {
 		t.Parallel()
 
 		t.Run("license check reads the repository of a parent directory with a lock", func(t *testing.T) {

@@ -238,8 +238,8 @@ func TestCommand(t *testing.T) {
 	})
 }
 
-// ergonCommand returns a new valid command of the cases: ergon of the root module, a cobra program
-// with every package and a cask, on every platform.
+// ergonCommand returns a new valid command of the cases: ergon of the root module, a command with
+// completions, every package and a cask, on every platform.
 func ergonCommand() baseline.Command {
 	return baseline.Command{
 		Name:        "ergon",

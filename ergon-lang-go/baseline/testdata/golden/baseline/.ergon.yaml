@@ -118,8 +118,9 @@ go:
   # packages and cask; module, the directory of the module in go.work, . for the root; main, the
   # package of the command in the module; description, one line, and for a cask one that brew audit
   # accepts, such as one without a full stop at its end; platforms, every platform when empty;
-  # completions, true for a cobra program; packages, from deb, rpm and apk; homebrew, true for a
-  # cask in homebrew.tap; license, the license of the repository when empty.
+  # completions, true for a command whose command completion writes the scripts of bash, zsh and
+  # fish, as in a program of cobra or of go.stealthscale.io/cli; packages, from deb, rpm and apk;
+  # homebrew, true for a cask in homebrew.tap; license, the license of the repository when empty.
   binaries: []
   # The options of the casks of the commands under binaries whose homebrew is true.
   homebrew:

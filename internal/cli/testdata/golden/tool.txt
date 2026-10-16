@@ -1,0 +1,167 @@
+$ ergon tool --help
+Usage: ergon tool <command> [options]
+
+Run the tools that the sections of .ergon.yaml name.
+
+ergon tool runs the tools that the sections of .ergon.yaml name, at the
+versions that they name. Every target of the Makefile and every hook of the
+baseline of ergon init runs its tools this way.
+
+Commands:
+  run    Install a tool of a section and run it.
+  prune  Remove the tools that no section of .ergon.yaml names.
+  ci     Run the jobs that keep the tools of ergon in GitHub Actions.
+
+Global options:
+      --flag-debug  Print the value and the source of each option before the command runs.  env ERGON_FLAG_DEBUG
+  -h, --help        Show the help.
+      --version     Show the version.
+[exit 0]
+
+$ ergon tool
+Usage: ergon tool <command> [options]
+
+Run the tools that the sections of .ergon.yaml name.
+
+ergon tool runs the tools that the sections of .ergon.yaml name, at the
+versions that they name. Every target of the Makefile and every hook of the
+baseline of ergon init runs its tools this way.
+
+Commands:
+  run    Install a tool of a section and run it.
+  prune  Remove the tools that no section of .ergon.yaml names.
+  ci     Run the jobs that keep the tools of ergon in GitHub Actions.
+
+Global options:
+      --flag-debug  Print the value and the source of each option before the command runs.  env ERGON_FLAG_DEBUG
+  -h, --help        Show the help.
+      --version     Show the version.
+
+ergon: tool: missing command
+[exit 2]
+
+$ ergon tool ci --help
+Usage: ergon tool ci <command> [options]
+
+Run the jobs that keep the tools of ergon in GitHub Actions.
+
+ergon tool ci runs the steps of the jobs of the managed workflows that keep the
+tool directory of ergon in the cache of GitHub Actions.
+
+Commands:
+  prune  Delete the tool caches that newer caches replaced.
+
+Global options:
+      --flag-debug  Print the value and the source of each option before the command runs.  env ERGON_FLAG_DEBUG
+  -h, --help        Show the help.
+      --version     Show the version.
+[exit 0]
+
+$ ergon tool ci
+Usage: ergon tool ci <command> [options]
+
+Run the jobs that keep the tools of ergon in GitHub Actions.
+
+ergon tool ci runs the steps of the jobs of the managed workflows that keep the
+tool directory of ergon in the cache of GitHub Actions.
+
+Commands:
+  prune  Delete the tool caches that newer caches replaced.
+
+Global options:
+      --flag-debug  Print the value and the source of each option before the command runs.  env ERGON_FLAG_DEBUG
+  -h, --help        Show the help.
+      --version     Show the version.
+
+ergon: tool ci: missing command
+[exit 2]
+
+$ ergon tool run --help
+Usage: ergon tool run [options] TOOL [ARGUMENTS...]
+
+Install a tool of a section and run it.
+
+ergon tool run installs the tool that a section of .ergon.yaml names, unless
+the cache has it, and runs it in the working directory with the arguments that
+follow the tool. It installs the tool under ergon/tools in the cache directory
+of the user, and checks a release binary against the digest that the section
+states for the platform. It reads the options of the repository of the working
+directory or of the nearest of its parents with .ergon/init.lock.
+
+The exit status is the exit status of the tool. It is 1 when the tool does not
+install, and 2 when the section or the tool does not exist.
+
+Example:
+  ergon tool run go.golangci-lint -- run ./...
+
+Arguments:
+      TOOL       Tool to run, as <section>.<tool>.
+      ARGUMENTS  Arguments of the tool. Pass them after --.  default ""
+
+Global options:
+      --flag-debug  Print the value and the source of each option before the command runs.  env ERGON_FLAG_DEBUG
+  -h, --help        Show the help.
+      --version     Show the version.
+[exit 0]
+
+$ ergon tool prune --help
+Usage: ergon tool prune [options]
+
+Remove the tools that no section of .ergon.yaml names.
+
+ergon tool prune removes each file from ergon/tools in the cache directory of
+the user that installs no tool of the sections of .ergon.yaml at the version
+that they name: the earlier versions of the tools, the programs of a Go module
+for another version of the go command, the programs of golangci-lint for other
+plugins, and the files of an install that did not finish. It also removes the
+tools of other repositories that share the directory. Each job of the managed
+workflows that keeps the tools of ergon in the cache of GitHub Actions runs it
+before the cache saves the directory.
+
+Global options:
+      --flag-debug  Print the value and the source of each option before the command runs.  env ERGON_FLAG_DEBUG
+  -h, --help        Show the help.
+      --version     Show the version.
+[exit 0]
+
+$ ergon tool ci prune --help
+Usage: ergon tool ci prune [options]
+
+Delete the tool caches that newer caches replaced.
+
+ergon tool ci prune deletes each cache of the tools of ergon in GitHub Actions
+that a newer cache of the same job replaced, through the API of GitHub with the
+token of GITHUB_TOKEN, which needs the permission actions: write. A job saves a
+cache under a new key for each change of the files of its key, and restores
+only the newest cache of its own when its key misses. The caches of a branch and
+of a pull request are separate.
+
+Global options:
+      --flag-debug  Print the value and the source of each option before the command runs.  env ERGON_FLAG_DEBUG
+  -h, --help        Show the help.
+      --version     Show the version.
+[exit 0]
+
+$ ergon tool run
+ergon: tool run: missing argument TOOL
+[exit 2]
+
+$ ergon tool run biome
+ergon: cli: "biome", which is not <section>.<tool>
+[exit 2]
+
+$ ergon tool run js.prettier
+ergon: tool: the section names no such tool: js.prettier, which is none of js.biome
+[exit 2]
+
+$ ergon tool run go.vet
+ergon: baseline: no producer of the repository has the section: "go"
+[exit 2]
+
+$ ergon tool prune main
+ergon: tool prune: unexpected argument "main"
+[exit 2]
+
+$ ergon tool ci prune main
+ergon: tool ci prune: unexpected argument "main"
+[exit 2]

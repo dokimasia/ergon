@@ -139,9 +139,9 @@ func TestGoReleaser(t *testing.T) {
 	})
 }
 
-// commands returns new commands of the cases: ergon, a cobra program of the root module with every
-// package and a cask, a second command of the root module, and assertlint of the module lint on two
-// platforms.
+// commands returns new commands of the cases: ergon, a command of the root module with completions,
+// every package and a cask, a second command of the root module, and assertlint of the module lint
+// on two platforms.
 func commands() []baseline.Command {
 	return []baseline.Command{
 		{

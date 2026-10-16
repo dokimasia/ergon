@@ -29,11 +29,13 @@ import (
 	"go.dokimi.dev/assert"
 	"go.dokimi.dev/assert/expect"
 	"go.dokimi.dev/assert/files"
+	"go.dokimi.dev/assert/golden"
 	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/core/option"
 	"go.dokimi.dev/ergon/core/workspace"
 	"go.dokimi.dev/ergon/internal/cli"
 	"go.dokimi.dev/ergon/service/vcs/vcstest"
+	"go.stealthscale.io/cli/clitest"
 )
 
 // The releases of ergon in the upgrade cases: the newest release of the major version of the
@@ -86,71 +88,14 @@ const (
 // dev is the version of a build of ergon without a release.
 var dev = cli.Version{Release: "dev", Full: "dev"}
 
-// native is the platform of the test, which the process of each case states.
-var native = option.Platform(runtime.GOOS + "/" + runtime.GOARCH)
-
-// upgradeHelp is the help of ergon init upgrade, pinned because a person reads it.
-const upgradeHelp = `ergon init upgrade moves the repository to the baseline of the newest release
-of ergon: the highest release of go.dokimi.dev/ergon that the first module
-proxy of GOPROXY that is a URL lists, of the major version of this ergon, or of
-any major version with --major. When it is newer than this ergon, the command
-installs it into the cache of ergon tool run, checks its archive against the
-checksums.txt of the release, and runs its ergon init upgrade, whose exit
-status it returns.
-
-The newest release runs ergon init sync, and then prints each pin of
-.ergon.yaml whose version differs from the baseline. A build of ergon without a
-release runs the upgrade itself, and refuses a lock that a release wrote. A
-release refuses a lock that such a build wrote.
-
-Usage:
-  ergon init upgrade [flags]
-
-Flags:
-      --force   overwrite the managed files that were edited by hand
-      --major   take a release of a later major version
-
-Global Flags:
-      --config file   read the configuration from file (default ".ergon.yaml")
-  -h, --help          show the help of the command
-`
-
-// initCIHelp is the help of ergon init ci, pinned because a person reads it.
-const initCIHelp = `ergon init ci runs the job of the workflow baseline.yml in GitHub Actions.
-
-Usage:
-  ergon init ci [flags]
-  ergon init ci [command]
-
-Available Commands:
-  upgrade     Upgrade ergon and open the pull request of the change
-
-Global Flags:
-      --config file   read the configuration from file (default ".ergon.yaml")
-  -h, --help          show the help of the command
-
-Use "ergon init ci [command] --help" for more information about a command.
-`
-
-// ciUpgradeHelp is the help of ergon init ci upgrade, pinned because a person reads it.
-const ciUpgradeHelp = `ergon init ci upgrade upgrades the repository as ergon init upgrade does. When
-the sync changes a file, it writes a changeset without packages, commits the
-changes on the branch ergon-baseline/<base> through the API of GitHub, which
-signs the commits, and opens or updates the pull request into the base branch
-of .changeset/config.json. The exit status is 1 after it proposed the files of a
-sync that left a managed file that was edited by hand.
-
-Usage:
-  ergon init ci upgrade [flags]
-
-Flags:
-      --force   overwrite the managed files that were edited by hand
-      --major   take a release of a later major version
-
-Global Flags:
-      --config file   read the configuration from file (default ".ergon.yaml")
-  -h, --help          show the help of the command
-`
+// upgradeRuns are the command lines of the transcript of ergon init upgrade and ergon init ci
+// upgrade.
+var upgradeRuns = []clitest.Input{
+	{Args: []string{"init", "upgrade", "--help"}},
+	{Args: []string{"init", "ci", "--help"}},
+	{Args: []string{"init", "ci"}},
+	{Args: []string{"init", "ci", "upgrade", "--help"}},
+}
 
 // The archives of ergon of the cases, each built once: one with the program ergon, and one with the
 // program ergon.exe of Windows.
@@ -271,31 +216,14 @@ func (b *body) Close() error {
 func TestUpgrade(t *testing.T) {
 	t.Parallel()
 
-	t.Run("Run", func(t *testing.T) {
+	t.Run("Main", func(t *testing.T) {
 		t.Parallel()
 
-		help := []struct {
-			name   string
-			args   []string
-			stdout string
-		}{
-			{name: "writes the help of init upgrade", args: []string{"init", "upgrade", "--help"}, stdout: upgradeHelp},
-			{name: "writes the help of init ci", args: []string{"init", "ci", "--help"}, stdout: initCIHelp},
-			{
-				name:   "writes the help of init ci upgrade",
-				args:   []string{"init", "ci", "upgrade", "--help"},
-				stdout: ciUpgradeHelp,
-			},
-		}
-		for _, tt := range help {
-			t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
-				status, stdout, stderr := run(t, t.TempDir(), tt.args...)
-				assert.Equal(t, status, statusOK, "the exit status")
-				assert.Equal(t, stdout, tt.stdout, "the standard output")
-				assert.Empty(t, stderr, "the standard error")
-			})
-		}
+		t.Run("writes the transcript of the runs", func(t *testing.T) {
+			t.Parallel()
+			got := clitest.Transcript(t.Context(), "ergon", program(t.TempDir(), register).Main, upgradeRuns...)
+			golden.Match(t, "upgrade.txt", got, golden.ShouldUpdate())
+		})
 
 		t.Run("starts the newest release of the major version with the arguments of the process", func(t *testing.T) {
 			t.Parallel()
@@ -370,16 +298,11 @@ func TestUpgrade(t *testing.T) {
 		t.Run("starts the program ergon.exe of the archive of Windows", func(t *testing.T) {
 			t.Parallel()
 			env := released(t, &upstream{versions: []string{"v" + newest}}, option.WindowsAMD64)
-			var stdout, stderr bytes.Buffer
-			p := upgradeProcess(t, initialized(t), env, &stdout, &stderr, "init", "upgrade")
+			p := upgradeProgram(t, initialized(t), register)
 			p.Platform = option.WindowsAMD64
-			assert.Equal(t, cli.Run(t.Context(), p, register, version), statusOK, "the exit status: "+stderr.String())
-			assert.Equal(
-				t,
-				stdout.String(),
-				"ergon init upgrade\n"+upgradeEnv+"="+newest+"\n",
-				"the output of the release",
-			)
+			res := clitest.Main(t.Context(), p.Main, upgradeInput(env, "init", "upgrade"))
+			assert.Equal(t, res.Status, statusOK, "the exit status: "+res.Stderr)
+			assert.Equal(t, res.Stdout, "ergon init upgrade\n"+upgradeEnv+"="+newest+"\n", "the output of the release")
 		})
 
 		t.Run("returns 1 for a baseline whose overrides do not resolve", func(t *testing.T) {
@@ -388,10 +311,14 @@ func TestUpgrade(t *testing.T) {
 			status, _, stderr := runWith(t, registerGamma, dir,
 				slices.Concat([]string{"init", "new", "--language", string(gamma)}, required)...)
 			assert.Equal(t, status, statusOK, "the exit status of init new: "+stderr)
-			var stdout, errs bytes.Buffer
-			p := upgradeProcess(t, dir, map[string]string{upgradeEnv: newest}, &stdout, &errs, "init", "upgrade")
-			assert.Equal(t, cli.Run(t.Context(), p, registerGamma, version), statusFailure, "the exit status")
-			assert.HasPrefix(t, errs.String(), "ergon: pin: invalid source tag: gamma.make", "the standard error")
+			p := upgradeProgram(t, dir, registerGamma)
+			res := clitest.Main(
+				t.Context(),
+				p.Main,
+				upgradeInput(map[string]string{upgradeEnv: newest}, "init", "upgrade"),
+			)
+			assert.Equal(t, res.Status, statusFailure, "the exit status")
+			assert.HasPrefix(t, res.Stderr, "ergon: pin: invalid source tag: gamma.make", "the standard error")
 		})
 
 		t.Run("reads the newest release from the first module proxy of GOPROXY that is a URL", func(t *testing.T) {
@@ -666,13 +593,13 @@ func TestUpgrade(t *testing.T) {
 		t.Run("returns 1 for a cache directory that cannot be found", func(t *testing.T) {
 			t.Parallel()
 			env := released(t, &upstream{versions: []string{"v" + newest}}, native)
-			var stdout, stderr bytes.Buffer
-			p := upgradeProcess(t, initialized(t), env, &stdout, &stderr, "init", "upgrade")
+			p := upgradeProgram(t, initialized(t), register)
 			// The error comes with a directory of the test, which a run that went on would install into.
 			cache := t.TempDir()
 			p.CacheDir = func() (string, error) { return cache, errCache }
-			assert.Equal(t, cli.Run(t.Context(), p, register, version), statusFailure, "the exit status")
-			assert.Equal(t, stderr.String(), "ergon: cli: find the cache directory: "+errCache.Error()+"\n",
+			res := clitest.Main(t.Context(), p.Main, upgradeInput(env, "init", "upgrade"))
+			assert.Equal(t, res.Status, statusFailure, "the exit status")
+			assert.Equal(t, res.Stderr, "ergon: cli: find the cache directory: "+errCache.Error()+"\n",
 				"the standard error")
 		})
 
@@ -800,10 +727,10 @@ func TestUpgrade(t *testing.T) {
 				t.Parallel()
 				h := &hub{}
 				dir := committed(t, tt.register, func(dir string) { tt.change(t, dir) }, tt.languages...)
-				var stdout, stderr bytes.Buffer
-				p := upgradeProcess(t, dir, h.start(t), &stdout, &stderr, "init", "ci", "upgrade")
-				assert.Equal(t, cli.Run(t.Context(), p, tt.register, version), statusFailure, "the exit status")
-				expect.HasPrefix(t, stderr.String(), tt.want, "the standard error")
+				p := upgradeProgram(t, dir, tt.register)
+				res := clitest.Main(t.Context(), p.Main, upgradeInput(h.start(t), "init", "ci", "upgrade"))
+				assert.Equal(t, res.Status, statusFailure, "the exit status")
+				expect.HasPrefix(t, res.Stderr, tt.want, "the standard error")
 				expect.Empty(t, h.calls(), "the requests to GitHub")
 			})
 		}
@@ -903,11 +830,11 @@ func TestUpgrade(t *testing.T) {
 			dir := committed(t, register, func(dir string) {
 				assert.NoError(t, os.Remove(filepath.Join(dir, licensePath)), "Remove of the LICENSE")
 			})
-			var stdout, stderr bytes.Buffer
-			p := upgradeProcess(t, dir, h.start(t), &stdout, &stderr, "init", "ci", "upgrade")
+			p := upgradeProgram(t, dir, register)
 			p.Random = iotest.ErrReader(errRandom)
-			assert.Equal(t, cli.Run(t.Context(), p, register, version), statusFailure, "the exit status")
-			assert.Contains(t, stderr.String(), errRandom.Error(), "the standard error")
+			res := clitest.Main(t.Context(), p.Main, upgradeInput(h.start(t), "init", "ci", "upgrade"))
+			assert.Equal(t, res.Status, statusFailure, "the exit status")
+			assert.Contains(t, res.Stderr, errRandom.Error(), "the standard error")
 		})
 	})
 }
@@ -986,35 +913,38 @@ func committed(
 }
 
 // upgrade runs the command line args of the release v of ergon in the working directory dir under
-// ctx, with the variables of env, as upgradeProcess states, and returns the exit status, the
-// standard output and the standard error.
+// ctx, with the variables of env, as upgradeProgram and upgradeInput state, and returns the exit
+// status, the standard output and the standard error.
 func upgrade(
 	ctx context.Context, t *testing.T, v cli.Version, dir string, env map[string]string, args ...string,
 ) (status int, stdout, stderr string) {
 	t.Helper()
-	var out, errs bytes.Buffer
-	status = cli.Run(ctx, upgradeProcess(t, dir, env, &out, &errs, args...), register, v)
-	return status, out.String(), errs.String()
+	p := upgradeProgram(t, dir, register)
+	p.Version = v
+	res := clitest.Main(ctx, p.Main, upgradeInput(env, args...))
+	return res.Status, res.Stdout, res.Stderr
 }
 
-// upgradeProcess returns the process of an upgrade case: the process of a release case with the
-// variables of an upgrade set to empty values and then the variables of env, a cache directory of
-// the test t, and a transport that the test checks for bodies that ergon left open when it ends.
-func upgradeProcess(
-	t *testing.T, dir string, env map[string]string, stdout, stderr io.Writer, args ...string,
-) *cli.Process {
+// upgradeProgram returns the program of an upgrade case in the working directory dir with the
+// registration register: the program of a case with a cache directory of the test t, and a transport
+// that the test checks for bodies that ergon left open when it ends.
+func upgradeProgram(t *testing.T, dir string, register func(*language.Catalog) error) *cli.Program {
 	t.Helper()
-	p := releaseProcess(dir, nil, stdout, stderr, args...)
-	p.Env = append(p.Env, proxyEnv+"=", upgradeEnv+"=", fakeExitEnv+"=")
-	for name, value := range env {
-		p.Env = append(p.Env, name+"="+value)
-	}
+	p := program(dir, register)
 	cache := t.TempDir()
 	p.CacheDir = func() (string, error) { return cache, nil }
 	counted := &transport{base: p.Transport}
 	t.Cleanup(func() { expect.Equal(t, counted.open.Load(), int64(0), "the bodies that ergon left open") })
 	p.Transport = counted
 	return p
+}
+
+// upgradeInput returns the input of an upgrade case: the command line args, and the environment of a
+// release case with the variables of an upgrade set to empty values and then the variables of env.
+func upgradeInput(env map[string]string, args ...string) *clitest.Input {
+	vars := releaseVars(map[string]string{proxyEnv: "", upgradeEnv: "", fakeExitEnv: ""})
+	maps.Copy(vars, env)
+	return &clitest.Input{Args: args, Vars: vars}
 }
 
 // archiveOf returns an archive of ergon whose program name is a copy of the test binary, which acts

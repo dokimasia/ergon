@@ -6,9 +6,7 @@ module go.dokimi.dev/ergon
 go 1.27.2
 
 require (
-	github.com/spf13/cobra v1.10.2
-	github.com/spf13/viper v1.21.0
-	go.dokimi.dev/assert v0.0.0-20261007161809-4abc39fa6683
+	go.dokimi.dev/assert v0.3.0
 	go.dokimi.dev/ergon/core v0.10.0
 	go.dokimi.dev/ergon/lang/bash v0.4.2
 	go.dokimi.dev/ergon/lang/csharp v0.3.2
@@ -22,6 +20,7 @@ require (
 	go.dokimi.dev/ergon/lang/terraform v0.4.2
 	go.dokimi.dev/ergon/lang/typescript v0.3.1
 	go.dokimi.dev/ergon/service v0.11.0
+	go.stealthscale.io/cli v0.5.1
 	go.yaml.in/yaml/v3 v3.0.5
 	golang.org/x/mod v0.41.0
 )
@@ -43,7 +42,6 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/google/licensecheck v0.3.1 // indirect
-	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/kevinburke/ssh_config v1.6.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.4.3 // indirect
@@ -55,6 +53,7 @@ require (
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
+	github.com/spf13/viper v1.21.0 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/ulikunitz/xz v0.5.17 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect

@@ -17,6 +17,7 @@ import (
 	"go.dokimi.dev/ergon/internal/app"
 	"go.dokimi.dev/ergon/internal/buildinfo"
 	"go.dokimi.dev/ergon/internal/cli"
+	gocli "go.stealthscale.io/cli"
 )
 
 func main() {
@@ -29,19 +30,16 @@ func main() {
 func run() int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	p := cli.Process{
+	info := buildinfo.Read()
+	p := cli.Program{
 		Getwd:     os.Getwd,
 		Now:       time.Now,
 		CacheDir:  os.UserCacheDir,
 		Random:    rand.Reader,
-		Stdin:     os.Stdin,
-		Stdout:    os.Stdout,
-		Stderr:    os.Stderr,
 		Transport: http.DefaultTransport,
 		Platform:  option.Platform(runtime.GOOS + "/" + runtime.GOARCH),
-		Args:      os.Args[1:],
-		Env:       os.Environ(),
+		Register:  app.Register,
+		Version:   cli.Version{Release: info.Version, Full: info.String()},
 	}
-	info := buildinfo.Read()
-	return cli.Run(ctx, &p, app.Register, cli.Version{Release: info.Version, Full: info.String()})
+	return p.Main(ctx, gocli.OS())
 }

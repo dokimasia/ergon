@@ -9,7 +9,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"net/http"
 	"os"
@@ -17,7 +16,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/spf13/cobra"
 	"go.dokimi.dev/ergon/core/changeset"
 	"go.dokimi.dev/ergon/core/option"
 	"go.dokimi.dev/ergon/service/baseline"
@@ -26,10 +24,11 @@ import (
 	"go.dokimi.dev/ergon/service/pin"
 	"go.dokimi.dev/ergon/service/release"
 	"go.dokimi.dev/ergon/service/vcs"
+	gocli "go.stealthscale.io/cli"
 )
 
 // majorFlag lets an upgrade take a release of a later major version.
-const majorFlag = "major"
+const majorFlag = "--major"
 
 // The variables of the environment that an upgrade reads.
 const (
@@ -89,10 +88,12 @@ const (
 	upgradeSummary = "Upgrade ergon to "
 )
 
-// The help texts of the upgrade commands.
+// The help texts of the upgrade commands. The first line of each is its summary in the list of the
+// commands of its parent.
 const (
-	upgradeShort = "Move the repository to the baseline of the newest release of ergon"
-	upgradeLong  = `ergon init upgrade moves the repository to the baseline of the newest release
+	upgradeHelp = `Move the repository to the baseline of the newest release of ergon.
+
+ergon init upgrade moves the repository to the baseline of the newest release
 of ergon: the highest release of go.dokimi.dev/ergon that the first module
 proxy of GOPROXY that is a URL lists, of the major version of this ergon, or of
 any major version with --major. When it is newer than this ergon, the command
@@ -105,11 +106,13 @@ The newest release runs ergon init sync, and then prints each pin of
 release runs the upgrade itself, and refuses a lock that a release wrote. A
 release refuses a lock that such a build wrote.`
 
-	initCIShort = "Run the job of the workflow baseline.yml"
-	initCILong  = `ergon init ci runs the job of the workflow baseline.yml in GitHub Actions.`
+	initCIHelp = `Run the job of the workflow baseline.yml.
 
-	ciUpgradeShort = "Upgrade ergon and open the pull request of the change"
-	ciUpgradeLong  = `ergon init ci upgrade upgrades the repository as ergon init upgrade does. When
+ergon init ci runs the job of the workflow baseline.yml in GitHub Actions.`
+
+	ciUpgradeHelp = `Upgrade ergon and open the pull request of the change.
+
+ergon init ci upgrade upgrades the repository as ergon init upgrade does. When
 the sync changes a file, it writes a changeset without packages, commits the
 changes on the branch ergon-baseline/<base> through the API of GitHub, which
 signs the commits, and opens or updates the pull request into the base branch
@@ -147,6 +150,12 @@ func (ergonBinary) Repository() string {
 	return ergonRepository
 }
 
+// upgradeOptions are the options of ergon init upgrade and ergon init ci upgrade.
+type upgradeOptions struct {
+	Major bool `help:"Take a release of a later major version."`
+	Force bool `help:"Overwrite the managed files that were edited by hand."`
+}
+
 // upgraded is what the sync of an upgrade did.
 type upgraded struct {
 	// changes are the files that the sync wrote and removed.
@@ -159,104 +168,80 @@ type upgraded struct {
 	conflicts []string
 }
 
-// upgradeCommand returns ergon init upgrade, which moves the repository of s to the newest release
-// of ergon under ctx: it starts that release with [session.launch], or upgrades the repository
-// itself with [session.upgrade].
-func upgradeCommand(ctx context.Context, s *session) *cobra.Command {
-	var major, force bool
-	cmd := &cobra.Command{
-		Use:   "upgrade",
-		Short: upgradeShort,
-		Long:  upgradeLong,
-		Args:  usage(cobra.NoArgs),
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			launched, err := s.launch(ctx, cmd, major)
-			if err != nil || launched {
-				return err
-			}
-			_, err = s.upgrade(cmd.OutOrStdout(), force)
-			return err
-		},
+// initUpgrade moves the repository of s to the newest release of ergon: it starts that release
+// with [session.launch], or upgrades the repository itself with [session.upgrade].
+func (s *session) initUpgrade(ctx context.Context, run *gocli.Run[noOptions, upgradeOptions]) error {
+	o := run.Config()
+	launched, err := s.launch(ctx, o.Major)
+	if err != nil || launched {
+		return err
 	}
-	cmd.Flags().BoolVar(&major, majorFlag, false, "take a release of a later major version")
-	cmd.Flags().BoolVar(&force, forceFlag, false, "overwrite the managed files that were edited by hand")
-	return cmd
+	_, err = s.upgrade(o.Force)
+	return err
 }
 
-// ciUpgradeCommand returns ergon init ci upgrade, which upgrades the repository of s as ergon init
-// upgrade does under ctx, and proposes the change through the API of GitHub: a changeset without
-// packages, and the pull request from ergon-baseline/<base> into the base branch. For the
-// [release.ErrMoved] of the proposal it writes that it skipped the commit of HEAD. It returns the
-// errors of the environment, of the upgrade and of the proposal, and the error of a sync that left a
-// managed file, which wraps [baseline.ErrConflict], after it proposed the change.
-func ciUpgradeCommand(ctx context.Context, s *session) *cobra.Command {
-	var major, force bool
-	cmd := &cobra.Command{
-		Use:   "upgrade",
-		Short: ciUpgradeShort,
-		Long:  ciUpgradeLong,
-		Args:  usage(cobra.NoArgs),
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			launched, err := s.launch(ctx, cmd, major)
-			if err != nil || launched {
-				return err
-			}
-			client, repo, err := s.forge()
-			if err != nil {
-				return err
-			}
-			config, err := os.ReadFile(filepath.Join(s.dir, filepath.FromSlash(release.ConfigPath)))
-			if err != nil {
-				return fmt.Errorf("cli: read %s, which ergon init seeds: %w", release.ConfigPath, err)
-			}
-			base, err := release.ParseBaseBranch(config)
-			if err != nil {
-				return err
-			}
-			head, err := vcs.Head(ctx, s.dir)
-			if err != nil {
-				return err
-			}
-			out := cmd.OutOrStdout()
-			u, synced := s.upgrade(out, force)
-			if synced != nil && !errors.Is(synced, baseline.ErrConflict) {
-				return synced
-			}
-			if len(u.changes) == 0 {
-				return synced
-			}
-			c := changeset.Changeset{Summary: upgradeSummary + s.release + "."}
-			if c.ID, err = release.ChangesetID(c.Summary, s.random); err != nil {
-				return err
-			}
-			file, err := release.AddChangeset(s.dir, &c)
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(out, "%s %s\n", baseline.Wrote, file)
-			files, deleted, err := release.ChangedFiles(ctx, s.dir)
-			if err != nil {
-				return err
-			}
-			p := release.Proposal{
-				Files: files, Repo: repo, Base: base, Branch: baselineBranch + base, Head: head,
-				Title: upgradeTitle + s.release, Body: upgradeBody(s.release, &u), Deleted: deleted,
-			}
-			number, err := release.Propose(ctx, client, &p)
-			if errors.Is(err, release.ErrMoved) {
-				fmt.Fprintf(out, skippedLine, head, base)
-				return synced
-			}
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(out, "pull request %d\n", number)
-			return synced
-		},
+// ciUpgrade upgrades the repository of s as ergon init upgrade does, and proposes the change through
+// the API of GitHub: a changeset without packages, and the pull request from ergon-baseline/<base>
+// into the base branch. For the [release.ErrMoved] of the proposal it writes that it skipped the
+// commit of HEAD. It returns the errors of the environment, of the upgrade and of the proposal, and
+// the error of a sync that left a managed file, which wraps [baseline.ErrConflict], after it
+// proposed the change.
+func (s *session) ciUpgrade(ctx context.Context, run *gocli.Run[noOptions, upgradeOptions]) error {
+	o := run.Config()
+	launched, err := s.launch(ctx, o.Major)
+	if err != nil || launched {
+		return err
 	}
-	cmd.Flags().BoolVar(&major, majorFlag, false, "take a release of a later major version")
-	cmd.Flags().BoolVar(&force, forceFlag, false, "overwrite the managed files that were edited by hand")
-	return cmd
+	client, repo, err := s.forge()
+	if err != nil {
+		return err
+	}
+	config, err := os.ReadFile(filepath.Join(s.dir, filepath.FromSlash(release.ConfigPath)))
+	if err != nil {
+		return fmt.Errorf("cli: read %s, which ergon init seeds: %w", release.ConfigPath, err)
+	}
+	base, err := release.ParseBaseBranch(config)
+	if err != nil {
+		return err
+	}
+	head, err := vcs.Head(ctx, s.dir)
+	if err != nil {
+		return err
+	}
+	u, synced := s.upgrade(o.Force)
+	if synced != nil && !errors.Is(synced, baseline.ErrConflict) {
+		return synced
+	}
+	if len(u.changes) == 0 {
+		return synced
+	}
+	c := changeset.Changeset{Summary: upgradeSummary + s.release + "."}
+	if c.ID, err = release.ChangesetID(c.Summary, s.random); err != nil {
+		return err
+	}
+	file, err := release.AddChangeset(s.dir, &c)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(s.stdout, "%s %s\n", baseline.Wrote, file)
+	files, deleted, err := release.ChangedFiles(ctx, s.dir)
+	if err != nil {
+		return err
+	}
+	p := release.Proposal{
+		Files: files, Repo: repo, Base: base, Branch: baselineBranch + base, Head: head,
+		Title: upgradeTitle + s.release, Body: upgradeBody(s.release, &u), Deleted: deleted,
+	}
+	number, err := release.Propose(ctx, client, &p)
+	if errors.Is(err, release.ErrMoved) {
+		fmt.Fprintf(s.stdout, skippedLine, head, base)
+		return synced
+	}
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(s.stdout, "pull request %d\n", number)
+	return synced
 }
 
 // launch starts the newest release of ergon with the arguments of the process of s, when it is newer
@@ -266,7 +251,7 @@ func ciUpgradeCommand(ctx context.Context, s *session) *cobra.Command {
 // nothing for a build of ergon without a release, and for a release that an upgrade started. It
 // returns the error of the lookup of the release, of its checksums.txt, and of the runner, which
 // wraps [tool.ErrInstall] for an archive that does not install.
-func (s *session) launch(ctx context.Context, cmd *cobra.Command, major bool) (bool, error) {
+func (s *session) launch(ctx context.Context, major bool) (bool, error) {
 	if s.release == development || s.getenv(upgradeEnv) != "" {
 		return false, nil
 	}
@@ -281,7 +266,7 @@ func (s *session) launch(ctx context.Context, cmd *cobra.Command, major bool) (b
 		return false, err
 	}
 	if res.Major != nil {
-		fmt.Fprintf(cmd.ErrOrStderr(), "%s: ergon %s is a release of a later major version, which --%s takes\n",
+		fmt.Fprintf(s.stderr, "%s: ergon %s is a release of a later major version, which %s takes\n",
 			program, strings.TrimPrefix(res.Major.Version, "v"), majorFlag)
 	}
 	if res.Next == nil {
@@ -294,7 +279,7 @@ func (s *session) launch(ctx context.Context, cmd *cobra.Command, major bool) (b
 		return false, err
 	}
 	newest.SHA256 = map[option.Platform]string{s.platform: digest}
-	runner, err := s.runner(cmd)
+	runner, err := s.runner()
 	if err != nil {
 		return false, err
 	}
@@ -306,11 +291,11 @@ func (s *session) launch(ctx context.Context, cmd *cobra.Command, major bool) (b
 
 // upgrade brings the repository of s to the baseline of the running ergon with
 // [baseline.Repository.Sync] and force, and writes a line of each file that it wrote or removed and
-// of each override to w. It returns them with the managed files that the sync left. It returns an
-// error for a lock that a build of ergon without a release wrote while a release runs, the error of
-// the sync, which is a [baseline.ConflictError] for a managed file that was edited by hand, and the
-// error of the overrides.
-func (s *session) upgrade(w io.Writer, force bool) (upgraded, error) {
+// of each override to the standard output of s. It returns them with the managed files that the
+// sync left. It returns an error for a lock that a build of ergon without a release wrote while a
+// release runs, the error of the sync, which is a [baseline.ConflictError] for a managed file that
+// was edited by hand, and the error of the overrides.
+func (s *session) upgrade(force bool) (upgraded, error) {
 	var u upgraded
 	err := s.open(s.dir, func(r *baseline.Repository) error {
 		if s.release != development {
@@ -326,7 +311,7 @@ func (s *session) upgrade(w io.Writer, force bool) (upgraded, error) {
 		var synced error
 		u.changes, synced = r.Sync(nil, baseline.Options{Force: force})
 		for _, c := range u.changes {
-			fmt.Fprintf(w, "%s %s\n", c.Action, c.Path)
+			fmt.Fprintf(s.stdout, "%s %s\n", c.Action, c.Path)
 		}
 		if conflict, ok := errors.AsType[*baseline.ConflictError](synced); ok {
 			u.conflicts = conflict.Paths
@@ -338,7 +323,7 @@ func (s *session) upgrade(w io.Writer, force bool) (upgraded, error) {
 			return err
 		}
 		for _, o := range u.overrides {
-			fmt.Fprintf(w, "override %s %s, the baseline is %s\n", o.Key, o.Version, o.Baseline)
+			fmt.Fprintf(s.stdout, "override %s %s, the baseline is %s\n", o.Key, o.Version, o.Baseline)
 		}
 		return synced
 	})
