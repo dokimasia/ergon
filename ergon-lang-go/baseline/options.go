@@ -96,7 +96,7 @@ type Options struct {
 // Tools are the tools of the targets of Go.
 type Tools struct {
 	// GolangCILint lints and formats the sources, with the module plugins of the group lint.
-	GolangCILint option.Module `yaml:"golangci-lint" plugins:"lint" doc:"The linter and the formatter of lint-go and fmt-go, with the rules of .golangci.yml, and with the analyzers of lint.analyzers and the module plugins of lint.plugins built in."`
+	GolangCILint option.Module `yaml:"golangci-lint" name:"golangci-lint" plugins:"lint" doc:"The linter and the formatter of lint-go and fmt-go, with the rules of .golangci.yml, and with the analyzers of lint.analyzers and the module plugins of lint.plugins built in."`
 
 	// Govulncheck scans the modules for known vulnerabilities.
 	Govulncheck option.Module `yaml:"govulncheck" doc:"The vulnerability scan of audit-go, which reports a known vulnerability that the code calls."`
@@ -108,7 +108,7 @@ type Tools struct {
 	DokimiMutateGo option.Module `yaml:"dokimi-mutate-go" doc:"The mutation engine of mutate-go."`
 
 	// GoReleaser builds the binaries of the commands.
-	GoReleaser GoReleaser `yaml:"goreleaser" doc:"The release of GoReleaser, which builds, packs and signs the commands of binaries in the job pack of release.yml."`
+	GoReleaser GoReleaser `yaml:"goreleaser" prefix:"goreleaser" doc:"The release of GoReleaser, which builds, packs and signs the commands of binaries in the job pack of release.yml."`
 
 	// Cosign signs the checksums of a release.
 	Cosign Cosign `yaml:"cosign" doc:"The release of cosign, which signs the checksums.txt of each release with the OIDC identity of the workflow, without a key."`

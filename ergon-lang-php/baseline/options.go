@@ -42,16 +42,16 @@ type Options struct {
 // Tools are the tools of the targets of PHP.
 type Tools struct {
 	// PHPStan analyzes the sources.
-	PHPStan option.Composer `yaml:"phpstan" doc:"The static analyzer of lint-php, at its strictest level, with the rules of phpstan.dist.neon."`
+	PHPStan option.Composer `yaml:"phpstan" name:"phpstan" doc:"The static analyzer of lint-php, at its strictest level, with the rules of phpstan.dist.neon."`
 
 	// StrictRules adds the strict rules to PHPStan.
-	StrictRules option.Composer `yaml:"phpstan-strict-rules" doc:"The strict rules of PHPStan, which the extension installer loads."`
+	StrictRules option.Composer `yaml:"phpstan-strict-rules" name:"phpstan-strict-rules" doc:"The strict rules of PHPStan, which the extension installer loads."`
 
 	// ExtensionInstaller loads the extensions of PHPStan that the project of the tools has.
-	ExtensionInstaller option.Composer `yaml:"phpstan-extension-installer" doc:"The plugin of Composer that loads the extensions of PHPStan, such as phpstan-strict-rules."`
+	ExtensionInstaller option.Composer `yaml:"phpstan-extension-installer" name:"phpstan-extension-installer" doc:"The plugin of Composer that loads the extensions of PHPStan, such as phpstan-strict-rules."`
 
 	// PHPCSFixer formats the sources.
-	PHPCSFixer option.Composer `yaml:"php-cs-fixer" program:"php-cs-fixer" doc:"The formatter of fmt-php and lint-php, with the PER coding style."`
+	PHPCSFixer option.Composer `yaml:"php-cs-fixer" name:"php-cs-fixer" program:"php-cs-fixer" doc:"The formatter of fmt-php and lint-php, with the PER coding style."`
 }
 
 // Actions are the pins of the actions of the job check-php.

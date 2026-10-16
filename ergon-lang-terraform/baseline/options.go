@@ -48,7 +48,7 @@ type Options struct {
 // Tools are the tools of the targets of Terraform.
 type Tools struct {
 	// TFLint lints the modules.
-	TFLint TFLint `yaml:"tflint" doc:"The release of tflint, the linter of lint-terraform, with the rules of .tflint.hcl."`
+	TFLint TFLint `yaml:"tflint" prefix:"tflint" doc:"The release of tflint, the linter of lint-terraform, with the rules of .tflint.hcl."`
 
 	// UV runs checkov.
 	UV option.UV `yaml:"uv" doc:"The release of uv, which runs checkov on Python 3.13."`

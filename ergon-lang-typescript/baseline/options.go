@@ -32,7 +32,7 @@ type Options struct {
 // Tools are the tools of the targets of TypeScript.
 type Tools struct {
 	// TypeScript checks the types of the sources.
-	TypeScript option.NPM `yaml:"typescript" program:"tsc" doc:"The type checker of lint-typescript, tsc, with its type-safety options, for the toolkit biome."`
+	TypeScript option.NPM `yaml:"typescript" name:"typescript" program:"tsc" doc:"The type checker of lint-typescript, tsc, with its type-safety options, for the toolkit biome."`
 }
 
 // Validate returns an error that wraps [option.ErrInvalid] for a step of check that TypeScript does
