@@ -20,6 +20,7 @@ import (
 	service "go.dokimi.dev/ergon/service/baseline"
 	"go.dokimi.dev/ergon/service/baseline/baselinetest"
 	"go.dokimi.dev/ergon/service/baseline/github"
+	"go.dokimi.dev/ergon/service/baseline/overlay"
 	"go.dokimi.dev/ergon/service/baseline/render"
 )
 
@@ -94,10 +95,36 @@ func TestBaseline(t *testing.T) {
 					Contains("\ncheck-rust: verify-generate-rust ## Run the gate of Rust\n", "the gate")
 			})
 
+			t.Run("runs the doc tests of the workspace after the tests of every crate", func(t *testing.T) {
+				t.Parallel()
+				expect.That(t, rendered(t, baseline.Producer{}.Options(), "Makefile")).
+					Contains("\nRUST_TEST_ARGS ?= --workspace --all-targets\n", "the tests of every crate").
+					Contains("\n\tcargo test $(RUST_TEST_ARGS)\n\t@if cargo metadata --no-deps --format-version 1 |",
+						"the doc tests after the tests").
+					Contains(` grep -Eq '"kind":\[[^]]*"(lib|rlib|proc-macro)"'; then \`,
+						"the check for a crate whose doc tests cargo runs").
+					Contains("\n\t\tcargo test --workspace --doc; \\\n\tfi\n", "the doc tests of the workspace")
+			})
+
+			t.Run("pins cargo-llvm-cov for the targets of the repository", func(t *testing.T) {
+				t.Parallel()
+				makefile := rendered(t, baseline.Producer{}.Options(), "Makefile")
+				assert.Contains(t, makefile, "\nCARGO_LLVM_COV := $(ERGON) tool run rust.cargo-llvm-cov --\n",
+					"the Makefile")
+			})
+
 			t.Run("renders no target of the generators without a command", func(t *testing.T) {
 				t.Parallel()
 				makefile := rendered(t, baseline.Producer{}.Options(), "Makefile")
 				assert.NotContains(t, makefile, "generate", "the Makefile")
+			})
+
+			t.Run("renders a clippy.toml that a local file merges into without other changes", func(t *testing.T) {
+				t.Parallel()
+				clippy := rendered(t, baseline.Producer{}.Options(), "clippy.toml")
+				got, err := overlay.MergeTOML([]byte(clippy), []byte("too-many-lines-threshold = 80\n"))
+				assert.NoError(t, err, "MergeTOML of the local clippy.toml")
+				assert.Equal(t, string(got), clippy+"too-many-lines-threshold = 80\n", "the merged clippy.toml")
 			})
 		})
 
@@ -109,7 +136,8 @@ func TestBaseline(t *testing.T) {
 				first, _ := baseline.Producer{}.Options().(*baseline.Options)
 				second, _ := baseline.Producer{}.Options().(*baseline.Options)
 				first.Test.Args[0] = "--lib"
-				assert.Equal(t, second.Test.Args, []string{"--all-targets"}, "the arguments of the second value")
+				assert.Equal(t, second.Test.Args, []string{"--workspace", "--all-targets"},
+					"the arguments of the second value")
 			})
 		})
 

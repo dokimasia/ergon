@@ -4,11 +4,14 @@ rust:
   tools:
     # The vulnerability scan of audit-rust, over Cargo.lock.
     cargo-audit: cargo-audit@0.22.2
+    # The coverage tool that a target of .ergon/local/Makefile runs as $(CARGO_LLVM_COV) llvm-cov.
+    # The gate of Rust does not measure coverage.
+    cargo-llvm-cov: cargo-llvm-cov@0.9.1
   # The steps that check-rust runs, in order: lint, test, generate or audit.
   check: [lint, test, audit]
   # test-rust runs cargo test with args.
   test:
-    args: [--all-targets]
+    args: [--workspace, --all-targets]
   # generate-rust runs command with args at the root of the repository. verify-generate-rust, the
   # step generate of check, runs the same and fails when the run changes a file of the repository.
   # Without a command Rust has neither target.

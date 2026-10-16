@@ -5,11 +5,15 @@
 # of check-rust. One run overrides an option on the command line, such as
 # make test-rust RUST_TEST_ARGS=--lib.
 
-# The tools of the Rust targets, which ergon installs at the versions of the section rust.
+# The tools of the Rust targets, which ergon installs at the versions of the section rust. The
+# targets of the baseline do not run CARGO_LLVM_COV. A target of .ergon/local/Makefile runs it to
+# measure the coverage of the tests, such as
+# $(CARGO_LLVM_COV) llvm-cov --workspace --fail-under-lines 90.
 CARGO_AUDIT := $(ERGON) tool run rust.cargo-audit --
+CARGO_LLVM_COV := $(ERGON) tool run rust.cargo-llvm-cov --
 
 # The options of the section rust.
-RUST_TEST_ARGS ?= --all-targets
+RUST_TEST_ARGS ?= --workspace --all-targets
 RUST_AUDIT_IGNORE ?=
 
 .PHONY: fmt-rust lint-rust test-rust audit-rust check-rust
@@ -27,8 +31,11 @@ lint-rust: ## Check the Rust sources with clippy.toml, the pedantic lints and th
 		-D missing_debug_implementations -D unsafe_code -D unused_qualifications
 	RUSTDOCFLAGS="-D warnings -D rustdoc::private_doc_tests -D rustdoc::unescaped_backticks" \
 		cargo doc --workspace --all-features --no-deps
-test-rust: ## Run the Rust tests
+test-rust: ## Run the Rust tests, then the doc tests of the library crates
 	cargo test $(RUST_TEST_ARGS)
+	@if cargo metadata --no-deps --format-version 1 | grep -Eq '"kind":\[[^]]*"(lib|rlib|proc-macro)"'; then \
+		cargo test --workspace --doc; \
+	fi
 audit-rust: ## Scan Cargo.lock for known vulnerabilities
 	$(CARGO_AUDIT) audit $(foreach id,$(RUST_AUDIT_IGNORE),--ignore $(id))
 check-rust: lint-rust test-rust audit-rust ## Run the gate of Rust

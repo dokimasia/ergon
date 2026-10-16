@@ -19,7 +19,7 @@
     {
       "path": "Makefile",
       "producer": "rust",
-      "sha256": "940700764187269c908b3accdccff091c02006a01563f8ff743bab8e308c16b0"
+      "sha256": "e751bc4e21b8b5237765580562cdf66c9dd35a17d91e6a404c4da28d4e255cbe"
     },
     {
       "path": "clippy.toml",
@@ -44,9 +44,11 @@
     "rust.generate.args": [],
     "rust.generate.command": [],
     "rust.test.args": [
+      "--workspace",
       "--all-targets"
     ],
-    "rust.tools.cargo-audit": "cargo-audit@0.22.2"
+    "rust.tools.cargo-audit": "cargo-audit@0.22.2",
+    "rust.tools.cargo-llvm-cov": "cargo-llvm-cov@0.9.1"
   },
   "answers": {
     "name": "demo",

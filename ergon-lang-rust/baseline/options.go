@@ -42,6 +42,9 @@ type Options struct {
 type Tools struct {
 	// CargoAudit scans the dependencies for known vulnerabilities.
 	CargoAudit option.Crate `yaml:"cargo-audit" doc:"The vulnerability scan of audit-rust, over Cargo.lock."`
+
+	// CargoLLVMCov measures the coverage of the tests, in a target that a repository adds.
+	CargoLLVMCov option.Crate `yaml:"cargo-llvm-cov" doc:"The coverage tool that a target of .ergon/local/Makefile runs as $(CARGO_LLVM_COV) llvm-cov. The gate of Rust does not measure coverage."`
 }
 
 // Actions are the pins of the actions of the job check-rust.

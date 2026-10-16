@@ -14,10 +14,14 @@
 // of Cargo.toml, and check-rust, which requires the targets of the steps that the key check of the
 // section names. lint-rust runs rustfmt, clippy with every pedantic lint and the lints of the
 // documentation as errors, and rustdoc. clippy reads no lint level from clippy.toml, so lint-rust
-// sets the levels on the command line. audit-rust runs cargo-audit through ergon tool run, which
-// installs the crate with cargo install --locked. With a command in the key generate, the fragment
-// also renders generate-rust, which runs it, and verify-generate-rust, which fails when it changes
-// a file. A line ##@ Rust starts the group of Rust in make help.
+// sets the levels on the command line. test-rust runs cargo test with the arguments of the
+// section, and then the doc tests of the workspace when cargo metadata lists a library crate. cargo
+// test --all-targets leaves the doc tests out, and cargo test --doc fails for a workspace without a
+// library. audit-rust runs cargo-audit through ergon tool run, which installs the crate with cargo
+// install --locked. CARGO_LLVM_COV runs the cargo-llvm-cov of the section for a target of
+// .ergon/local/Makefile, because the gate does not measure coverage. With a command in the key
+// generate, the fragment also renders generate-rust, which runs it, and verify-generate-rust, which
+// fails when it changes a file. A line ##@ Rust starts the group of Rust in make help.
 //
 // # Options
 //
