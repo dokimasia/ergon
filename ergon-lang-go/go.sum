@@ -32,8 +32,8 @@ github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
 github.com/subosito/gotenv v1.6.0 h1:9NlTDc1FTs4qu0DDq7AEtTPNw6SVm7uBMsUCUjABIf8=
 github.com/subosito/gotenv v1.6.0/go.mod h1:Dk4QP5c2W3ibzajGcXpNraDfq2IrhjMIvMSWPKKo0FU=
-go.dokimi.dev/assert v0.0.0-20261007161809-4abc39fa6683 h1:Y94DTvliVi82NAMmsShaXGjhpYy8zqxeo5Y2mZmYh68=
-go.dokimi.dev/assert v0.0.0-20261007161809-4abc39fa6683/go.mod h1:Mr2lGt+AMXUIuqxAk7aGgGpTbdvFjuCd1qmUt0r091k=
+go.dokimi.dev/assert v0.3.0 h1:YIxocE3ReJ9kxFY/1KDtMK7Pfua4OxHH3SXVsgTI+QU=
+go.dokimi.dev/assert v0.3.0/go.mod h1:NeZvtoRhjUZSooEp8kN1mMakVUowb+EDKFR/YOUey2w=
 go.dokimi.dev/ergon/core v0.10.0 h1:AQxdXgnfVAgl0UJo3mBr8lV7ZH8J8cQTldINPJtdT1A=
 go.dokimi.dev/ergon/core v0.10.0/go.mod h1:P8/0BJdTrjygv6CV0luYVyuk0SVAd7nSkXxCFZp+yzE=
 go.dokimi.dev/ergon/service v0.11.0 h1:7JclDdRxVieyM8DWi+7V/T3e5XrpFYGBZVmMYpgNRHU=
