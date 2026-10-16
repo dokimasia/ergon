@@ -28,16 +28,16 @@ use (
 // the workspace builds before the tag of a version exists.
 replace (
 	go.dokimi.dev/ergon/core v0.11.0 => ./ergon-core
-	go.dokimi.dev/ergon/lang/bash v0.4.3 => ./ergon-lang-bash
-	go.dokimi.dev/ergon/lang/csharp v0.3.3 => ./ergon-lang-csharp
-	go.dokimi.dev/ergon/lang/go v0.7.4 => ./ergon-lang-go
-	go.dokimi.dev/ergon/lang/java v0.4.3 => ./ergon-lang-java
-	go.dokimi.dev/ergon/lang/javascript v0.4.2 => ./ergon-lang-javascript
-	go.dokimi.dev/ergon/lang/kotlin v0.3.10 => ./ergon-lang-kotlin
-	go.dokimi.dev/ergon/lang/php v0.4.3 => ./ergon-lang-php
-	go.dokimi.dev/ergon/lang/python v0.5.0 => ./ergon-lang-python
-	go.dokimi.dev/ergon/lang/rust v0.5.0 => ./ergon-lang-rust
-	go.dokimi.dev/ergon/lang/terraform v0.4.3 => ./ergon-lang-terraform
-	go.dokimi.dev/ergon/lang/typescript v0.3.2 => ./ergon-lang-typescript
-	go.dokimi.dev/ergon/service v0.12.0 => ./ergon-service
+	go.dokimi.dev/ergon/lang/bash v0.4.4 => ./ergon-lang-bash
+	go.dokimi.dev/ergon/lang/csharp v0.3.4 => ./ergon-lang-csharp
+	go.dokimi.dev/ergon/lang/go v0.7.5 => ./ergon-lang-go
+	go.dokimi.dev/ergon/lang/java v0.4.4 => ./ergon-lang-java
+	go.dokimi.dev/ergon/lang/javascript v0.4.3 => ./ergon-lang-javascript
+	go.dokimi.dev/ergon/lang/kotlin v0.3.11 => ./ergon-lang-kotlin
+	go.dokimi.dev/ergon/lang/php v0.4.4 => ./ergon-lang-php
+	go.dokimi.dev/ergon/lang/python v0.5.1 => ./ergon-lang-python
+	go.dokimi.dev/ergon/lang/rust v0.5.1 => ./ergon-lang-rust
+	go.dokimi.dev/ergon/lang/terraform v0.4.4 => ./ergon-lang-terraform
+	go.dokimi.dev/ergon/lang/typescript v0.3.3 => ./ergon-lang-typescript
+	go.dokimi.dev/ergon/service v0.13.0 => ./ergon-service
 )

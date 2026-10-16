@@ -1,5 +1,20 @@
 # go.dokimi.dev/ergon/lang/typescript
 
+## 0.3.3
+
+### Patch Changes
+
+- 452f07d: Tag `tools.typescript` with its key for go.stealthscale.io/cli.
+- Updated dependencies [64b7050]
+- Updated dependencies [67ba789]
+- Updated dependencies [67ba789]
+- Updated dependencies [67ba789]
+- Updated dependencies [67ba789]
+- Updated dependencies [67ba789]
+- Updated dependencies [67ba789]
+  - go.dokimi.dev/ergon/service@0.13.0
+  - go.dokimi.dev/ergon/lang/javascript@0.4.3
+
 ## 0.3.2
 
 ### Patch Changes

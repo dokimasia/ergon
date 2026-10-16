@@ -1,5 +1,20 @@
 # go.dokimi.dev/ergon/service
 
+## 0.13.0
+
+### Minor Changes
+
+- 64b7050: Add `baselinetest.Keys` to check that go.stealthscale.io/cli decodes every key of the section of a producer.
+- 67ba789: **Breaking:** Keep the baseline value of an option that `.ergon.yaml` states without a value.
+- 67ba789: **Breaking:** Refuse a key of `.ergon.yaml` in another case than the key of its option, such as `Lint:` for `lint`.
+- 67ba789: **Breaking:** Return `options.ErrDefect` from `options.Fields` for an exported field tagged `yaml:"-"`.
+
+### Patch Changes
+
+- 67ba789: Decode the sections of `.ergon.yaml` with go.stealthscale.io/cli in place of viper.
+- 67ba789: Fix a string option of `.ergon.yaml` to take an unquoted date or number as written, such as `change-date: 2030-01-01`.
+- 67ba789: Fix each key of a map in `.ergon.yaml` to keep its case, such as `Dockerfile` in `license.styles`.
+
 ## 0.12.0
 
 ### Minor Changes

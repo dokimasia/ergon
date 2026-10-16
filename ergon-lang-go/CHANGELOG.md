@@ -1,5 +1,19 @@
 # go.dokimi.dev/ergon/lang/go
 
+## 0.7.5
+
+### Patch Changes
+
+- 452f07d: Tag `tools.golangci-lint` and `tools.goreleaser` with their keys for go.stealthscale.io/cli.
+- Updated dependencies [64b7050]
+- Updated dependencies [67ba789]
+- Updated dependencies [67ba789]
+- Updated dependencies [67ba789]
+- Updated dependencies [67ba789]
+- Updated dependencies [67ba789]
+- Updated dependencies [67ba789]
+  - go.dokimi.dev/ergon/service@0.13.0
+
 ## 0.7.4
 
 ### Patch Changes

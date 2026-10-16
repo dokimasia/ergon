@@ -8,23 +8,14 @@ go 1.27.2
 require (
 	go.dokimi.dev/assert v0.3.0
 	go.dokimi.dev/ergon/core v0.11.0
-	go.dokimi.dev/ergon/service v0.12.0
+	go.dokimi.dev/ergon/service v0.13.0
 	go.yaml.in/yaml/v3 v3.0.5
 	golang.org/x/mod v0.41.0
 )
 
 require (
 	github.com/creachadair/tomledit v0.0.29 // indirect
-	github.com/fsnotify/fsnotify v1.10.1 // indirect
-	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.4.3 // indirect
-	github.com/sagikazarmark/locafero v0.12.0 // indirect
-	github.com/spf13/afero v1.15.0 // indirect
-	github.com/spf13/cast v1.10.0 // indirect
-	github.com/spf13/pflag v1.0.10 // indirect
-	github.com/spf13/viper v1.21.0 // indirect
-	github.com/subosito/gotenv v1.6.0 // indirect
-	golang.org/x/sys v0.48.0 // indirect
-	golang.org/x/text v0.42.0 // indirect
+	go.stealthscale.io/cli v0.6.0 // indirect
 	golang.org/x/tools v0.51.0 // indirect
 )

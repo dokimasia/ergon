@@ -1,5 +1,34 @@
 # go.dokimi.dev/ergon
 
+## 0.10.1
+
+### Patch Changes
+
+- Updated dependencies [64b7050]
+- Updated dependencies [67ba789]
+- Updated dependencies [67ba789]
+- Updated dependencies [67ba789]
+- Updated dependencies [67ba789]
+- Updated dependencies [67ba789]
+- Updated dependencies [67ba789]
+- Updated dependencies [1a63ff6]
+- Updated dependencies [452f07d]
+- Updated dependencies [452f07d]
+- Updated dependencies [452f07d]
+- Updated dependencies [452f07d]
+  - go.dokimi.dev/ergon/service@0.13.0
+  - go.dokimi.dev/ergon/lang/bash@0.4.4
+  - go.dokimi.dev/ergon/lang/csharp@0.3.4
+  - go.dokimi.dev/ergon/lang/java@0.4.4
+  - go.dokimi.dev/ergon/lang/javascript@0.4.3
+  - go.dokimi.dev/ergon/lang/kotlin@0.3.11
+  - go.dokimi.dev/ergon/lang/php@0.4.4
+  - go.dokimi.dev/ergon/lang/python@0.5.1
+  - go.dokimi.dev/ergon/lang/rust@0.5.1
+  - go.dokimi.dev/ergon/lang/terraform@0.4.4
+  - go.dokimi.dev/ergon/lang/typescript@0.3.3
+  - go.dokimi.dev/ergon/lang/go@0.7.5
+
 ## 0.10.0
 
 ### Minor Changes
