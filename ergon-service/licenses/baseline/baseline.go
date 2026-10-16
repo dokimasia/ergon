@@ -71,8 +71,8 @@ func (Producer) Options() language.Options {
 
 // Data returns the texts of LICENSE and NOTICE for a and o, as [licenses.Text] renders them, which
 // the templates read as .Data. It takes the options at the baseline, with the owner and the license
-// of a, when o is not the section license. It returns the error of license.Text, such as the error
-// for BUSL-1.1 with an empty parameter.
+// of a, when o is not the section license. It returns the error of licenses.Text, such as the error
+// for a parameter of BUSL-1.1 that spans lines.
 func (Producer) Data(a *language.Answers, o language.Options, _ *workflow.Contribution) (any, error) {
 	c := own(o, a)
 	text, notice, err := licenses.Text(c, licenses.Holder{
@@ -91,8 +91,8 @@ func (Producer) Data(a *language.Answers, o language.Options, _ *workflow.Contri
 // Apache-2.0, as [licenses.Text] renders them for the license and the parameters of the directory,
 // with the owner of the section and the name, the repository and the year of a. It takes the
 // options at the baseline, which list no directory, when o is not the section license. It returns
-// the error of licenses.Text, such as the error for BUSL-1.1 with an empty parameter, with the path
-// of the directory.
+// the error of licenses.Text with the path of the directory, such as the error for a parameter of
+// BUSL-1.1 that spans lines.
 func (Producer) Files(a *language.Answers, o language.Options, _ *workflow.Contribution) ([]language.File, error) {
 	c := own(o, a)
 	h := licenses.Holder{Owner: c.Owner, Name: a.Name, Repository: string(a.Repository), Year: a.Year}

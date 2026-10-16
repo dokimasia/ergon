@@ -12,7 +12,7 @@
 // Each command runs the same steps:
 //
 //  1. [go.dokimi.dev/ergon/service/baseline/options] resolves the options of each producer from
-//     .ergon.yaml and the lock.
+//     .ergon.yaml with the settings of [Options], and from the lock.
 //  2. [go.dokimi.dev/ergon/service/baseline/render] collects the contributions of the producers to
 //     the workflows, and renders their templates.
 //  3. [go.dokimi.dev/ergon/service/baseline/overlay] merges each local file into its managed file,

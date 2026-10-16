@@ -18,10 +18,12 @@ import (
 	"go.dokimi.dev/assert/files"
 	"go.dokimi.dev/assert/golden"
 	"go.dokimi.dev/ergon/core/language"
+	"go.dokimi.dev/ergon/core/spdx"
 	"go.dokimi.dev/ergon/core/workspace"
 	"go.dokimi.dev/ergon/internal/app"
 	"go.dokimi.dev/ergon/service/baseline/baselinetest"
 	"go.dokimi.dev/ergon/service/baseline/github"
+	"go.dokimi.dev/ergon/service/licenses"
 	"go.dokimi.dev/ergon/service/vcs/vcstest"
 	"go.stealthscale.io/cli/clitest"
 	"go.yaml.in/yaml/v3"
@@ -61,6 +63,14 @@ var required = []string{
 	"--security-contact", contact,
 }
 
+// parameters are the parameters of BUSL-1.1 in the cases.
+var parameters = licenses.Parameters{
+	LicensedWork:       "demo 1.0",
+	AdditionalUseGrant: "None",
+	ChangeDate:         "2030-01-01",
+	ChangeLicense:      "GPL-2.0-or-later",
+}
+
 // initRuns are the command lines of the transcript of ergon init: the help of each subcommand, and
 // the command lines that the subcommands refuse, such as init new without each required flag.
 var initRuns = []clitest.Input{
@@ -77,6 +87,7 @@ var initRuns = []clitest.Input{
 	{Args: slices.Concat([]string{"init", "new"}, required[:2], required[4:])},
 	{Args: slices.Concat([]string{"init", "new"}, required[:4], required[6:])},
 	{Args: slices.Concat([]string{"init", "new"}, required[:6])},
+	{Args: slices.Concat([]string{"init", "new", "--change-date", parameters.ChangeDate}, required)},
 	{Args: []string{"init", "add"}},
 	{Args: []string{"init", "remove"}},
 	{Args: []string{"init", "remove", "--force", "alpha"}},
@@ -273,6 +284,41 @@ func TestInit(t *testing.T) {
 				"identifier of a license of ergon\n", "the standard error")
 			assert.Empty(t, paths(t, dir), "the files of the repository")
 		})
+
+		tests := []struct {
+			name           string
+			giveFlags      []string
+			wantParameters licenses.Parameters
+		}{
+			{
+				name: "init new renders the parameters of BUSL-1.1 from its flags",
+				giveFlags: []string{
+					"--licensed-work", parameters.LicensedWork,
+					"--additional-use-grant", parameters.AdditionalUseGrant,
+					"--change-date", parameters.ChangeDate,
+					"--change-license", parameters.ChangeLicense,
+				},
+				wantParameters: parameters,
+			},
+			{name: "init new renders the labels of BUSL-1.1 without its flags"},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+				dir := t.TempDir()
+				args := slices.Concat([]string{"init", "new"}, required, []string{"--license", string(spdx.BUSL11)},
+					tt.giveFlags)
+				status, _, stderr := run(t, dir, args...)
+				assert.Equal(t, status, statusOK, "the exit status of init new: "+stderr)
+				want, _, err := licenses.Text(&licenses.Config{SPDX: spdx.BUSL11, Parameters: tt.wantParameters},
+					licenses.Holder{Owner: owner, Name: filepath.Base(dir), Repository: repository, Year: now.Year()})
+				assert.NoError(t, err, "Text")
+				assert.Equal(t, read(t, dir, licensePath), string(want), "the LICENSE")
+				status, stdout, stderr := run(t, dir, "init", "check")
+				assert.Equal(t, status, statusOK, "the exit status of init check: "+stderr)
+				assert.Empty(t, stdout, "the findings of init check")
+			})
+		}
 
 		t.Run("init add writes the files of the language and the lock", func(t *testing.T) {
 			t.Parallel()

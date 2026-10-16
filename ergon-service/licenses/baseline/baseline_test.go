@@ -77,17 +77,16 @@ func TestBaseline(t *testing.T) {
 				})
 			}
 
-			t.Run("returns ErrInvalid from New for BUSL-1.1 without its parameters", func(t *testing.T) {
+			t.Run("renders LICENSE of BUSL-1.1 with empty parameters", func(t *testing.T) {
 				t.Parallel()
-				root, err := os.OpenRoot(t.TempDir())
-				assert.NoError(t, err, "OpenRoot")
-				t.Cleanup(func() { _ = root.Close() })
-				r, err := baseline.Open(root, new(language.Catalog), baselinetest.Version, producer())
-				assert.NoError(t, err, "Open")
 				a := baselinetest.Answers()
 				a.License = spdx.BUSL11
-				_, err = r.New(a, baseline.Options{})
-				assert.ErrorIs(t, err, option.ErrInvalid, "New")
+				dir := baselinetest.New(t, new(language.Catalog), a, producer())
+				baselinetest.Hygiene(t, dir)
+				h := licenses.Holder{Owner: a.Owner, Name: a.Name, Repository: string(a.Repository), Year: a.Year}
+				want, _, err := licenses.Text(&licenses.Config{SPDX: spdx.BUSL11}, h)
+				assert.NoError(t, err, "Text of BUSL-1.1")
+				files.HasContent(t, filepath.Join(dir, "LICENSE"), string(want), "the LICENSE of BUSL-1.1")
 			})
 		})
 
@@ -101,11 +100,13 @@ func TestBaseline(t *testing.T) {
 				assert.NotNil(t, got, "the data")
 			})
 
-			t.Run("returns the error of a license without its parameters", func(t *testing.T) {
+			t.Run("returns the error of a parameter that spans lines", func(t *testing.T) {
 				t.Parallel()
 				a := baselinetest.Answers()
 				a.License = spdx.BUSL11
-				_, err := licensebaseline.Producer{}.Data(a, nil, &workflow.Contribution{})
+				c := section(a)
+				c.Parameters.ChangeDate = "2030-01-01\n2031-01-01"
+				_, err := licensebaseline.Producer{}.Data(a, c, &workflow.Contribution{})
 				assert.ErrorIs(t, err, option.ErrInvalid, "Data")
 			})
 		})
@@ -142,11 +143,13 @@ func TestBaseline(t *testing.T) {
 				assert.Empty(t, got, "the files")
 			})
 
-			t.Run("returns ErrInvalid for a directory under BUSL-1.1 without its parameters", func(t *testing.T) {
+			t.Run("returns ErrInvalid for a directory whose parameter spans lines", func(t *testing.T) {
 				t.Parallel()
 				a := baselinetest.Answers()
 				c := section(a)
-				c.Directories = []licenses.Directory{{Path: "enterprise", SPDX: spdx.BUSL11}}
+				c.Directories = []licenses.Directory{
+					{Path: "enterprise", SPDX: spdx.BUSL11, Parameters: licenses.Parameters{ChangeDate: "2030\n"}},
+				}
 				_, err := licensebaseline.Producer{}.Files(a, c, &workflow.Contribution{})
 				assert.ErrorIs(t, err, option.ErrInvalid, "Files")
 			})

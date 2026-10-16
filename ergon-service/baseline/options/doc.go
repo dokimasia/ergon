@@ -34,6 +34,9 @@
 // tag, removes the sections of the producers that the repository no longer has, and keeps every
 // other key of the file. viper cannot write the file, because its writer drops every comment.
 //
+// [Set] writes values into the content of .ergon.yaml as strings, so a command can set an option
+// before Resolve reads the file.
+//
 // # Errors
 //
 // An error of the file, of a section or of a value wraps [ErrInvalid] and names the key. Options

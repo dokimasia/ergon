@@ -16,8 +16,8 @@
 // The section license of .ergon.yaml is [go.dokimi.dev/ergon/service/licenses.Config]: ergon init
 // writes its owner and its license from the answers, and the repository sets the parameters of
 // BUSL-1.1, the directories under a license of their own, the comment styles and the paths without
-// a header. ergon init fails for BUSL-1.1 until the section sets each parameter, at the root and in
-// each directory.
+// a header. ergon init new also writes the parameters of BUSL-1.1 from its flags. A parameter may be
+// empty, and its line of LICENSE then has its label alone.
 //
 // # Headers
 //

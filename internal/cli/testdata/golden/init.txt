@@ -95,6 +95,10 @@ writes.
 When a managed file exists with other content, the command fails and does not
 write a file. With --force, it overwrites such a file.
 
+--licensed-work, --additional-use-grant, --change-date and --change-license
+set the parameters of BUSL-1.1 in .ergon.yaml, and need --license BUSL-1.1.
+A parameter may be empty. Its line of LICENSE then has its label alone.
+
 --name defaults to the name of the working directory, and --year to the
 current year. The languages are:
 
@@ -105,14 +109,18 @@ Example:
     --repository example/demo --security-contact security@example.com
 
 Options:
-      --force                    Overwrite the managed files that exist with other content.       env ERGON_INIT_NEW_FORCE
-      --language language,...    Language of the repository, once for each language.              env ERGON_INIT_NEW_LANGUAGE
-      --license id               License, as an SPDX identifier that ergon license --help lists.  required, env ERGON_INIT_NEW_LICENSE
-      --name string              Name of the repository.                                          env ERGON_INIT_NEW_NAME
-      --owner string             Copyright holder, such as "Example B.V.".                        required, env ERGON_INIT_NEW_OWNER
-      --repository repository    Repository on GitHub, as owner/name.                             required, env ERGON_INIT_NEW_REPOSITORY
-      --security-contact string  Address that receives reports of vulnerabilities.                required, env ERGON_INIT_NEW_SECURITY_CONTACT
-      --year int                 Year of the copyright notice.                                    env ERGON_INIT_NEW_YEAR
+      --additional-use-grant string  Additional Use Grant of BUSL-1.1, such as None.                  env ERGON_INIT_NEW_ADDITIONAL_USE_GRANT
+      --change-date string           Change Date of BUSL-1.1, such as 2030-01-01.                     env ERGON_INIT_NEW_CHANGE_DATE
+      --change-license string        Change License of BUSL-1.1, such as GPL-2.0-or-later.            env ERGON_INIT_NEW_CHANGE_LICENSE
+      --force                        Overwrite the managed files that exist with other content.       env ERGON_INIT_NEW_FORCE
+      --language language,...        Language of the repository, once for each language.              env ERGON_INIT_NEW_LANGUAGE
+      --license id                   License, as an SPDX identifier that ergon license --help lists.  required, env ERGON_INIT_NEW_LICENSE
+      --licensed-work string         Licensed Work of BUSL-1.1, such as "Example 1.0".                env ERGON_INIT_NEW_LICENSED_WORK
+      --name string                  Name of the repository.                                          env ERGON_INIT_NEW_NAME
+      --owner string                 Copyright holder, such as "Example B.V.".                        required, env ERGON_INIT_NEW_OWNER
+      --repository repository        Repository on GitHub, as owner/name.                             required, env ERGON_INIT_NEW_REPOSITORY
+      --security-contact string      Address that receives reports of vulnerabilities.                required, env ERGON_INIT_NEW_SECURITY_CONTACT
+      --year int                     Year of the copyright notice.                                    env ERGON_INIT_NEW_YEAR
 
 Global options:
       --flag-debug  Print the value and the source of each option before the command runs.  env ERGON_FLAG_DEBUG
@@ -255,6 +263,10 @@ ergon: init new: missing --repository
 
 $ ergon init new --owner 'Example B.V.' --license MIT --repository example/demo
 ergon: init new: missing --security-contact
+[exit 2]
+
+$ ergon init new --change-date 2030-01-01 --owner 'Example B.V.' --license MIT --repository example/demo --security-contact security@example.com
+ergon: cli: --change-date sets a parameter of BUSL-1.1 and needs --license BUSL-1.1
 [exit 2]
 
 $ ergon init add

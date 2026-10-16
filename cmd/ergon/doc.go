@@ -5,7 +5,9 @@
 //
 //	ergon [--flag-debug] [-h | --help] [--version] <command>
 //	ergon init new --owner holder --license identifier --repository owner/name
-//		--security-contact address [--name name] [--year year] [--language language]... [--force]
+//		--security-contact address [--name name] [--year year] [--language language]...
+//		[--licensed-work work] [--additional-use-grant grant] [--change-date date]
+//		[--change-license identifier] [--force]
 //	ergon init add [--force] language...
 //	ergon init remove language...
 //	ergon init check [--json]
@@ -44,5 +46,6 @@
 //     file that ergon init check finds edited or outdated, and when a language module fails to
 //     register, which is a defect of the build
 //   - 2 for a command line that ergon refuses, such as one with an unknown command or flag, one
-//     without a command, or one without a required flag
+//     without a command, one without a required flag, or one with a parameter of BUSL-1.1 and
+//     another license
 package main

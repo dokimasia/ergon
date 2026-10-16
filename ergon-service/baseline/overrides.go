@@ -40,7 +40,7 @@ func (r *Repository) Overrides() ([]Override, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, _, res, err := r.resolve(units, &next.Answers, &l)
+	_, _, res, err := r.resolve(units, &next.Answers, &l, nil)
 	if err != nil {
 		return nil, err
 	}

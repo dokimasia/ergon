@@ -83,6 +83,22 @@ func TestText(t *testing.T) {
 			assert.Equal(t, got, want, "the text of GPL-3.0-or-later")
 		})
 
+		t.Run("returns the label alone for an empty parameter of BUSL-1.1", func(t *testing.T) {
+			t.Parallel()
+			c := config()
+			c.SPDX = spdx.BUSL11
+			c.Parameters = licenses.Parameters{LicensedWork: "demo 1.0"}
+			text, _, err := licenses.Text(c, holder())
+			assert.NoError(t, err, "Text")
+			assert.Contains(
+				t,
+				string(text),
+				"\n\nLicensor:             Dokimasia B.V.\nLicensed Work:        demo 1.0\n"+
+					"Additional Use Grant:\nChange Date:\nChange License:\n\n",
+				"the parameters",
+			)
+		})
+
 		t.Run("returns the notice of Apache-2.0 with the name of the repository", func(t *testing.T) {
 			t.Parallel()
 			c := config()
@@ -101,11 +117,11 @@ func TestText(t *testing.T) {
 				give: func(c *licenses.Config) { c.SPDX = "AMD-newlib" },
 			},
 			{
-				name: "returns ErrInvalid for BUSL-1.1 with an empty parameter",
+				name: "returns ErrInvalid for BUSL-1.1 with a parameter that spans lines",
 				give: func(c *licenses.Config) {
 					c.SPDX = spdx.BUSL11
 					c.Parameters = parameters()
-					c.Parameters.ChangeLicense = ""
+					c.Parameters.ChangeLicense = "GPL-2.0-or-later\nMIT"
 				},
 			},
 		}

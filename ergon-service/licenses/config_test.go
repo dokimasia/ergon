@@ -31,8 +31,16 @@ func TestConfig(t *testing.T) {
 				},
 			},
 			{
+				name: "returns nil for BUSL-1.1 with empty parameters",
+				give: func(c *licenses.Config) { c.SPDX = spdx.BUSL11 },
+			},
+			{
 				name: "returns nil for MIT with empty parameters",
 				give: func(c *licenses.Config) { c.Parameters = licenses.Parameters{} },
+			},
+			{
+				name: "returns nil for a directory under BUSL-1.1 with empty parameters",
+				give: func(c *licenses.Config) { c.Directories = []licenses.Directory{{Path: "sdk", SPDX: spdx.BUSL11}} },
 			},
 			{
 				name: "returns nil for styles of the library, of ergon and none",
@@ -86,10 +94,6 @@ func TestConfig(t *testing.T) {
 				give: func(c *licenses.Config) { c.Parameters.ChangeDate = "2030-01-01\n2031-01-01" },
 			},
 			{
-				name: "returns ErrInvalid for BUSL-1.1 without a parameter",
-				give: func(c *licenses.Config) { c.SPDX = spdx.BUSL11 },
-			},
-			{
 				name: "returns ErrInvalid for an empty key of a style",
 				give: func(c *licenses.Config) { c.Styles = map[string]string{"": "Hashtag"} },
 			},
@@ -113,10 +117,6 @@ func TestConfig(t *testing.T) {
 			{
 				name: "returns ErrInvalid for a directory under a license that ergon does not support",
 				give: func(c *licenses.Config) { c.Directories = []licenses.Directory{{Path: "sdk", SPDX: "GPL-3.0"}} },
-			},
-			{
-				name: "returns ErrInvalid for a directory under BUSL-1.1 without a parameter",
-				give: func(c *licenses.Config) { c.Directories = []licenses.Directory{{Path: "sdk", SPDX: spdx.BUSL11}} },
 			},
 			{
 				name: "returns ErrInvalid for a directory whose parameter spans lines",
@@ -172,23 +172,47 @@ func TestConfig(t *testing.T) {
 			})
 		}
 
-		t.Run("names the directory of a parameter that BUSL-1.1 requires", func(t *testing.T) {
+		t.Run("names the directory of a parameter that spans lines", func(t *testing.T) {
 			t.Parallel()
 			c := config()
-			c.Directories = []licenses.Directory{{Path: "enterprise", SPDX: spdx.BUSL11}}
+			c.Directories = []licenses.Directory{
+				{Path: "enterprise", SPDX: spdx.BUSL11, Parameters: licenses.Parameters{ChangeDate: "2030\n"}},
+			}
 			err := c.Validate()
 			assert.ErrorIs(t, err, option.ErrInvalid, "Validate")
 			assert.Contains(t, err.Error(), "in the directory enterprise", "the error")
 		})
+	})
 
-		t.Run("names every empty parameter of BUSL-1.1", func(t *testing.T) {
+	t.Run("Parameters", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("All", func(t *testing.T) {
 			t.Parallel()
-			c := config()
-			c.SPDX = spdx.BUSL11
-			c.Parameters = licenses.Parameters{LicensedWork: "demo", AdditionalUseGrant: "None"}
-			err := c.Validate()
-			assert.ErrorIs(t, err, option.ErrInvalid, "Validate")
-			assert.Contains(t, err.Error(), "change-date, change-license", "the error")
+
+			t.Run("returns each parameter with its key in the order of LICENSE", func(t *testing.T) {
+				t.Parallel()
+				var got [][2]string
+				for key, value := range parameters().All() {
+					got = append(got, [2]string{key, value})
+				}
+				assert.Equal(t, got, [][2]string{
+					{"licensed-work", "demo 1.0"},
+					{"additional-use-grant", "None"},
+					{"change-date", "2030-01-01"},
+					{"change-license", "GPL-2.0-or-later"},
+				}, "the parameters")
+			})
+
+			t.Run("stops at the parameter after which the loop breaks", func(t *testing.T) {
+				t.Parallel()
+				var keys []string
+				for key := range parameters().All() {
+					keys = append(keys, key)
+					break
+				}
+				assert.Equal(t, keys, []string{"licensed-work"}, "the keys")
+			})
 		})
 	})
 }

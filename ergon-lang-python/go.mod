@@ -6,6 +6,8 @@ module go.dokimi.dev/ergon/lang/python
 go 1.27.2
 
 require (
+	github.com/bmatcuk/doublestar/v4 v4.10.2
+	github.com/pelletier/go-toml/v2 v2.4.3
 	go.dokimi.dev/assert v0.3.0
 	go.dokimi.dev/ergon/core v0.10.0
 	go.dokimi.dev/ergon/service v0.11.0
@@ -15,7 +17,6 @@ require (
 	github.com/creachadair/tomledit v0.0.29 // indirect
 	github.com/fsnotify/fsnotify v1.10.1 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
-	github.com/pelletier/go-toml/v2 v2.4.3 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect

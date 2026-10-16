@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -38,6 +39,9 @@ const (
 
 // ownerSection is the name of the producer owner and of its section of .ergon.yaml.
 const ownerSection = "owner"
+
+// greetingKey is the key of the greeting of the producer common in .ergon.yaml.
+const greetingKey = "common.greeting"
 
 // edited is the section of the producer owner whose key owner states another value than the
 // answers of the cases, and editedKey is that key and value as the error of the options names them.
@@ -386,6 +390,46 @@ func TestRepository(t *testing.T) {
 			assert.Equal(t, content(t, root, greeting), "hey\n", "the greeting")
 		})
 
+		t.Run("renders the value of a setting", func(t *testing.T) {
+			t.Parallel()
+			root := directory(t)
+			_, err := repository(
+				t,
+				root,
+			).New(answers(), baseline.Options{Settings: map[string]string{greetingKey: "hey"}})
+			assert.NoError(t, err, "New")
+			assert.Equal(t, content(t, root, greeting), "hey\n", "the greeting")
+		})
+
+		t.Run("writes the value of a setting in place of the value in .ergon.yaml", func(t *testing.T) {
+			t.Parallel()
+			root := directory(t)
+			put(t, root, config, "common:\n  greeting: hello\n")
+			_, err := repository(
+				t,
+				root,
+			).New(answers(), baseline.Options{Settings: map[string]string{greetingKey: "hey"}})
+			assert.NoError(t, err, "New")
+			assert.Equal(
+				t,
+				content(t, root, config),
+				strings.Replace(configured, "greeting: hello", "greeting: hey", 1),
+				"the .ergon.yaml",
+			)
+		})
+
+		t.Run(
+			"returns ErrInvalid of the options for a setting under a value that is not a mapping",
+			func(t *testing.T) {
+				t.Parallel()
+				root := directory(t)
+				put(t, root, config, "common:\n  greeting: hello\n")
+				_, err := repository(t, root).New(answers(),
+					baseline.Options{Settings: map[string]string{greetingKey + ".text": "hey"}})
+				assert.ErrorIs(t, err, options.ErrInvalid, "New")
+			},
+		)
+
 		t.Run("writes the answer into a key of an existing .ergon.yaml that states another value", func(t *testing.T) {
 			t.Parallel()
 			root := directory(t)
@@ -617,6 +661,17 @@ func TestRepository(t *testing.T) {
 			assert.False(t, exists(t, root, betaCfg), "the file of beta after the conflict")
 		})
 
+		t.Run("renders the value of a setting", func(t *testing.T) {
+			t.Parallel()
+			r, root := initialized(t)
+			_, err := r.Add(
+				[]workspace.Language{beta},
+				baseline.Options{Settings: map[string]string{greetingKey: "hey"}},
+			)
+			assert.NoError(t, err, "Add of beta")
+			assert.Equal(t, content(t, root, greeting), "hey\n", "the greeting")
+		})
+
 		t.Run("overwrites an edited file with Force", func(t *testing.T) {
 			t.Parallel()
 			r, root := initialized(t)
@@ -783,6 +838,14 @@ func TestRepository(t *testing.T) {
 			r, err := baseline.Open(root, catalog(t), version, common("hi"))
 			assert.NoError(t, err, "Open of the later baseline")
 			_, err = r.Sync(nil, baseline.Options{})
+			assert.NoError(t, err, "Sync")
+			assert.Equal(t, content(t, root, greeting), "hey\n", "the greeting")
+		})
+
+		t.Run("renders the value of a setting", func(t *testing.T) {
+			t.Parallel()
+			r, root := initialized(t)
+			_, err := r.Sync(nil, baseline.Options{Settings: map[string]string{greetingKey: "hey"}})
 			assert.NoError(t, err, "Sync")
 			assert.Equal(t, content(t, root, greeting), "hey\n", "the greeting")
 		})

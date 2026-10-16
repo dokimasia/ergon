@@ -15,8 +15,14 @@ import (
 	"go.dokimi.dev/ergon/core/spdx"
 	"go.dokimi.dev/ergon/core/workspace"
 	"go.dokimi.dev/ergon/service/baseline"
+	"go.dokimi.dev/ergon/service/licenses"
+	licensefiles "go.dokimi.dev/ergon/service/licenses/baseline"
 	gocli "go.stealthscale.io/cli"
 )
+
+// parametersKey is the start of the key of a parameter of BUSL-1.1 in .ergon.yaml, such as
+// license.parameters.change-date.
+const parametersKey = licensefiles.Name + ".parameters."
 
 // The help texts of the init commands. The first line of each is its summary in the list of the
 // commands of its parent.
@@ -53,6 +59,10 @@ writes.
 
 When a managed file exists with other content, the command fails and does not
 write a file. With --force, it overwrites such a file.
+
+--licensed-work, --additional-use-grant, --change-date and --change-license
+set the parameters of BUSL-1.1 in .ergon.yaml, and need --license BUSL-1.1.
+A parameter may be empty. Its line of LICENSE then has its label alone.
 
 --name defaults to the name of the working directory, and --year to the
 current year. The languages are:
@@ -120,16 +130,21 @@ Example:
   ergon init sync --owner "Example B.V."`
 )
 
-// newOptions are the options of ergon init new: the answers, the languages and --force.
+// newOptions are the options of ergon init new: the answers, the parameters of BUSL-1.1, the
+// languages and --force. The name of the flag of each parameter is its key in .ergon.yaml.
 type newOptions struct {
-	Name            string               `help:"Name of the repository."`
-	Owner           string               `help:"Copyright holder, such as \"Example B.V.\"."                     required:""`
-	License         spdx.ID              `help:"License, as an SPDX identifier that ergon license --help lists." required:""`
-	Repository      language.Repository  `help:"Repository on GitHub, as owner/name."                            required:""`
-	SecurityContact string               `help:"Address that receives reports of vulnerabilities."               required:""`
-	Languages       []workspace.Language `help:"Language of the repository, once for each language."                         name:"language"`
-	Year            int                  `help:"Year of the copyright notice."`
-	Force           bool                 `help:"Overwrite the managed files that exist with other content."`
+	Name               string               `help:"Name of the repository."`
+	Owner              string               `help:"Copyright holder, such as \"Example B.V.\"." required:""`
+	License            spdx.ID              `help:"License, as an SPDX identifier that ergon license --help lists." required:""`
+	Repository         language.Repository  `help:"Repository on GitHub, as owner/name." required:""`
+	SecurityContact    string               `help:"Address that receives reports of vulnerabilities." required:""`
+	LicensedWork       string               `help:"Licensed Work of BUSL-1.1, such as \"Example 1.0\"."`
+	AdditionalUseGrant string               `help:"Additional Use Grant of BUSL-1.1, such as None."`
+	ChangeDate         string               `help:"Change Date of BUSL-1.1, such as 2030-01-01."`
+	ChangeLicense      string               `help:"Change License of BUSL-1.1, such as GPL-2.0-or-later."`
+	Languages          []workspace.Language `help:"Language of the repository, once for each language." name:"language"`
+	Year               int                  `help:"Year of the copyright notice."`
+	Force              bool                 `help:"Overwrite the managed files that exist with other content."`
 }
 
 // languagesOptions are the options of ergon init remove: the languages of its arguments.
@@ -202,9 +217,28 @@ func (s *session) initCommands(app *gocli.App[noOptions], names []string) {
 }
 
 // initNew writes the baseline into the repository of s with [baseline.Repository.New]. The name
-// defaults to the name of the working directory, and the year to the year of s.now.
+// defaults to the name of the working directory, and the year to the year of s.now. Each flag of a
+// parameter of BUSL-1.1 with a value sets that parameter in .ergon.yaml. It returns a usage error
+// for such a flag with another license.
 func (s *session) initNew(_ context.Context, run *gocli.Run[noOptions, newOptions]) error {
 	o := run.Config()
+	params := licenses.Parameters{
+		LicensedWork:       o.LicensedWork,
+		AdditionalUseGrant: o.AdditionalUseGrant,
+		ChangeDate:         o.ChangeDate,
+		ChangeLicense:      o.ChangeLicense,
+	}
+	settings := map[string]string{}
+	for key, value := range params.All() {
+		if value == "" {
+			continue
+		}
+		if o.License != spdx.BUSL11 {
+			return usageError{err: fmt.Errorf("cli: --%s sets a parameter of %s and needs --license %s", key,
+				spdx.BUSL11, spdx.BUSL11)}
+		}
+		settings[parametersKey+key] = value
+	}
 	a := language.Answers{
 		Name:            cmp.Or(o.Name, filepath.Base(s.dir)),
 		Languages:       o.Languages,
@@ -215,7 +249,7 @@ func (s *session) initNew(_ context.Context, run *gocli.Run[noOptions, newOption
 		SecurityContact: o.SecurityContact,
 	}
 	return s.change(func(r *baseline.Repository) ([]baseline.Change, error) {
-		return r.New(&a, baseline.Options{Force: o.Force})
+		return r.New(&a, baseline.Options{Settings: settings, Force: o.Force})
 	})
 }
 

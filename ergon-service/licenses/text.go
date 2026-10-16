@@ -48,12 +48,11 @@ type Holder struct {
 // The text of a license of choosealicense.com is the body of its file, with its fields [year],
 // [fullname], [project] and [projecturl] filled from h. A text without a field, such as the Apache
 // License 2.0, names no owner. The text of BUSL-1.1 states its title, then the parameters of c with
-// the owner as the Licensor, then its terms. The NOTICE of Apache-2.0 states the name of the
-// repository and Copyright <year> <owner>.
+// the owner as the Licensor, then its terms. The line of an empty parameter has its label alone.
+// The NOTICE of Apache-2.0 states the name of the repository and Copyright <year> <owner>.
 //
 // It returns an error that wraps [option.ErrInvalid] for a license that ergon does not support, and
-// for BUSL-1.1 with a parameter that is empty or spans lines. Text reads c and h and modifies
-// neither.
+// for BUSL-1.1 with a parameter that spans lines. Text reads c and h and modifies neither.
 func Text(c *Config, h Holder) (text, notice []byte, err error) {
 	if !c.SPDX.Valid() {
 		return nil, nil, fmt.Errorf("%w: spdx %q, which is not the identifier of a license of ergon", option.ErrInvalid,
@@ -64,19 +63,26 @@ func Text(c *Config, h Holder) (text, notice []byte, err error) {
 	body, _ := texts.ReadFile("texts/" + name + ".txt")
 	year := strconv.Itoa(h.Year)
 	if c.SPDX == spdx.BUSL11 {
-		if err := c.Parameters.check(c.SPDX); err != nil {
+		if err := c.Parameters.check(); err != nil {
 			return nil, nil, err
 		}
 		title, terms, _ := strings.Cut(string(body), "\n\n")
-		parameters := fmt.Sprintf("%s\n\nParameters\n\n"+
-			"Licensor:             %s\n"+
-			"Licensed Work:        %s\n"+
-			"Additional Use Grant: %s\n"+
-			"Change Date:          %s\n"+
-			"Change License:       %s\n\n",
-			title, h.Owner, c.Parameters.LicensedWork, c.Parameters.AdditionalUseGrant, c.Parameters.ChangeDate,
-			c.Parameters.ChangeLicense)
-		return []byte(parameters + terms), nil, nil
+		var b strings.Builder
+		b.WriteString(title)
+		b.WriteString("\n\nParameters\n\n")
+		for _, p := range [][2]string{
+			{"Licensor:", h.Owner},
+			{"Licensed Work:", c.Parameters.LicensedWork},
+			{"Additional Use Grant:", c.Parameters.AdditionalUseGrant},
+			{"Change Date:", c.Parameters.ChangeDate},
+			{"Change License:", c.Parameters.ChangeLicense},
+		} {
+			b.WriteString(strings.TrimRight(fmt.Sprintf("%-22s%s", p[0], p[1]), " "))
+			b.WriteByte('\n')
+		}
+		b.WriteByte('\n')
+		b.WriteString(terms)
+		return []byte(b.String()), nil, nil
 	}
 	fields := strings.NewReplacer(
 		"[year]", year,

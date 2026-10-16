@@ -210,10 +210,18 @@ linters:
             - go.dokimi.dev/ergon/lang/go/
             - golang.org/x/mod
             - go.yaml.in/yaml/v3
+        # A release reads the members of a uv workspace with the globs of doublestar, and rewrites
+        # the strings of a pyproject.toml in place at the ranges of the parser of go-toml.
         python-module:
           files: ["**/ergon-lang-python/**", "!$test"]
           list-mode: strict
-          allow: [$gostd, go.dokimi.dev/ergon/core, go.dokimi.dev/ergon/lang/python$, go.dokimi.dev/ergon/lang/python/]
+          allow:
+            - $gostd
+            - go.dokimi.dev/ergon/core
+            - go.dokimi.dev/ergon/lang/python$
+            - go.dokimi.dev/ergon/lang/python/
+            - github.com/bmatcuk/doublestar/v4
+            - github.com/pelletier/go-toml/v2
         rust-module:
           files: ["**/ergon-lang-rust/**", "!$test"]
           list-mode: strict
@@ -415,8 +423,11 @@ formatters:
     gofumpt:
       extra:
         group-params: true
+    # golines keeps each struct tag as it is written. Its default, reformat-tags, pads the keys of
+    # the tags of a struct into columns.
     golines:
       max-len: 120
+      reformat-tags: false
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0

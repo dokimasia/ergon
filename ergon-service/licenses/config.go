@@ -6,6 +6,7 @@ package licenses
 import (
 	"fmt"
 	"io/fs"
+	"iter"
 	"maps"
 	"slices"
 	"strings"
@@ -98,8 +99,7 @@ type Config struct {
 //
 //   - an Owner that is blank or spans lines
 //   - an SPDX that is not an identifier of [spdx.IDs]
-//   - a parameter that spans lines, and for BUSL-1.1 a parameter that is empty, which the error
-//     names with every other empty one
+//   - a parameter that spans lines
 //   - a directory that is not valid, as [Directory] states its rules, which the error names
 //   - a key of Styles that is empty, spans lines or has a slash, and a style that is neither a
 //     comment style of skywalking-eyes or of ergon nor none
@@ -114,7 +114,7 @@ func (c *Config) Validate() error {
 	if !c.SPDX.Valid() {
 		return fmt.Errorf("%w: spdx %q, which is not the identifier of a license of ergon", option.ErrInvalid, c.SPDX)
 	}
-	if err := c.Parameters.check(c.SPDX); err != nil {
+	if err := c.Parameters.check(); err != nil {
 		return err
 	}
 	for i := range c.Directories {
@@ -151,7 +151,7 @@ func (c *Config) Validate() error {
 //     or a character of a glob, or is in .git or .ergon
 //   - a path of one of earlier, the directories before d
 //   - an SPDX that is not an identifier of [spdx.IDs]
-//   - a parameter that spans lines, and for BUSL-1.1 a parameter that is empty
+//   - a parameter that spans lines
 func (d *Directory) check(earlier []Directory) error {
 	p := d.Path
 	inside := fs.ValidPath(p) && p != "." && !strings.ContainsAny(p, breaks+backslash+pattern)
@@ -167,33 +167,36 @@ func (d *Directory) check(earlier []Directory) error {
 		return fmt.Errorf("%w: directories %q: spdx %q, which is not the identifier of a license of ergon",
 			option.ErrInvalid, p, d.SPDX)
 	}
-	if err := d.Parameters.check(d.SPDX); err != nil {
+	if err := d.Parameters.check(); err != nil {
 		return fmt.Errorf("%w, in the directory %s", err, p)
 	}
 	return nil
 }
 
-// check returns an error that wraps [option.ErrInvalid] for a parameter of p that spans lines, and
-// for the license BUSL-1.1 when a parameter is empty. The error names every empty parameter.
-func (p Parameters) check(id spdx.ID) error {
-	params := []struct{ key, value string }{
-		{key: "licensed-work", value: p.LicensedWork},
-		{key: "additional-use-grant", value: p.AdditionalUseGrant},
-		{key: "change-date", value: p.ChangeDate},
-		{key: "change-license", value: p.ChangeLicense},
-	}
-	var empty []string
-	for _, param := range params {
-		if strings.ContainsAny(param.value, "\r\n") {
-			return fmt.Errorf("%w: parameters %s, which spans lines", option.ErrInvalid, param.key)
-		}
-		if strings.TrimSpace(param.value) == "" {
-			empty = append(empty, param.key)
+// All returns an iterator over the parameters of p in the order of LICENSE. It yields the key of
+// each parameter under parameters in .ergon.yaml, such as change-date, and its value.
+func (p Parameters) All() iter.Seq2[string, string] {
+	return func(yield func(string, string) bool) {
+		for _, param := range [...][2]string{
+			{"licensed-work", p.LicensedWork},
+			{"additional-use-grant", p.AdditionalUseGrant},
+			{"change-date", p.ChangeDate},
+			{"change-license", p.ChangeLicense},
+		} {
+			if !yield(param[0], param[1]) {
+				return
+			}
 		}
 	}
-	if id == spdx.BUSL11 && len(empty) > 0 {
-		return fmt.Errorf("%w: parameters %s, which BUSL-1.1 requires and which are empty", option.ErrInvalid,
-			strings.Join(empty, ", "))
+}
+
+// check returns an error that wraps [option.ErrInvalid] for a parameter of p that spans lines. A
+// parameter may be empty, and its line of LICENSE then has its label alone.
+func (p Parameters) check() error {
+	for key, value := range p.All() {
+		if strings.ContainsAny(value, breaks) {
+			return fmt.Errorf("%w: parameters %s, which spans lines", option.ErrInvalid, key)
+		}
 	}
 	return nil
 }

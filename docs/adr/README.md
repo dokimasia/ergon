@@ -58,3 +58,5 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 | [0047](0047-cargo-llvm-cov-without-a-coverage-gate.md) | rust.tools pins cargo-llvm-cov, and the gate of Rust does not measure coverage | Accepted |
 | [0048](0048-python-audit-skip.md) | The key audit.skip of the section python leaves packages without a release on PyPI out of the scan | Accepted |
 | [0049](0049-hooks-exclude-of-the-common-files.md) | The key common.hooks.exclude keeps paths out of the hooks that change or refuse a file | Accepted |
+| [0050](0050-busl-parameters-from-init-new-flags.md) | ergon init new sets the parameters of BUSL-1.1 from its flags | Accepted |
+| [0051](0051-empty-busl-parameters.md) | A parameter of BUSL-1.1 may be empty | Accepted |

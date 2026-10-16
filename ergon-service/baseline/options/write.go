@@ -22,32 +22,37 @@ const (
 	width = 100
 )
 
-// Write returns the content of .ergon.yaml: existing, the current content, which is empty for a
-// repository without the file, with the section of each of sections in place of the value of its
-// key, or after the other keys, and without the sections of drop. It keeps every other key of
-// existing, the comments of those keys, and the key of each section with its comments.
+// The tags of the nodes that [Write] and [Set] add to a document.
+const (
+	// mapTag is the tag of a mapping.
+	mapTag = "!!map"
+
+	// strTag is the tag of a string. The encoder quotes a string that YAML would read as another
+	// type, such as 2030-01-01.
+	strTag = "!!str"
+)
+
+// Write returns the content of .ergon.yaml with sections and without the sections of drop. existing
+// is the current content. It is empty for a repository without the file. Each section replaces the
+// value of its key, or follows the other keys when existing does not have the key. Write keeps every
+// other key of existing with its comments, and the key of each section with its comments.
 //
-// Each section states every option of its producer, under the comment of the option's doc tag,
-// with a list of scalars in flow style. viper parses the keys of .ergon.yaml in lowercase, so a key
-// of a map that the file states in uppercase is written in lowercase. Write reports whether the
-// result differs from existing apart from the layout of existing.
+// Write writes each option of a section under a comment with the doc tag of the option. It writes a
+// list of scalars in flow style. viper parses the keys of .ergon.yaml in lowercase, so a section has
+// the keys of its maps in lowercase. Write reports whether the result differs from existing in more
+// than the layout of existing.
 //
 // It returns an error that wraps [ErrInvalid] for an existing that does not parse or whose root is
-// not a mapping, and an error that wraps [ErrDefect] for options that are not a pointer to a struct
-// or that YAML cannot encode.
+// not a mapping. It returns an error that wraps [ErrDefect] for options that are not a pointer to a
+// struct or that YAML cannot encode.
 func Write(existing []byte, sections []Section, drop []string) ([]byte, bool, error) {
-	var doc yaml.Node
-	if err := yaml.Unmarshal(existing, &doc); err != nil {
-		return nil, false, fmt.Errorf("%w: parse: %w", ErrInvalid, err)
+	doc, rooted, err := parse(existing)
+	if err != nil {
+		return nil, false, err
 	}
 	var normalized []byte
-	if len(doc.Content) == 0 {
-		doc = yaml.Node{Kind: yaml.DocumentNode, Content: []*yaml.Node{{Kind: yaml.MappingNode, Tag: "!!map"}}}
-	} else {
-		if doc.Content[0].Kind != yaml.MappingNode {
-			return nil, false, fmt.Errorf("%w: the document is not a mapping", ErrInvalid)
-		}
-		normalized = encode(&doc)
+	if rooted {
+		normalized = encode(doc)
 	}
 	root := doc.Content[0]
 	for _, name := range drop {
@@ -64,15 +69,34 @@ func Write(existing []byte, sections []Section, drop []string) ([]byte, bool, er
 			root.Content[i+1] = value
 			continue
 		}
-		root.Content = append(root.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: s.Name}, value)
+		root.Content = append(root.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: strTag, Value: s.Name}, value)
 	}
-	out := encode(&doc)
+	out := encode(doc)
 	return out, !bytes.Equal(out, normalized), nil
 }
 
-// section returns the mapping of the options o, with the comment of each key and lists of scalars
-// in flow style. It returns an error that wraps [ErrDefect] for options that are not a pointer to a
-// struct, that declare a field wrong, or that YAML cannot encode.
+// parse returns the document of file and reports whether file has a root. file is the content of
+// .ergon.yaml. The root of the document is a mapping, and it is empty for a file without a root. It
+// returns an error that wraps [ErrInvalid] for a file that does not parse or whose root is not a
+// mapping.
+func parse(file []byte) (*yaml.Node, bool, error) {
+	var doc yaml.Node
+	if err := yaml.Unmarshal(file, &doc); err != nil {
+		return nil, false, fmt.Errorf("%w: parse: %w", ErrInvalid, err)
+	}
+	if len(doc.Content) == 0 {
+		return &yaml.Node{Kind: yaml.DocumentNode, Content: []*yaml.Node{{Kind: yaml.MappingNode, Tag: mapTag}}},
+			false, nil
+	}
+	if doc.Content[0].Kind != yaml.MappingNode {
+		return nil, false, fmt.Errorf("%w: the document is not a mapping", ErrInvalid)
+	}
+	return &doc, true, nil
+}
+
+// section returns the mapping of the options o. Each key has the comment of its doc tag, and a list
+// of scalars is in flow style. It returns an error that wraps [ErrDefect] for options that are not a
+// pointer to a struct, that declare a field wrong, or that YAML cannot encode.
 func section(o language.Options) (*yaml.Node, error) {
 	fs, err := Fields(o)
 	if err != nil {
@@ -98,8 +122,8 @@ func section(o language.Options) (*yaml.Node, error) {
 	return &n, nil
 }
 
-// lookup returns the key node and the value node of the dotted key in the mapping n, and nil for
-// a key that n lacks, as the encoding of a field with omitempty does.
+// lookup returns the key node and the value node of the dotted key in the mapping n. It returns nil
+// for a key that n does not have, such as a field with omitempty that the encoder left out.
 func lookup(n *yaml.Node, key string) (k, v *yaml.Node) {
 	v = n
 	for name := range strings.SplitSeq(key, ".") {
@@ -112,8 +136,9 @@ func lookup(n *yaml.Node, key string) (k, v *yaml.Node) {
 	return k, v
 }
 
-// comment returns doc wrapped at the word before the column columns, one line of the comment per
-// line, which the encoder writes after "# ". It returns the empty string for an empty doc.
+// comment returns the words of doc in lines of at most columns characters. A word longer than a
+// line has a line of its own. The encoder writes each line after "# ". comment returns the
+// empty string for an empty doc.
 func comment(doc string, columns int) string {
 	var b strings.Builder
 	line := 0
@@ -143,9 +168,9 @@ func index(m *yaml.Node, key string) int {
 	return -1
 }
 
-// encode returns the YAML document doc, indented by two spaces. A document that a parse returned,
-// or that holds nodes that an encode returned, encodes without an error, and the encoder writes to
-// memory, so encode ignores the errors of the encoder.
+// encode returns the YAML document doc with an indentation of two spaces. It ignores the errors of
+// the encoder. The encoder writes to memory, and it encodes every node of a parse or an encode and
+// every node that Set adds.
 func encode(doc *yaml.Node) []byte {
 	var b bytes.Buffer
 	enc := yaml.NewEncoder(&b)

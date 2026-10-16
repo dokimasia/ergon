@@ -87,6 +87,11 @@ func (*ConflictError) Unwrap() error {
 
 // Options are the options of the commands that write.
 type Options struct {
+	// Settings are the values of options by their keys in .ergon.yaml, such as
+	// license.parameters.change-date. A command resolves the options as if .ergon.yaml contained
+	// each value as a string, and writes the resolved sections into .ergon.yaml.
+	Settings map[string]string
+
 	// Force overwrites a managed file that was edited by hand or exists with other content, and
 	// removes an edited file that the rendering no longer has.
 	Force bool
@@ -195,8 +200,8 @@ func Open(fsys FS, catalog *language.Catalog, version string, base ...Producer) 
 //
 // It returns an error that wraps [ErrInitialized] for a repository with a lock,
 // [lock.ErrInvalid] for a lock that does not parse, [language.ErrInvalidAnswer] for answers that no
-// producer can render, [options.ErrInvalid] for an existing .ergon.yaml that the producers do not
-// accept, the error of a producer, and an error that wraps [ErrConflict] for a managed file that
+// producer can render, [options.ErrInvalid] for an existing .ergon.yaml or settings that the
+// producers do not accept, the error of a producer, and an error that wraps [ErrConflict] for a managed file that
 // exists with other content, unless opts.Force overwrites it. It returns an error that wraps
 // [ErrDevelopmentBuild] for a build of ergon without a release, before it reads the lock. New writes
 // nothing when it returns an error before its first write. It reads a and does not modify it.
@@ -223,7 +228,7 @@ func (r *Repository) New(a *language.Answers, opts Options) ([]Change, error) {
 //
 // It returns an error that wraps [ErrNotInitialized] for a repository without a lock,
 // [ErrLanguagePresent] for a language that the answers already have, [options.ErrInvalid] for
-// .ergon.yaml that the producers do not accept, and [ErrConflict] for a managed file that it would
+// .ergon.yaml or settings that the producers do not accept, and [ErrConflict] for a managed file that it would
 // change and that was edited by hand, unless opts.Force overwrites it, and the errors of
 // [Repository.writableLock]. Add writes nothing when it returns an error before its first write.
 func (r *Repository) Add(languages []workspace.Language, opts Options) ([]Change, error) {
@@ -285,8 +290,8 @@ func (r *Repository) Remove(languages []workspace.Language) ([]Change, error) {
 // every other file, keeps the conflicting file and its entry in the lock, and then returns an error
 // that wraps [ErrConflict]. It returns an error that wraps [ErrNotInitialized] for a repository
 // without a lock, [language.ErrInvalidAnswer] for answers that no producer can render,
-// [options.ErrInvalid] for .ergon.yaml that the producers do not accept or whose key of an answer
-// has another value, the error of a producer, and the errors of [Repository.writableLock].
+// [options.ErrInvalid] for .ergon.yaml or settings that the producers do not accept or whose key of
+// an answer has another value, the error of a producer, and the errors of [Repository.writableLock].
 func (r *Repository) Sync(update func(*language.Answers), opts Options) ([]Change, error) {
 	l, err := r.writableLock()
 	if err != nil {
@@ -297,7 +302,7 @@ func (r *Repository) Sync(update func(*language.Answers), opts Options) ([]Chang
 	if update != nil {
 		update(&a)
 	}
-	rend, next, err := r.targets(&a, &l)
+	rend, next, err := r.targets(&a, &l, opts.Settings)
 	if err != nil {
 		return nil, err
 	}
@@ -321,7 +326,7 @@ func (r *Repository) Check() ([]Finding, error) {
 	if err != nil {
 		return nil, err
 	}
-	rend, _, err := r.targets(&l.Answers, &l)
+	rend, _, err := r.targets(&l.Answers, &l, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -360,19 +365,20 @@ func (r *Repository) Sections() ([]options.Section, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, _, res, err := r.resolve(units, &next.Answers, &l)
+	_, _, res, err := r.resolve(units, &next.Answers, &l, nil)
 	if err != nil {
 		return nil, err
 	}
 	return res.Sections, nil
 }
 
-// change renders a with the options that previous records, plans against the file entries of
-// previous, and applies the plan when nothing conflicts. previous is the lock of the repository,
-// and nil for a repository without one. It returns an error that wraps [ErrConflict], and writes
-// nothing, when a managed file conflicts. It reads a and does not modify it.
+// change renders a with the options that previous records and the settings of opts. It plans
+// against the file entries of previous, and applies the plan when nothing conflicts. previous is the
+// lock of the repository, and nil for a repository without one. When a managed file conflicts,
+// change returns an error that wraps [ErrConflict] and does not write a file. It reads a and does
+// not modify it.
 func (r *Repository) change(previous *lock.Lock, a *language.Answers, opts Options) ([]Change, error) {
-	rend, next, err := r.targets(a, previous)
+	rend, next, err := r.targets(a, previous, opts.Settings)
 	if err != nil {
 		return nil, err
 	}
@@ -390,24 +396,27 @@ func (r *Repository) change(previous *lock.Lock, a *language.Answers, opts Optio
 	return r.apply(&p, &next)
 }
 
-// targets returns the rendering of a, of the options of .ergon.yaml and of the local files, and
-// the lock that follows the rendering without its entries of files. That lock has a copy of a with
-// its languages in the order of the catalog, and the baseline value of each option. previous is the
-// lock of the repository, whose record and answers resolve the options, and nil for a repository
-// without one. targets reads a and previous and modifies neither.
+// targets returns the rendering of a, of the options of .ergon.yaml with settings and of the local
+// files, and the lock that follows the rendering without its entries of files. That lock has a copy
+// of a with its languages in the order of the catalog, and the baseline value of each option.
+// previous is the lock of the repository, whose record and answers resolve the options, and nil for
+// a repository without one. settings are the settings of [Options], or nil. targets reads a and
+// previous and modifies neither.
 //
 // It returns an error that wraps [language.ErrInvalidAnswer] for answers that no producer can
 // render, [ErrUnknownLanguage] for a language that the catalog does not have, [ErrLanguagePresent]
 // for a language that a names twice, [ErrUnsupported] for a language without a producer,
-// [options.ErrInvalid] for .ergon.yaml that the producers do not accept, [ErrInvalidFile] for a
-// producer that renders .ergon.yaml, and the error of a producer, of the rendering or of a local
-// file.
-func (r *Repository) targets(a *language.Answers, previous *lock.Lock) (rendering, lock.Lock, error) {
+// [options.ErrInvalid] for .ergon.yaml or settings that the producers do not accept,
+// [ErrInvalidFile] for a producer that renders .ergon.yaml, and the error of a producer, of the
+// rendering or of a local file.
+func (r *Repository) targets(a *language.Answers, previous *lock.Lock, settings map[string]string) (
+	rendering, lock.Lock, error,
+) {
 	units, next, err := r.units(a)
 	if err != nil {
 		return rendering{}, lock.Lock{}, err
 	}
-	rend, err := r.render(units, &next.Answers, previous)
+	rend, err := r.render(units, &next.Answers, previous, settings)
 	if err != nil {
 		return rendering{}, lock.Lock{}, err
 	}
@@ -461,13 +470,18 @@ func (r *Repository) units(a *language.Answers) ([]render.Unit, lock.Lock, error
 }
 
 // resolve returns the content of .ergon.yaml, whether the repository has the file, and the options
-// of the configurable producers of units resolved from it and from previous, the lock of the
-// repository or nil, for a. It returns the error of a file that does not read, and the errors of
+// of the configurable producers of units for a. It resolves the options from the content with
+// settings, as [options.Set] sets them, and from previous. previous is the lock of the repository,
+// or nil. It returns the error of a file that does not read, and the errors of [options.Set] and
 // [options.Resolve].
-func (r *Repository) resolve(units []render.Unit, a *language.Answers, previous *lock.Lock) (
-	[]byte, bool, options.Resolution, error,
-) {
+func (r *Repository) resolve(units []render.Unit, a *language.Answers, previous *lock.Lock,
+	settings map[string]string,
+) ([]byte, bool, options.Resolution, error) {
 	file, exists, err := r.read(language.Config)
+	if err != nil {
+		return nil, false, options.Resolution{}, err
+	}
+	set, err := options.Set(file, settings)
 	if err != nil {
 		return nil, false, options.Resolution{}, err
 	}
@@ -482,7 +496,7 @@ func (r *Repository) resolve(units []render.Unit, a *language.Answers, previous 
 	if previous != nil {
 		recorded, answered = previous.Settings, &previous.Answers
 	}
-	res, err := options.Resolve(file, recorded, answered, a, configurables, r.sections())
+	res, err := options.Resolve(set, recorded, answered, a, configurables, r.sections())
 	return file, exists, res, err
 }
 
@@ -494,14 +508,16 @@ type resolved struct {
 	rendering
 }
 
-// render resolves the options of units from .ergon.yaml and previous, the lock of the repository or
-// nil, writes their sections into the content of .ergon.yaml, collects their contributions, renders
-// their files for a, and merges the local files into them. Each unit that is a
-// [language.Annotator] then annotates each seeded file, and .ergon.yaml when the repository has
-// none, in the order of units. It returns the errors that [Repository.targets] states for the
-// options, the rendering and the local files.
-func (r *Repository) render(units []render.Unit, a *language.Answers, previous *lock.Lock) (resolved, error) {
-	file, exists, res, err := r.resolve(units, a, previous)
+// render resolves the options of units from .ergon.yaml with settings and from previous, the lock
+// of the repository or nil. It writes their sections into the content of .ergon.yaml, collects
+// their contributions, renders their files for a, and merges the local files into them. Each unit
+// that is a [language.Annotator] then annotates each seeded file, and .ergon.yaml when the
+// repository has none, in the order of units. It returns the errors that [Repository.targets]
+// states for the options, the rendering and the local files.
+func (r *Repository) render(units []render.Unit, a *language.Answers, previous *lock.Lock,
+	settings map[string]string,
+) (resolved, error) {
+	file, exists, res, err := r.resolve(units, a, previous, settings)
 	if err != nil {
 		return resolved{}, err
 	}
