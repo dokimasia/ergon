@@ -1,5 +1,57 @@
 # go.dokimi.dev/ergon
 
+## 0.10.0
+
+### Minor Changes
+
+- 27a850e: Add `--licensed-work`, `--additional-use-grant`, `--change-date` and `--change-license` to `ergon init new` for the parameters of BUSL-1.1.
+- c62ac29: **Breaking:** Exit with 2 for `ergon` without a command, after the help on the standard error.
+- c62ac29: **Breaking:** Remove the flags `--config` and `-v` and the command `ergon help`.
+- a2520a3: Release the members of a uv workspace with `ergon release`.
+- c62ac29: Run the command line on go.stealthscale.io/cli, and read each option from its variable of the environment, such as `ERGON_INIT_NEW_OWNER` for `--owner` of `ergon init new`.
+
+### Patch Changes
+
+- Updated dependencies [27a850e]
+- Updated dependencies [27a850e]
+- Updated dependencies [a2520a3]
+- Updated dependencies [0a55b7d]
+- Updated dependencies [5394d3c]
+- Updated dependencies [0a819fb]
+- Updated dependencies [0a819fb]
+- Updated dependencies [27a850e]
+- Updated dependencies [27a850e]
+- Updated dependencies [ee75001]
+- Updated dependencies [4295f7e]
+- Updated dependencies [0a55b7d]
+- Updated dependencies [a2520a3]
+- Updated dependencies [c62ac29]
+- Updated dependencies [a2520a3]
+- Updated dependencies [4295f7e]
+- Updated dependencies [5394d3c]
+- Updated dependencies [5394d3c]
+- Updated dependencies [ee75001]
+- Updated dependencies [0a55b7d]
+- Updated dependencies [4295f7e]
+- Updated dependencies [4295f7e]
+- Updated dependencies [5260d20]
+- Updated dependencies [8b78d7a]
+- Updated dependencies [0a819fb]
+- Updated dependencies [a2520a3]
+  - go.dokimi.dev/ergon/service@0.12.0
+  - go.dokimi.dev/ergon/core@0.11.0
+  - go.dokimi.dev/ergon/lang/python@0.5.0
+  - go.dokimi.dev/ergon/lang/rust@0.5.0
+  - go.dokimi.dev/ergon/lang/go@0.7.4
+  - go.dokimi.dev/ergon/lang/csharp@0.3.3
+  - go.dokimi.dev/ergon/lang/java@0.4.3
+  - go.dokimi.dev/ergon/lang/javascript@0.4.2
+  - go.dokimi.dev/ergon/lang/kotlin@0.3.10
+  - go.dokimi.dev/ergon/lang/terraform@0.4.3
+  - go.dokimi.dev/ergon/lang/typescript@0.3.2
+  - go.dokimi.dev/ergon/lang/bash@0.4.3
+  - go.dokimi.dev/ergon/lang/php@0.4.3
+
 ## 0.9.1
 
 ### Patch Changes

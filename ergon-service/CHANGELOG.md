@@ -1,5 +1,28 @@
 # go.dokimi.dev/ergon/service
 
+## 0.12.0
+
+### Minor Changes
+
+- 27a850e: Accept an empty parameter of BUSL-1.1, and write its line of LICENSE with the label alone.
+- 27a850e: Add `baseline.Options.Settings` to resolve the options with the values that a command sets.
+- 0a55b7d: Add `common.hooks.exclude` for the paths whose content the hooks of file hygiene keep as it is.
+- 5394d3c: Add `github.code-security`, whose value false leaves `security.yml` and `codeql.yml` out of a private repository without GitHub Code Security.
+- 0a819fb: Add `licenses.FixContent` to return the content that `ergon license fix` writes into one file.
+- 27a850e: Add `licenses.Parameters.All` to iterate over the parameters of BUSL-1.1 by their keys.
+- 27a850e: Add `options.Set` to write values into the content of `.ergon.yaml` as strings.
+- 0a55b7d: **Breaking:** Read a local TOML file as a valid TOML document, and merge its tables into the managed TOML file.
+- 0a819fb: Write the license header into each seeded file and into a new `.ergon.yaml`.
+
+### Patch Changes
+
+- 5394d3c: Grant `actions: read` to the CodeQL analysis, and run the Scorecard in a public repository alone.
+- 0a55b7d: Skip the Markdown files in `trailing-whitespace` by their type in place of the pattern `\.md$`.
+- Updated dependencies [a2520a3]
+- Updated dependencies [0a819fb]
+- Updated dependencies [8b78d7a]
+  - go.dokimi.dev/ergon/core@0.11.0
+
 ## 0.11.0
 
 ### Minor Changes

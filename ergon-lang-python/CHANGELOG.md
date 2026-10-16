@@ -1,5 +1,34 @@
 # go.dokimi.dev/ergon/lang/python
 
+## 0.5.0
+
+### Minor Changes
+
+- ee75001: Add `python.audit.skip` for the packages of `uv.lock` without a release on PyPI.
+- a2520a3: **Breaking:** Take the tools of the section python in `python.Register`.
+- a2520a3: Discover the members of a uv workspace as the packages of a release.
+- a2520a3: Write the version and the requirements of a project into its `pyproject.toml` in a release, and refresh `uv.lock`.
+
+### Patch Changes
+
+- ee75001: Set `extend-exclude = [".ergon"]` in `ruff.toml`, and describe the merge of a local `ruff.toml`.
+- Updated dependencies [27a850e]
+- Updated dependencies [27a850e]
+- Updated dependencies [a2520a3]
+- Updated dependencies [0a55b7d]
+- Updated dependencies [5394d3c]
+- Updated dependencies [0a819fb]
+- Updated dependencies [0a819fb]
+- Updated dependencies [27a850e]
+- Updated dependencies [27a850e]
+- Updated dependencies [0a55b7d]
+- Updated dependencies [5394d3c]
+- Updated dependencies [0a55b7d]
+- Updated dependencies [8b78d7a]
+- Updated dependencies [0a819fb]
+  - go.dokimi.dev/ergon/service@0.12.0
+  - go.dokimi.dev/ergon/core@0.11.0
+
 ## 0.4.2
 
 ### Patch Changes
