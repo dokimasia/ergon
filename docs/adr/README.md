@@ -20,7 +20,7 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 | [0009](0009-release-dependents-by-resolution.md) | Dependent releases by consumer resolution | Accepted |
 | [0010](0010-release-waits-for-ci.md) | The release workflow waits for the CI run of its commit | Superseded by ADR-0016 |
 | [0011](0011-pins-through-the-baseline.md) | Repositories receive their pins through the baseline | Accepted |
-| [0012](0012-seeded-files-with-license-headers.md) | ergon init writes the license header into the files it seeds | Proposed |
+| [0012](0012-seeded-files-with-license-headers.md) | ergon init writes the license header into the files it seeds | Accepted |
 | [0013](0013-go-modules-through-the-version-list.md) | The resolver finds the module of a Go package through @v/list | Proposed |
 | [0014](0014-lint-and-test-before-a-commit.md) | The hooks lint and test each commit, and run the gate before each push | Accepted, superseded in part by ADR-0015 |
 | [0015](0015-hook-targets-in-ergon-yaml.md) | The targets of the hooks are options of .ergon.yaml | Accepted |
@@ -52,3 +52,9 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 | [0041](0041-package-manager-of-the-js-toolchain.md) | The key package-manager of the section js selects npm or pnpm | Accepted |
 | [0042](0042-vite-plus-toolkit-of-the-js-toolchain.md) | The toolkit vite-plus runs the gates of JavaScript and TypeScript through vp | Accepted |
 | [0043](0043-lint-of-markdown-and-workflows.md) | The targets lint-common and lint-github lint the Markdown files and the workflows | Accepted |
+| [0044](0044-security-workflows-of-a-private-repository.md) | The key code-security renders the security workflows, and the Scorecard runs in a public repository alone | Accepted |
+| [0045](0045-command-line-on-go-cli.md) | The command line of ergon runs on go.stealthscale.io/cli | Accepted |
+| [0046](0046-merge-of-a-local-toml-file.md) | A local TOML file is a TOML document that merges into its managed file | Accepted |
+| [0047](0047-cargo-llvm-cov-without-a-coverage-gate.md) | rust.tools pins cargo-llvm-cov, and the gate of Rust does not measure coverage | Accepted |
+| [0048](0048-python-audit-skip.md) | The key audit.skip of the section python leaves packages without a release on PyPI out of the scan | Accepted |
+| [0049](0049-hooks-exclude-of-the-common-files.md) | The key common.hooks.exclude keeps paths out of the hooks that change or refuse a file | Accepted |

@@ -1,7 +1,7 @@
 ---
 adr: 0012
 title: ergon init writes the license header into the files it seeds
-status: Proposed
+status: Accepted
 date: 2026-10-08
 supersedes: none
 superseded-by: none
@@ -17,7 +17,7 @@ rfc: RFC-0004
 
 ## Status
 
-Proposed
+Accepted
 
 ## Context
 
