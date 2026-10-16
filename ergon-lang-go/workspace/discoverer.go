@@ -11,7 +11,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"go.dokimi.dev/ergon/core/changeset"
@@ -25,10 +24,6 @@ const Toolchain workspace.Toolchain = "go"
 // ChangelogFile is the changelog of a module, in the directory of the module. Its headings record
 // the versions of the module.
 const ChangelogFile = changeset.Changelog
-
-// versionHeading matches a heading of a changelog that names a version, such as ## 1.2.0, with the
-// version in its first group.
-var versionHeading = regexp.MustCompile(`(?m)^#{1,6}[ \t]+v?(\d+\.\d+\.\d+\S*)[ \t]*$`)
 
 // Discoverer discovers the Go modules of a repository as the packages of [Toolchain].
 //
@@ -93,8 +88,8 @@ func (d Discoverer) Discover(ctx context.Context, root string) ([]workspace.Pack
 }
 
 // changelogVersion returns the highest version that a heading of the changelog of the module in
-// the directory dir of the repository of r names, and the zero version for a module without a
-// changelog or without such a heading. It returns the error of reading the changelog.
+// the directory dir of the repository of r names, as [changeset.Latest] reads it, and the zero
+// version for a module without a changelog. It returns the error of reading the changelog.
 func changelogVersion(r *os.Root, dir string) (version.Version, error) {
 	file := path.Join(dir, ChangelogFile)
 	data, err := r.ReadFile(filepath.FromSlash(file))
@@ -104,13 +99,7 @@ func changelogVersion(r *os.Root, dir string) (version.Version, error) {
 	if err != nil {
 		return version.Version{}, fmt.Errorf("workspace: read %s: %w", file, err)
 	}
-	var highest version.Version
-	for _, m := range versionHeading.FindAllSubmatch(data, -1) {
-		if v, err := version.Parse(string(m[1])); err == nil && v.Compare(highest) > 0 {
-			highest = v
-		}
-	}
-	return highest, nil
+	return changeset.Latest(data), nil
 }
 
 // tagVersion returns the highest version that a tag of tags names for the module in the directory

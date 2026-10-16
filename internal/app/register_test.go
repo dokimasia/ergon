@@ -131,5 +131,24 @@ func TestRegisterProcess(t *testing.T) {
 				assert.Equal(t, strings.TrimSpace(vcstest.Git(t, root, "rev-parse", "v1.0.0^{commit}")), head,
 					"the commit of the tag of the module")
 			})
+
+		t.Run("refreshes uv.lock of a release of Python with uv through ergon tool run", func(t *testing.T) {
+			root := files.Workspace(t, files.Tree{
+				"pyproject.toml": files.Text("[project]\nname = \"demo\"\nversion = \"0.1.0\"\n"),
+				"uv.lock":        files.Text("version = 1\n"),
+			})
+			record := filepath.Join(t.TempDir(), "record")
+			t.Setenv(recordEnv, record)
+			var c language.Catalog
+			assert.NoError(t, app.Register(&c), "Register of every language module")
+			versioner, ok := language.ToolchainRole[language.Versioner](&c, python.Toolchain)
+			assert.True(t, ok, "the versioner of Python")
+			_, err := versioner.Apply(t.Context(), root, []language.Edit{{
+				Version: version.Version{Minor: 2},
+				Package: workspace.Package{Name: "demo", Dir: ".", Version: version.Version{Minor: 1}},
+			}})
+			assert.NoError(t, err, "Apply")
+			files.HasContent(t, record, "tool\nrun\npython.uv\n--\nlock\n\n", "the arguments of the run")
+		})
 	})
 }

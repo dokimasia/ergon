@@ -90,7 +90,7 @@ ergon release follows the workflow of changesets:
 
 `ergon release status` reports each package that a branch changed without a changeset. A run of `ci.yml` skips its jobs when a passed run already covers its content, such as the run of a version pull request whose parent passed. A repository can set the variable `ERGON_APP_CLIENT_ID` and the secret `ERGON_APP_PRIVATE_KEY` of a GitHub App, so that the checks of the version pull request start without an approval.
 
-ergon release publishes Go modules. [The roadmap](docs/roadmap/README.md) lists the releases of the other toolchains.
+ergon release publishes Go modules. It also writes the versions of the projects of a uv workspace, which it does not upload to PyPI. [The roadmap](docs/roadmap/README.md) lists the releases of the other toolchains.
 
 ## Documentation
 

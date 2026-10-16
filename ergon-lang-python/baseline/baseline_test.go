@@ -4,6 +4,7 @@
 package baseline_test
 
 import (
+	"context"
 	"os"
 	"path"
 	"slices"
@@ -157,11 +158,12 @@ func TestBaseline(t *testing.T) {
 	})
 }
 
-// catalog returns a catalog with Python.
+// catalog returns a catalog with Python, whose tools run nothing.
 func catalog(t *testing.T) *language.Catalog {
 	t.Helper()
 	c := new(language.Catalog)
-	assert.NoError(t, python.Register(c), "Register of Python")
+	none := func(context.Context, string, string, []string, []string) error { return nil }
+	assert.NoError(t, python.Register(c, none), "Register of Python")
 	return c
 }
 

@@ -3,10 +3,14 @@
 
 // Package python declares Python and its toolchain, uv.
 //
-// [Register] adds the toolchain and the language to a catalog.
+// [Register] adds the toolchain and the language to a catalog. The toolchain discovers the projects
+// of a uv workspace as the packages of a release, and writes their versions, their requirements on
+// each other and uv.lock in a release. A release runs uv through the [Tools] that the composition
+// root provides.
 //
 // # Dependency position
 //
-// Imports [go.dokimi.dev/ergon/core/language], [go.dokimi.dev/ergon/core/workspace] and its
-// package baseline. Only the root module of ergon imports it.
+// Imports the standard library, [go.dokimi.dev/ergon/core/language],
+// [go.dokimi.dev/ergon/core/workspace] and its packages baseline, release and workspace. Only the
+// root module of ergon imports it.
 package python

@@ -21,7 +21,8 @@
 // planner of a release resolves it.
 //
 // [Dir] is the directory of the changesets, and [Changelog] the name of the changelog of a package,
-// into which a release writes the summaries of its changesets.
+// into which a release writes the summaries of its changesets. [Latest] returns the highest version
+// of the headings of a changelog, which records the version of a package whose manifest has none.
 //
 // # Errors
 //
