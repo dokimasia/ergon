@@ -1,5 +1,16 @@
 # go.dokimi.dev/ergon/service
 
+## 0.14.0
+
+### Minor Changes
+
+- 87ed939: Add `release.Plan.Empty` to report whether every release of a plan is at none.
+- 87ed939: **Breaking:** Take the release plan in place of the changesets in `release.SelectMode`.
+
+### Patch Changes
+
+- 60f5c35: Write one line of updated dependencies in each changelog entry, with each commit once.
+
 ## 0.13.0
 
 ### Minor Changes

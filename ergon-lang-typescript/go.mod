@@ -8,8 +8,8 @@ go 1.27.2
 require (
 	go.dokimi.dev/assert v0.3.0
 	go.dokimi.dev/ergon/core v0.11.0
-	go.dokimi.dev/ergon/lang/javascript v0.4.3
-	go.dokimi.dev/ergon/service v0.13.0
+	go.dokimi.dev/ergon/lang/javascript v0.4.4
+	go.dokimi.dev/ergon/service v0.14.0
 )
 
 require (
