@@ -1,5 +1,12 @@
 # go.dokimi.dev/ergon
 
+## 0.10.3
+
+### Patch Changes
+
+- Updated dependencies [1e2b2f4]
+  - go.dokimi.dev/ergon/lang/php@0.4.6
+
 ## 0.10.2
 
 ### Patch Changes
