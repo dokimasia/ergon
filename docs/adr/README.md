@@ -13,7 +13,7 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 | [0002](0002-independent-module-versions.md) | Independent module versions, with the root module as an entry point | Accepted, superseded in part by ADR-0009 |
 | [0003](0003-follow-changesets.md) | Follow changesets' file format, configuration and planning rules | Accepted, superseded in part by ADR-0009 and ADR-0053 |
 | [0004](0004-go-releases-in-one-commit.md) | Go releases in one commit through a file proxy | Accepted |
-| [0005](0005-signed-version-commits.md) | Version commits through createCommitOnBranch, split by size | Accepted |
+| [0005](0005-signed-version-commits.md) | Version commits through createCommitOnBranch, split by size | Accepted, superseded in part by ADR-0055 |
 | [0006](0006-publish-credentials.md) | OIDC for npm, PyPI and crates.io, and environment secrets for Maven Central | Accepted, superseded in part by ADR-0010 |
 | [0007](0007-toolchains-and-languages.md) | Toolchains and languages are separate catalog entries | Accepted, superseded in part by ADR-0008 |
 | [0008](0008-toolchains-in-language-modules.md) | The npm and Gradle toolchains are in the JavaScript and Java modules | Accepted |
@@ -63,3 +63,4 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 | [0052](0052-ergon-yaml-decode-on-go-cli.md) | ergon decodes the sections of .ergon.yaml with go.stealthscale.io/cli | Accepted |
 | [0053](0053-one-line-of-updated-dependencies.md) | A changelog entry has one line of updated dependencies | Accepted |
 | [0054](0054-empty-release-plans-in-ci.md) | CI treats an empty release plan as a plan without changesets | Accepted |
+| [0055](0055-proposals-on-a-staging-branch.md) | A proposal is committed on a staging branch, and its branch moves once | Accepted |
