@@ -11,7 +11,7 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 |---|---|---|
 | [0001](0001-one-module-per-language.md) | One module per language | Accepted, superseded in part by ADR-0008 |
 | [0002](0002-independent-module-versions.md) | Independent module versions, with the root module as an entry point | Accepted, superseded in part by ADR-0009 |
-| [0003](0003-follow-changesets.md) | Follow changesets' file format, configuration and planning rules | Accepted, superseded in part by ADR-0009 |
+| [0003](0003-follow-changesets.md) | Follow changesets' file format, configuration and planning rules | Accepted, superseded in part by ADR-0009 and ADR-0053 |
 | [0004](0004-go-releases-in-one-commit.md) | Go releases in one commit through a file proxy | Accepted |
 | [0005](0005-signed-version-commits.md) | Version commits through createCommitOnBranch, split by size | Accepted |
 | [0006](0006-publish-credentials.md) | OIDC for npm, PyPI and crates.io, and environment secrets for Maven Central | Accepted, superseded in part by ADR-0010 |
@@ -61,3 +61,4 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 | [0050](0050-busl-parameters-from-init-new-flags.md) | ergon init new sets the parameters of BUSL-1.1 from its flags | Accepted |
 | [0051](0051-empty-busl-parameters.md) | A parameter of BUSL-1.1 may be empty | Accepted |
 | [0052](0052-ergon-yaml-decode-on-go-cli.md) | ergon decodes the sections of .ergon.yaml with go.stealthscale.io/cli | Accepted |
+| [0053](0053-one-line-of-updated-dependencies.md) | A changelog entry has one line of updated dependencies | Accepted |
