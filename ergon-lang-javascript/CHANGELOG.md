@@ -1,5 +1,12 @@
 # go.dokimi.dev/ergon/lang/javascript
 
+## 0.4.5
+
+### Patch Changes
+
+- Updated dependencies [c47195d]
+  - go.dokimi.dev/ergon/service@0.15.0
+
 ## 0.4.4
 
 ### Patch Changes

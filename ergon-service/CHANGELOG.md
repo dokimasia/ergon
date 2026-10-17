@@ -1,5 +1,16 @@
 # go.dokimi.dev/ergon/service
 
+## 0.15.0
+
+### Minor Changes
+
+- c47195d: Add `forge.Client.DeleteBranch` to delete a branch.
+- c47195d: **Breaking:** Add `DeleteBranch` to `release.Proposer`.
+
+### Patch Changes
+
+- c47195d: Fix `release.Propose` to keep the open pull request of its branch open when it updates the branch.
+
 ## 0.14.0
 
 ### Minor Changes
