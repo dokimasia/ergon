@@ -260,7 +260,7 @@ Usage: ergon release ci select-mode [options]
 Choose the job that the release workflow runs.
 
 ergon release ci select-mode writes the mode of the release workflow: version
-for a repository with changesets or with lockfiles that record the earlier
+for changesets that release a package or for lockfiles that record the earlier
 content of a package of the publish plan, publish for a publish plan with a
 package, and none otherwise. It writes each such lockfile. --output writes the
 publish plan into a file for the job publish.
@@ -329,10 +329,11 @@ release version does. It then commits the changes on the branch
 ergon-release/<base> through the API of GitHub, which signs the commits, and
 opens or updates the version pull request into the base branch. It marks the
 head of the branch with the status ergon/version, with which ergon release ci
-skip recognises the version commit. Without changesets it proposes the
-lockfiles that ergon release version rewrites, and otherwise changes nothing.
-It skips a commit of HEAD that is no longer the head of the base branch, and
-leaves the pull request to the run of the newer head.
+skip recognises the version commit. Without a changeset that releases a
+package it proposes the lockfiles that ergon release version rewrites, and
+otherwise changes nothing. Changesets at none or without packages wait for the
+next release. It skips a commit of HEAD that is no longer the head of the base
+branch, and leaves the pull request to the run of the newer head.
 
 Options:
       --title string  Title of the pull request and of its commits.  default "chore: version packages", env ERGON_RELEASE_CI_VERSION_TITLE

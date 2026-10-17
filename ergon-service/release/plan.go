@@ -141,6 +141,12 @@ func NewPlan(g *Graph, c *Config, sets []changeset.Changeset) (Plan, error) {
 	return plan, nil
 }
 
+// Empty reports whether every release of p is at [version.BumpNone]. It reports true for a plan
+// without releases and for the plan of empty changesets or changesets at none.
+func (p *Plan) Empty() bool {
+	return !slices.ContainsFunc(p.Releases, func(r Release) bool { return r.Bump != version.BumpNone })
+}
+
 // checkChangesets returns an error that wraps [ErrChangeset] for the first changeset of sets that
 // names a package that g does not have, or that names a skipped and a released package.
 func checkChangesets(g *Graph, c *Config, sets []changeset.Changeset) error {

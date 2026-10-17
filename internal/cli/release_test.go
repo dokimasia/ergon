@@ -43,6 +43,13 @@ const (
 	changesetText = "---\n\"" + modulePath + "\": minor\n---\n\nAdd the Unit type.\n"
 )
 
+// The changesets of the release cases that do not release a package: a changeset without packages
+// and a changeset of the module at none.
+const (
+	emptyChangeset = "---\n---\n\nFix a typo of the README.\n"
+	noneChangeset  = "---\n\"" + modulePath + "\": none\n---\n\nFix a typo of the README.\n"
+)
+
 // The configurations of changesets of the release cases: the changelog of git, and the changelog of
 // GitHub. Neither makes a commit.
 const (
@@ -1142,6 +1149,53 @@ func TestRelease(t *testing.T) {
 			assert.Equal(t, stdout, "No unreleased changesets found.\n", "the standard output")
 			assert.Empty(t, h.calls(), "the requests to GitHub")
 		})
+
+		noRelease := []struct {
+			name          string
+			giveChangeset string
+			wantStdout    string
+			giveArgs      []string
+		}{
+			{
+				name:          "ci version keeps an empty changeset without a pull request",
+				giveChangeset: emptyChangeset,
+				giveArgs:      []string{"release", "ci", "version"},
+				wantStdout:    "No unreleased changesets found.\n",
+			},
+			{
+				name:          "ci version keeps a changeset at none without a pull request",
+				giveChangeset: noneChangeset,
+				giveArgs:      []string{"release", "ci", "version"},
+				wantStdout:    "No unreleased changesets found.\n",
+			},
+			{
+				name:          "select-mode writes publish for an empty changeset",
+				giveChangeset: emptyChangeset,
+				giveArgs:      []string{"release", "ci", "select-mode"},
+				wantStdout:    "mode publish\n",
+			},
+			{
+				name:          "select-mode writes publish for a changeset at none",
+				giveChangeset: noneChangeset,
+				giveArgs:      []string{"release", "ci", "select-mode"},
+				wantStdout:    "mode publish\n",
+			},
+		}
+		for _, tt := range noRelease {
+			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+				dir := goModule(t, gitConfig, nil)
+				write(t, dir, changesetPath, tt.giveChangeset)
+				vcstest.Commit(t, dir, "add a changeset")
+				h := &hub{}
+				status, stdout, stderr := runRelease(t, dir, h.start(t), tt.giveArgs...)
+				assert.Equal(t, status, statusOK, "the exit status: "+stderr)
+				assert.Equal(t, stdout, tt.wantStdout, "the standard output")
+				assert.Empty(t, h.calls(), "the requests to GitHub")
+				files.HasContent(t, filepath.Join(dir, filepath.FromSlash(changesetPath)), tt.giveChangeset,
+					"the changeset")
+			})
+		}
 
 		t.Run("ci version proposes a stale go.sum without changesets", func(t *testing.T) {
 			t.Parallel()

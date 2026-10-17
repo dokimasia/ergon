@@ -62,8 +62,8 @@
 // whose registry lacks its version, and each package without a registry whose tag is missing, in
 // chunks of dependency order. [Pack] builds the artifacts of the plan, and [Publish] uploads the
 // packages and tags them through a [Releaser]: a [GitReleaser] on a workstation, and a
-// [ForgeReleaser] in CI. [SelectMode] chooses the job of the release workflow from the changesets,
-// the publish plan and its stale lockfiles.
+// [ForgeReleaser] in CI. [SelectMode] chooses the job of the release workflow from the release
+// plan, the publish plan and its stale lockfiles.
 //
 // A packer also builds the assets of the release of a tag, such as the archives of the commands of
 // a Go module. [Publish] attaches them to the release through the Releaser: ForgeReleaser creates

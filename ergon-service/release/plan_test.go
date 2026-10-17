@@ -686,6 +686,37 @@ func TestPlan(t *testing.T) {
 		})
 	})
 
+	t.Run("Empty", func(t *testing.T) {
+		t.Parallel()
+
+		tests := []struct {
+			name string
+			give []release.Release
+			want bool
+		}{
+			{name: "reports true for a plan without releases", want: true},
+			{
+				name: "reports true for a plan of releases at none",
+				give: []release.Release{rel(t, "pkg-a", none, "1.0.0", "1.0.0", "fix-a-typo")},
+				want: true,
+			},
+			{
+				name: "reports false for a plan with a release above none",
+				give: []release.Release{
+					rel(t, "pkg-a", none, "1.0.0", "1.0.0", "fix-a-typo"),
+					rel(t, "pkg-b", patch, "1.0.0", "1.0.1", "fix-a-bug"),
+				},
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+				plan := release.Plan{Releases: tt.give}
+				assert.Equal(t, plan.Empty(), tt.want, "Empty")
+			})
+		}
+	})
+
 	t.Run("Plan", func(t *testing.T) {
 		t.Parallel()
 

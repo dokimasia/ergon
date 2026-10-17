@@ -159,7 +159,7 @@ of GITHUB_OUTPUT.`
 	selectModeHelp = `Choose the job that the release workflow runs.
 
 ergon release ci select-mode writes the mode of the release workflow: version
-for a repository with changesets or with lockfiles that record the earlier
+for changesets that release a package or for lockfiles that record the earlier
 content of a package of the publish plan, publish for a publish plan with a
 package, and none otherwise. It writes each such lockfile. --output writes the
 publish plan into a file for the job publish.`
@@ -171,10 +171,11 @@ release version does. It then commits the changes on the branch
 ergon-release/<base> through the API of GitHub, which signs the commits, and
 opens or updates the version pull request into the base branch. It marks the
 head of the branch with the status ergon/version, with which ergon release ci
-skip recognises the version commit. Without changesets it proposes the
-lockfiles that ergon release version rewrites, and otherwise changes nothing.
-It skips a commit of HEAD that is no longer the head of the base branch, and
-leaves the pull request to the run of the newer head.`
+skip recognises the version commit. Without a changeset that releases a
+package it proposes the lockfiles that ergon release version rewrites, and
+otherwise changes nothing. Changesets at none or without packages wait for the
+next release. It skips a commit of HEAD that is no longer the head of the base
+branch, and leaves the pull request to the run of the newer head.`
 
 	ciSkipHelp = `Decide whether a CI run skips its jobs.
 
@@ -473,27 +474,28 @@ func (s *session) releaseGitTag(ctx context.Context, _ *gocli.Run[noOptions, noO
 }
 
 // releaseSelectMode writes the stale lockfiles of [release.Stale], the mode of the release
-// workflow, its output mode, and the publish plan into --output.
+// workflow that [release.SelectMode] returns for the release plan and the publish plan, its output
+// mode, and the publish plan into --output.
 func (s *session) releaseSelectMode(ctx context.Context, run *gocli.Run[noOptions, outputOptions]) error {
-	r, plan, err := s.publishPlan(ctx)
+	r, plan, err := s.plan(ctx)
 	if err != nil {
 		return err
 	}
-	sets, err := release.ReadChangesets(r.root)
+	publish, err := publishPlanOf(ctx, r)
 	if err != nil {
 		return err
 	}
-	stale, err := release.Stale(ctx, r.root, r.graph, &plan)
+	stale, err := release.Stale(ctx, r.root, r.graph, &publish)
 	if err != nil {
 		return err
 	}
-	if err := writeJSON(run.Config().Output, &plan); err != nil {
+	if err := writeJSON(run.Config().Output, &publish); err != nil {
 		return err
 	}
 	for _, file := range stale {
 		fmt.Fprintf(s.stdout, "stale %s\n", file)
 	}
-	mode := release.SelectMode(sets, &plan, stale)
+	mode := release.SelectMode(&plan, &publish, stale)
 	fmt.Fprintf(s.stdout, "mode %s\n", mode)
 	return s.output(modeOutput, mode)
 }
@@ -502,8 +504,9 @@ func (s *session) releaseSelectMode(ctx context.Context, run *gocli.Run[noOption
 // [release.Propose] through the API of GitHub. It then marks the head of the branch of the proposal
 // with [release.MarkVersion], with the page of the run of GITHUB_RUN_ID. For a repository without
 // changesets it proposes the lockfiles that [release.Lock] rewrites, and nothing when it rewrites
-// none. For the [release.ErrMoved] of Propose it writes that it skipped the commit, and returns no
-// error.
+// none. It treats a plan for which [release.Plan.Empty] reports true as a plan without changesets.
+// The changesets of such a plan wait for the next release. For the [release.ErrMoved] of Propose it
+// writes that it skipped the commit, and returns no error.
 func (s *session) releaseCIVersion(ctx context.Context, run *gocli.Run[noOptions, ciVersionOptions]) error {
 	client, repo, err := s.forge()
 	if err != nil {
@@ -512,6 +515,9 @@ func (s *session) releaseCIVersion(ctx context.Context, run *gocli.Run[noOptions
 	r, plan, err := s.plan(ctx)
 	if err != nil {
 		return err
+	}
+	if plan.Empty() {
+		plan = release.Plan{}
 	}
 	head, err := vcs.Head(ctx, r.root)
 	if err != nil {
