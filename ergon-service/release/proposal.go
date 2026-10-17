@@ -24,6 +24,10 @@ import (
 // branch, as in ergon-release/main.
 const ReleaseBranch = "ergon-release/"
 
+// stagingBranch is the prefix of the branch on which [Propose] commits a proposal, before the name
+// of the branch of the proposal, as in ergon-staging/ergon-release/main.
+const stagingBranch = "ergon-staging/"
+
 // maxPayload is the most bytes of base64 of the files of one commit of a version pull request.
 // GitHub ends a request after 10 seconds, and a commit of 5,000,000 bytes, which is 6,666,668 bytes
 // of base64, took 3.4 s.
@@ -73,6 +77,9 @@ type Proposer interface {
 	// SetBranch points the branch name of repo at the commit sha, and creates a missing branch.
 	SetBranch(ctx context.Context, repo, name, sha string) error
 
+	// DeleteBranch deletes the branch name of repo.
+	DeleteBranch(ctx context.Context, repo, name string) error
+
 	// Commit commits files and the deletion of deleted on the branch of repo whose head is head,
 	// with message, and returns the new commit.
 	Commit(
@@ -104,7 +111,7 @@ type Proposal struct {
 	Base string
 
 	// Branch is the branch of the pull request, such as ergon-release/main, which Propose points at
-	// Head before it commits.
+	// the last commit of the proposal.
 	Branch string
 
 	// Head is the commit of Base that the version ran on.
@@ -164,31 +171,27 @@ type section struct {
 
 // Propose opens or updates the pull request p through f, and returns its number. It first reads
 // the head of p.Base, and returns an error that wraps [ErrMoved] and changes nothing when that head
-// is not p.Head. It then points the branch p.Branch at p.Head, and commits the files of p on it, in
-// commits of at most 6,666,668 bytes of base64 each, so that GitHub accepts each commit within 10
-// seconds: the files in the order of their paths, a file over the bound in a commit of its own, and
-// the deletions in the first commit, each with p.Title as its message. It then updates the open
-// pull request from the branch into p.Base with p.Title and p.Body, or opens one. It returns the
-// error of f.
+// is not p.Head. It then points the staging branch ergon-staging/<p.Branch> at p.Head, and commits
+// the files of p on it, in commits of at most 6,666,668 bytes of base64 each, so that GitHub accepts
+// each commit within 10 seconds: the files in the order of their paths, a file over the bound in a
+// commit of its own, and the deletions in the first commit, each with p.Title as its message. It
+// then moves p.Branch from its earlier commit to the last commit in one update. It deletes the
+// staging branch, also after a commit that fails. It then updates the open pull request from
+// p.Branch into p.Base with p.Title and p.Body, or opens one. It returns the error of f.
 func Propose(ctx context.Context, f Proposer, p *Proposal) (int, error) {
 	if err := moved(ctx, f, p); err != nil {
 		return 0, err
 	}
-	if err := f.SetBranch(ctx, p.Repo, p.Branch, p.Head); err != nil {
+	staging := stagingBranch + p.Branch
+	if err := f.SetBranch(ctx, p.Repo, staging, p.Head); err != nil {
 		return 0, err
 	}
-	head, deleted := p.Head, p.Deleted
-	for _, files := range batches(p.Files) {
-		next, err := f.Commit(ctx, p.Repo, p.Branch, head, p.Title, files, deleted)
-		if err != nil {
-			return 0, err
-		}
-		head, deleted = next, nil
+	head, err := commitOn(ctx, f, p, staging)
+	if err == nil {
+		err = f.SetBranch(ctx, p.Repo, p.Branch, head)
 	}
-	if len(deleted) > 0 {
-		if _, err := f.Commit(ctx, p.Repo, p.Branch, head, p.Title, nil, deleted); err != nil {
-			return 0, err
-		}
+	if joined := errors.Join(err, f.DeleteBranch(ctx, p.Repo, staging)); joined != nil {
+		return 0, joined
 	}
 	number, open, err := f.PullRequest(ctx, p.Repo, p.Branch, p.Base)
 	switch {
@@ -198,6 +201,23 @@ func Propose(ctx context.Context, f Proposer, p *Proposal) (int, error) {
 		return number, f.UpdatePullRequest(ctx, p.Repo, number, p.Title, p.Body)
 	}
 	return f.CreatePullRequest(ctx, p.Repo, p.Branch, p.Base, p.Title, p.Body)
+}
+
+// commitOn commits the files and the deletions of p through f on branch, whose head is p.Head, in
+// the commits that [Propose] states, and returns the last commit. It returns the error of f.
+func commitOn(ctx context.Context, f Proposer, p *Proposal, branch string) (string, error) {
+	head, deleted := p.Head, p.Deleted
+	for _, files := range batches(p.Files) {
+		next, err := f.Commit(ctx, p.Repo, branch, head, p.Title, files, deleted)
+		if err != nil {
+			return "", err
+		}
+		head, deleted = next, nil
+	}
+	if len(deleted) > 0 {
+		return f.Commit(ctx, p.Repo, branch, head, p.Title, nil, deleted)
+	}
+	return head, nil
 }
 
 // moved reads the head of p.Base through f, and returns an error that wraps [ErrMoved] when that

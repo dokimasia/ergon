@@ -23,10 +23,11 @@ import (
 	"go.dokimi.dev/ergon/service/vcs/vcstest"
 )
 
-// The parts of a version pull request of the cases.
+// The parts of a version pull request of the cases, and the branch on which Propose commits it.
 const (
 	proposalRepo   = "dokimasia/ergon"
 	proposalBranch = "ergon-release/main"
+	stagingBranch  = "ergon-staging/ergon-release/main"
 )
 
 // dirPerm is the mode of a directory that a case creates in a working tree.
@@ -83,6 +84,11 @@ func (h *hub) SetBranch(_ context.Context, repo, name, sha string) error {
 	return h.record("branch " + repo + " " + name + " " + sha)
 }
 
+// DeleteBranch records the deletion of the branch.
+func (h *hub) DeleteBranch(_ context.Context, repo, name string) error {
+	return h.record("delete " + repo + " " + name)
+}
+
 // Commit records the files and the deletions of the commit, and returns the number of the commit
 // as its hash.
 func (h *hub) Commit(
@@ -120,7 +126,7 @@ func TestProposal(t *testing.T) {
 	t.Run("Propose", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("commits the files on the branch of the base and opens a pull request", func(t *testing.T) {
+		t.Run("commits the files on a staging branch and opens a pull request from the branch", func(t *testing.T) {
 			t.Parallel()
 			h := &hub{}
 			number, err := release.Propose(t.Context(), h, proposal(nil))
@@ -128,15 +134,17 @@ func TestProposal(t *testing.T) {
 			assert.Equal(t, number, 8, "the number of the pull request")
 			assert.Equal(t, h.calls, []string{
 				"head " + proposalRepo + " main",
-				"branch " + proposalRepo + " " + proposalBranch + " " + commitA,
-				"commit " + proposalRepo + " " + proposalBranch + " " + commitA +
+				"branch " + proposalRepo + " " + stagingBranch + " " + commitA,
+				"commit " + proposalRepo + " " + stagingBranch + " " + commitA +
 					" Version Packages [a/CHANGELOG.md b/go.mod] -[.changeset/strange-words-combine.md]",
+				"branch " + proposalRepo + " " + proposalBranch + " 111",
+				"delete " + proposalRepo + " " + stagingBranch,
 				"pull " + proposalRepo + " " + proposalBranch + " main",
 				"create " + proposalRepo + " " + proposalBranch + " main Version Packages Body.",
 			}, "the calls")
 		})
 
-		t.Run("commits on the branch of the proposal", func(t *testing.T) {
+		t.Run("commits on the staging branch of the branch of the proposal", func(t *testing.T) {
 			t.Parallel()
 			h := &hub{}
 			p := proposal(nil)
@@ -145,9 +153,11 @@ func TestProposal(t *testing.T) {
 			assert.NoError(t, err, "Propose")
 			assert.Equal(t, h.calls, []string{
 				"head " + proposalRepo + " main",
-				"branch " + proposalRepo + " ergon-baseline/main " + commitA,
-				"commit " + proposalRepo + " ergon-baseline/main " + commitA +
+				"branch " + proposalRepo + " ergon-staging/ergon-baseline/main " + commitA,
+				"commit " + proposalRepo + " ergon-staging/ergon-baseline/main " + commitA +
 					" Version Packages [a/CHANGELOG.md b/go.mod] -[.changeset/strange-words-combine.md]",
+				"branch " + proposalRepo + " ergon-baseline/main 111",
+				"delete " + proposalRepo + " ergon-staging/ergon-baseline/main",
 				"pull " + proposalRepo + " ergon-baseline/main main",
 				"create " + proposalRepo + " ergon-baseline/main main Version Packages Body.",
 			}, "the calls")
@@ -170,11 +180,45 @@ func TestProposal(t *testing.T) {
 			_, err := release.Propose(t.Context(), h, p)
 			assert.NoError(t, err, "Propose")
 			assert.Equal(t, h.calls[2:4], []string{
-				"commit " + proposalRepo + " " + proposalBranch + " " + commitA +
+				"commit " + proposalRepo + " " + stagingBranch + " " + commitA +
 					" Version Packages [a/lock] -[.changeset/strange-words-combine.md]",
-				"commit " + proposalRepo + " " + proposalBranch + " 111 Version Packages [b/lock c/lock] -[]",
+				"commit " + proposalRepo + " " + stagingBranch + " 111 Version Packages [b/lock c/lock] -[]",
 			}, "the commits")
 		})
+
+		large := bytes.Repeat([]byte("a"), 4_000_000)
+		lasts := []struct {
+			giveFiles map[string][]byte
+			name      string
+			wantCall  string
+			wantAt    int
+			wantCalls int
+		}{
+			{
+				name:      "points the branch of the proposal at the last of its commits",
+				giveFiles: map[string][]byte{"a/lock": large, "b/lock": large},
+				wantCall:  "branch " + proposalRepo + " " + proposalBranch + " 222",
+				wantAt:    4,
+				wantCalls: 8,
+			},
+			{
+				name:      "points the branch of the proposal at the commit of its deletions",
+				giveFiles: map[string][]byte{},
+				wantCall:  "branch " + proposalRepo + " " + proposalBranch + " 111",
+				wantAt:    3,
+				wantCalls: 7,
+			},
+		}
+		for _, tt := range lasts {
+			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+				h := &hub{}
+				_, err := release.Propose(t.Context(), h, proposal(tt.giveFiles))
+				assert.NoError(t, err, "Propose")
+				assert.Length(t, h.calls, tt.wantCalls, "the calls")
+				assert.Equal(t, h.calls[tt.wantAt], tt.wantCall, "the move of the branch")
+			})
+		}
 
 		t.Run("commits the deletions of a version without files", func(t *testing.T) {
 			t.Parallel()
@@ -183,8 +227,22 @@ func TestProposal(t *testing.T) {
 			p.Files = nil
 			_, err := release.Propose(t.Context(), h, p)
 			assert.NoError(t, err, "Propose")
-			assert.Equal(t, h.calls[2], "commit "+proposalRepo+" "+proposalBranch+" "+commitA+
+			assert.Equal(t, h.calls[2], "commit "+proposalRepo+" "+stagingBranch+" "+commitA+
 				" Version Packages [] -[.changeset/strange-words-combine.md]", "the commit")
+		})
+
+		t.Run("deletes the staging branch after a commit that fails", func(t *testing.T) {
+			t.Parallel()
+			h := &hub{failOn: "commit", failAt: errHub}
+			_, err := release.Propose(t.Context(), h, proposal(nil))
+			assert.ErrorIs(t, err, errHub, "Propose")
+			assert.Equal(t, h.calls, []string{
+				"head " + proposalRepo + " main",
+				"branch " + proposalRepo + " " + stagingBranch + " " + commitA,
+				"commit " + proposalRepo + " " + stagingBranch + " " + commitA +
+					" Version Packages [a/CHANGELOG.md b/go.mod] -[.changeset/strange-words-combine.md]",
+				"delete " + proposalRepo + " " + stagingBranch,
+			}, "the calls, which leave the branch of the proposal unchanged")
 		})
 
 		t.Run("returns ErrMoved for a base whose head is another commit", func(t *testing.T) {
@@ -203,9 +261,19 @@ func TestProposal(t *testing.T) {
 			files  bool
 		}{
 			{name: "returns the error of the head of the base", failOn: "head", files: true},
-			{name: "returns the error of the branch", failOn: "branch", files: true},
+			{
+				name:   "returns the error of the staging branch",
+				failOn: "branch " + proposalRepo + " " + stagingBranch,
+				files:  true,
+			},
 			{name: "returns the error of a commit of files", failOn: "commit", files: true},
 			{name: "returns the error of a commit of deletions", failOn: "commit"},
+			{
+				name:   "returns the error of the branch of the proposal",
+				failOn: "branch " + proposalRepo + " " + proposalBranch,
+				files:  true,
+			},
+			{name: "returns the error of the deletion of the staging branch", failOn: "delete", files: true},
 			{name: "returns the error of the lookup of the pull request", failOn: "pull", files: true},
 			{name: "returns the error of a new pull request", failOn: "create", files: true},
 		}

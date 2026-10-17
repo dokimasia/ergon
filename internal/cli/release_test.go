@@ -1096,9 +1096,12 @@ func TestRelease(t *testing.T) {
 			files.HasContent(t, output, "pull-request-number=7\n", "the outputs")
 			assert.Equal(t, h.calls(), []string{
 				"GET /repos/" + hubRepo + "/git/ref/heads/main",
-				"GET /repos/" + hubRepo + "/git/ref/heads/ergon-release/main",
+				"GET /repos/" + hubRepo + "/git/ref/heads/ergon-staging/ergon-release/main",
 				"POST /repos/" + hubRepo + "/git/refs",
 				"POST " + graphqlPath,
+				"GET /repos/" + hubRepo + "/git/ref/heads/ergon-release/main",
+				"POST /repos/" + hubRepo + "/git/refs",
+				"DELETE /repos/" + hubRepo + "/git/refs/heads/ergon-staging/ergon-release/main",
 				"GET /repos/" + hubRepo + "/pulls?base=main&head=o%3Aergon-release%2Fmain&state=open",
 				"POST /repos/" + hubRepo + "/pulls",
 				"GET /repos/" + hubRepo + "/git/ref/heads/ergon-release/main",
@@ -1132,7 +1135,7 @@ func TestRelease(t *testing.T) {
 			}
 			assert.NoError(t, json.Unmarshal([]byte(commits[0]), &request), "Unmarshal of the commit")
 			input := request.Variables.Input
-			expect.That(t, input.Branch.Name).Equal("ergon-release/main", "the branch of the commit")
+			expect.That(t, input.Branch.Name).Equal("ergon-staging/ergon-release/main", "the branch of the commit")
 			expect.That(t, input.Message.Headline).Equal("chore: version packages", "the message of the commit")
 			expect.That(t, input.ExpectedHead).Equal(head, "the head of the branch")
 			assert.Length(t, input.FileChanges.Additions, 1, "the files of the commit")

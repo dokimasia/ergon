@@ -584,9 +584,12 @@ func TestUpdate(t *testing.T) {
 			expect.Empty(t, stderr, "the standard error")
 			assert.Equal(t, fx.hub.calls(), []string{
 				"GET /repos/" + hubRepo + "/git/ref/heads/main",
-				"GET /repos/" + hubRepo + "/git/ref/heads/ergon-update/main",
+				"GET /repos/" + hubRepo + "/git/ref/heads/ergon-staging/ergon-update/main",
 				"POST /repos/" + hubRepo + "/git/refs",
 				"POST " + graphqlPath,
+				"GET /repos/" + hubRepo + "/git/ref/heads/ergon-update/main",
+				"POST /repos/" + hubRepo + "/git/refs",
+				"DELETE /repos/" + hubRepo + "/git/refs/heads/ergon-staging/ergon-update/main",
 				"GET /repos/" + hubRepo + "/pulls?base=main&head=o%3Aergon-update%2Fmain&state=open",
 				"POST /repos/" + hubRepo + "/pulls",
 			}, "the requests to GitHub")

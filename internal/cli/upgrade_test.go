@@ -615,9 +615,12 @@ func TestUpgrade(t *testing.T) {
 				"the standard output")
 			assert.Equal(t, h.calls(), []string{
 				"GET /repos/" + hubRepo + "/git/ref/heads/main",
-				"GET /repos/" + hubRepo + "/git/ref/heads/ergon-baseline/main",
+				"GET /repos/" + hubRepo + "/git/ref/heads/ergon-staging/ergon-baseline/main",
 				"POST /repos/" + hubRepo + "/git/refs",
 				"POST " + graphqlPath,
+				"GET /repos/" + hubRepo + "/git/ref/heads/ergon-baseline/main",
+				"POST /repos/" + hubRepo + "/git/refs",
+				"DELETE /repos/" + hubRepo + "/git/refs/heads/ergon-staging/ergon-baseline/main",
 				"GET /repos/" + hubRepo + "/pulls?base=main&head=o%3Aergon-baseline%2Fmain&state=open",
 				"POST /repos/" + hubRepo + "/pulls",
 			}, "the requests to GitHub")

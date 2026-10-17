@@ -25,6 +25,7 @@ const (
 	branchRoute = "GET /repos/" + repo + "/git/ref/heads/ergon-release/main"
 	tagRoute    = "GET /repos/" + repo + "/git/ref/tags/ergon-core/v0.1.0"
 	refsRoute   = "POST /repos/" + repo + "/git/refs"
+	deleteRoute = "DELETE /repos/" + repo + "/git/refs/heads/ergon-staging/ergon-release/main"
 )
 
 // failure is the response of a request that fails on GitHub.
@@ -83,6 +84,23 @@ func TestRefs(t *testing.T) {
 			c, _ := serve(t, map[string][]response{branchRoute: {failure}})
 			err := c.SetBranch(t.Context(), repo, "ergon-release/main", commitB)
 			assert.ErrorIs(t, err, forge.ErrGitHub, "SetBranch")
+		})
+	})
+
+	t.Run("DeleteBranch", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("deletes the ref of the branch", func(t *testing.T) {
+			t.Parallel()
+			c, _ := serve(t, map[string][]response{deleteRoute: {{status: http.StatusNoContent}}})
+			assert.NoError(t, c.DeleteBranch(t.Context(), repo, "ergon-staging/ergon-release/main"), "DeleteBranch")
+		})
+
+		t.Run("returns ErrGitHub for a request that fails", func(t *testing.T) {
+			t.Parallel()
+			c, _ := serve(t, map[string][]response{deleteRoute: {failure}})
+			err := c.DeleteBranch(t.Context(), repo, "ergon-staging/ergon-release/main")
+			assert.ErrorIs(t, err, forge.ErrGitHub, "DeleteBranch")
 		})
 	})
 

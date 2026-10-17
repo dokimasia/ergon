@@ -65,6 +65,13 @@ func (c *Client) SetBranch(ctx context.Context, repo, name, sha string) error {
 	return err
 }
 
+// DeleteBranch deletes the branch name of repo. It returns an error that wraps [ErrGitHub] for a
+// request that fails.
+func (c *Client) DeleteBranch(ctx context.Context, repo, name string) error {
+	_, err := c.rest(ctx, http.MethodDelete, "/repos/"+repo+"/git/refs/heads/"+name, nil, nil)
+	return err
+}
+
 // Tag returns the commit of the tag name of repo, through the tag object of an annotated tag, and
 // reports whether repo has the tag. It returns an error that wraps [ErrGitHub] for a request that
 // fails.
