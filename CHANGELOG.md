@@ -4,18 +4,7 @@
 
 ### Patch Changes
 
-- Updated dependencies [64b7050]
-- Updated dependencies [67ba789]
-- Updated dependencies [67ba789]
-- Updated dependencies [67ba789]
-- Updated dependencies [67ba789]
-- Updated dependencies [67ba789]
-- Updated dependencies [67ba789]
-- Updated dependencies [1a63ff6]
-- Updated dependencies [452f07d]
-- Updated dependencies [452f07d]
-- Updated dependencies [452f07d]
-- Updated dependencies [452f07d]
+- Updated dependencies [64b7050, 67ba789, 1a63ff6, 452f07d]
   - go.dokimi.dev/ergon/service@0.13.0
   - go.dokimi.dev/ergon/lang/bash@0.4.4
   - go.dokimi.dev/ergon/lang/csharp@0.3.4
@@ -41,32 +30,7 @@
 
 ### Patch Changes
 
-- Updated dependencies [27a850e]
-- Updated dependencies [27a850e]
-- Updated dependencies [a2520a3]
-- Updated dependencies [0a55b7d]
-- Updated dependencies [5394d3c]
-- Updated dependencies [0a819fb]
-- Updated dependencies [0a819fb]
-- Updated dependencies [27a850e]
-- Updated dependencies [27a850e]
-- Updated dependencies [ee75001]
-- Updated dependencies [4295f7e]
-- Updated dependencies [0a55b7d]
-- Updated dependencies [a2520a3]
-- Updated dependencies [c62ac29]
-- Updated dependencies [a2520a3]
-- Updated dependencies [4295f7e]
-- Updated dependencies [5394d3c]
-- Updated dependencies [5394d3c]
-- Updated dependencies [ee75001]
-- Updated dependencies [0a55b7d]
-- Updated dependencies [4295f7e]
-- Updated dependencies [4295f7e]
-- Updated dependencies [5260d20]
-- Updated dependencies [8b78d7a]
-- Updated dependencies [0a819fb]
-- Updated dependencies [a2520a3]
+- Updated dependencies [27a850e, a2520a3, 0a55b7d, 5394d3c, 0a819fb, ee75001, 4295f7e, c62ac29, 5260d20, 8b78d7a]
   - go.dokimi.dev/ergon/service@0.12.0
   - go.dokimi.dev/ergon/core@0.11.0
   - go.dokimi.dev/ergon/lang/python@0.5.0
@@ -85,8 +49,6 @@
 
 ### Patch Changes
 
-- Updated dependencies [c82c878]
-- Updated dependencies [c82c878]
 - Updated dependencies [c82c878]
   - go.dokimi.dev/ergon/service@0.11.0
   - go.dokimi.dev/ergon/lang/bash@0.4.2
@@ -109,11 +71,6 @@
 
 ### Patch Changes
 
-- Updated dependencies [9f8ee46]
-- Updated dependencies [9f8ee46]
-- Updated dependencies [9f8ee46]
-- Updated dependencies [9f8ee46]
-- Updated dependencies [9f8ee46]
 - Updated dependencies [9f8ee46]
   - go.dokimi.dev/ergon/lang/javascript@0.4.0
   - go.dokimi.dev/ergon/lang/typescript@0.3.0
@@ -159,16 +116,14 @@
 
 ### Patch Changes
 
-- Updated dependencies [e854655]
-- Updated dependencies [7a2dbd0]
+- Updated dependencies [e854655, 7a2dbd0]
   - go.dokimi.dev/ergon/lang/go@0.6.2
 
 ## 0.8.1
 
 ### Patch Changes
 
-- Updated dependencies [c17340d]
-- Updated dependencies [ce53c4b]
+- Updated dependencies [c17340d, ce53c4b]
   - go.dokimi.dev/ergon/core@0.8.0
   - go.dokimi.dev/ergon/service@0.9.0
   - go.dokimi.dev/ergon/lang/go@0.6.1
@@ -193,17 +148,7 @@
 
 ### Patch Changes
 
-- Updated dependencies [170d883]
-- Updated dependencies [876696f]
-- Updated dependencies [c6386e5]
-- Updated dependencies [74613ae]
-- Updated dependencies [74613ae]
-- Updated dependencies [e93df52]
-- Updated dependencies [74613ae]
-- Updated dependencies [74613ae]
-- Updated dependencies [e93df52]
-- Updated dependencies [74613ae]
-- Updated dependencies [c6386e5]
+- Updated dependencies [170d883, 876696f, c6386e5, 74613ae, e93df52]
   - go.dokimi.dev/ergon/service@0.8.0
   - go.dokimi.dev/ergon/core@0.7.0
   - go.dokimi.dev/ergon/lang/go@0.6.0
@@ -227,10 +172,7 @@
 ### Patch Changes
 
 - 8b59127: Run lint-go, test-go, race-go and audit-go in every module, and fail after the last module when one of them failed. The job check-go of ci.yml runs make --keep-going check-go, so a failed step does not skip the steps after it. The managed .golangci.yml does not run wrapcheck on test files and on the files of generators.
-- Updated dependencies [c80cbcd]
-- Updated dependencies [ccbcc8f]
-- Updated dependencies [ddcc0a1]
-- Updated dependencies [8b59127]
+- Updated dependencies [c80cbcd, ccbcc8f, ddcc0a1, 8b59127]
   - go.dokimi.dev/ergon/lang/go@0.5.0
   - go.dokimi.dev/ergon/core@0.6.0
   - go.dokimi.dev/ergon/service@0.7.0
@@ -251,8 +193,7 @@
 
 - b68662b: Install a Go tool of ergon tool run once for each version of the go command. A build of dokimi-mutate-go by an older Go refuses the packages of a newer one.
 - da88eb5: Describe the cask of ergon without the full stop at its end, which brew audit refuses.
-- Updated dependencies [b68662b]
-- Updated dependencies [dfc0ced]
+- Updated dependencies [b68662b, dfc0ced]
   - go.dokimi.dev/ergon/service@0.6.1
   - go.dokimi.dev/ergon/lang/go@0.4.1
   - go.dokimi.dev/ergon/lang/bash@0.3.3
@@ -280,12 +221,7 @@
 - 14e7a3a: Move golang.org/x/net to v0.60.0, which fixes GO-2026-6603, GO-2026-6610, GO-2026-6611, GO-2026-6612 and GO-2026-6617.
 - babadd5: Require Go 1.27.2, whose standard library fixes the nine vulnerabilities that govulncheck reports for Go 1.27.1, such as GO-2026-6604 of os.Root on Windows.
 - 2fdb4d1: Return an error on Windows for a file in place of the directory of the assets or the casks of a release, as on Linux and macOS. ergon release publish and ergon release ci homebrew read the directory.
-- Updated dependencies [b8f1c6a]
-- Updated dependencies [14e7a3a]
-- Updated dependencies [d616a74]
-- Updated dependencies [326b07e]
-- Updated dependencies [babadd5]
-- Updated dependencies [2fdb4d1]
+- Updated dependencies [b8f1c6a, 14e7a3a, d616a74, 326b07e, babadd5, 2fdb4d1]
   - go.dokimi.dev/ergon/core@0.5.0
   - go.dokimi.dev/ergon/service@0.6.0
   - go.dokimi.dev/ergon/lang/go@0.4.0
@@ -330,12 +266,7 @@
 
 ### Patch Changes
 
-- Updated dependencies [c61862c]
-- Updated dependencies [12066ae]
-- Updated dependencies [806100c]
-- Updated dependencies [f81caba]
-- Updated dependencies [354fe1c]
-- Updated dependencies [7c5311d]
+- Updated dependencies [c61862c, 12066ae, 806100c, f81caba, 354fe1c, 7c5311d]
   - go.dokimi.dev/ergon/core@0.4.0
   - go.dokimi.dev/ergon/service@0.4.0
   - go.dokimi.dev/ergon/lang/bash@0.3.0
@@ -361,12 +292,7 @@
 ### Patch Changes
 
 - 8bfa588: Make ergon release version print removed for each changeset that it removes. release.Version returns the removed paths apart from the written paths.
-- Updated dependencies [94c3bd1]
-- Updated dependencies [8bfa588]
-- Updated dependencies [096abbd]
-- Updated dependencies [6f01723]
-- Updated dependencies [94c3bd1]
-- Updated dependencies [77ee1c0]
+- Updated dependencies [94c3bd1, 8bfa588, 096abbd, 6f01723, 77ee1c0]
   - go.dokimi.dev/ergon/service@0.3.0
   - go.dokimi.dev/ergon/core@0.3.0
   - go.dokimi.dev/ergon/lang/csharp@0.1.2

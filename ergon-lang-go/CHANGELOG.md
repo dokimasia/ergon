@@ -5,13 +5,7 @@
 ### Patch Changes
 
 - 452f07d: Tag `tools.golangci-lint` and `tools.goreleaser` with their keys for go.stealthscale.io/cli.
-- Updated dependencies [64b7050]
-- Updated dependencies [67ba789]
-- Updated dependencies [67ba789]
-- Updated dependencies [67ba789]
-- Updated dependencies [67ba789]
-- Updated dependencies [67ba789]
-- Updated dependencies [67ba789]
+- Updated dependencies [64b7050, 67ba789]
   - go.dokimi.dev/ergon/service@0.13.0
 
 ## 0.7.4
@@ -20,20 +14,7 @@
 
 - c62ac29: Describe `completions` as the command completion of a program of cobra or of go.stealthscale.io/cli.
 - 5260d20: Turn off the padding of struct tags by golines in `.golangci.yml`.
-- Updated dependencies [27a850e]
-- Updated dependencies [27a850e]
-- Updated dependencies [a2520a3]
-- Updated dependencies [0a55b7d]
-- Updated dependencies [5394d3c]
-- Updated dependencies [0a819fb]
-- Updated dependencies [0a819fb]
-- Updated dependencies [27a850e]
-- Updated dependencies [27a850e]
-- Updated dependencies [0a55b7d]
-- Updated dependencies [5394d3c]
-- Updated dependencies [0a55b7d]
-- Updated dependencies [8b78d7a]
-- Updated dependencies [0a819fb]
+- Updated dependencies [27a850e, a2520a3, 0a55b7d, 5394d3c, 0a819fb, 8b78d7a]
   - go.dokimi.dev/ergon/service@0.12.0
   - go.dokimi.dev/ergon/core@0.11.0
 
@@ -42,17 +23,12 @@
 ### Patch Changes
 
 - Updated dependencies [c82c878]
-- Updated dependencies [c82c878]
-- Updated dependencies [c82c878]
   - go.dokimi.dev/ergon/service@0.11.0
 
 ## 0.7.2
 
 ### Patch Changes
 
-- Updated dependencies [9f8ee46]
-- Updated dependencies [9f8ee46]
-- Updated dependencies [9f8ee46]
 - Updated dependencies [9f8ee46]
   - go.dokimi.dev/ergon/core@0.10.0
   - go.dokimi.dev/ergon/service@0.10.0
@@ -101,15 +77,7 @@
 
 ### Patch Changes
 
-- Updated dependencies [170d883]
-- Updated dependencies [876696f]
-- Updated dependencies [c6386e5]
-- Updated dependencies [74613ae]
-- Updated dependencies [74613ae]
-- Updated dependencies [74613ae]
-- Updated dependencies [74613ae]
-- Updated dependencies [74613ae]
-- Updated dependencies [c6386e5]
+- Updated dependencies [170d883, 876696f, c6386e5, 74613ae]
   - go.dokimi.dev/ergon/service@0.8.0
   - go.dokimi.dev/ergon/core@0.7.0
 
@@ -122,8 +90,7 @@
 ### Patch Changes
 
 - 8b59127: Run lint-go, test-go, race-go and audit-go in every module, and fail after the last module when one of them failed. The job check-go of ci.yml runs make --keep-going check-go, so a failed step does not skip the steps after it. The managed .golangci.yml does not run wrapcheck on test files and on the files of generators.
-- Updated dependencies [ccbcc8f]
-- Updated dependencies [ddcc0a1]
+- Updated dependencies [ccbcc8f, ddcc0a1]
   - go.dokimi.dev/ergon/core@0.6.0
   - go.dokimi.dev/ergon/service@0.7.0
 
@@ -145,12 +112,7 @@
 ### Patch Changes
 
 - babadd5: Require Go 1.27.2, whose standard library fixes the nine vulnerabilities that govulncheck reports for Go 1.27.1, such as GO-2026-6604 of os.Root on Windows.
-- Updated dependencies [b8f1c6a]
-- Updated dependencies [14e7a3a]
-- Updated dependencies [d616a74]
-- Updated dependencies [326b07e]
-- Updated dependencies [babadd5]
-- Updated dependencies [2fdb4d1]
+- Updated dependencies [b8f1c6a, 14e7a3a, d616a74, 326b07e, babadd5, 2fdb4d1]
   - go.dokimi.dev/ergon/core@0.5.0
   - go.dokimi.dev/ergon/service@0.6.0
 
@@ -172,11 +134,7 @@
 - f81caba: Move the pins of the baseline to their newest releases.
   
   - `go.tools.ergon-go-vet` from v0.1.0 to v0.2.1
-- Updated dependencies [c61862c]
-- Updated dependencies [12066ae]
-- Updated dependencies [806100c]
-- Updated dependencies [354fe1c]
-- Updated dependencies [7c5311d]
+- Updated dependencies [c61862c, 12066ae, 806100c, 354fe1c, 7c5311d]
   - go.dokimi.dev/ergon/core@0.4.0
   - go.dokimi.dev/ergon/service@0.4.0
 
@@ -184,11 +142,7 @@
 
 ### Patch Changes
 
-- Updated dependencies [94c3bd1]
-- Updated dependencies [8bfa588]
-- Updated dependencies [096abbd]
-- Updated dependencies [6f01723]
-- Updated dependencies [77ee1c0]
+- Updated dependencies [94c3bd1, 8bfa588, 096abbd, 6f01723, 77ee1c0]
   - go.dokimi.dev/ergon/service@0.3.0
   - go.dokimi.dev/ergon/core@0.3.0
 

@@ -33,9 +33,7 @@
 
 - 5394d3c: Grant `actions: read` to the CodeQL analysis, and run the Scorecard in a public repository alone.
 - 0a55b7d: Skip the Markdown files in `trailing-whitespace` by their type in place of the pattern `\.md$`.
-- Updated dependencies [a2520a3]
-- Updated dependencies [0a819fb]
-- Updated dependencies [8b78d7a]
+- Updated dependencies [a2520a3, 0a819fb, 8b78d7a]
   - go.dokimi.dev/ergon/core@0.11.0
 
 ## 0.11.0
@@ -97,7 +95,6 @@
 ### Patch Changes
 
 - Updated dependencies [c6386e5]
-- Updated dependencies [c6386e5]
   - go.dokimi.dev/ergon/core@0.7.0
 
 ## 0.7.0
@@ -130,9 +127,7 @@
 - 14e7a3a: Move golang.org/x/net to v0.60.0, which fixes GO-2026-6603, GO-2026-6610, GO-2026-6611, GO-2026-6612 and GO-2026-6617.
 - babadd5: Require Go 1.27.2, whose standard library fixes the nine vulnerabilities that govulncheck reports for Go 1.27.1, such as GO-2026-6604 of os.Root on Windows.
 - 2fdb4d1: Return an error on Windows for a file in place of the directory of the assets or the casks of a release, as on Linux and macOS. ergon release publish and ergon release ci homebrew read the directory.
-- Updated dependencies [b8f1c6a]
-- Updated dependencies [326b07e]
-- Updated dependencies [babadd5]
+- Updated dependencies [b8f1c6a, 326b07e, babadd5]
   - go.dokimi.dev/ergon/core@0.5.0
 
 ## 0.5.0
