@@ -14,7 +14,7 @@ require (
 	go.dokimi.dev/ergon/lang/java v0.4.5
 	go.dokimi.dev/ergon/lang/javascript v0.4.4
 	go.dokimi.dev/ergon/lang/kotlin v0.3.12
-	go.dokimi.dev/ergon/lang/php v0.4.5
+	go.dokimi.dev/ergon/lang/php v0.4.6
 	go.dokimi.dev/ergon/lang/python v0.5.2
 	go.dokimi.dev/ergon/lang/rust v0.5.2
 	go.dokimi.dev/ergon/lang/terraform v0.4.5

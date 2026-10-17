@@ -1,5 +1,13 @@
 # go.dokimi.dev/ergon/lang/php
 
+## 0.4.6
+
+### Patch Changes
+
+- 1e2b2f4: Move the pins of the baseline to their newest releases.
+  
+  - `php.tools.phpstan-strict-rules` from 2.0.12 to 2.1.0
+
 ## 0.4.5
 
 ### Patch Changes

@@ -97,8 +97,8 @@ go.dokimi.dev/ergon/lang/javascript v0.4.4 h1:Xeq9hIf5CwMjU3Pu9cGPsZwLoDbYycqE8O
 go.dokimi.dev/ergon/lang/javascript v0.4.4/go.mod h1:vax+PWDc9nhxIKQSklJFZ5mgjvThczkxYtQq0AYQHmM=
 go.dokimi.dev/ergon/lang/kotlin v0.3.12 h1:MBcNO14wIXFbiqLxd72G8kuDyx3x66IXzRQdxty2FuU=
 go.dokimi.dev/ergon/lang/kotlin v0.3.12/go.mod h1:wuUh2TRlYuCj9qsVSmAhGfyEhp93UckyJgxy8+6Hs6c=
-go.dokimi.dev/ergon/lang/php v0.4.5 h1:GB6REX3cLHooVz1eQh+lg9pBdRF1OHaYSqGeYAPUFf0=
-go.dokimi.dev/ergon/lang/php v0.4.5/go.mod h1:kh+14BHI5c6pn+S59d0aiqsFZ6pwLSXQW7QQzGYL71I=
+go.dokimi.dev/ergon/lang/php v0.4.6 h1:P5TbPa055jdwF1mHilpgdh78H2b45RLI/GoCGpHPy9E=
+go.dokimi.dev/ergon/lang/php v0.4.6/go.mod h1:kh+14BHI5c6pn+S59d0aiqsFZ6pwLSXQW7QQzGYL71I=
 go.dokimi.dev/ergon/lang/python v0.5.2 h1:g7YvpxL95YrTqM0FuujbX0+aJpwtofQNCVSW6fBy+m8=
 go.dokimi.dev/ergon/lang/python v0.5.2/go.mod h1:PkeEnz8t/wC/sIEIrH4wRUvA/AQVt2MoAk8Xybci3Lo=
 go.dokimi.dev/ergon/lang/rust v0.5.2 h1:P2gKE0NqlU393+EyoK31/NHWrV/XZ7VnSJxI3WJUjDA=
