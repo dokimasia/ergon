@@ -467,6 +467,51 @@ func TestChangelog(t *testing.T) {
 			})
 		}
 
+		repeated := []struct {
+			host    release.Host
+			commits map[string]string
+			name    string
+			want    string
+			format  release.Changelog
+		}{
+			{
+				name:    "lists each commit of the changesets of a rewritten requirement once",
+				format:  release.Changelog{Format: release.ChangelogGit},
+				commits: map[string]string{"one": commitSHA, "two": commitSHA, "three": loneSHA},
+				want:    "- Updated dependencies [a085003, c0ffee1]\n  - pkg-b@1.1.0",
+			},
+			{
+				name:   "writes one line for the changesets of a rewritten requirement without commits",
+				format: release.Changelog{Format: release.ChangelogGit},
+				want:   "- Updated dependencies\n  - pkg-b@1.1.0",
+			},
+			{
+				name:    "links each commit of the changesets of a rewritten requirement once on GitHub",
+				format:  github,
+				host:    host,
+				commits: map[string]string{"one": commitSHA, "two": commitSHA, "three": loneSHA},
+				want:    "- Updated dependencies [" + commitLink + ", " + loneLink + "]:\n  - pkg-b@1.1.0",
+			},
+		}
+		for _, tt := range repeated {
+			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+				s := blankState(t)
+				s.add("pkg-a", "1.0.0")
+				s.add("pkg-b", "1.0.0")
+				s.require("pkg-a", "pkg-b", workspace.KindRuntime, "~1.0.0")
+				s.changeset("one", r("pkg-b", patch))
+				s.changeset("two", r("pkg-b", patch))
+				s.changeset("three", r("pkg-b", minor))
+				cfg := defaultConfig()
+				cfg.Changelog = tt.format
+				got := entries(t, s, &cfg, tt.commits, tt.host)
+				assert.Length(t, got, 2, "the entries")
+				want := release.Entry{Name: "pkg-a", Text: "## 1.0.1\n\n### Patch Changes\n\n" + tt.want}
+				assert.Equal(t, got[1], want, "the entry of pkg-a")
+			})
+		}
+
 		t.Run("lists a requirement that leaves its range below updateInternalDependencies", func(t *testing.T) {
 			t.Parallel()
 			s := blankState(t)

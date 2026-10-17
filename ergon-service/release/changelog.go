@@ -109,13 +109,15 @@ type renderer struct {
 // Entries returns the changelog entry of each release of plan above none, in the order of the
 // plan, in the format of c.Changelog, and nil for a configuration without a changelog. commits maps
 // the ID of each changeset to the commit that added its file. An entry renders as changesets 3.0.3
-// renders it with @changesets/cli/changelog or @changesets/changelog-github 1.0.1:
+// renders it with @changesets/cli/changelog or @changesets/changelog-github 1.0.1, with one line
+// for the updated dependencies:
 //
 //   - The heading ## and the new version.
 //   - A section per level, ### Major Changes to ### Patch Changes, with a line for each changeset
 //     that names the package at that level, in the order of the plan.
-//   - Under Patch Changes, a line that lists each requirement on another package that the release
-//     rewrites, after the links of the changesets of those packages.
+//   - Under Patch Changes, one line that lists each requirement on another package that the release
+//     rewrites, after each commit of the changesets of those packages once. changesets writes a
+//     line for each changeset of those packages.
 //   - "No changes in this release." for an entry without a section.
 //
 // The changelog of GitHub reads the links of each commit and pull request from h.Forge. It returns
@@ -345,7 +347,9 @@ func (w *renderer) template(summary, pull, commit, authors string) (string, erro
 
 // dependencyLine returns the line that lists updated, the requirements that a release rewrites,
 // after the commits of sets, the changesets of the packages that they require, in the format of w.
-// It returns the empty string for no update.
+// dependencyLine writes each commit once, in the order of sets, so the changesets of one commit add
+// one commit to the line. Without sets the format of changesets lists the requirements alone, and
+// the format of GitHub writes the line with no commit. It returns the empty string for no update.
 func (w *renderer) dependencyLine(ctx context.Context, sets []*changeset.Changeset, updated []update) (string, error) {
 	if w.format.Format == ChangelogGitHub {
 		if err := w.checkRepo(); err != nil {
@@ -355,29 +359,33 @@ func (w *renderer) dependencyLine(ctx context.Context, sets []*changeset.Changes
 	if len(updated) == 0 {
 		return "", nil
 	}
+	var commits []string
+	for _, s := range sets {
+		if commit := w.commits[s.ID]; commit != "" && !slices.Contains(commits, commit) {
+			commits = append(commits, commit)
+		}
+	}
+	const line = "- Updated dependencies"
 	var out []string
-	if w.format.Format == ChangelogGitHub {
-		var links []string
-		for _, s := range sets {
-			commit := w.commits[s.ID]
-			if commit == "" {
-				continue
-			}
+	switch {
+	case w.format.Format == ChangelogGitHub:
+		links := make([]string, 0, len(commits))
+		for _, commit := range commits {
 			link, _, _, err := w.host.Forge.CommitLinks(ctx, w.repo, commit)
 			if err != nil {
 				return "", err
 			}
 			links = append(links, cmp.Or(link, "`"+short(commit)+"`"))
 		}
-		out = append(out, "- Updated dependencies ["+strings.Join(links, ", ")+"]:")
-	} else {
-		for _, s := range sets {
-			line := "- Updated dependencies"
-			if commit := w.commits[s.ID]; commit != "" {
-				line += " [" + short(commit) + "]"
-			}
-			out = append(out, line)
+		out = append(out, line+" ["+strings.Join(links, ", ")+"]:")
+	case len(commits) > 0:
+		shorts := make([]string, 0, len(commits))
+		for _, commit := range commits {
+			shorts = append(shorts, short(commit))
 		}
+		out = append(out, line+" ["+strings.Join(shorts, ", ")+"]")
+	case len(sets) > 0:
+		out = append(out, line)
 	}
 	for _, u := range updated {
 		out = append(out, "  - "+u.name+"@"+u.version.String())
