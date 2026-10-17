@@ -1,5 +1,24 @@
 # go.dokimi.dev/ergon
 
+## 0.10.4
+
+### Patch Changes
+
+- c47195d: Fix `ergon release ci version` and `ergon init ci upgrade` to keep their open pull request open when they update it.
+- Updated dependencies [c47195d]
+  - go.dokimi.dev/ergon/service@0.15.0
+  - go.dokimi.dev/ergon/lang/bash@0.4.6
+  - go.dokimi.dev/ergon/lang/csharp@0.3.6
+  - go.dokimi.dev/ergon/lang/go@0.7.7
+  - go.dokimi.dev/ergon/lang/java@0.4.6
+  - go.dokimi.dev/ergon/lang/javascript@0.4.5
+  - go.dokimi.dev/ergon/lang/kotlin@0.3.13
+  - go.dokimi.dev/ergon/lang/php@0.4.7
+  - go.dokimi.dev/ergon/lang/python@0.5.3
+  - go.dokimi.dev/ergon/lang/rust@0.5.3
+  - go.dokimi.dev/ergon/lang/terraform@0.4.6
+  - go.dokimi.dev/ergon/lang/typescript@0.3.5
+
 ## 0.10.3
 
 ### Patch Changes

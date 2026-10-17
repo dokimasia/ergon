@@ -10,7 +10,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.4.3
 	go.dokimi.dev/assert v0.3.0
 	go.dokimi.dev/ergon/core v0.11.0
-	go.dokimi.dev/ergon/service v0.14.0
+	go.dokimi.dev/ergon/service v0.15.0
 )
 
 require (

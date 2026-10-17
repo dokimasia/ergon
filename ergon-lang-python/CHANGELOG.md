@@ -1,5 +1,12 @@
 # go.dokimi.dev/ergon/lang/python
 
+## 0.5.3
+
+### Patch Changes
+
+- Updated dependencies [c47195d]
+  - go.dokimi.dev/ergon/service@0.15.0
+
 ## 0.5.2
 
 ### Patch Changes
