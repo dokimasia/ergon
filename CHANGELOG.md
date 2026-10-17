@@ -1,5 +1,25 @@
 # go.dokimi.dev/ergon
 
+## 0.10.2
+
+### Patch Changes
+
+- 87ed939: Fix `ergon release ci select-mode` to count only the changesets that release a package.
+- 87ed939: Fix `ergon release ci version` to open a version pull request only for changesets that release a package.
+- Updated dependencies [87ed939, 60f5c35]
+  - go.dokimi.dev/ergon/service@0.14.0
+  - go.dokimi.dev/ergon/lang/bash@0.4.5
+  - go.dokimi.dev/ergon/lang/csharp@0.3.5
+  - go.dokimi.dev/ergon/lang/go@0.7.6
+  - go.dokimi.dev/ergon/lang/java@0.4.5
+  - go.dokimi.dev/ergon/lang/javascript@0.4.4
+  - go.dokimi.dev/ergon/lang/kotlin@0.3.12
+  - go.dokimi.dev/ergon/lang/php@0.4.5
+  - go.dokimi.dev/ergon/lang/python@0.5.2
+  - go.dokimi.dev/ergon/lang/rust@0.5.2
+  - go.dokimi.dev/ergon/lang/terraform@0.4.5
+  - go.dokimi.dev/ergon/lang/typescript@0.3.4
+
 ## 0.10.1
 
 ### Patch Changes
