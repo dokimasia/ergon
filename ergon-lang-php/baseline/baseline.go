@@ -27,7 +27,7 @@ var templates embed.FS
 // package without dependencies. [Tools.Validate] requires the package of each.
 var tools = Tools{
 	PHPStan:            "phpstan/phpstan@2.2.17",
-	StrictRules:        "phpstan/phpstan-strict-rules@2.0.12",
+	StrictRules:        "phpstan/phpstan-strict-rules@2.1.0",
 	ExtensionInstaller: "phpstan/extension-installer@1.4.3",
 	PHPCSFixer:         "php-cs-fixer/shim@3.95.27",
 }
