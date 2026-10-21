@@ -82,7 +82,7 @@ func (r *Runner) module(ctx context.Context, m option.Module, name string) (stri
 }
 
 // goVersion returns the version of the go command in the directory Dir, as go env GOVERSION
-// reports it, such as go1.27.2. It returns an error that wraps [ErrInstall] for a go command that
+// reports it, such as go1.27.3. It returns an error that wraps [ErrInstall] for a go command that
 // does not report its version.
 func (r *Runner) goVersion(ctx context.Context) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, "go", "env", "GOVERSION")

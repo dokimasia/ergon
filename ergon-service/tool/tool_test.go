@@ -61,7 +61,7 @@ const (
 const customFile = ".custom-gcl.json"
 
 // fakeGoVersion is the version that the fake go writes without goVersionEnv.
-const fakeGoVersion = "go1.27.2"
+const fakeGoVersion = "go1.27.3"
 
 // section is the name of the section of the cases.
 const section = "demo"

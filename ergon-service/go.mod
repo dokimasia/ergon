@@ -3,7 +3,7 @@
 
 module go.dokimi.dev/ergon/service
 
-go 1.27.2
+go 1.27.3
 
 require (
 	github.com/apache/skywalking-eyes v0.9.0

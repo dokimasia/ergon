@@ -30,7 +30,7 @@ With Homebrew, install the cask of the tap:
 brew install --cask dokimasia/tap/ergon
 ```
 
-With Go 1.27.2 or later, install the command from source:
+With Go 1.27.3 or later, install the command from source:
 
 ```sh
 go install go.dokimi.dev/ergon/cmd/ergon@latest
