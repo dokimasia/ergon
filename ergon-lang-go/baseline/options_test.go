@@ -156,6 +156,15 @@ func TestOptions(t *testing.T) {
 			assert.NoError(t, o.Validate(), "Validate")
 		})
 
+		t.Run("returns nil for a command named after the macOS build of a command without cgo", func(t *testing.T) {
+			t.Parallel()
+			o := goOptions()
+			o.Binaries = commands()
+			o.Binaries[1].Name = "ergon-darwin"
+			o.Homebrew.Tap = tap
+			assert.NoError(t, o.Validate(), "Validate")
+		})
+
 		binaries := []struct {
 			name string
 			give func(*baseline.Options)
@@ -180,6 +189,14 @@ func TestOptions(t *testing.T) {
 				name: "returns ErrInvalid for a command named after the UPX build of another",
 				give: func(o *baseline.Options) { o.Binaries[1].Name = "ergon-upx" },
 				want: "the command ergon-upx has the name of the UPX build of the command ergon",
+			},
+			{
+				name: "returns ErrInvalid for a command named after the macOS build of a command with cgo",
+				give: func(o *baseline.Options) {
+					o.Binaries[0].CGO = true
+					o.Binaries[1].Name = "ergon-darwin"
+				},
+				want: "the command ergon-darwin has the name of the macOS build of the command ergon",
 			},
 		}
 		for _, tt := range binaries {

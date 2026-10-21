@@ -11,9 +11,11 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 
 	"go.dokimi.dev/ergon/core/language"
@@ -44,6 +46,34 @@ const (
 	modulesVariable = "ERGON_MODULES"
 )
 
+// cgoEnabled is the variable of the environment of a build of GoReleaser with cgo.
+const cgoEnabled = "CGO_ENABLED=1"
+
+// The tool of the section go that compiles the C code of a build with cgo, and the variables of
+// the environment of GoReleaser that the builds with cgo of the managed configuration read: the
+// program of zig, and the directory of the text stubs of the libraries of macOS.
+const (
+	zigTool       = "zig"
+	zigVariable   = "ERGON_ZIG"
+	stubsVariable = "ERGON_DARWIN_STUBS"
+)
+
+// The variables of the environment of zig that name its caches. A pack points both at its
+// temporary directory, because the module cache is read-only and zig writes its cache beside a C
+// source by default.
+const (
+	zigGlobalCache = "ZIG_GLOBAL_CACHE_DIR"
+	zigLocalCache  = "ZIG_LOCAL_CACHE_DIR"
+)
+
+// The directories of the builds with cgo in the temporary directory of a pack: one directory for
+// each build, with the stubs of macOS and the cache of zig.
+const (
+	cgoDir      = "cgo"
+	stubsDir    = "stubs"
+	zigCacheDir = "zig"
+)
+
 // assetTypes are the types of the artifacts of GoReleaser that a release attaches.
 var assetTypes = []string{"Archive", "Linux Package", "Source", "Checksum", "Signature", "SBOM"}
 
@@ -62,6 +92,19 @@ type artifact struct {
 	Type string `json:"type"`
 }
 
+// configuration has the keys of a configuration of GoReleaser that [Packer.Pack] reads: the dist
+// directory, and the environment of each build.
+type configuration struct {
+	// Dist is the directory of the artifacts of GoReleaser, relative to root.
+	Dist string `yaml:"dist"`
+
+	// Builds are the builds of the commands.
+	Builds []struct {
+		// Env are the variables of the environment of the build, such as CGO_ENABLED=0.
+		Env []string `yaml:"env"`
+	} `yaml:"builds"`
+}
+
 // build is a module of a release whose directory has .goreleaser.yaml.
 type build struct {
 	// pkg is the module.
@@ -76,6 +119,13 @@ type build struct {
 
 	// tag is the tag of the module at its version.
 	tag string
+
+	// env are the variables of the builds with cgo of the configuration, which [Packer.cgo] returns,
+	// and nil for a configuration without such a build.
+	env []string
+
+	// cgo reports that a build of the configuration sets CGO_ENABLED=1.
+	cgo bool
 }
 
 // Packer builds the assets of the commands of Go modules with GoReleaser. A module has commands when
@@ -103,6 +153,10 @@ type Packer struct {
 	// Run runs the tool of the section go with args in dir, with env added to the environment of the
 	// process, as ergon tool run does, and returns an error for a tool that fails.
 	Run func(ctx context.Context, dir, tool string, args, env []string) error
+
+	// Program installs the tool of the section go for dir unless the cache has it, and returns its
+	// program, as ergon tool path does, such as zig, the C compiler of the builds with cgo.
+	Program func(ctx context.Context, dir, tool string) (string, error)
 }
 
 var _ language.Packer = Packer{}
@@ -117,6 +171,12 @@ var _ language.Packer = Packer{}
 //   - It writes the zip of each module of pkgs at its Version into a module proxy in a temporary
 //     directory, from a snapshot of the working tree, as [Versioner.Apply] does, and removes the
 //     directory afterwards.
+//   - For a configuration with a build that sets CGO_ENABLED=1, it installs zig with Program and
+//     writes text stubs of the libraries of macOS that the Go toolchain of the module imports, as
+//     [writeStubs] states, into the temporary directory. ERGON_ZIG is the program of zig, which the
+//     builds run as their C compiler. ERGON_DARWIN_STUBS is the directory of the stubs, which the
+//     builds of macOS link against. ZIG_GLOBAL_CACHE_DIR and ZIG_LOCAL_CACHE_DIR name a cache of
+//     zig in the temporary directory.
 //   - It runs goreleaser release --snapshot --clean with the configuration in root, outside the
 //     workspace, with the environment of a build against that proxy. The go command then resolves
 //     the modules of the repository at the versions that go install resolves, and writes those
@@ -129,8 +189,8 @@ var _ language.Packer = Packer{}
 //
 // It returns an error that wraps [ErrTag] for a tag at another commit than HEAD, an error for a
 // module of pkgs that the repository does not have, and the error of a function of p, of the
-// proxy, of go env, of reading the configuration or artifacts.json, and of copying an artifact, each
-// with the module or the file.
+// proxy, of go env, of the stubs, of reading the configuration or artifacts.json, and of copying an
+// artifact, each with the module or the file.
 func (p Packer) Pack(ctx context.Context, root string, pkgs []workspace.Package, dir string) error {
 	var builds []build
 	for i := range pkgs {
@@ -143,10 +203,7 @@ func (p Packer) Pack(ctx context.Context, root string, pkgs []workspace.Package,
 		if err != nil {
 			return fmt.Errorf("release: read %s: %w", config, err)
 		}
-		var c struct {
-			// Dist is the directory of the artifacts of GoReleaser, relative to root.
-			Dist string `yaml:"dist"`
-		}
+		var c configuration
 		if err := yaml.Unmarshal(data, &c); err != nil {
 			return fmt.Errorf("release: read %s: %w", config, err)
 		}
@@ -157,7 +214,11 @@ func (p Packer) Pack(ctx context.Context, root string, pkgs []workspace.Package,
 		if err := p.tagHead(ctx, root, tag); err != nil {
 			return err
 		}
-		builds = append(builds, build{pkg: pkg, config: config, dist: c.Dist, tag: tag})
+		cgo := false
+		for _, b := range c.Builds {
+			cgo = cgo || slices.Contains(b.Env, cgoEnabled)
+		}
+		builds = append(builds, build{pkg: pkg, config: config, dist: c.Dist, tag: tag, cgo: cgo})
 	}
 	if len(builds) == 0 {
 		return nil
@@ -171,13 +232,21 @@ func (p Packer) Pack(ctx context.Context, root string, pkgs []workspace.Package,
 		return err
 	}
 	defer func() { _ = os.RemoveAll(tmp) }()
+	for i := range builds {
+		if !builds[i].cgo {
+			continue
+		}
+		if builds[i].env, err = p.cgo(ctx, root, &builds[i], filepath.Join(tmp, cgoDir, strconv.Itoa(i))); err != nil {
+			return err
+		}
+	}
 	env, err := buildEnv(ctx, r, pkgs, filepath.Join(tmp, modcacheDir))
 	if err != nil {
 		return err
 	}
 	for _, b := range builds {
 		args := []string{"release", "--snapshot", "--clean", "--config", b.config}
-		vars := slices.Concat([]string{versionVariable + "=" + b.pkg.Version.String()}, env)
+		vars := slices.Concat([]string{versionVariable + "=" + b.pkg.Version.String()}, env, b.env)
 		if err := p.Run(ctx, root, goreleaserTool, args, vars); err != nil {
 			return fmt.Errorf("release: GoReleaser of %s: %w", b.pkg.Name, err)
 		}
@@ -208,6 +277,36 @@ func (p Packer) tagHead(ctx context.Context, root, name string) error {
 		return fmt.Errorf("%w: %s is at %s, and HEAD is at %s", ErrTag, name, commit, head)
 	}
 	return nil
+}
+
+// cgo returns the variables of the environment of GoReleaser for the builds with cgo of b: the
+// program of zig, which Program installs, the directory of the stubs of macOS, which [writeStubs]
+// writes for the Go toolchain of the module of b, and a cache of zig. It writes the stubs and the
+// cache below dir. go env GOROOT in the directory of the module, outside the workspace, reports
+// the root of the toolchain that the builds use. It returns the errors of Program, of go env and
+// of writeStubs, each with the module.
+func (p Packer) cgo(ctx context.Context, root string, b *build, dir string) ([]string, error) {
+	zig, err := p.Program(ctx, root, zigTool)
+	if err != nil {
+		return nil, fmt.Errorf("release: install zig for the builds with cgo of %s: %w", b.pkg.Name, err)
+	}
+	cmd := exec.CommandContext(ctx, "go", "env", "GOROOT")
+	cmd.Dir = filepath.Join(root, filepath.FromSlash(b.pkg.Dir))
+	cmd.Env = append(os.Environ(), "GOWORK=off")
+	goroot, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("release: go env GOROOT for the builds with cgo of %s: %w", b.pkg.Name, err)
+	}
+	stubs, cache := filepath.Join(dir, stubsDir), filepath.Join(dir, zigCacheDir)
+	if err := writeStubs(strings.TrimSpace(string(goroot)), stubs); err != nil {
+		return nil, fmt.Errorf("release: the stubs of macOS for the builds with cgo of %s: %w", b.pkg.Name, err)
+	}
+	return []string{
+		zigVariable + "=" + zig,
+		stubsVariable + "=" + stubs,
+		zigGlobalCache + "=" + cache,
+		zigLocalCache + "=" + cache,
+	}, nil
 }
 
 // buildEnv serves the zip of each module of pkgs at its Version from the proxy of r, and returns

@@ -30,13 +30,30 @@ before:
 # <name>-upx has the Linux targets of a command, and UPX packs each of its binaries with LZMA, whose
 # packed binaries syft still reads. UPX refuses macOS binaries, and syft reads no packed Windows
 # binary, so the build <name> of the other targets has no UPX.
+{{%- if .CGO %}}
+#
+# A command with cgo builds every target on Linux with zig as its C compiler, which ergon release
+# pack names in ERGON_ZIG: a static musl binary for Linux, a mingw binary for Windows, and a Mach-O
+# binary for macOS 13.0 or later, the oldest macOS that Go supports. The build <name>-darwin has the
+# macOS targets of the command. It links against the text stubs of the libraries of macOS that the
+# Go toolchain imports, which ergon release pack writes into ERGON_DARWIN_STUBS.
+{{%- end %}}
 builds:
 {{%- range .Builds %}}
   - id: {{% .ID %}}
     dir: {{% $.Module %}}
     main: {{% .Main %}}
     binary: {{% .Name %}}
+{{%- if .Triple %}}
+    env:
+      - CGO_ENABLED=1
+      - 'CC="{{ .Env.ERGON_ZIG }}" cc -target {{ if eq .Arch "amd64" }}x86_64{{ else }}aarch64{{ end }}-{{% .Triple %}}'
+{{%- if .Stubs %}}
+      - 'CGO_LDFLAGS="-L{{ .Env.ERGON_DARWIN_STUBS }}" "-F{{ .Env.ERGON_DARWIN_STUBS }}"'
+{{%- end %}}
+{{%- else %}}
     env: [CGO_ENABLED=0]
+{{%- end %}}
     flags: [-trimpath]
     ldflags: [-s -w]
     mod_timestamp: "{{ .CommitTimestamp }}"

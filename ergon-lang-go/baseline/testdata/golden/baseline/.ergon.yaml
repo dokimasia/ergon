@@ -51,6 +51,17 @@ go:
         linux/arm64: a72d112c5970a904a31da0b9c84f919bc16b9a311787c12245508544a78c7d36
         windows/amd64: eabc6792a347d45e945be7748423e7868fd01b0d2bcaa2f4b1031fd71ff69bda
       version: 5.2.1
+    # The release of zig, which compiles the C code of each command of binaries whose cgo is true
+    # for every platform in the job pack of release.yml.
+    zig:
+      sha256:
+        darwin/amd64: 4f9a1c5269aa17ebda5e6d3c2b89d6cbf36f7d2b22a0306e9ab98f25f95529c6
+        darwin/arm64: b607e9b9234790a008116ae5bdb71c6243b84b9fb42a53a9e70fde41c06c536a
+        linux/amd64: 1cbe9df9f27e6b78d14ccbca43b6703a404ef79ef1c463de901d7f088d4e2026
+        linux/arm64: 9e8d11661d4ae3bd57702a3832781e23ad151dde5798e16a5ccd503f65234ff8
+        windows/amd64: b5663f69581dcf391293fbf16c06cb80d81d806545ce618b4d0bab7f0eb8c428
+        windows/arm64: 0a59d91fa1cb40cf068e9b0954434ce973500c7a2ea749f1e01af62cdab52d26
+      version: 0.17.0
   # The package patterns that each target of Go passes in every module of go.work.
   paths: [./...]
   # The steps that check-go runs, in order: lint, test, race, fuzz, bench, mutate, generate or
@@ -120,7 +131,9 @@ go:
   # accepts, such as one without a full stop at its end; platforms, every platform when empty;
   # completions, true for a command whose command completion writes the scripts of bash, zsh and
   # fish, as in a program of cobra or of go.stealthscale.io/cli; packages, from deb, rpm and apk;
-  # homebrew, true for a cask in homebrew.tap; license, the license of the repository when empty.
+  # homebrew, true for a cask in homebrew.tap; license, the license of the repository when empty;
+  # cgo, true for a command that builds with cgo, whose C code the zig of tools compiles for every
+  # platform.
   binaries: []
   # The options of the casks of the commands under binaries whose homebrew is true.
   homebrew:

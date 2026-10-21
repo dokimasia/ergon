@@ -38,6 +38,17 @@ var targetSuffixes = map[string]string{amd64: "_v1", arm64: "_v8.0"}
 // UPX packs.
 const packedSuffix = "-upx"
 
+// darwinSuffix ends the identifier of the build of the macOS targets of a command with cgo, which
+// links against the stubs of the libraries of macOS.
+const darwinSuffix = "-darwin"
+
+// zigSystems are the systems of the targets of zig that compile the C code of a command with cgo,
+// by the system of Go: static musl binaries for Linux, mingw binaries for Windows, and Mach-O
+// binaries for macOS 13.0 or later. macOS 13.0 is the oldest macOS that Go supports, and the
+// minimum that Go's linker writes into a binary that it links itself. zig 0.17.0 writes 15.0 for a
+// target without a version.
+var zigSystems = map[string]string{linux: "linux-musl", windows: "windows-gnu", darwin: "macos.13.0"}
+
 // goreleaserTemplate is the template of the configuration of GoReleaser of a module.
 //
 //go:embed goreleaser
@@ -96,12 +107,16 @@ type release struct {
 	// Notice reports that the repository has a NOTICE, which ergon init writes for Apache-2.0
 	// alone. Each archive and each package of the release includes it.
 	Notice bool
+
+	// CGO reports that a command of the module builds with cgo.
+	CGO bool
 }
 
 // build is a build of GoReleaser of a command, as its template reads it.
 type build struct {
 	// ID is the identifier of the build: the name of the command with -upx for its Linux targets,
-	// and the name alone for its other targets.
+	// with -darwin for the macOS targets of a command with cgo, and the name alone for its other
+	// targets.
 	ID string
 
 	// Name is the name of the binary.
@@ -110,11 +125,19 @@ type build struct {
 	// Main is the package of the command, relative to its module.
 	Main string
 
+	// Triple is the system of the target of zig that compiles the C code of the build, such as
+	// linux-musl, and empty for a build without cgo.
+	Triple string
+
 	// Targets are the targets of GoReleaser of the build, such as linux_amd64_v1.
 	Targets []string
 
 	// Pack reports that UPX packs each binary of the build, which is true for the Linux targets.
 	Pack bool
+
+	// Stubs reports that the build links against the stubs of the libraries of macOS, which the
+	// macOS build of a command with cgo does.
+	Stubs bool
 }
 
 // command is a command of a configuration of GoReleaser, as its template reads it.
@@ -189,23 +212,28 @@ func (Producer) Files(a *language.Answers, o language.Options, _ *workflow.Contr
 			license = string(c.License)
 		}
 		unpacked := build{ID: c.Name, Name: c.Name, Main: c.Main}
+		apple := build{ID: c.Name + darwinSuffix, Name: c.Name, Main: c.Main, Stubs: true}
 		packed := build{ID: c.Name + packedSuffix, Name: c.Name, Main: c.Main, Pack: true}
+		if c.CGO {
+			unpacked.Triple, apple.Triple, packed.Triple = zigSystems[windows], zigSystems[darwin], zigSystems[linux]
+		}
 		for _, p := range c.targets() {
 			target := p.OS() + "_" + p.Arch() + targetSuffixes[p.Arch()]
-			if p.OS() == linux {
+			switch {
+			case p.OS() == linux:
 				packed.Targets = append(packed.Targets, target)
-			} else {
+			case p.OS() == darwin && c.CGO:
+				apple.Targets = append(apple.Targets, target)
+			default:
 				unpacked.Targets = append(unpacked.Targets, target)
 			}
 		}
 		var ids []string
-		if len(unpacked.Targets) > 0 {
-			r.Builds = append(r.Builds, unpacked)
-			ids = append(ids, unpacked.ID)
-		}
-		if len(packed.Targets) > 0 {
-			r.Builds = append(r.Builds, packed)
-			ids = append(ids, packed.ID)
+		for _, b := range []build{unpacked, apple, packed} {
+			if len(b.Targets) > 0 {
+				r.Builds = append(r.Builds, b)
+				ids = append(ids, b.ID)
+			}
 		}
 		packages := make([]string, 0, len(c.Packages))
 		for _, p := range c.Packages {
@@ -224,6 +252,7 @@ func (Producer) Files(a *language.Answers, o language.Options, _ *workflow.Contr
 		r.Completions = r.Completions || c.Completions
 		r.Packages = r.Packages || len(c.Packages) > 0
 		r.Homebrew = r.Homebrew || c.Homebrew
+		r.CGO = r.CGO || c.CGO
 	}
 	files := make([]language.File, 0, len(releases))
 	for _, r := range releases {

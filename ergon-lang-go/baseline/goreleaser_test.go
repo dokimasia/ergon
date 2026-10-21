@@ -4,11 +4,16 @@
 package baseline_test
 
 import (
+	"os/exec"
 	"path"
+	"path/filepath"
+	"regexp"
+	"strings"
 	"testing"
 
 	"go.dokimi.dev/assert"
 	"go.dokimi.dev/assert/expect"
+	"go.dokimi.dev/assert/files"
 	"go.dokimi.dev/assert/golden"
 	"go.dokimi.dev/ergon/core/option"
 	"go.dokimi.dev/ergon/core/spdx"
@@ -26,6 +31,10 @@ const (
 	rootConfig = ".goreleaser.yaml"
 	lintConfig = "lint/.goreleaser.yaml"
 )
+
+// oldestMacOS matches the oldest macOS that the linker of Go writes into a binary, in the source of
+// the linker, with the major and the minor version as its groups.
+var oldestMacOS = regexp.MustCompile(`\bmacOS\s*=\s*macVersionFlag\{(\d+), (\d+), \d+\}`)
 
 func TestGoReleaser(t *testing.T) {
 	t.Parallel()
@@ -52,6 +61,40 @@ func TestGoReleaser(t *testing.T) {
 				}
 			})
 
+			t.Run("renders the builds of a command with cgo", func(t *testing.T) {
+				t.Parallel()
+				o := goOptions()
+				o.Binaries = []baseline.Command{{
+					Name: "eidos", Module: ".", Main: "./cmd/eidos", Description: "Generates code.", CGO: true,
+				}}
+				files, err := baseline.Producer{}.Files(baselinetest.Answers(golang.Language), o,
+					&workflow.Contribution{})
+				assert.NoError(t, err, "Files")
+				assert.Length(t, files, 1, "the configurations")
+				golden.Match(t, path.Join("goreleaser", "cgo", files[0].Path), files[0].Content, golden.ShouldUpdate())
+			})
+
+			t.Run("builds the macOS targets of a command with cgo for the oldest macOS of the Go toolchain",
+				func(t *testing.T) {
+					t.Parallel()
+					goroot, err := exec.CommandContext(t.Context(), "go", "env", "GOROOT").Output()
+					assert.NoError(t, err, "go env GOROOT")
+					linker := files.Read(t, filepath.Join(strings.TrimSpace(string(goroot)), "src", "cmd", "link",
+						"internal", "ld", "macho.go"))
+					oldest := oldestMacOS.FindStringSubmatch(linker)
+					assert.Length(t, oldest, 3, "the oldest macOS that the linker of Go writes")
+					o := goOptions()
+					o.Binaries = []baseline.Command{{
+						Name: "worker", Module: ".", Main: "./cmd/worker", Description: "Runs the jobs.", CGO: true,
+					}}
+					rendered, err := baseline.Producer{}.Files(baselinetest.Answers(golang.Language), o,
+						&workflow.Contribution{})
+					assert.NoError(t, err, "Files")
+					assert.Length(t, rendered, 1, "the configurations")
+					assert.Contains(t, string(rendered[0].Content), "-macos."+oldest[1]+"."+oldest[2]+"'",
+						"the target of zig of the macOS builds")
+				})
+
 			t.Run("renders no configuration without a command", func(t *testing.T) {
 				t.Parallel()
 				files, err := baseline.Producer{}.Files(baselinetest.Answers(golang.Language), goOptions(),
@@ -71,6 +114,7 @@ func TestGoReleaser(t *testing.T) {
 			splits := []struct {
 				name      string
 				platforms []option.Platform
+				cgo       bool
 				want      string
 				absent    string
 			}{
@@ -86,6 +130,20 @@ func TestGoReleaser(t *testing.T) {
 					want:      "\n    ids: [worker]\n",
 					absent:    "go.upx",
 				},
+				{
+					name:      "builds the macOS targets of a command with cgo in the build -darwin",
+					platforms: []option.Platform{option.DarwinARM64, option.WindowsAMD64},
+					cgo:       true,
+					want:      "\n    ids: [worker, worker-darwin]\n",
+					absent:    "go.upx",
+				},
+				{
+					name:      "renders no build -darwin for a command with cgo without a macOS target",
+					platforms: []option.Platform{option.LinuxAMD64, option.WindowsAMD64},
+					cgo:       true,
+					want:      "\n    ids: [worker, worker-upx]\n",
+					absent:    "\n  - id: worker-darwin\n",
+				},
 			}
 			for _, tt := range splits {
 				t.Run(tt.name, func(t *testing.T) {
@@ -93,7 +151,7 @@ func TestGoReleaser(t *testing.T) {
 					o := goOptions()
 					o.Binaries = []baseline.Command{{
 						Name: "worker", Module: ".", Main: "./cmd/worker", Description: "Runs the jobs.",
-						Platforms: tt.platforms,
+						Platforms: tt.platforms, CGO: tt.cgo,
 					}}
 					files, err := baseline.Producer{}.Files(baselinetest.Answers(golang.Language), o,
 						&workflow.Contribution{})

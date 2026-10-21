@@ -32,7 +32,11 @@
 // beside the main package. A post hook of the build <name>-upx packs each Linux binary of a command
 // with UPX and LZMA, whose packed binaries syft still reads. The build <name> of the macOS and
 // Windows targets has no hook, because UPX refuses macOS binaries and syft reads no packed Windows
-// binary. The configuration writes:
+// binary. A command whose key cgo is true builds with CGO_ENABLED=1, and the zig of the key
+// tools.zig compiles its C code for each target on Linux: a static musl binary for Linux, a mingw
+// binary for Windows, and a Mach-O binary for macOS. Its macOS targets build in a build
+// <name>-darwin of their own, which links against the text stubs of the libraries of macOS that
+// ergon release pack writes. The configuration writes:
 //
 //   - an archive .tar.gz of each command and platform, with LICENSE, README.md and the completions
 //     of bash, zsh and fish of a command with completions, and with the NOTICE of a repository
@@ -45,8 +49,8 @@
 //
 // GoReleaser runs in snapshot mode with the version of the release in ERGON_VERSION, and creates no
 // release and no changelog: ergon release pack runs it, and ergon release publish attaches the
-// assets. [GoReleaser], [Cosign], [Syft] and [UPX] are the release binaries of the section, pinned
-// by version and a SHA-256 per platform. The fragment of .gitignore ignores /dist/, so a build at the
+// assets. [GoReleaser], [Cosign], [Syft], [UPX] and zig are the release binaries of the section,
+// pinned by version and a SHA-256 per platform. The fragment of .gitignore ignores /dist/, so a build at the
 // tag of a release sees no change of the working tree.
 //
 // # Options

@@ -42,9 +42,10 @@ var git = golang.Git{
 	LightTag: func(context.Context, string, string, string) error { return nil },
 }
 
-// tools runs no tool of the section go.
-func tools(context.Context, string, string, []string, []string) error {
-	return nil
+// tools runs no tool of the section go, and finds the program of every tool at the root.
+var tools = golang.Tools{
+	Run:     func(context.Context, string, string, []string, []string) error { return nil },
+	Program: func(_ context.Context, _, tool string) (string, error) { return "/" + tool, nil },
 }
 
 // workflows are the files of the GitHub files that the contribution of Go changes.

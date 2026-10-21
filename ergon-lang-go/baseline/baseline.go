@@ -43,7 +43,7 @@ func (Producer) Templates() fs.FS {
 }
 
 // Options returns the section go at the baseline: the releases of golangci-lint, govulncheck,
-// benchstat, dokimi-mutate-go, GoReleaser, cosign, syft and UPX, every package of each module, the
+// benchstat, dokimi-mutate-go, GoReleaser, cosign, syft, UPX and zig, every package of each module, the
 // gate of lint, test, race and audit, the nightly jobs of fuzz for 120 minutes, bench for 45 and
 // mutate for 60, the options of each step with the analyzers of go.dokimi.dev/lint, no other module
 // plugin of golangci-lint and go generate as the generators, no command and no tap, the release of
@@ -96,6 +96,17 @@ func (Producer) Options() language.Options {
 					option.WindowsAMD64: "eabc6792a347d45e945be7748423e7868fd01b0d2bcaa2f4b1031fd71ff69bda",
 				},
 			}},
+			Zig: option.Zig{
+				Version: "0.17.0",
+				SHA256: map[option.Platform]string{
+					option.LinuxAMD64:   "1cbe9df9f27e6b78d14ccbca43b6703a404ef79ef1c463de901d7f088d4e2026",
+					option.LinuxARM64:   "9e8d11661d4ae3bd57702a3832781e23ad151dde5798e16a5ccd503f65234ff8",
+					option.DarwinAMD64:  "4f9a1c5269aa17ebda5e6d3c2b89d6cbf36f7d2b22a0306e9ab98f25f95529c6",
+					option.DarwinARM64:  "b607e9b9234790a008116ae5bdb71c6243b84b9fb42a53a9e70fde41c06c536a",
+					option.WindowsAMD64: "b5663f69581dcf391293fbf16c06cb80d81d806545ce618b4d0bab7f0eb8c428",
+					option.WindowsARM64: "0a59d91fa1cb40cf068e9b0954434ce973500c7a2ea749f1e01af62cdab52d26",
+				},
+			},
 		},
 		Paths:    option.Paths{"./..."},
 		Check:    option.Check{option.StepLint, option.StepTest, option.StepRace, option.StepAudit},

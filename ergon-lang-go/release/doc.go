@@ -51,6 +51,11 @@
 // of the release of the tag, and the casks beside them, where ergon release publish and ergon
 // release ci homebrew find them.
 //
+// A configuration with a build that sets CGO_ENABLED=1 builds with zig as the C compiler of every
+// target. Pack installs zig, and writes text stubs of the libraries of macOS that the standard
+// library of the Go toolchain imports, other than libSystem, whose stub zig has. The macOS builds
+// link against the stubs, so no target needs a macOS host.
+//
 // # Errors
 //
 // Each error of the package wraps [ErrRequirement], [ErrMajor], [ErrCycle] or [ErrTag], or the error

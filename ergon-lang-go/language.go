@@ -21,7 +21,7 @@ const Language workspace.Language = "go"
 // Toolchain is the name of the toolchain of Go in configuration and in reports.
 const Toolchain = goworkspace.Toolchain
 
-// ErrGit is the error of [Register] for a [Git] without one of its functions, and for no [Tools].
+// ErrGit is the error of [Register] for a [Git] or [Tools] without one of its functions.
 var ErrGit = errors.New("golang: incomplete git")
 
 // Git is the access to the repository that the toolchain of Go needs and that a composition root
@@ -43,24 +43,34 @@ type Git struct {
 	LightTag func(ctx context.Context, dir, name, commit string) error
 }
 
-// Tools runs the tool of the section go of .ergon.yaml with args in dir, with env added to the
-// environment of the process, as ergon tool run does, such as GoReleaser in a pack. It returns an
-// error for a tool that fails.
-type Tools func(ctx context.Context, dir, tool string, args, env []string) error
+// Tools runs and finds the tools of the section go of .ergon.yaml, as ergon tool run and ergon tool
+// path do, and a composition root provides it. Each function is required.
+type Tools struct {
+	// Run runs the tool with args in dir, with env added to the environment of the process, such as
+	// GoReleaser in a pack. It returns an error for a tool that fails.
+	Run func(ctx context.Context, dir, tool string, args, env []string) error
+
+	// Program installs the tool for dir unless the cache has it, and returns its program, such as
+	// zig, which the builds with cgo of a pack run as their C compiler. It returns an error for a
+	// tool that does not install.
+	Program func(ctx context.Context, dir, tool string) (string, error)
+}
 
 // Register adds the toolchain of Go and then Go to c. The toolchain discovers the modules of
 // go.work with [goworkspace.Discoverer], records the version of a module in its CHANGELOG.md and
 // its tags, and releases the modules with [release.Versioner], [release.Tagger] and
 // [release.Locker], which read the repository through git, and with [release.Packer], which builds
-// the binaries of the commands of a module with GoReleaser through tools.
+// the binaries of the commands of a module with GoReleaser and zig through tools.
 //
-// It returns an error that wraps [ErrGit] for a git without one of its functions or a nil tools,
-// and the first error of [language.RegisterToolchain] and [language.Register], which wraps
+// It returns an error that wraps [ErrGit] for a git or tools without one of its functions, and the
+// first error of [language.RegisterToolchain] and [language.Register], which wraps
 // [language.ErrRegistered] when c already has either name. When only the language fails, c keeps
 // the toolchain.
 func Register(c *language.Catalog, git Git, tools Tools) error {
-	if git.Tags == nil || git.Snapshot == nil || git.Head == nil || git.LightTag == nil || tools == nil {
-		return fmt.Errorf("%w: the toolchain of Go needs Tags, Snapshot, Head, LightTag and its tools", ErrGit)
+	complete := git.Tags != nil && git.Snapshot != nil && git.Head != nil && git.LightTag != nil &&
+		tools.Run != nil && tools.Program != nil
+	if !complete {
+		return fmt.Errorf("%w: the toolchain of Go needs Tags, Snapshot, Head, LightTag, Run and Program", ErrGit)
 	}
 	toolchain := language.Toolchain{
 		Name:             Toolchain,
@@ -69,7 +79,10 @@ func Register(c *language.Catalog, git Git, tools Tools) error {
 	}
 	versioner := release.Versioner{Snapshot: git.Snapshot}
 	locker := release.Locker{Snapshot: git.Snapshot}
-	packer := release.Packer{Snapshot: git.Snapshot, Tags: git.Tags, Head: git.Head, Tag: git.LightTag, Run: tools}
+	packer := release.Packer{
+		Snapshot: git.Snapshot, Tags: git.Tags, Head: git.Head, Tag: git.LightTag, Run: tools.Run,
+		Program: tools.Program,
+	}
 	if err := language.RegisterToolchain(c, toolchain, versioner, release.Tagger{}, locker, packer); err != nil {
 		return err
 	}

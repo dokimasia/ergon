@@ -120,6 +120,10 @@ type Command struct {
 
 	// Homebrew reports that the tap of the section receives a cask of the command.
 	Homebrew bool `yaml:"homebrew"`
+
+	// CGO reports that the command builds with cgo, such as a command that links the C grammars of
+	// tree-sitter. zig compiles its C code for every platform.
+	CGO bool `yaml:"cgo"`
 }
 
 // Validate returns an error that wraps [option.ErrInvalid] for the first value of c that a release
