@@ -22,7 +22,11 @@
 //   - [Maven]: a Maven artifact, through java -jar
 //   - [Composer]: a Composer package, through Composer
 //   - a [Release]: a release binary, which ergon tool run downloads and checks against the
-//     digest that [Binary] pins for its platform, from the releases of its repository on GitHub
+//     digest that [Binary] pins for its platform, from the releases of its repository on GitHub,
+//     or from ziglang.org for [Zig]
+//
+// ergon tool run unpacks the program of the [Asset] of a release binary from its archive, and the
+// whole archive for an asset with Tree, such as zig, whose program needs its library.
 //
 // A struct tag adds what a tool's package does not state:
 //

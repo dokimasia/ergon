@@ -23,6 +23,16 @@ const (
 // uvRelease is the address of the assets of uv 0.12.23.
 const uvRelease = "https://github.com/astral-sh/uv/releases/download/0.12.23/"
 
+// The address of the archives of zig 0.16.0, and the digest of its archive of Linux on x86-64, as
+// the download index of ziglang.org states it.
+const (
+	zigRelease = "https://ziglang.org/download/0.16.0/"
+	zigLinux   = "70e49664a74374b48b51e6f3fdfbf437f6395d42509050588bd49abe52ba3d00"
+)
+
+// zigPin is a pin of zig 0.16.0 with the digest of Linux on x86-64.
+var zigPin = option.Zig{SHA256: map[option.Platform]string{option.LinuxAMD64: zigLinux}, Version: "0.16.0"}
+
 func TestBinary(t *testing.T) {
 	t.Parallel()
 
@@ -203,6 +213,98 @@ func TestBinary(t *testing.T) {
 			t.Run("returns the repository of the releases of uv", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, uv().Repository(), "astral-sh/uv", "Repository")
+			})
+		})
+	})
+
+	t.Run("Zig", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Asset", func(t *testing.T) {
+			t.Parallel()
+
+			tests := []struct {
+				name string
+				give option.Platform
+				want option.Asset
+			}{
+				{
+					name: "returns the archive of Linux on x86-64 with its tree",
+					give: option.LinuxAMD64,
+					want: option.Asset{
+						URL:     zigRelease + "zig-x86_64-linux-0.16.0.tar.xz",
+						Program: "zig-x86_64-linux-0.16.0/zig",
+						Tree:    true,
+					},
+				},
+				{
+					name: "returns the archive of Linux on ARM with its tree",
+					give: option.LinuxARM64,
+					want: option.Asset{
+						URL:     zigRelease + "zig-aarch64-linux-0.16.0.tar.xz",
+						Program: "zig-aarch64-linux-0.16.0/zig",
+						Tree:    true,
+					},
+				},
+				{
+					name: "returns the archive of macOS on x86-64 with its tree",
+					give: option.DarwinAMD64,
+					want: option.Asset{
+						URL:     zigRelease + "zig-x86_64-macos-0.16.0.tar.xz",
+						Program: "zig-x86_64-macos-0.16.0/zig",
+						Tree:    true,
+					},
+				},
+				{
+					name: "returns the archive of macOS on Apple silicon with its tree",
+					give: option.DarwinARM64,
+					want: option.Asset{
+						URL:     zigRelease + "zig-aarch64-macos-0.16.0.tar.xz",
+						Program: "zig-aarch64-macos-0.16.0/zig",
+						Tree:    true,
+					},
+				},
+				{
+					name: "returns the zip of Windows on x86-64 with its tree",
+					give: option.WindowsAMD64,
+					want: option.Asset{
+						URL:     zigRelease + "zig-x86_64-windows-0.16.0.zip",
+						Program: "zig-x86_64-windows-0.16.0/zig.exe",
+						Tree:    true,
+					},
+				},
+				{
+					name: "returns the zip of Windows on ARM with its tree",
+					give: option.WindowsARM64,
+					want: option.Asset{
+						URL:     zigRelease + "zig-aarch64-windows-0.16.0.zip",
+						Program: "zig-aarch64-windows-0.16.0/zig.exe",
+						Tree:    true,
+					},
+				},
+			}
+			for _, tt := range tests {
+				t.Run(tt.name, func(t *testing.T) {
+					t.Parallel()
+					got, err := zigPin.Asset(tt.give)
+					assert.NoError(t, err, fmt.Sprintf("Asset of %s", tt.give))
+					assert.Equal(t, got, tt.want, "the asset")
+				})
+			}
+
+			t.Run("returns ErrNoAsset for an invalid platform", func(t *testing.T) {
+				t.Parallel()
+				_, err := zigPin.Asset("linux/386")
+				assert.ErrorIs(t, err, option.ErrNoAsset, "Asset of linux/386")
+			})
+		})
+
+		t.Run("Repository", func(t *testing.T) {
+			t.Parallel()
+
+			t.Run("returns no repository", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, zigPin.Repository(), "", "Repository")
 			})
 		})
 	})

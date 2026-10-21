@@ -39,6 +39,10 @@ const (
 // platforms are the platforms of a release binary.
 var platforms = []Platform{LinuxAMD64, LinuxARM64, DarwinAMD64, DarwinARM64, WindowsAMD64, WindowsARM64}
 
+// windows is the system of Go whose release binaries publish a .zip with a program that ends in
+// .exe.
+const windows = "windows"
+
 // sha256Digest matches a SHA-256 digest in lowercase hexadecimal.
 var sha256Digest = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
@@ -66,12 +70,16 @@ func (p Platform) Validate() error {
 // Asset is the file that a release publishes for one platform.
 type Asset struct {
 	// URL is the address of the asset, over https. Its suffix states the format of an archive:
-	// .tar.gz or .zip. An asset with neither suffix is the program itself.
+	// .tar.gz, .tar.xz or .zip. An asset with none of these suffixes is the program itself.
 	URL string
 
 	// Program is the slash-separated path of the program in the archive, and empty for an asset
 	// that is the program itself.
 	Program string
+
+	// Tree reports that the program needs the other files of its archive, such as the library of
+	// zig beside its program. ergon tool run then unpacks the whole archive.
+	Tree bool
 }
 
 // Binary is the pin of a release binary: its version and the SHA-256 digest of the asset of each
@@ -162,7 +170,7 @@ func (u UV) Asset(p Platform) (Asset, error) {
 		return Asset{}, fmt.Errorf("%w: uv has no asset for %q", ErrNoAsset, p)
 	}
 	release := "https://github.com/" + uvRepository + "/releases/download/" + u.Version + "/uv-" + target
-	if p.OS() == "windows" {
+	if p.OS() == windows {
 		return Asset{URL: release + ".zip", Program: "uv.exe"}, nil
 	}
 	return Asset{URL: release + ".tar.gz", Program: "uv-" + target + "/uv"}, nil
@@ -171,4 +179,45 @@ func (u UV) Asset(p Platform) (Asset, error) {
 // Repository returns astral-sh/uv, the repository on GitHub whose releases publish uv.
 func (UV) Repository() string {
 	return uvRepository
+}
+
+// Zig is the release binary of zig, which ziglang.org publishes for every platform. The section go
+// runs it as the C compiler of the commands with cgo. Its program needs the library beside it in
+// its archive.
+type Zig struct {
+	Binary `yaml:",inline"`
+}
+
+var _ Release = Zig{}
+
+// zigDownload is the address of the releases of zig, before the version.
+const zigDownload = "https://ziglang.org/download/"
+
+// The names of the archives of zig: the architecture and the system of each architecture and
+// system of Go.
+var (
+	zigArchs   = map[string]string{"amd64": "x86_64", "arm64": "aarch64"}
+	zigSystems = map[string]string{"linux": "linux", "darwin": "macos", windows: windows}
+)
+
+// Asset returns the archive of zig for p from ziglang.org: zig-<arch>-<os>-<version>.tar.xz with the
+// program zig in the directory of the name of the archive, and a .zip with zig.exe on Windows. The
+// program needs the tree of the archive. It returns an error that wraps [ErrNoAsset] for a platform
+// that is not valid.
+func (z Zig) Asset(p Platform) (Asset, error) {
+	if p.Validate() != nil {
+		return Asset{}, fmt.Errorf("%w: zig has no asset for %q", ErrNoAsset, p)
+	}
+	dir := "zig-" + zigArchs[p.Arch()] + "-" + zigSystems[p.OS()] + "-" + z.Version
+	download := zigDownload + z.Version + "/" + dir
+	if p.OS() == windows {
+		return Asset{URL: download + ".zip", Program: dir + "/zig.exe", Tree: true}, nil
+	}
+	return Asset{URL: download + ".tar.xz", Program: dir + "/zig", Tree: true}, nil
+}
+
+// Repository returns the empty string, because no repository on GitHub publishes the releases of
+// zig. A baseline update reads the download index of ziglang.org instead.
+func (Zig) Repository() string {
+	return ""
 }
