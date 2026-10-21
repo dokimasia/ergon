@@ -302,7 +302,9 @@ func TestDownload(t *testing.T) {
 			r, _, _ := runner(t, served)
 			platform := strings.ReplaceAll(string(host()), "/", "-")
 			root := path.Join("release", "tool", "1.0", platform, digest(content))
-			files.Write(t, r.Cache, files.Tree{root: files.Text("")})
+			// Every system refuses to rename a directory onto a directory that is not empty. Windows
+			// replaces a file at the path with the directory.
+			files.Write(t, r.Cache, files.Tree{path.Join(root, "other"): files.Text("")})
 			_, err := r.Run(t.Context(), section, o, "tool", nil)
 			assert.ErrorIs(t, err, tool.ErrInstall, "Run")
 		})
