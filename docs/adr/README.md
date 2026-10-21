@@ -64,3 +64,4 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 | [0053](0053-one-line-of-updated-dependencies.md) | A changelog entry has one line of updated dependencies | Accepted |
 | [0054](0054-empty-release-plans-in-ci.md) | CI treats an empty release plan as a plan without changesets | Accepted |
 | [0055](0055-proposals-on-a-staging-branch.md) | A proposal is committed on a staging branch, and its branch moves once | Accepted |
+| [0056](0056-cgo-binaries-on-linux-with-zig.md) | Commands with cgo build every platform on Linux with zig | Accepted |
