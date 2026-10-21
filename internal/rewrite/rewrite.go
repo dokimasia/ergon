@@ -110,9 +110,9 @@ type pkg struct {
 //
 //   - a tool, as <package>@<version>, and a version with a source tag, with the version
 //   - an action, its Commit and its Release, with the commit and the version
-//   - a release binary, its Version, and each digest of its SHA256 with the digest that the release
-//     states for the platforms whose earlier digest it is, in a literal with the key Binary or with
-//     the keys of option.Binary itself
+//   - a release binary, zig included, its Version, and each digest of its SHA256 with the digest
+//     that the release states for the platforms whose earlier digest it is, in a literal with the
+//     key Binary or with the keys of option.Binary itself
 //
 // The files keep their comments, and Apply formats each file that it changes with gofmt. It writes
 // nothing when an update fails, and it writes the files one after another, so a write that fails
@@ -232,7 +232,7 @@ func (p *pkg) rewrite(root ast.Expr, u *Update) ([]edit, error) {
 			{key: commitKey, old: a.Commit, next: u.Release.Commit},
 			{key: releaseKey, old: a.Release, next: u.Release.Version},
 		})
-	case pin.KindBinary:
+	case pin.KindBinary, pin.KindZig:
 		return p.binary(e, u)
 	default:
 		old := reflect.ValueOf(u.Pin.Value).String()

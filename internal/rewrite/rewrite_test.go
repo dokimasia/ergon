@@ -43,6 +43,10 @@ var (
 	nextDarwin   = strings.Repeat("b", 64)
 	nextCheck    = strings.Repeat("c", 64)
 	otherDigest  = strings.Repeat("d", 64)
+	zigLinux     = strings.Repeat("5", 64)
+	zigWindows   = strings.Repeat("6", 64)
+	nextZigLinux = strings.Repeat("e", 64)
+	nextZigWin   = strings.Repeat("f", 64)
 	checkout     = strings.Repeat("1", 40)
 	nextCheckout = strings.Repeat("2", 40)
 )
@@ -75,6 +79,16 @@ var (
 		Version: "1.0.0",
 		Field:   []string{"Tools", "Check"},
 		Kind:    pin.KindBinary,
+	}
+	zigPin = pin.Pin{
+		Value: option.Zig{
+			SHA256:  map[option.Platform]string{option.LinuxAMD64: zigLinux, option.WindowsAMD64: zigWindows},
+			Version: "0.16.0",
+		},
+		Key:     "producer.tools.zig",
+		Version: "0.16.0",
+		Field:   []string{"Tools", "Zig"},
+		Kind:    pin.KindZig,
 	}
 	checkoutPin = pin.Pin{
 		Value:   workflow.Action{Uses: "actions/checkout", Commit: checkout, Release: "v7.0.1"},
@@ -111,6 +125,13 @@ var kinds = []rewrite.Update{
 		Release: pin.Release{
 			Digests: map[option.Platform]string{option.LinuxAMD64: nextCheck, option.LinuxARM64: nextCheck},
 			Version: "1.1.0",
+		},
+	},
+	{
+		Pin: zigPin,
+		Release: pin.Release{
+			Digests: map[option.Platform]string{option.LinuxAMD64: nextZigLinux, option.WindowsAMD64: nextZigWin},
+			Version: "0.17.0",
 		},
 	},
 	{

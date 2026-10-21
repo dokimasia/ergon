@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -60,12 +61,15 @@ var toolRuns = []clitest.Input{
 	{Args: []string{"tool", "ci", "--help"}},
 	{Args: []string{"tool", "ci"}},
 	{Args: []string{"tool", "run", "--help"}},
+	{Args: []string{"tool", "path", "--help"}},
 	{Args: []string{"tool", "prune", "--help"}},
 	{Args: []string{"tool", "ci", "prune", "--help"}},
 	{Args: []string{"tool", "run"}},
 	{Args: []string{"tool", "run", "biome"}},
 	{Args: []string{"tool", "run", "js.prettier"}},
 	{Args: []string{"tool", "run", "go.vet"}},
+	{Args: []string{"tool", "path", "js.biome"}},
+	{Args: []string{"tool", "path", "js.prettier"}},
 	{Args: []string{"tool", "prune", "main"}},
 	{Args: []string{"tool", "ci", "prune", "main"}},
 }
@@ -220,12 +224,7 @@ func TestTool(t *testing.T) {
 			if host == other {
 				other = option.LinuxAMD64
 			}
-			config := read(t, dir, ".ergon.yaml")
-			start := strings.Index(config, "      sha256:\n")
-			end := strings.Index(config, "      version: 0.12.0\n")
-			assert.InRange(t, start, 0, float64(end-1), "the digests of commitlint before its version in .ergon.yaml")
-			digests := "      sha256:\n        " + string(other) + ": " + strings.Repeat("ab", 32) + "\n"
-			write(t, dir, ".ergon.yaml", config[:start]+digests+config[end:])
+			pinCommitlint(t, dir, other, strings.Repeat("ab", 32))
 			status, stdout, stderr := runWith(t, app.Register, dir, "tool", "run", "common.commitlint")
 			assert.Equal(t, status, statusFailure, "the exit status")
 			assert.Empty(t, stdout, "the standard output")
@@ -254,6 +253,28 @@ func TestTool(t *testing.T) {
 			status, _, stderr := runWith(t, app.Register, dir, "tool", "run", "js.biome")
 			assert.Equal(t, status, statusFailure, "the exit status")
 			assert.HasPrefix(t, stderr, "ergon: options: invalid .ergon.yaml: ", "the standard error")
+		})
+
+		t.Run("path writes the program of a release binary of the cache", func(t *testing.T) {
+			t.Parallel()
+			dir := javascriptRepository(t)
+			digest := strings.Repeat("ab", 32)
+			pinCommitlint(t, dir, native, digest)
+			name := "commitlint"
+			if native.OS() == "windows" {
+				name += ".exe"
+			}
+			install := path.Join("ergon", "tools", "release", "commitlint", "0.12.0",
+				strings.ReplaceAll(string(native), "/", "-"), digest, name)
+			p := program(dir, app.Register)
+			cache := t.TempDir()
+			p.CacheDir = func() (string, error) { return cache, nil }
+			files.Write(t, cache, files.Tree{install: files.Executable("")})
+			res := clitest.Main(t.Context(), p.Main, &clitest.Input{
+				Args: []string{"tool", "path", "common.commitlint"}, Vars: environ(),
+			})
+			assert.Equal(t, res.Status, statusOK, "the exit status: "+res.Stderr)
+			assert.Equal(t, res.Stdout, filepath.Join(cache, filepath.FromSlash(install))+"\n", "the standard output")
 		})
 
 		t.Run("ci prune deletes the tool caches that newer caches replaced", func(t *testing.T) {
@@ -336,6 +357,18 @@ func javascriptRepository(t *testing.T) string {
 	status, _, stderr := runWith(t, app.Register, dir, args...)
 	assert.Equal(t, status, statusOK, "the exit status of init new: "+stderr)
 	return dir
+}
+
+// pinCommitlint gives commitlint in the .ergon.yaml of the repository dir the digest of platform
+// alone, in place of the digests of the baseline.
+func pinCommitlint(t *testing.T, dir string, platform option.Platform, digest string) {
+	t.Helper()
+	config := read(t, dir, ".ergon.yaml")
+	start := strings.Index(config, "      sha256:\n")
+	end := strings.Index(config, "      version: 0.12.0\n")
+	assert.InRange(t, start, 0, float64(end-1), "the digests of commitlint before its version in .ergon.yaml")
+	digests := "      sha256:\n        " + string(platform) + ": " + digest + "\n"
+	write(t, dir, ".ergon.yaml", config[:start]+digests+config[end:])
 }
 
 // fake acts as the program of the base name of args[0], without the suffix .exe. It writes the

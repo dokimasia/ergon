@@ -48,6 +48,20 @@ install, and 2 when the section or the tool does not exist.
 Example:
   ergon tool run go.golangci-lint -- run ./...`
 
+	pathHelp = `Install a tool of a section and print its program.
+
+ergon tool path installs the tool that a section of .ergon.yaml names, unless
+the cache has it, as ergon tool run does, and prints the path of its program. A
+Makefile or a script then passes the path to a program that starts the tool,
+such as zig as the C compiler of a build. A tool that runs through another
+program, such as an npm package that npx runs, has no program of its own.
+
+The exit status is 1 when the tool does not install or has no program of its
+own, and 2 when the section or the tool does not exist.
+
+Example:
+  ergon tool path go.zig`
+
 	pruneHelp = `Remove the tools that no section of .ergon.yaml names.
 
 ergon tool prune removes each file from ergon/tools in the cache directory of
@@ -80,10 +94,16 @@ type runOptions struct {
 	Arguments []string `help:"Arguments of the tool. Pass them after --." arg:"" default:""`
 }
 
-// toolCommands adds ergon tool to app, with its subcommands run, prune and ci prune.
+// pathOptions are the options of ergon tool path: the tool.
+type pathOptions struct {
+	Tool string `help:"Tool to print the program of, as <section>.<tool>." arg:""`
+}
+
+// toolCommands adds ergon tool to app, with its subcommands run, path, prune and ci prune.
 func (s *session) toolCommands(app *gocli.App[noOptions]) {
 	parent := app.Command[noOptions]("tool", toolHelp, nil)
 	parent.Command("run", runHelp, s.toolRun)
+	parent.Command("path", pathHelp, s.toolPath)
 	parent.Command("prune", pruneHelp, s.toolPrune)
 	ci := parent.Command[noOptions]("ci", toolCIHelp, nil)
 	ci.Command("prune", ciPruneHelp, s.toolCIPrune)
@@ -91,15 +111,45 @@ func (s *session) toolCommands(app *gocli.App[noOptions]) {
 
 // toolRun runs the tool <section>.<tool> of its first argument with the arguments that follow it,
 // through the runner of s under ctx in the working directory of s, and records the exit status of
-// the tool in s. The runner starts an npm package with the package manager that the section of
-// [option.PackageManaged] sets. It returns a [usageError] for a first argument without a dot, for a
-// section of no producer of the repository and for a tool that the section does not name, and the
-// errors of the runner, of the sections and of [tool.Runner.Run].
+// the tool in s. It returns the errors of [session.toolSection] and of [tool.Runner.Run].
 func (s *session) toolRun(ctx context.Context, run *gocli.Run[noOptions, runOptions]) error {
 	o := run.Config()
-	section, name, ok := strings.Cut(o.Tool, ".")
+	return s.toolSection(
+		o.Tool,
+		func(runner *tool.Runner, section string, options language.Options, name string) error {
+			var err error
+			s.status, err = runner.Run(ctx, section, options, name, o.Arguments)
+			return err
+		},
+	)
+}
+
+// toolPath installs the tool <section>.<tool> of its argument through the runner of s under ctx,
+// unless the cache has it, and writes the path of its program. It returns the errors of
+// [session.toolSection] and of [tool.Runner.Program].
+func (s *session) toolPath(ctx context.Context, run *gocli.Run[noOptions, pathOptions]) error {
+	return s.toolSection(
+		run.Config().Tool,
+		func(runner *tool.Runner, section string, options language.Options, name string) error {
+			program, err := runner.Program(ctx, section, options, name)
+			if err == nil {
+				fmt.Fprintln(s.stdout, program)
+			}
+			return err
+		},
+	)
+}
+
+// toolSection calls fn with the runner of s, and with the section, the options and the name of the
+// tool key, as <section>.<tool>, in the repository of the working directory of s. The runner starts
+// an npm package with the package manager that the section of [option.PackageManaged] sets. It
+// returns a [usageError] for a key without a dot, for a section of no producer of the repository,
+// and for an error of fn that wraps [tool.ErrUnknown]. It returns the errors of the runner, of the
+// sections and of fn.
+func (s *session) toolSection(key string, fn func(*tool.Runner, string, language.Options, string) error) error {
+	section, name, ok := strings.Cut(key, ".")
 	if !ok {
-		return usageError{err: fmt.Errorf("cli: %q, which is not <section>.<tool>", o.Tool)}
+		return usageError{err: fmt.Errorf("cli: %q, which is not <section>.<tool>", key)}
 	}
 	runner, err := s.runner()
 	if err != nil {
@@ -122,7 +172,7 @@ func (s *session) toolRun(ctx context.Context, run *gocli.Run[noOptions, runOpti
 		if options == nil {
 			return usageError{err: fmt.Errorf("%w: %q", baseline.ErrUnknownSection, section)}
 		}
-		s.status, err = runner.Run(ctx, section, options, name, o.Arguments)
+		err = fn(runner, section, options, name)
 		if errors.Is(err, tool.ErrUnknown) {
 			return usageError{err: err}
 		}

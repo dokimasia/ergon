@@ -9,6 +9,7 @@ baseline of ergon init runs its tools this way.
 
 Commands:
   run    Install a tool of a section and run it.
+  path   Install a tool of a section and print its program.
   prune  Remove the tools that no section of .ergon.yaml names.
   ci     Run the jobs that keep the tools of ergon in GitHub Actions.
 
@@ -29,6 +30,7 @@ baseline of ergon init runs its tools this way.
 
 Commands:
   run    Install a tool of a section and run it.
+  path   Install a tool of a section and print its program.
   prune  Remove the tools that no section of .ergon.yaml names.
   ci     Run the jobs that keep the tools of ergon in GitHub Actions.
 
@@ -104,6 +106,32 @@ Global options:
       --version     Show the version.
 [exit 0]
 
+$ ergon tool path --help
+Usage: ergon tool path [options] TOOL
+
+Install a tool of a section and print its program.
+
+ergon tool path installs the tool that a section of .ergon.yaml names, unless
+the cache has it, as ergon tool run does, and prints the path of its program. A
+Makefile or a script then passes the path to a program that starts the tool,
+such as zig as the C compiler of a build. A tool that runs through another
+program, such as an npm package that npx runs, has no program of its own.
+
+The exit status is 1 when the tool does not install or has no program of its
+own, and 2 when the section or the tool does not exist.
+
+Example:
+  ergon tool path go.zig
+
+Arguments:
+      TOOL  Tool to print the program of, as <section>.<tool>.
+
+Global options:
+      --flag-debug  Print the value and the source of each option before the command runs.  env ERGON_FLAG_DEBUG
+  -h, --help        Show the help.
+      --version     Show the version.
+[exit 0]
+
 $ ergon tool prune --help
 Usage: ergon tool prune [options]
 
@@ -156,6 +184,14 @@ ergon: tool: the section names no such tool: js.prettier, which is none of js.bi
 
 $ ergon tool run go.vet
 ergon: baseline: no producer of the repository has the section: "go"
+[exit 2]
+
+$ ergon tool path js.biome
+ergon: tool: the tool does not install: js.biome runs through npx
+[exit 1]
+
+$ ergon tool path js.prettier
+ergon: tool: the section names no such tool: js.prettier, which is none of js.biome
 [exit 2]
 
 $ ergon tool prune main

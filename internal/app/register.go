@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"slices"
+	"strings"
 
 	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/lang/bash"
@@ -40,7 +42,9 @@ var registrations = []func(*language.Catalog) error{
 	php.Register,
 	javascript.Register,
 	typescript.Register,
-	func(c *language.Catalog) error { return golang.Register(c, git, tools(gobaseline.Name)) },
+	func(c *language.Catalog) error {
+		return golang.Register(c, git, golang.Tools{Run: tools(gobaseline.Name), Program: programs(gobaseline.Name)})
+	},
 	func(c *language.Catalog) error { return python.Register(c, tools(pybaseline.Name)) },
 	rust.Register,
 	terraform.Register,
@@ -67,16 +71,39 @@ func Register(c *language.Catalog) error {
 func tools(section string) func(ctx context.Context, dir, tool string, args, env []string) error {
 	return func(ctx context.Context, dir, tool string, args, env []string) error {
 		self, err := os.Executable()
-		if err != nil {
-			return fmt.Errorf("app: find the running ergon: %w", err)
+		if err == nil {
+			argv := slices.Concat([]string{"tool", "run", section + "." + tool, "--"}, args)
+			cmd := exec.CommandContext(ctx, self, argv...)
+			cmd.Dir = dir
+			cmd.Env = append(os.Environ(), env...)
+			cmd.Stdout, cmd.Stderr = os.Stderr, os.Stderr
+			err = cmd.Run()
 		}
-		cmd := exec.CommandContext(ctx, self, append([]string{"tool", "run", section + "." + tool, "--"}, args...)...)
-		cmd.Dir = dir
-		cmd.Env = append(os.Environ(), env...)
-		cmd.Stdout, cmd.Stderr = os.Stderr, os.Stderr
-		if err := cmd.Run(); err != nil {
+		if err != nil {
 			return fmt.Errorf("app: ergon tool run %s.%s: %w", section, tool, err)
 		}
 		return nil
+	}
+}
+
+// programs returns a function that installs the tool of the section of .ergon.yaml for dir through
+// ergon tool path of the running ergon, unless the cache has it, and returns the program that
+// ergon tool path writes, such as zig. The standard error of the process receives the output of
+// an install. The function returns the error of finding the running ergon, and the error of ergon
+// tool path, such as an exit status other than 0.
+func programs(section string) func(ctx context.Context, dir, tool string) (string, error) {
+	return func(ctx context.Context, dir, tool string) (string, error) {
+		self, err := os.Executable()
+		var out []byte
+		if err == nil {
+			cmd := exec.CommandContext(ctx, self, "tool", "path", section+"."+tool)
+			cmd.Dir = dir
+			cmd.Stderr = os.Stderr
+			out, err = cmd.Output()
+		}
+		if err != nil {
+			return "", fmt.Errorf("app: ergon tool path %s.%s: %w", section, tool, err)
+		}
+		return strings.TrimSuffix(string(out), "\n"), nil
 	}
 }

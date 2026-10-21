@@ -42,6 +42,13 @@ func (Producer) Options() language.Options {
 				},
 				Version: "1.1.0",
 			},
+			Zig: option.Zig{
+				SHA256: map[option.Platform]string{
+					option.LinuxAMD64:   "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+					option.WindowsAMD64: "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+				},
+				Version: "0.17.0",
+			},
 		},
 		Hooks:  "v6.1.0",
 		Extra:  extra,

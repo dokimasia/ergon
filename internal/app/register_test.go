@@ -4,6 +4,8 @@
 package app_test
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -32,9 +34,10 @@ import (
 )
 
 // recordEnv is the environment variable that contains the path of the record file. When the tools
-// of the toolchain of Go run the test binary as ergon, the binary writes each argument and then
-// ERGON_VERSION into that file on a line of its own. It then writes an empty artifacts.json into
-// the dist directory of config.
+// of the toolchain of Go run the test binary as ergon, the binary appends each argument and then
+// ERGON_VERSION to that file, each on a line of its own. It then writes an empty artifacts.json
+// into the dist directory of config, and writes zigProgram to its standard output for ergon tool
+// path.
 const recordEnv = "ERGON_APP_TEST_RECORD"
 
 // The module that the cases pack, and its go.mod.
@@ -43,23 +46,35 @@ const (
 	goMod      = "module " + modulePath + "\n\ngo 1.24\n"
 )
 
-// The configuration of GoReleaser of the cases, and the artifacts.json of its dist directory.
+// The configurations of GoReleaser of the cases, without cgo and with a build with cgo, and the
+// artifacts.json of their dist directory.
 const (
 	config    = "dist: dist/goreleaser/demo\n"
+	cgoConfig = config + "builds:\n  - env: [CGO_ENABLED=1]\n"
 	artifacts = "dist/goreleaser/demo/artifacts.json"
 )
+
+// zigProgram is the program of zig that the test binary writes as ergon tool path.
+const zigProgram = "/cache/zig/zig"
 
 // TestMain acts as ergon run by the tools of the toolchain of Go when recordEnv is set. Otherwise it
 // isolates git from the configuration of the user and runs the tests.
 func TestMain(m *testing.M) {
 	if record := os.Getenv(recordEnv); record != "" {
 		lines := slices.Concat(os.Args[1:], []string{os.Getenv("ERGON_VERSION")})
-		err := os.WriteFile(record, []byte(strings.Join(lines, "\n")+"\n"), 0o600)
+		f, err := os.OpenFile(record, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+		if err == nil {
+			_, err = f.WriteString(strings.Join(lines, "\n") + "\n")
+			err = errors.Join(err, f.Close())
+		}
 		if err == nil {
 			err = os.MkdirAll(filepath.Dir(artifacts), 0o755)
 		}
 		if err == nil {
 			err = os.WriteFile(artifacts, []byte("[]"), 0o600)
+		}
+		if err == nil && len(os.Args) > 2 && os.Args[2] == "path" {
+			_, err = fmt.Fprintln(os.Stdout, zigProgram)
 		}
 		if err != nil {
 			os.Exit(1)
@@ -157,6 +172,67 @@ func TestRegisterProcess(t *testing.T) {
 				assert.Equal(t, strings.TrimSpace(vcstest.Git(t, root, "rev-parse", "v1.0.0^{commit}")), head,
 					"the commit of the tag of the module")
 			})
+
+		t.Run("returns the error of ergon tool run for a GoReleaser that fails", func(t *testing.T) {
+			root := vcstest.Repository(t, files.Tree{
+				"go.mod":           files.Text(goMod),
+				".goreleaser.yaml": files.Text(config),
+			})
+			vcstest.Commit(t, root, "first")
+			t.Setenv(recordEnv, t.TempDir())
+			t.Chdir(root)
+			var c language.Catalog
+			assert.NoError(t, app.Register(&c), "Register of every language module")
+			packer, ok := language.ToolchainRole[language.Packer](&c, golang.Toolchain)
+			assert.True(t, ok, "the packer of Go")
+			v, err := version.Parse("1.0.0")
+			assert.NoError(t, err, "Parse")
+			pkgs := []workspace.Package{{Name: modulePath, Dir: ".", Version: v}}
+			err = packer.Pack(t.Context(), root, pkgs, t.TempDir())
+			assert.HasError(t, err, "Pack")
+			assert.Contains(t, err.Error(), "ergon tool run go.goreleaser", "the error")
+		})
+
+		t.Run("installs zig through ergon tool path for a build with cgo", func(t *testing.T) {
+			root := vcstest.Repository(t, files.Tree{
+				"go.mod":           files.Text(goMod),
+				".goreleaser.yaml": files.Text(cgoConfig),
+			})
+			vcstest.Commit(t, root, "first")
+			record := filepath.Join(t.TempDir(), "record")
+			t.Setenv(recordEnv, record)
+			t.Chdir(root)
+			var c language.Catalog
+			assert.NoError(t, app.Register(&c), "Register of every language module")
+			packer, ok := language.ToolchainRole[language.Packer](&c, golang.Toolchain)
+			assert.True(t, ok, "the packer of Go")
+			v, err := version.Parse("1.0.0")
+			assert.NoError(t, err, "Parse")
+			pkgs := []workspace.Package{{Name: modulePath, Dir: ".", Version: v}}
+			assert.NoError(t, packer.Pack(t.Context(), root, pkgs, t.TempDir()), "Pack")
+			assert.HasPrefix(t, files.Read(t, record), "tool\npath\ngo.zig\n\ntool\nrun\ngo.goreleaser\n",
+				"the run of ergon tool path before the run of GoReleaser")
+		})
+
+		t.Run("returns the error of ergon tool path for a build with cgo", func(t *testing.T) {
+			root := vcstest.Repository(t, files.Tree{
+				"go.mod":           files.Text(goMod),
+				".goreleaser.yaml": files.Text(cgoConfig),
+			})
+			vcstest.Commit(t, root, "first")
+			t.Setenv(recordEnv, t.TempDir())
+			t.Chdir(root)
+			var c language.Catalog
+			assert.NoError(t, app.Register(&c), "Register of every language module")
+			packer, ok := language.ToolchainRole[language.Packer](&c, golang.Toolchain)
+			assert.True(t, ok, "the packer of Go")
+			v, err := version.Parse("1.0.0")
+			assert.NoError(t, err, "Parse")
+			pkgs := []workspace.Package{{Name: modulePath, Dir: ".", Version: v}}
+			err = packer.Pack(t.Context(), root, pkgs, t.TempDir())
+			assert.HasError(t, err, "Pack")
+			assert.Contains(t, err.Error(), "ergon tool path go.zig", "the error")
+		})
 
 		t.Run("refreshes uv.lock of a release of Python with uv through ergon tool run", func(t *testing.T) {
 			root := files.Workspace(t, files.Tree{

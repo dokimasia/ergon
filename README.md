@@ -18,6 +18,7 @@ ergon sets up a repository with a managed baseline. It also keeps the license he
 | `ergon license` | Adds and checks the license header of every file |
 | `ergon release` | Plans the releases from changeset files, writes the versions and the changelogs in a version pull request, and publishes the packages when the pull request merges |
 | `ergon tool run` | Installs and runs the tools of `.ergon.yaml` at their pinned versions |
+| `ergon tool path` | Installs a tool of `.ergon.yaml` and prints its program, such as zig as the C compiler of a build |
 
 ## Install
 
