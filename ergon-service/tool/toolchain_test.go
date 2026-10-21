@@ -297,9 +297,29 @@ func TestToolchain(t *testing.T) {
 			})
 			assert.NoError(t, err, "WalkDir of the cache")
 			assert.Length(t, programs, 1, "the programs of golangci-lint in the cache")
-			file := filepath.Join(filepath.Dir(programs[0]), pluginsDir)
-			assert.NoError(t, os.WriteFile(file, nil, 0o644), "WriteFile in place of the directory of the plugins")
+			files.Write(t, filepath.Dir(programs[0]), files.Tree{pluginsDir: files.Text("")})
 			o := withPlugins(option.Plugins{"lint": "example.com/lint@v1.0.0"})
+			_, err = r.Run(t.Context(), section, o, "golangci-lint", nil)
+			assert.ErrorIs(t, err, tool.ErrInstall, "Run")
+		})
+
+		t.Run("returns ErrInstall for a build of golangci-lint custom that does not rename", func(t *testing.T) {
+			t.Parallel()
+			o := withPlugins(option.Plugins{"lint": "example.com/lint@v1.0.0"})
+			r, _, _ := runner(t, map[string][]byte{})
+			_, err := r.Run(t.Context(), section, o, "golangci-lint", nil)
+			assert.NoError(t, err, "the Run that builds golangci-lint")
+			var built []string
+			err = filepath.WalkDir(r.Cache, func(p string, d fs.DirEntry, err error) error {
+				custom := strings.Contains(filepath.ToSlash(p), "/"+pluginsDir+"/")
+				if err == nil && custom && strings.TrimSuffix(d.Name(), exe) == "golangci-lint" {
+					built = append(built, p)
+				}
+				return err
+			})
+			assert.NoError(t, err, "WalkDir of the cache")
+			assert.Length(t, built, 1, "the programs of golangci-lint custom in the cache")
+			assert.NoError(t, os.Remove(built[0]), "Remove of the program of the build")
 			_, err = r.Run(t.Context(), section, o, "golangci-lint", nil)
 			assert.ErrorIs(t, err, tool.ErrInstall, "Run")
 		})
@@ -419,8 +439,8 @@ func TestToolchain(t *testing.T) {
 		t.Run("returns ErrInstall for a project of Composer that does not create", func(t *testing.T) {
 			t.Parallel()
 			r, _, _ := runner(t, map[string][]byte{})
+			files.Write(t, r.Cache, files.Tree{"file": files.Text("")})
 			r.Cache = filepath.Join(r.Cache, "file")
-			assert.NoError(t, os.WriteFile(r.Cache, nil, 0o644), "WriteFile of the cache")
 			_, err := r.Run(t.Context(), section, demo(), "phpstan", nil)
 			assert.ErrorIs(t, err, tool.ErrInstall, "Run")
 		})

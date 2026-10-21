@@ -30,6 +30,7 @@ import (
 
 	"github.com/ulikunitz/xz"
 	"go.dokimi.dev/assert"
+	"go.dokimi.dev/assert/files"
 	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/core/option"
 	"go.dokimi.dev/ergon/service/tool"
@@ -74,6 +75,14 @@ const windows = "windows"
 // linux is the system that refuses to run a program that a process has open for writing.
 const linux = "linux"
 
+// The members of the trees of the cases: the directory of a tree, the file of its library beside
+// the program, and the content of that file.
+const (
+	treeDir     = "tool-1.0/"
+	treeLibrary = "tool-1.0/lib/std.txt"
+	treeContent = "std\n"
+)
+
 // The programs of the cases: the test binary, which acts as a tool, and the archives of the
 // release binaries that contain it.
 var (
@@ -115,6 +124,19 @@ func (b binary) Asset(option.Platform) (option.Asset, error) {
 // not read.
 func (binary) Repository() string {
 	return "example/tool"
+}
+
+// member is an entry of an archive of a tree: a directory for a name that ends in a slash, a link
+// to link, and a file of content otherwise.
+type member struct {
+	// name is the slash-separated path of the entry.
+	name string
+
+	// link is the target of a link, and empty for an entry of another kind.
+	link string
+
+	// content is the content of a file.
+	content []byte
 }
 
 // tools are the tools of the section of the cases, one of each kind.
@@ -389,6 +411,59 @@ func TestTool(t *testing.T) {
 			assert.HasPrefix(t, err.Error(), "tool: run tool: ", "the error")
 		})
 	})
+
+	t.Run("Program", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("returns the program of a release binary", func(t *testing.T) {
+			t.Parallel()
+			o, served := demo(), map[string][]byte{}
+			o.Tools.Tool = release(served, "tool.tar.gz", entry, toolTarGz)
+			r, _, _ := runner(t, served)
+			got, err := r.Program(t.Context(), section, o, "tool")
+			assert.NoError(t, err, "Program")
+			platform := strings.ReplaceAll(string(host()), "/", "-")
+			assert.Equal(t, got, filepath.Join(r.Cache, "release", "tool", "1.0", platform, digest(toolTarGz), program),
+				"the program")
+			files.IsFile(t, got, "the program")
+		})
+
+		t.Run("returns the program in the tree of a release binary", func(t *testing.T) {
+			t.Parallel()
+			o, served := demo(), map[string][]byte{}
+			content := tree(".tar.xz", member{name: treeDir + program, content: self})
+			o.Tools.Tool = release(served, "tool.tar.xz", treeDir+program, content)
+			o.Tools.Tool.asset.Tree = true
+			r, _, _ := runner(t, served)
+			got, err := r.Program(t.Context(), section, o, "tool")
+			assert.NoError(t, err, "Program")
+			platform := strings.ReplaceAll(string(host()), "/", "-")
+			assert.Equal(t, got, filepath.Join(r.Cache, "release", "tool", "1.0", platform, digest(content),
+				filepath.FromSlash(treeDir), program), "the program")
+			files.IsFile(t, got, "the program")
+		})
+
+		t.Run("returns ErrUnknown for a tool that the section does not name", func(t *testing.T) {
+			t.Parallel()
+			r, _, _ := runner(t, map[string][]byte{})
+			_, err := r.Program(t.Context(), section, demo(), "missing")
+			assert.ErrorIs(t, err, tool.ErrUnknown, "Program")
+		})
+
+		t.Run("returns ErrInstall for a release binary without the asset of the platform", func(t *testing.T) {
+			t.Parallel()
+			r, _, _ := runner(t, map[string][]byte{})
+			_, err := r.Program(t.Context(), section, demo(), "tool")
+			assert.ErrorIs(t, err, tool.ErrInstall, "Program")
+		})
+
+		t.Run("returns ErrInstall for an npm package that npx runs", func(t *testing.T) {
+			t.Parallel()
+			r, _, _ := runner(t, map[string][]byte{})
+			_, err := r.Program(t.Context(), section, demo(), "biome")
+			assert.ErrorIs(t, err, tool.ErrInstall, "Program")
+		})
+	})
 }
 
 // fake acts as the program that the base name of args[0] states, without .exe, and returns its
@@ -621,6 +696,48 @@ func archive(suffix, name string, content []byte) []byte {
 	tw := tar.NewWriter(compressed)
 	_ = tw.WriteHeader(&tar.Header{Name: name, Mode: 0o755, Size: int64(len(content))})
 	_, _ = io.Copy(tw, bytes.NewReader(content))
+	_ = tw.Close()
+	_ = compressed.Close()
+	return b.Bytes()
+}
+
+// tree returns an archive of the format of suffix, .tar.xz or .zip, with members in their order.
+// Each file has the mode of a program.
+func tree(suffix string, members ...member) []byte {
+	var b bytes.Buffer
+	if suffix == ".zip" {
+		z := zip.NewWriter(&b)
+		for _, m := range members {
+			h := &zip.FileHeader{Name: m.name, Method: zip.Deflate}
+			content := m.content
+			switch {
+			case strings.HasSuffix(m.name, "/"):
+				h.SetMode(fs.ModeDir | 0o755)
+			case m.link != "":
+				h.SetMode(fs.ModeSymlink | 0o777)
+				content = []byte(m.link)
+			default:
+				h.SetMode(0o755)
+			}
+			w, _ := z.CreateHeader(h)
+			_, _ = w.Write(content)
+		}
+		_ = z.Close()
+		return b.Bytes()
+	}
+	compressed, _ := xz.NewWriter(&b)
+	tw := tar.NewWriter(compressed)
+	for _, m := range members {
+		h := &tar.Header{Name: m.name, Mode: 0o755, Size: int64(len(m.content)), Typeflag: tar.TypeReg}
+		switch {
+		case strings.HasSuffix(m.name, "/"):
+			h.Typeflag = tar.TypeDir
+		case m.link != "":
+			h.Typeflag, h.Linkname = tar.TypeSymlink, m.link
+		}
+		_ = tw.WriteHeader(h)
+		_, _ = tw.Write(m.content)
+	}
 	_ = tw.Close()
 	_ = compressed.Close()
 	return b.Bytes()

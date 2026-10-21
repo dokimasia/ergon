@@ -48,6 +48,7 @@ const (
 	publicMaven      = "https://repo1.maven.org/maven2"
 	publicPackagist  = "https://repo.packagist.org"
 	publicChocolatey = "https://community.chocolatey.org/api/v2"
+	publicZig        = "https://ziglang.org/download/index.json"
 )
 
 // GitHub is the API of GitHub that a [Resolver] reads. *forge.Client implements it.
@@ -85,6 +86,9 @@ type Registries struct {
 	// Chocolatey is the OData API of the Chocolatey community repository, such as
 	// https://community.chocolatey.org/api/v2.
 	Chocolatey string
+
+	// Zig is the download index of zig, such as https://ziglang.org/download/index.json.
+	Zig string
 }
 
 // PublicRegistries returns the addresses of the public registries.
@@ -97,6 +101,7 @@ func PublicRegistries() Registries {
 		Maven:      publicMaven,
 		Packagist:  publicPackagist,
 		Chocolatey: publicChocolatey,
+		Zig:        publicZig,
 	}
 }
 
@@ -132,8 +137,8 @@ type candidate struct {
 	// published is the time at which the registry published the release.
 	published time.Time
 
-	// release is the GitHub release of a release binary, an action or a version of GitHub, and nil
-	// for every other kind.
+	// release is the GitHub release of a release binary, an action or a version of GitHub, and the
+	// version of zig with its archives as assets. It is nil for every other kind.
 	release *forge.Release
 
 	// version is the version as the registry states it, such as the tag v7.1.0.
@@ -178,8 +183,9 @@ type Resolver struct {
 // leading v. Versions compare by their numbers, and a release ranks above a pre-release of the same
 // numbers, so a pin at v2.0.0-rc.1 takes v2.0.0. A pin whose name starts with a prefix of Exempt takes a release at
 // once. A Go module without tags takes the pseudo-version of its newest commit. The release of a
-// release binary has the digest of the asset of each platform of p, which GitHub states or which
-// Resolve computes from a download, and the release of an action has the commit of its tag.
+// release binary has the digest of the asset of each platform of p, which GitHub or the download
+// index of zig states or which Resolve computes from a download, and the release of an action has
+// the commit of its tag.
 //
 // It returns an error that wraps [ErrRegistry] for a registry that fails, for a project that the
 // registry does not have, and for a pin of no kind, and [ErrAsset] for a release binary whose new
@@ -204,6 +210,8 @@ func (r *Resolver) Resolve(ctx context.Context, p *Pin) (Resolution, error) {
 		candidates, err = r.chocolatey(ctx, p.Name)
 	case KindBinary, KindAction, KindGitHub:
 		candidates, err = r.github(ctx, p.Name)
+	case KindZig:
+		candidates, err = r.zig(ctx)
 	default:
 		err = fmt.Errorf("%w: the kind %d", ErrRegistry, p.Kind)
 	}
@@ -242,12 +250,12 @@ func (r *Resolver) Resolve(ctx context.Context, p *Pin) (Resolution, error) {
 }
 
 // release returns the release of the candidate c of p: its time and its version, with the digests
-// of a release binary and the commit of an action. It returns an error that wraps [ErrAsset] for a
-// release binary without the asset of a platform of p, and [ErrRegistry] for a tag that GitHub
-// does not return.
+// of a release binary and of zig, and the commit of an action. It returns an error that wraps
+// [ErrAsset] for a release binary without the asset of a platform of p, and [ErrRegistry] for a
+// tag that GitHub does not return.
 func (r *Resolver) release(ctx context.Context, p *Pin, c *candidate) (Release, error) {
 	release := Release{Published: c.published.UTC(), Version: like(p.Version, c.version)}
-	if p.Kind == KindBinary {
+	if p.Kind == KindBinary || p.Kind == KindZig {
 		digests, err := r.digests(ctx, p, c, release.Version)
 		release.Digests = digests
 		return release, err

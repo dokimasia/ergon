@@ -23,6 +23,8 @@
 //   - a package of Chocolatey from its OData API
 //   - a release binary, an action and a version of GitHub from the releases of GitHub, through
 //     [GitHub]
+//   - zig from the download index of ziglang.org, which states the date of each version and the
+//     SHA-256 of each archive
 //
 // It takes the newest release that is stable, newer than the pin, published at least
 // [Resolver.MinAge] before the run and of the major version of the pin, and reports the newest

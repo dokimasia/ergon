@@ -37,6 +37,7 @@ const (
 	mavenPath      = "/maven"
 	packagistPath  = "/packagist"
 	chocolateyPath = "/chocolatey"
+	zigPath        = "/zig/index.json"
 )
 
 // userAgent is the user agent of the requests of a resolver.
@@ -299,6 +300,7 @@ func TestResolver(t *testing.T) {
 				Maven:      "https://repo1.maven.org/maven2",
 				Packagist:  "https://repo.packagist.org",
 				Chocolatey: "https://community.chocolatey.org/api/v2",
+				Zig:        "https://ziglang.org/download/index.json",
 			}, "the registries")
 		})
 	})
@@ -768,6 +770,7 @@ func serve(t *testing.T, routes map[string]route) (*pin.Resolver, *registry) {
 			Maven:      srv.URL + mavenPath,
 			Packagist:  srv.URL + packagistPath,
 			Chocolatey: srv.URL + chocolateyPath,
+			Zig:        srv.URL + zigPath,
 		},
 		MinAge: week,
 	}, fake

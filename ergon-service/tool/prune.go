@@ -31,8 +31,9 @@ const moduleTree = "module"
 // install that did not finish. Prune also removes the tools of another repository that shares the
 // cache.
 //
-// The install of a tool is what [Runner.Run] writes for it: the program of a release binary and of
-// a Go module, the directory of the program that golangci-lint custom builds with the plugins of
+// The install of a tool is what [Runner.Run] writes for it: the program of a release binary, or the
+// directory of its whole archive for an asset with Tree, the program of a Go module, the directory
+// of the program that golangci-lint custom builds with the plugins of
 // its section, the root of a crate, the jar of a Maven artifact, and the project of the Composer
 // packages of a section. A tool that runs through uv or npx has no install, because uv and npx
 // keep their own caches. When go env GOVERSION in the directory Dir does not report a version,
@@ -107,21 +108,21 @@ func (r *Runner) Prune(ctx context.Context, sections map[string]language.Options
 // returns the version of the go command, or nil when go env GOVERSION does not report a version.
 // For a nil version, installed returns root/module for a Go module. It does not return a path for a
 // release binary on a platform without an asset or a digest, because [Runner.Run] does not install
-// it there. For the release of uv of a section, it returns the program under the name of the tool
-// and the program under the name uv, under which [Runner.Run] installs it for a PyPI package.
+// it there. For the release of uv of a section, it returns the install under the name of the tool
+// and the install under the name uv, under which [Runner.Run] installs it for a PyPI package.
 func (r *Runner) installed(root, section string, e *entry, version func() []byte) []string {
 	if rel, ok := reflect.TypeAssert[option.Release](e.value); ok {
 		names := []string{e.name}
 		if _, uv := reflect.TypeAssert[option.UV](e.value); uv {
 			names = append(names, uvName)
 		}
-		var programs []string
+		var installs []string
 		for _, n := range names {
-			if program, _, err := r.releaseProgram(rel, n); err == nil {
-				programs = append(programs, program)
+			if _, install, _, err := r.releaseProgram(rel, n); err == nil {
+				installs = append(installs, install)
 			}
 		}
-		return programs
+		return installs
 	}
 	switch tool := e.value.Interface().(type) {
 	case option.Module:

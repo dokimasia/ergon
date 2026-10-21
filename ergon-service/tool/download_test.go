@@ -7,12 +7,14 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/ulikunitz/xz"
 	"go.dokimi.dev/assert"
+	"go.dokimi.dev/assert/files"
 	"go.dokimi.dev/ergon/core/option"
 	"go.dokimi.dev/ergon/service/tool"
 )
@@ -164,6 +166,147 @@ func TestDownload(t *testing.T) {
 			})
 		}
 
+		trees := []struct {
+			name        string
+			giveFile    string
+			giveProgram string
+			giveContent []byte
+		}{
+			{
+				name:        "runs the program of a .tar.xz with its tree",
+				giveFile:    "tool.tar.xz",
+				giveProgram: treeDir + program,
+				giveContent: tree(".tar.xz", member{name: treeDir}, member{name: treeDir + program, content: self},
+					member{name: "tool-1.0/lib/"}, member{name: treeLibrary, content: []byte(treeContent)}),
+			},
+			{
+				name:        "runs the program of a .zip with its tree",
+				giveFile:    "tool.zip",
+				giveProgram: "tool-1.0/tool.exe",
+				giveContent: tree(".zip", member{name: treeDir}, member{name: "tool-1.0/tool.exe", content: self},
+					member{name: "tool-1.0/lib/"}, member{name: treeLibrary, content: []byte(treeContent)}),
+			},
+		}
+		for _, tt := range trees {
+			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+				o, served := demo(), map[string][]byte{}
+				o.Tools.Tool = release(served, tt.giveFile, tt.giveProgram, tt.giveContent)
+				o.Tools.Tool.asset.Tree = true
+				r, out, _ := runner(t, served)
+				_, err := r.Run(t.Context(), section, o, "tool", []string{"check"})
+				assert.NoError(t, err, "Run")
+				assert.Equal(t, out.String(), "tool check\n", "the output of the tool")
+				root := filepath.Join(r.Cache, "release", "tool", "1.0", strings.ReplaceAll(string(host()), "/", "-"),
+					digest(tt.giveContent))
+				files.HasContent(t, filepath.Join(root, filepath.FromSlash(treeLibrary)), treeContent,
+					"the library beside the program")
+			})
+		}
+
+		t.Run("runs a tree of the cache without a download", func(t *testing.T) {
+			t.Parallel()
+			o, served := demo(), map[string][]byte{}
+			content := tree(".tar.xz", member{name: treeDir + program, content: self})
+			o.Tools.Tool = release(served, "tool.tar.xz", treeDir+program, content)
+			o.Tools.Tool.asset.Tree = true
+			r, out, _ := runner(t, served)
+			_, err := r.Run(t.Context(), section, o, "tool", nil)
+			assert.NoError(t, err, "the first Run")
+			clear(served)
+			_, err = r.Run(t.Context(), section, o, "tool", []string{"again"})
+			assert.NoError(t, err, "the second Run")
+			assert.Equal(t, out.String(), "tool\n"+"tool again\n", "the output of both runs")
+		})
+
+		refused := []struct {
+			name        string
+			giveFile    string
+			giveContent []byte
+		}{
+			{
+				name:     "returns ErrInstall for a tree with a path outside its directory",
+				giveFile: "tool.tar.xz",
+				giveContent: tree(".tar.xz", member{name: treeDir + program, content: self},
+					member{name: "../escape", content: []byte("x")}),
+			},
+			{
+				name:     "returns ErrInstall for a .tar.xz tree with a link",
+				giveFile: "tool.tar.xz",
+				giveContent: tree(".tar.xz", member{name: treeDir + program, content: self},
+					member{name: "tool-1.0/link", link: program}),
+			},
+			{
+				name:     "returns ErrInstall for a .zip tree with a link",
+				giveFile: "tool.zip",
+				giveContent: tree(".zip", member{name: treeDir + program, content: self},
+					member{name: "tool-1.0/link", link: program}),
+			},
+			{
+				name:        "returns ErrInstall for a tree without the program",
+				giveFile:    "tool.tar.xz",
+				giveContent: tree(".tar.xz", member{name: treeLibrary, content: []byte(treeContent)}),
+			},
+			{
+				name:     "returns ErrInstall for a tree with a file below a file",
+				giveFile: "tool.tar.xz",
+				giveContent: tree(".tar.xz", member{name: treeDir + program, content: self},
+					member{name: treeDir + program + "/below", content: []byte("x")}),
+			},
+			{
+				name:     "returns ErrInstall for a .zip tree with a file below a file",
+				giveFile: "tool.zip",
+				giveContent: tree(".zip", member{name: treeDir + program, content: self},
+					member{name: treeDir + program + "/below", content: []byte("x")}),
+			},
+			{
+				name:        "returns ErrInstall for a .tar.xz tree that does not read",
+				giveFile:    "tool.tar.xz",
+				giveContent: []byte("no archive"),
+			},
+			{
+				name:        "returns ErrInstall for a .zip tree that does not read",
+				giveFile:    "tool.zip",
+				giveContent: []byte("no archive"),
+			},
+			{
+				name:     "returns ErrInstall for a .tar.xz tree whose tar does not read",
+				giveFile: "tool.tar.xz",
+				giveContent: func() []byte {
+					var b bytes.Buffer
+					w, _ := xz.NewWriter(&b)
+					_, _ = w.Write([]byte("no tar"))
+					_ = w.Close()
+					return b.Bytes()
+				}(),
+			},
+		}
+		for _, tt := range refused {
+			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+				o, served := demo(), map[string][]byte{}
+				o.Tools.Tool = release(served, tt.giveFile, treeDir+program, tt.giveContent)
+				o.Tools.Tool.asset.Tree = true
+				r, _, _ := runner(t, served)
+				_, err := r.Run(t.Context(), section, o, "tool", nil)
+				assert.ErrorIs(t, err, tool.ErrInstall, "Run")
+			})
+		}
+
+		t.Run("returns ErrInstall for a tree whose directory does not rename", func(t *testing.T) {
+			t.Parallel()
+			o, served := demo(), map[string][]byte{}
+			content := tree(".tar.xz", member{name: treeDir + program, content: self})
+			o.Tools.Tool = release(served, "tool.tar.xz", treeDir+program, content)
+			o.Tools.Tool.asset.Tree = true
+			r, _, _ := runner(t, served)
+			platform := strings.ReplaceAll(string(host()), "/", "-")
+			root := path.Join("release", "tool", "1.0", platform, digest(content))
+			files.Write(t, r.Cache, files.Tree{root: files.Text("")})
+			_, err := r.Run(t.Context(), section, o, "tool", nil)
+			assert.ErrorIs(t, err, tool.ErrInstall, "Run")
+		})
+
 		t.Run("returns ErrInstall for a request that fails", func(t *testing.T) {
 			t.Parallel()
 			o, served := demo(), map[string][]byte{}
@@ -179,8 +322,8 @@ func TestDownload(t *testing.T) {
 			o, served := demo(), map[string][]byte{}
 			o.Tools.Tool = release(served, "tool.tar.gz", entry, toolTarGz)
 			r, _, _ := runner(t, served)
+			files.Write(t, r.Cache, files.Tree{"file": files.Text("")})
 			r.Cache = filepath.Join(r.Cache, "file")
-			assert.NoError(t, os.WriteFile(r.Cache, nil, 0o644), "WriteFile of the cache")
 			_, err := r.Run(t.Context(), section, o, "tool", nil)
 			assert.ErrorIs(t, err, tool.ErrInstall, "Run")
 		})

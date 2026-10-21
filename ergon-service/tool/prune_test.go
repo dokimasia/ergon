@@ -88,6 +88,24 @@ func TestPrune(t *testing.T) {
 			assert.Permutation(t, got, want, "the removed paths")
 		})
 
+		t.Run("keeps the tree of a release binary", func(t *testing.T) {
+			t.Parallel()
+			o, served := demo(), map[string][]byte{}
+			content := tree(".tar.xz", member{name: treeDir + program, content: self},
+				member{name: treeLibrary, content: []byte(treeContent)})
+			o.Tools.Tool = release(served, "tool.tar.xz", treeDir+program, content)
+			o.Tools.Tool.asset.Tree = true
+			r, _, _ := runner(t, served)
+			_, err := r.Run(t.Context(), section, o, "tool", nil)
+			assert.NoError(t, err, "Run")
+			var got []string
+			assert.Pure(t, func() []string { return cached(t, r.Cache) }, func() {
+				got, err = r.Prune(t.Context(), map[string]language.Options{section: o})
+			}, "the files of the cache")
+			assert.NoError(t, err, "Prune")
+			assert.Empty(t, got, "the removed paths")
+		})
+
 		t.Run("keeps the program of golangci-lint of the plugins of its section", func(t *testing.T) {
 			t.Parallel()
 			r, _, _ := runner(t, map[string][]byte{})
@@ -143,6 +161,15 @@ func TestPrune(t *testing.T) {
 			assert.Empty(t, cached(t, r.Cache), "the files of the cache")
 		})
 
+		t.Run("removes every install for options that are no pointer to a struct", func(t *testing.T) {
+			t.Parallel()
+			r, _, _ := runner(t, map[string][]byte{})
+			files.Write(t, r.Cache, files.Tree{"release/gone/1.0/gone": stale})
+			got, err := r.Prune(t.Context(), map[string]language.Options{section: valued{}})
+			assert.NoError(t, err, "Prune")
+			assert.Equal(t, got, []string{"release"}, "the removed paths")
+		})
+
 		t.Run("returns nil for a cache that does not exist", func(t *testing.T) {
 			t.Parallel()
 			r, _, _ := runner(t, map[string][]byte{})
@@ -170,9 +197,8 @@ func TestPrune(t *testing.T) {
 			}
 			r, _, _ := runner(t, map[string][]byte{})
 			files.Write(t, r.Cache, files.Tree{"release/gone/1.0/gone": stale})
-			locked := filepath.Join(r.Cache, "release")
-			assert.NoError(t, os.Chmod(locked, 0o555), "Chmod of the directory")
-			t.Cleanup(func() { _ = os.Chmod(locked, 0o755) })
+			files.Write(t, r.Cache, files.Tree{"release": files.Dir().WithMode(0o555)})
+			t.Cleanup(func() { files.Write(t, r.Cache, files.Tree{"release": files.Dir()}) })
 			_, err := r.Prune(t.Context(), nil)
 			assert.HasError(t, err, "Prune")
 			assert.HasPrefix(t, err.Error(), "tool: remove release from the cache: ", "the error")
@@ -181,8 +207,8 @@ func TestPrune(t *testing.T) {
 		t.Run("returns the error of a cache that is not a directory", func(t *testing.T) {
 			t.Parallel()
 			r, _, _ := runner(t, map[string][]byte{})
+			files.Write(t, r.Cache, files.Tree{"file": files.Text("")})
 			r.Cache = filepath.Join(r.Cache, "file")
-			assert.NoError(t, os.WriteFile(r.Cache, nil, 0o644), "WriteFile of the cache")
 			_, err := r.Prune(t.Context(), nil)
 			assert.HasError(t, err, "Prune")
 			assert.HasPrefix(t, err.Error(), "tool: open the cache: ", "the error")

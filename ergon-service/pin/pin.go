@@ -25,6 +25,9 @@ const (
 	githubSource     = "github"
 )
 
+// zigName is the name of the pin of zig, whose releases the download index of zig lists.
+const zigName = "zig"
+
 // Kind is the registry that publishes the releases of a pin. The zero value is not a valid kind.
 type Kind uint8
 
@@ -60,11 +63,14 @@ const (
 	// KindGitHub is a version of the GitHub releases of a repository, such as the release of the
 	// hooks of pre-commit.
 	KindGitHub Kind = 10
+
+	// KindZig is the release binary of zig, from the download index of ziglang.org.
+	KindZig Kind = 11
 )
 
 // Valid reports whether k is one of the kinds.
 func (k Kind) Valid() bool {
-	return k >= KindModule && k <= KindGitHub
+	return k >= KindModule && k <= KindZig
 }
 
 // Pin is a field of the options of a producer whose value refers to a release of a registry.
@@ -76,7 +82,7 @@ type Pin struct {
 	Key string
 
 	// Name is the released project in its registry: a package path of Go, a package, a crate,
-	// group:artifact, vendor/package, a repository as owner/name, or a package of Chocolatey.
+	// group:artifact, vendor/package, a repository as owner/name, a package of Chocolatey, or zig.
 	Name string
 
 	// Version is the version of the pin, such as v2.14.0 or 0.12.0.
@@ -93,7 +99,9 @@ type Pin struct {
 // Find returns the pins of o, the options of the section section, in the order in which
 // [options.Fields] returns their keys. A key is a pin by the type of its field:
 //
-//   - a release binary, a type that implements [option.Release], of the releases of its repository
+//   - an [option.Zig], of the download index of zig
+//   - any other release binary, a type that implements [option.Release], of the releases of its
+//     repository
 //   - an [option.Module], [option.PyPI], [option.NPM], [option.Crate], [option.Maven] or
 //     [option.Composer] of its registry
 //   - a [workflow.Action], of the releases of the repository of its Uses
@@ -131,6 +139,10 @@ func Find(section string, o language.Options) ([]Pin, error) {
 // source tag that is not chocolatey:<package> or github:<owner>/<name>.
 func classify(v reflect.Value, tag reflect.StructTag, key string) (Pin, bool, error) {
 	p := Pin{Value: v.Interface(), Key: key}
+	if z, ok := p.Value.(option.Zig); ok {
+		p.Kind, p.Name, p.Version = KindZig, zigName, z.Version
+		return p, true, nil
+	}
 	if release, ok := reflect.TypeAssert[option.Release](v); ok {
 		p.Kind, p.Name, p.Version = KindBinary, release.Repository(), release.Pin().Version
 		return p, true, nil

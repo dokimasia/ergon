@@ -23,6 +23,10 @@ var (
 	ktlint = option.Maven("com.pinterest.ktlint:ktlint-cli@1.8.0")
 	stan   = option.Composer("phpstan/phpstan@2.2.17")
 	binary = tool{Version: "0.12.0", SHA256: map[option.Platform]string{option.LinuxAMD64: linuxDigest}, Name: program}
+	zig    = option.Zig{
+		SHA256:  map[option.Platform]string{option.LinuxAMD64: linuxDigest, option.WindowsAMD64: darwinDigest},
+		Version: "0.16.0",
+	}
 	setup  = workflow.Action{Uses: actionRepo, Commit: actionCommit, Release: "v7.0.0"}
 	codeql = workflow.Action{
 		Uses: "github/codeql-action/init", Commit: "5b6e617dc0241b2d60c2bccea90c56b67eceb797", Release: "v4.38.2",
@@ -51,6 +55,9 @@ type demoTools struct {
 
 	// Tool is a release binary.
 	Tool tool `yaml:"tool"`
+
+	// Zig is the release binary of zig.
+	Zig option.Zig `yaml:"zig"`
 }
 
 // demoActions are the actions of the options of the cases.
@@ -167,7 +174,14 @@ func TestPin(t *testing.T) {
 			t.Parallel()
 			got, err := pin.Find("demo", &demo{
 				Tools: demoTools{
-					Lint: lint, Ruff: ruff, Biome: biome, Audit: audit, Ktlint: ktlint, Stan: stan, Tool: binary,
+					Lint:   lint,
+					Ruff:   ruff,
+					Biome:  biome,
+					Audit:  audit,
+					Ktlint: ktlint,
+					Stan:   stan,
+					Tool:   binary,
+					Zig:    zig,
 				},
 				Actions: demoActions{Setup: setup, Init: codeql},
 				Make:    "4.4.1",
@@ -204,6 +218,10 @@ func TestPin(t *testing.T) {
 				{
 					Value: binary, Key: "demo.tools.tool", Name: toolRepo, Version: "0.12.0",
 					Field: []string{"Tools", "Tool"}, Kind: pin.KindBinary,
+				},
+				{
+					Value: zig, Key: "demo.tools.zig", Name: "zig", Version: "0.16.0",
+					Field: []string{"Tools", "Zig"}, Kind: pin.KindZig,
 				},
 				{
 					Value: setup, Key: "demo.actions.setup", Name: actionRepo, Version: "v7.0.0",
@@ -279,7 +297,8 @@ func TestPin(t *testing.T) {
 				{name: "reports false for the zero kind", give: 0, want: false},
 				{name: "reports true for KindModule", give: pin.KindModule, want: true},
 				{name: "reports true for KindGitHub", give: pin.KindGitHub, want: true},
-				{name: "reports false for a kind after KindGitHub", give: pin.KindGitHub + 1, want: false},
+				{name: "reports true for KindZig", give: pin.KindZig, want: true},
+				{name: "reports false for a kind after KindZig", give: pin.KindZig + 1, want: false},
 			}
 			for _, tt := range tests {
 				t.Run(tt.name, func(t *testing.T) {

@@ -12,6 +12,9 @@
 //   - A release binary, such as commitlint or shellcheck, downloads the asset of the platform. The
 //     runner checks the asset against the SHA-256 that the pin states for the platform before it
 //     unpacks the program from a .tar.gz, a .tar.xz or a .zip, or takes the asset as the program.
+//     For an asset with Tree, such as zig, whose program needs its library, the runner unpacks the
+//     whole archive through an [os.Root]. It refuses an entry whose path leaves the directory of
+//     the tree, and an entry that is neither a directory nor a regular file.
 //   - A Maven artifact downloads its jar, which the runner checks against the .sha256 file beside
 //     it in Maven Central, and runs with java -jar.
 //   - A Go module installs with go install, and a crate with cargo install --locked. Both check
@@ -32,7 +35,8 @@
 // of the command, and the command exits with its exit status. A toolchain that installs a tool
 // writes its output to the standard error, so the standard output of the tool stays its own.
 // [Runner.RunRelease] installs and runs a release binary of no section the same way, such as a
-// release of ergon itself.
+// release of ergon itself. [Runner.Program] installs a tool and returns its program, for a tool
+// that another program starts, such as zig as the C compiler of a build. ergon tool path calls it.
 //
 // # Pruning
 //
@@ -47,10 +51,11 @@
 // # Errors
 //
 // Run returns an error that wraps [ErrUnknown] for a tool that the section does not name, which
-// lists the tools of the section, and [ErrInstall] for a tool that does not install. Prune returns
-// an error that wraps ErrInstall when a section has no plugins at the key of the tag plugins of a
-// tool, and the error of a file that it cannot remove. PruneCaches returns the error of its
-// CacheForge.
+// lists the tools of the section, and [ErrInstall] for a tool that does not install. Program
+// returns the same errors, and ErrInstall for a tool that runs through another program. Prune
+// returns an error that wraps ErrInstall when a section has no plugins at the key of the tag
+// plugins of a tool, and the error of a file that it cannot remove. PruneCaches returns the error
+// of its CacheForge.
 //
 // # Dependency position
 //

@@ -165,6 +165,27 @@ func (r *Runner) RunRelease(ctx context.Context, name string, rel option.Release
 	return r.start(ctx, name, program, args)
 }
 
+// Program installs the tool name of the options o of the section section, unless the cache has it,
+// as [Runner.Run] installs it, and returns its program. A Makefile or a script can then pass the
+// program to another program that starts it, such as zig as the C compiler of a build. It returns
+// an error that wraps [ErrUnknown] for options without the tool name, and [ErrInstall] for a tool
+// that does not install, or that runs through another program, such as an npm package that npx
+// runs.
+func (r *Runner) Program(ctx context.Context, section string, o language.Options, name string) (string, error) {
+	e, err := lookup(o, section, name)
+	if err != nil {
+		return "", err
+	}
+	program, prefix, err := r.install(ctx, section, &e)
+	if err != nil {
+		return "", err
+	}
+	if len(prefix) > 0 {
+		return "", fmt.Errorf("%w: %s.%s runs through %s", ErrInstall, section, name, program)
+	}
+	return program, nil
+}
+
 // start runs program with args in the directory Dir until ctx ends, and starts it again after 10 ms
 // for ETXTBSY, as [Runner.Run] states. It returns the exit status of the program, and the error of a
 // program that does not start, which names the tool.

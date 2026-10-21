@@ -126,11 +126,11 @@ func (r *Runner) custom(ctx context.Context, stock string, m option.Module, plug
 	if err == nil {
 		build, err = os.MkdirTemp(parent, ".build-*")
 	}
-	if err != nil {
-		return "", fmt.Errorf("%w: %w", ErrInstall, err)
+	if err == nil {
+		defer func() { _ = os.RemoveAll(build) }()
+		err = os.WriteFile(filepath.Join(build, customFile), content, filePerm)
 	}
-	defer func() { _ = os.RemoveAll(build) }()
-	if err := os.WriteFile(filepath.Join(build, customFile), content, filePerm); err != nil {
+	if err != nil {
 		return "", fmt.Errorf("%w: %w", ErrInstall, err)
 	}
 	builder := *r
