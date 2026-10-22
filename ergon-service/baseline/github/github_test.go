@@ -194,6 +194,7 @@ func TestGithub(t *testing.T) {
 				expect.Equal(t, w.Jobs, want, "the jobs")
 				expect.Equal(t, w.Nightly, nightly, "the nightly jobs")
 				expect.True(t, w.Assets, "the assets")
+				expect.True(t, w.Registry, "the registry")
 				expect.Equal(t, w.TapOwner, "dokimasia", "the owner of the tap")
 				expect.Equal(t, w.TapName, "homebrew-tap", "the name of the tap")
 			})
@@ -470,7 +471,8 @@ func toolchain() workflow.Contribution {
 // the setup of the toolchain tool, a check on a setup of its own, a check of text that runs tools,
 // and a job without a setup whose steps have each key of a step. Its nightly jobs fuzz alpha on the
 // setup of the toolchain tool, mutate beta on a setup of their own, and propose the updates of alpha
-// with the token of the App. Its releases have assets with casks for the tap dokimasia/homebrew-tap.
+// with the token of the App. Its releases have assets with casks for the tap dokimasia/homebrew-tap,
+// and its packages go to a registry.
 func languages() workflow.Contribution {
 	return workflow.Contribution{Assets: &workflow.Assets{Tap: "dokimasia/homebrew-tap"}, Nightly: []workflow.Job{
 		{
@@ -550,5 +552,5 @@ func languages() workflow.Contribution {
 				},
 			},
 		},
-	}}
+	}, Registry: true}
 }

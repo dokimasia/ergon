@@ -74,7 +74,7 @@ type Published struct {
 //     dir, so that a publish that runs again completes a release that an earlier one left.
 //
 // A chunk starts after the tags of the chunk before it. Publish calls r.Finish once, after the last
-// tag or after an error.
+// tag or after an error. Each publisher receives root and dir, which is an absolute path.
 //
 // Before it publishes anything, it returns an error that wraps [ErrPublishPlan] for a plan that does
 // not fit g, and an error that wraps [ErrStale] for lockfiles that record other content of the
@@ -103,7 +103,7 @@ func publish(
 	ctx context.Context, root string, g *Graph, plan *PublishPlan, head, dir string, r Releaser, released *[]Published,
 ) error {
 	for _, chunk := range plan.Plan {
-		if err := upload(ctx, g, chunk, dir); err != nil {
+		if err := upload(ctx, root, g, chunk, dir); err != nil {
 			return err
 		}
 		for k := range chunk {
@@ -143,9 +143,9 @@ func publish(
 }
 
 // upload uploads the packages of the entries of [KindPublish] of chunk whose registry does not have
-// their version, with the publisher of each toolchain, from the artifacts in dir. It returns the
-// error of a publisher, with the name of the package.
-func upload(ctx context.Context, g *Graph, chunk []PublishEntry, dir string) error {
+// their version, with the publisher of each toolchain, from the repository at root and the
+// artifacts in dir. It returns the error of a publisher, with the name of the package.
+func upload(ctx context.Context, root string, g *Graph, chunk []PublishEntry, dir string) error {
 	var order []*roles
 	pending := map[*roles][]workspace.Package{}
 	for k := range chunk {
@@ -168,7 +168,7 @@ func upload(ctx context.Context, g *Graph, chunk []PublishEntry, dir string) err
 		pending[g.roles[i]] = append(pending[g.roles[i]], g.pkgs[i])
 	}
 	for _, r := range order {
-		if err := r.publisher.Publish(ctx, dir, pending[r]); err != nil {
+		if err := r.publisher.Publish(ctx, root, pending[r], dir); err != nil {
 			return fmt.Errorf("release: publish: %w", err)
 		}
 	}

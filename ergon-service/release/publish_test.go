@@ -110,11 +110,20 @@ func (r *releaser) Finish(context.Context) error {
 }
 
 // tagForge is a [release.TagForge] that has the tags of tags and the releases of releases, and
-// records each tag, draft, upload and publish that it receives. CreateTag returns failCreate, and
-// UploadAsset failUpload.
+// records each tag, draft, upload and publish that it receives. Tag returns failTag, CreateTag
+// failCreate, ReleaseOf failReleaseOf, CreateDraft failDraft, and UploadAsset failUpload.
 type tagForge struct {
+	// failTag is the error of Tag, or nil.
+	failTag error
+
 	// failCreate is the error of CreateTag, or nil.
 	failCreate error
+
+	// failReleaseOf is the error of ReleaseOf, or nil.
+	failReleaseOf error
+
+	// failDraft is the error of CreateDraft, or nil.
+	failDraft error
 
 	// failUpload is the error of UploadAsset, or nil.
 	failUpload error
@@ -133,6 +142,9 @@ var _ release.TagForge = (*tagForge)(nil)
 
 // Tag returns the commit of the tag name of repo, and reports whether f has it.
 func (f *tagForge) Tag(_ context.Context, repo, name string) (string, bool, error) {
+	if f.failTag != nil {
+		return "", false, f.failTag
+	}
 	commit, ok := f.tags[repo+" "+name]
 	return commit, ok, nil
 }
@@ -148,12 +160,18 @@ func (f *tagForge) CreateTag(_ context.Context, repo, name, sha string) error {
 
 // ReleaseOf returns the release of the tag of repo, and reports whether f has it.
 func (f *tagForge) ReleaseOf(_ context.Context, repo, tag string) (forge.Release, bool, error) {
+	if f.failReleaseOf != nil {
+		return forge.Release{}, false, f.failReleaseOf
+	}
 	r, ok := f.releases[repo+" "+tag]
 	return r, ok, nil
 }
 
 // CreateDraft records the draft of the tag of repo, and returns it with the ID 7.
 func (f *tagForge) CreateDraft(_ context.Context, repo, tag, body string, prerelease bool) (forge.Release, error) {
+	if f.failDraft != nil {
+		return forge.Release{}, f.failDraft
+	}
 	kind := "draft"
 	if prerelease {
 		kind = "prerelease draft"
@@ -288,9 +306,10 @@ func TestPublish(t *testing.T) {
 				Version:   parse(t, "1.0.0"),
 			})
 			r := &releaser{}
-			_, err = release.Publish(t.Context(), t.TempDir(), g, &plan, commitA, "pack", r)
+			root := t.TempDir()
+			_, err = release.Publish(t.Context(), root, g, &plan, commitA, "pack", r)
 			assert.NoError(t, err, "Publish")
-			assert.Equal(t, uploaded(reg), [][]string{{"pkg-a"}}, "the uploads")
+			assert.Equal(t, uploaded(reg), [][]string{{root, "pack", "pkg-a"}}, "the uploads")
 			assert.Length(t, r.releases, 2, "the releases")
 		})
 
@@ -553,6 +572,30 @@ func TestPublish(t *testing.T) {
 			r := release.ForgeReleaser{Forge: f, Repo: "o/r"}
 			assert.ErrorIs(t, r.Release(t.Context(), "v1.0.0", commitA, "notes", false, nil), errTag, "Release")
 			assert.Empty(t, f.calls, "the calls")
+		})
+
+		t.Run("returns the error of the lookup of the tag", func(t *testing.T) {
+			t.Parallel()
+			f := &tagForge{failTag: errTag}
+			r := release.ForgeReleaser{Forge: f, Repo: "o/r"}
+			assert.ErrorIs(t, r.Release(t.Context(), "v1.0.0", commitA, "notes", false, nil), errTag, "Release")
+			assert.Empty(t, f.calls, "the calls")
+		})
+
+		t.Run("returns the error of the lookup of the release after the tag", func(t *testing.T) {
+			t.Parallel()
+			f := &tagForge{failReleaseOf: errRelease}
+			r := release.ForgeReleaser{Forge: f, Repo: "o/r"}
+			assert.ErrorIs(t, r.Release(t.Context(), "v1.0.0", commitA, "notes", false, nil), errRelease, "Release")
+			assert.Equal(t, f.calls, []string{"tag o/r v1.0.0 " + commitA}, "the calls")
+		})
+
+		t.Run("returns the error of the draft after the tag", func(t *testing.T) {
+			t.Parallel()
+			f := &tagForge{failDraft: errRelease}
+			r := release.ForgeReleaser{Forge: f, Repo: "o/r"}
+			assert.ErrorIs(t, r.Release(t.Context(), "v1.0.0", commitA, "notes", false, nil), errRelease, "Release")
+			assert.Equal(t, f.calls, []string{"tag o/r v1.0.0 " + commitA}, "the calls")
 		})
 
 		t.Run("returns the error of an upload and leaves the draft unpublished", func(t *testing.T) {

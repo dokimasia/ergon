@@ -350,6 +350,17 @@ func TestRender(t *testing.T) {
 			assert.Contains(t, err.Error(), "missing", "the error")
 		})
 
+		t.Run("returns the error of a template that does not execute with the managed files", func(t *testing.T) {
+			t.Parallel()
+			u := unit("js", fstest.MapFS{
+				"managed/LICENSE.tmpl": {Data: []byte("MIT\n")},
+				"managed/x.tmpl":       {Data: []byte("x\n{{% if .Managed %}}{{% index .Managed 9 %}}{{% end %}}")},
+			})
+			_, err := render.Render([]render.Unit{u}, answers(), &workflow.Contribution{})
+			assert.HasError(t, err, "Render")
+			assert.Contains(t, err.Error(), "index out of range", "the error")
+		})
+
 		t.Run("returns an error for a template that does not read", func(t *testing.T) {
 			t.Parallel()
 			templates := failing{FS: fstest.MapFS{"managed/x.tmpl": {Data: []byte("x\n")}}, name: "managed/x.tmpl"}

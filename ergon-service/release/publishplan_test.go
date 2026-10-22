@@ -28,7 +28,8 @@ type registry struct {
 	// published are the releases that the registry has.
 	published map[string]bool
 
-	// uploads are the names of the packages of each Publish, in the order of the calls.
+	// uploads are the root, the pack directory and the names of the packages of each Publish, in the
+	// order of the calls.
 	uploads *[][]string
 
 	// mu guards uploads and published.
@@ -62,14 +63,14 @@ func (r registry) Published(_ context.Context, p *workspace.Package) (bool, erro
 	return r.published[p.Name+"@"+p.Version.String()], nil
 }
 
-// Publish records the names of pkgs and adds their releases to the registry.
-func (r registry) Publish(_ context.Context, _ string, pkgs []workspace.Package) error {
+// Publish records root, dir and the names of pkgs, and adds their releases to the registry.
+func (r registry) Publish(_ context.Context, root string, pkgs []workspace.Package, dir string) error {
 	if r.failPublish {
 		return errRegistry
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	var names []string
+	names := []string{root, dir}
 	for _, p := range pkgs {
 		names = append(names, p.Name)
 		r.published[p.Name+"@"+p.Version.String()] = true

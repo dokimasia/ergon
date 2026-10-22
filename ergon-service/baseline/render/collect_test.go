@@ -88,6 +88,23 @@ func TestCollect(t *testing.T) {
 			assert.Nil(t, got.Assets, "the assets")
 		})
 
+		t.Run("reports a registry when one part uploads to a registry", func(t *testing.T) {
+			t.Parallel()
+			got, err := render.Collect([]render.Unit{
+				contributing("python", workflow.Contribution{Registry: true}),
+				contributing("go", workflow.Contribution{}),
+			})
+			assert.NoError(t, err, "Collect")
+			assert.True(t, got.Registry, "the registry")
+		})
+
+		t.Run("reports no registry for parts that upload to none", func(t *testing.T) {
+			t.Parallel()
+			got, err := render.Collect([]render.Unit{contributing("go", workflow.Contribution{})})
+			assert.NoError(t, err, "Collect")
+			assert.False(t, got.Registry, "the registry")
+		})
+
 		t.Run("sets the setup of the toolchain that a job names", func(t *testing.T) {
 			t.Parallel()
 			setup := &workflow.Setup{Files: ".java-version", Timeout: 30, Steps: []workflow.Step{{Uses: setupJava}}}

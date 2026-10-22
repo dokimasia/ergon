@@ -62,6 +62,11 @@ type Workflows struct {
 	// Assets reports that a producer builds release assets in the job pack of release.yml, which
 	// then attests them.
 	Assets bool
+
+	// Registry reports that a producer uploads packages to a registry in the job publish of
+	// release.yml. The job then runs in the environment release with the release steps of the
+	// contributions, and requests the OIDC token of GitHub Actions.
+	Registry bool
 }
 
 // Producer renders the GitHub files of a repository: the workflows, the actions that install ergon
@@ -163,10 +168,10 @@ func (Producer) Options() language.Options {
 
 // Data returns the [Workflows] of c for o, and for the options at the baseline when o is not the
 // options of the GitHub files: the jobs of c, as [Options.Jobs] returns them, its nightly jobs, as
-// [Options.NightlyJobs] returns them, the steps of its CodeQL analyses, and its assets with the
-// owner and the name of their tap. Each step of an analysis is a copy, with the condition of its
-// language and its files before its own condition. Data returns the error of Jobs or NightlyJobs
-// for a job whose runners the section does not list.
+// [Options.NightlyJobs] returns them, the steps of its CodeQL analyses, its assets with the owner
+// and the name of their tap, and its uploads to a registry. Each step of an analysis is a copy, with
+// the condition of its language and its files before its own condition. Data returns the error of
+// Jobs or NightlyJobs for a job whose runners the section does not list.
 func (Producer) Data(_ *language.Answers, o language.Options, c *workflow.Contribution) (any, error) {
 	jobs, err := own(o).Jobs(c)
 	if err != nil {
@@ -176,7 +181,7 @@ func (Producer) Data(_ *language.Answers, o language.Options, c *workflow.Contri
 	if err != nil {
 		return nil, err
 	}
-	w := Workflows{Jobs: jobs, Nightly: nightly, Assets: c.Assets != nil}
+	w := Workflows{Jobs: jobs, Nightly: nightly, Assets: c.Assets != nil, Registry: c.Registry}
 	for i := range c.CodeQL {
 		a := &c.CodeQL[i]
 		w.CodeQL = append(w.CodeQL, guard(a.Steps, codeqlLanguage+a.Language+codeqlFiles)...)

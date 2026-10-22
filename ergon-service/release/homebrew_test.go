@@ -6,7 +6,9 @@ package release_test
 import (
 	"context"
 	"errors"
+	"io/fs"
 	"path"
+	"runtime"
 	"testing"
 
 	"go.dokimi.dev/assert"
@@ -17,6 +19,9 @@ import (
 
 // tapRepo is the tap of the cases.
 const tapRepo = "dokimasia/homebrew-tap"
+
+// windows is the system of Go that has no mode that denies the owner reading a file.
+const windows = "windows"
 
 // errPut is the error of a tap that refuses a commit.
 var errPut = errors.New("put failed")
@@ -118,6 +123,24 @@ func TestHomebrew(t *testing.T) {
 			_, err := release.Homebrew(t.Context(), &tap{}, tapRepo, plan, dir)
 			assert.HasError(t, err, "Homebrew")
 			assert.Contains(t, err.Error(), "read the casks of v0.6.0", "the error")
+		})
+
+		t.Run("returns the error of a cask that it cannot read", func(t *testing.T) {
+			t.Parallel()
+			if runtime.GOOS == windows {
+				t.Skip("Windows has no mode that denies the owner reading a file")
+			}
+			dir := files.Workspace(t, files.Tree{
+				path.Join(language.CasksDir, "v0.6.0", "ergon.rb"): files.Text("cask ergon\n").WithMode(0o000),
+			})
+			plan := &release.PublishPlan{Version: 1, Plan: [][]release.PublishEntry{
+				{tagOnly(t, "ergon", "v0.6.0", "0.6.0")},
+			}}
+			f := &tap{}
+			_, err := release.Homebrew(t.Context(), f, tapRepo, plan, dir)
+			assert.ErrorIs(t, err, fs.ErrPermission, "Homebrew")
+			assert.Contains(t, err.Error(), "read the cask ergon", "the error")
+			assert.Empty(t, f.puts, "the commits")
 		})
 	})
 }

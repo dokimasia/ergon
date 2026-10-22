@@ -6,6 +6,9 @@
 # passed on the content of the commit, such as the run of the version pull request. The jobs pack
 # and publish then release each package of the publish plan. The job pack sets up the toolchains of
 # the repository before ergon, which build the artifacts.
+{{%- if .Data.Registry %}}
+# The job publish sets them up too, and the toolchain of each registry uploads the packages.
+{{%- end %}}
 {{%- if .Data.Assets %}}
 #
 # The job pack also builds, signs and attests the assets of the releases, such as the binaries of
@@ -125,8 +128,17 @@ jobs:
     needs: pack
     runs-on: {{% yaml .Options.Linux %}}
     timeout-minutes: {{% .Options.CI.Timeout %}}
+{{%- if .Data.Registry %}}
+    # The trusted publisher of each registry names this environment, which the subject of the OIDC
+    # token of the job states.
+    environment: release
+{{%- end %}}
     permissions:
       contents: write
+{{%- if .Data.Registry %}}
+      # The registries exchange the OIDC token of the job for a token that uploads the packages.
+      id-token: write
+{{%- end %}}
     outputs:
       published: ${{ steps.publish.outputs.published }}
       published-packages: ${{ steps.publish.outputs.published-packages }}
@@ -135,6 +147,9 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+{{%- if .Data.Registry %}}
+{{%- steps .Contributions.Release %}}
+{{%- end %}}
       - uses: ./.github/actions/setup-ergon
       - uses: {{% .Options.CI.Actions.DownloadArtifact %}}
         with:

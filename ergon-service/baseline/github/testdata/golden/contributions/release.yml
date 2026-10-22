@@ -6,6 +6,7 @@
 # passed on the content of the commit, such as the run of the version pull request. The jobs pack
 # and publish then release each package of the publish plan. The job pack sets up the toolchains of
 # the repository before ergon, which build the artifacts.
+# The job publish sets them up too, and the toolchain of each registry uploads the packages.
 #
 # The job pack also builds, signs and attests the assets of the releases, such as the binaries of
 # the commands of a Go module, and the job publish attaches them to each release before its publish.
@@ -121,8 +122,13 @@ jobs:
     needs: pack
     runs-on: ubuntu-26.04
     timeout-minutes: 15
+    # The trusted publisher of each registry names this environment, which the subject of the OIDC
+    # token of the job states.
+    environment: release
     permissions:
       contents: write
+      # The registries exchange the OIDC token of the job for a token that uploads the packages.
+      id-token: write
     outputs:
       published: ${{ steps.publish.outputs.published }}
       published-packages: ${{ steps.publish.outputs.published-packages }}
@@ -131,6 +137,11 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Set up alpha
+        if: "hashFiles('alpha.lock') != ''"
+        uses: alpha-lang/setup-alpha@0123456789abcdef0123456789abcdef01234567 # v1.2.3
+        with:
+          version-file: .alpha-version
       - uses: ./.github/actions/setup-ergon
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:

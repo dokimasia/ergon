@@ -15,7 +15,8 @@ import (
 // packages of its toolchain, in the order of the plan, each package once. A packer writes the files
 // of a registry for an entry of [KindPublish], and the assets of the release of a tag for an entry
 // of either kind. A package of a toolchain without a packer has no artifact, as the registry of
-// such a toolchain reads the source of a package.
+// such a toolchain reads the source of a package. dir is an absolute path, which each packer
+// receives.
 //
 // It returns an error that wraps [ErrPublishPlan] for an entry of a package that the repository
 // does not have, and the error of a packer.
