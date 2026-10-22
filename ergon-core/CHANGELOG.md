@@ -1,5 +1,11 @@
 # go.dokimi.dev/ergon/core
 
+## 0.14.0
+
+### Minor Changes
+
+- 2ac18fe: Add `workflow.Job.App`, `workflow.AppStep` and `workflow.AppToken` for a nightly job with the token of the GitHub App.
+
 ## 0.13.0
 
 ### Minor Changes

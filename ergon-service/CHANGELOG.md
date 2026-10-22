@@ -1,5 +1,19 @@
 # go.dokimi.dev/ergon/service
 
+## 0.18.0
+
+### Minor Changes
+
+- 4bab617: Create the token of the GitHub App in each job of `nightly.yml` with `App`.
+- 5bb672d: Propose the updates of the copies of spec in the job `propose-spec` of `nightly.yml` in place of `spec.yml`.
+- 5bb672d: **Breaking:** Remove `spec.Actions` and the pin of `propose.yml` from `spec.Options`.
+
+### Patch Changes
+
+- 5bb672d: Move `spec.tools.spec` from 0.2.0 to 0.4.0.
+- Updated dependencies [2ac18fe]
+  - go.dokimi.dev/ergon/core@0.14.0
+
 ## 0.17.0
 
 ### Minor Changes
