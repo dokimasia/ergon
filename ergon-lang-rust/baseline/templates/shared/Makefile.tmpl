@@ -11,6 +11,7 @@
 # $(CARGO_LLVM_COV) llvm-cov --workspace --fail-under-lines 90.
 CARGO_AUDIT := $(ERGON) tool run rust.cargo-audit --
 CARGO_LLVM_COV := $(ERGON) tool run rust.cargo-llvm-cov --
+CARGO_HACK := $(ERGON) tool run rust.cargo-hack --
 
 # The options of the section rust.
 RUST_TEST_ARGS ?={{% with words .Options.Test.Args %}} {{% . %}}{{% end %}}
@@ -19,7 +20,7 @@ RUST_AUDIT_IGNORE ?={{% with words .Options.Audit.Ignore %}} {{% . %}}{{% end %}
 RUST_GENERATE ?={{% with words $.Options.Generate.Command %}} {{% . %}}{{% end %}}{{% with words $.Options.Generate.Args %}} {{% . %}}{{% end %}}
 {{%- end %}}
 
-.PHONY: fmt-rust lint-rust test-rust{{% if .Options.Generate.Command %}} generate-rust verify-generate-rust{{% end %}} audit-rust check-rust
+.PHONY: fmt-rust lint-rust test-rust msrv-rust{{% if .Options.Generate.Command %}} generate-rust verify-generate-rust{{% end %}} audit-rust check-rust
 fmt: fmt-rust
 lint: lint-rust
 test: test-rust
@@ -41,6 +42,10 @@ test-rust: ## Run the Rust tests, then the doc tests of the library crates
 	cargo test $(RUST_TEST_ARGS)
 	@if cargo metadata --no-deps --format-version 1 | grep -Eq '"kind":\[[^]]*"(lib|rlib|proc-macro)"'; then \
 		cargo test --workspace --doc; \
+	fi
+msrv-rust: ## Check each published crate on the Rust of its rust-version
+	@if cargo metadata --no-deps --format-version 1 | grep -q '"rust_version":"'; then \
+		$(CARGO_HACK) hack check --rust-version --workspace --ignore-private --all-targets --all-features; \
 	fi
 {{%- if .Options.Generate.Command %}}
 generate-rust: ## Run the generators of Rust

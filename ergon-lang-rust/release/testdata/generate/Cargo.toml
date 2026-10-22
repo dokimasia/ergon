@@ -1,0 +1,12 @@
+# Copyright Dokimasia B.V. 2026
+# SPDX-License-Identifier: MIT
+
+# The generator of requirements.json, the expectations of the Cargo requirements of the Versioner.
+[package]
+name = "generate"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+semver = "=1.0.28"

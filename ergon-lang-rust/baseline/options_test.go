@@ -49,6 +49,13 @@ func TestOptions(t *testing.T) {
 			assert.NoError(t, o.Validate(), "Validate")
 		})
 
+		t.Run("returns nil for the step msrv", func(t *testing.T) {
+			t.Parallel()
+			o := rustOptions()
+			o.Check = option.Check{option.StepMSRV}
+			assert.NoError(t, o.Validate(), "Validate")
+		})
+
 		t.Run("returns ErrInvalid for the step generate without a command", func(t *testing.T) {
 			t.Parallel()
 			o := rustOptions()
@@ -60,9 +67,10 @@ func TestOptions(t *testing.T) {
 	t.Run("Contribution", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("returns the job, the analysis and the updates of Rust at the baseline", func(t *testing.T) {
+		t.Run("returns the contribution of Rust at the baseline", func(t *testing.T) {
 			t.Parallel()
 			assert.Equal(t, rustOptions().Contribution(), workflow.Contribution{
+				Release: []workflow.Step{{Name: "Set up Rust", If: "hashFiles('Cargo.toml') != ''", Uses: setupRust}},
 				Jobs: []workflow.Job{{
 					ID:          "check-rust",
 					Name:        "Rust",
@@ -84,7 +92,8 @@ func TestOptions(t *testing.T) {
 				CodeQL: []workflow.CodeQL{
 					{Language: "rust", Name: "Rust", BuildMode: "none", Files: "rust-toolchain.toml", Timeout: 30},
 				},
-				Updates: []workflow.Update{{Ecosystem: "cargo", Directories: []string{"/"}}},
+				Updates:  []workflow.Update{{Ecosystem: "cargo", Directories: []string{"/"}}},
+				Registry: true,
 			}, "the contribution")
 		})
 
@@ -112,6 +121,14 @@ func TestOptions(t *testing.T) {
 				"toolchain":  "${{ matrix.version }}",
 			}, "the inputs of setup-rust-toolchain")
 		})
+
+		t.Run("sets up the jobs of a release with the toolchain of rust-toolchain.toml for versions of the options",
+			func(t *testing.T) {
+				t.Parallel()
+				o := rustOptions()
+				o.CI.Versions = []string{"stable", "1.90"}
+				assert.Empty(t, o.Contribution().Release[0].With, "the inputs of setup-rust-toolchain")
+			})
 	})
 }
 

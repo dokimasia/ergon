@@ -4,6 +4,8 @@
 package baseline_test
 
 import (
+	"context"
+	"net/http"
 	"os"
 	"path"
 	"slices"
@@ -30,7 +32,14 @@ const name = "rust"
 // workflows are the files of the GitHub files that the contribution of Rust changes.
 var workflows = []string{
 	".github/workflows/ci.yml", ".github/workflows/nightly.yml", ".github/workflows/security.yml",
-	".github/dependabot.yml",
+	".github/workflows/version.yml", ".github/workflows/release.yml", ".github/dependabot.yml",
+}
+
+// rustTools are the tools of the toolchain of Rust of the cases. They do not run a program, and
+// they read an environment without variables.
+var rustTools = rust.Tools{
+	Command: func(context.Context, string, string, []string, []string) error { return nil },
+	Getenv:  func(string) string { return "" },
 }
 
 func TestBaseline(t *testing.T) {
@@ -58,7 +67,7 @@ func TestBaseline(t *testing.T) {
 				golden.MatchTree(t, "baseline", os.DirFS(dir), golden.ShouldUpdate())
 			})
 
-			t.Run("renders the job, the analysis and the updates of Rust into the GitHub files", func(t *testing.T) {
+			t.Run("renders the contribution of Rust into the GitHub files", func(t *testing.T) {
 				t.Parallel()
 				dir := baselinetest.New(t, catalog(t), baselinetest.Answers(rust.Language),
 					service.Producer{Name: github.Name, Producer: github.Producer{}})
@@ -105,6 +114,19 @@ func TestBaseline(t *testing.T) {
 						"the check for a crate whose doc tests cargo runs").
 					Contains("\n\t\tcargo test --workspace --doc; \\\n\tfi\n", "the doc tests of the workspace")
 			})
+
+			t.Run("checks each published crate on the Rust of its rust-version when a crate sets one",
+				func(t *testing.T) {
+					t.Parallel()
+					expect.That(t, rendered(t, baseline.Producer{}.Options(), "Makefile")).
+						Contains("\nCARGO_HACK := $(ERGON) tool run rust.cargo-hack --\n", "the cargo-hack of the section").
+						Contains("\nmsrv-rust: ## Check each published crate on the Rust of its rust-version\n"+
+							"\t@if cargo metadata --no-deps --format-version 1 | grep -q '\"rust_version\":\"'; then \\\n"+
+							"\t\t$(CARGO_HACK) hack check --rust-version --workspace --ignore-private --all-targets "+
+							"--all-features; \\\n\tfi\n", "the target of the check").
+						Contains("\ncheck-rust: lint-rust test-rust msrv-rust audit-rust ## Run the gate of Rust\n",
+							"the gate")
+				})
 
 			t.Run("pins cargo-llvm-cov for the targets of the repository", func(t *testing.T) {
 				t.Parallel()
@@ -164,7 +186,7 @@ func TestBaseline(t *testing.T) {
 func catalog(t *testing.T) *language.Catalog {
 	t.Helper()
 	c := new(language.Catalog)
-	assert.NoError(t, rust.Register(c), "Register of Rust")
+	assert.NoError(t, rust.Register(c, rustTools, &http.Client{}), "Register of Rust")
 	return c
 }
 

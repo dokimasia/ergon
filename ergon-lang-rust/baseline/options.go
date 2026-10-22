@@ -13,8 +13,12 @@ import (
 // toolchain is the file that pins the toolchain of Rust of a repository.
 const toolchain = "rust-toolchain.toml"
 
+// present is the condition of a step of a release in a job of every repository: the repository
+// has the Cargo.toml of a crate or of a workspace at its root.
+const present = "hashFiles('Cargo.toml') != ''"
+
 // steps are the steps of the gate of Rust, which the key check of the section names.
-var steps = []option.Step{option.StepLint, option.StepTest, option.StepGenerate, option.StepAudit}
+var steps = []option.Step{option.StepLint, option.StepTest, option.StepMSRV, option.StepGenerate, option.StepAudit}
 
 // Options are the options of the section rust of .ergon.yaml.
 type Options struct {
@@ -22,7 +26,7 @@ type Options struct {
 	Tools Tools `yaml:"tools" doc:"The tools of the targets of Rust, which ergon tool run installs with cargo install --locked, as <crate>@<version>."`
 
 	// Check are the steps of check-rust.
-	Check option.Check `yaml:"check" doc:"The steps that check-rust runs, in order: lint, test, generate or audit."`
+	Check option.Check `yaml:"check" doc:"The steps that check-rust runs, in order: lint, test, msrv, generate or audit. msrv-rust checks each published crate on the Rust of its rust-version with cargo-hack when a crate of the workspace sets rust-version. It fails for a published crate without a rust-version."`
 
 	// Test are the options of test-rust.
 	Test option.Run `yaml:"test" doc:"test-rust runs cargo test with args."`
@@ -45,6 +49,9 @@ type Tools struct {
 
 	// CargoLLVMCov measures the coverage of the tests, in a target that a repository adds.
 	CargoLLVMCov option.Crate `yaml:"cargo-llvm-cov" doc:"The coverage tool that a target of .ergon/local/Makefile runs as $(CARGO_LLVM_COV) llvm-cov. The gate of Rust does not measure coverage."`
+
+	// CargoHack checks the crates on the Rust of their rust-version.
+	CargoHack option.Crate `yaml:"cargo-hack" doc:"The tool of msrv-rust. It checks each published crate on the Rust of its rust-version and installs that Rust with rustup."`
 }
 
 // Actions are the pins of the actions of the job check-rust.
@@ -70,14 +77,20 @@ func (o *Options) Validate() error {
 //     the toolchain of the matrix where o lists versions, with rustfmt and clippy. The steps of
 //     ci.steps run after setup-rust-toolchain. The job keeps cargo-audit, which ergon tool run
 //     installs, in the cache of GitHub Actions.
+//   - setup-rust-toolchain installs the toolchain of rust-toolchain.toml in the job version of
+//     version.yml and in the jobs pack and publish of release.yml, in a repository with Cargo.toml.
+//     A release refreshes Cargo.lock, packages the crates and uploads them with cargo.
 //   - The CodeQL analysis of rust reads the sources without a build.
 //   - Dependabot updates Cargo.lock.
+//   - The job publish of release.yml uploads the crates to crates.io, whose trusted publishing
+//     exchanges the OIDC token of the job.
 func (o *Options) Contribution() workflow.Contribution {
 	with := map[string]string{"components": "rustfmt, clippy"}
 	if len(o.CI.Versions) > 0 {
 		with["toolchain"] = "${{ matrix.version }}"
 	}
 	return workflow.Contribution{
+		Release: []workflow.Step{{Name: "Set up Rust", If: present, Uses: o.CI.Actions.SetupRustToolchain}},
 		Jobs: []workflow.Job{{
 			ID:          "check-rust",
 			Name:        "Rust",
@@ -98,6 +111,7 @@ func (o *Options) Contribution() workflow.Contribution {
 		CodeQL: []workflow.CodeQL{
 			{Language: "rust", Name: "Rust", BuildMode: "none", Files: toolchain, Timeout: o.CI.Timeout},
 		},
-		Updates: []workflow.Update{{Ecosystem: "cargo", Directories: []string{"/"}}},
+		Updates:  []workflow.Update{{Ecosystem: "cargo", Directories: []string{"/"}}},
+		Registry: true,
 	}
 }

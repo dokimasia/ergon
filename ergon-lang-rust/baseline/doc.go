@@ -10,15 +10,18 @@
 //
 // # Makefile
 //
-// The fragment of the Makefile runs fmt-rust, lint-rust, test-rust and audit-rust in the workspace
-// of Cargo.toml, and check-rust, which requires the targets of the steps that the key check of the
-// section names. lint-rust runs rustfmt, clippy with every pedantic lint and the lints of the
-// documentation as errors, and rustdoc. clippy reads no lint level from clippy.toml, so lint-rust
-// sets the levels on the command line. test-rust runs cargo test with the arguments of the
-// section, and then the doc tests of the workspace when cargo metadata lists a library crate. cargo
-// test --all-targets leaves the doc tests out, and cargo test --doc fails for a workspace without a
-// library. audit-rust runs cargo-audit through ergon tool run, which installs the crate with cargo
-// install --locked. CARGO_LLVM_COV runs the cargo-llvm-cov of the section for a target of
+// The fragment of the Makefile runs fmt-rust, lint-rust, test-rust, msrv-rust and audit-rust in the
+// workspace of Cargo.toml, and check-rust, which requires the targets of the steps that the key
+// check of the section names. lint-rust runs rustfmt, clippy with every pedantic lint and the lints
+// of the documentation as errors, and rustdoc. clippy does not read lint levels from clippy.toml,
+// so lint-rust sets the levels on the command line. test-rust runs cargo test with the arguments of
+// the section, and then the doc tests of the workspace when cargo metadata lists a library crate.
+// cargo test --all-targets leaves the doc tests out, and cargo test --doc fails for a workspace
+// without a library. msrv-rust runs cargo-hack when cargo metadata lists a crate with a
+// rust-version. cargo-hack installs the Rust of the rust-version of each published crate with
+// rustup and checks the crate on it. It fails for a published crate without a rust-version.
+// audit-rust and msrv-rust run their tools through ergon tool run, which installs a crate with
+// cargo install --locked. CARGO_LLVM_COV runs the cargo-llvm-cov of the section for a target of
 // .ergon/local/Makefile, because the gate does not measure coverage. With a command in the key
 // generate, the fragment also renders generate-rust, which runs it, and verify-generate-rust, which
 // fails when it changes a file. A line ##@ Rust starts the group of Rust in make help.
@@ -27,7 +30,13 @@
 //
 // [Options] is the section rust: the tools, the steps of the gate, the options of test-rust, of the
 // generators and of audit-rust, and the key ci of the job check-rust. [Options.Contribution]
-// returns the job check-rust, the CodeQL analysis of rust and the updates of Cargo.lock.
+// returns these parts of the workflows:
+//
+//   - the job check-rust
+//   - the setup of Rust in the jobs of a release
+//   - the CodeQL analysis of rust
+//   - the updates of Cargo.lock
+//   - the uploads to crates.io
 //
 // # Dependency position
 //

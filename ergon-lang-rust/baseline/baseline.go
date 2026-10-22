@@ -41,14 +41,23 @@ func (Producer) Templates() fs.FS {
 	return sub
 }
 
-// Options returns the section rust at the baseline: the releases of cargo-audit and cargo-llvm-cov,
-// the gate of lint, test and audit, the tests of every target of every crate of the workspace, no
-// generators, the release of setup-rust-toolchain, and a limit of 30 minutes for the job check-rust
-// on every runner and the toolchain of rust-toolchain.toml.
+// Options returns the section rust at the baseline:
+//
+//   - the releases of cargo-audit, cargo-llvm-cov and cargo-hack
+//   - the gate of lint, test, msrv and audit
+//   - the tests of every target of every crate of the workspace
+//   - no generators
+//   - the release of setup-rust-toolchain
+//   - a limit of 30 minutes for the job check-rust, on every runner, with the toolchain of
+//     rust-toolchain.toml
 func (Producer) Options() language.Options {
 	return &Options{
-		Tools:    Tools{CargoAudit: "cargo-audit@0.22.2", CargoLLVMCov: "cargo-llvm-cov@0.9.1"},
-		Check:    option.Check{option.StepLint, option.StepTest, option.StepAudit},
+		Tools: Tools{
+			CargoAudit:   "cargo-audit@0.22.2",
+			CargoLLVMCov: "cargo-llvm-cov@0.9.1",
+			CargoHack:    "cargo-hack@0.6.45",
+		},
+		Check:    option.Check{option.StepLint, option.StepTest, option.StepMSRV, option.StepAudit},
 		Test:     option.Run{Args: []string{"--workspace", "--all-targets"}},
 		Generate: option.Generate{Command: []string{}, Args: []string{}},
 		Audit:    option.Audit{Ignore: []string{}},

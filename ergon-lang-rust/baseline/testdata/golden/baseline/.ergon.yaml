@@ -7,8 +7,13 @@ rust:
     # The coverage tool that a target of .ergon/local/Makefile runs as $(CARGO_LLVM_COV) llvm-cov.
     # The gate of Rust does not measure coverage.
     cargo-llvm-cov: cargo-llvm-cov@0.9.1
-  # The steps that check-rust runs, in order: lint, test, generate or audit.
-  check: [lint, test, audit]
+    # The tool of msrv-rust. It checks each published crate on the Rust of its rust-version and
+    # installs that Rust with rustup.
+    cargo-hack: cargo-hack@0.6.45
+  # The steps that check-rust runs, in order: lint, test, msrv, generate or audit. msrv-rust checks
+  # each published crate on the Rust of its rust-version with cargo-hack when a crate of the
+  # workspace sets rust-version. It fails for a published crate without a rust-version.
+  check: [lint, test, msrv, audit]
   # test-rust runs cargo test with args.
   test:
     args: [--workspace, --all-targets]

@@ -11,12 +11,13 @@
 # $(CARGO_LLVM_COV) llvm-cov --workspace --fail-under-lines 90.
 CARGO_AUDIT := $(ERGON) tool run rust.cargo-audit --
 CARGO_LLVM_COV := $(ERGON) tool run rust.cargo-llvm-cov --
+CARGO_HACK := $(ERGON) tool run rust.cargo-hack --
 
 # The options of the section rust.
 RUST_TEST_ARGS ?= --workspace --all-targets
 RUST_AUDIT_IGNORE ?=
 
-.PHONY: fmt-rust lint-rust test-rust audit-rust check-rust
+.PHONY: fmt-rust lint-rust test-rust msrv-rust audit-rust check-rust
 fmt: fmt-rust
 lint: lint-rust
 test: test-rust
@@ -36,6 +37,10 @@ test-rust: ## Run the Rust tests, then the doc tests of the library crates
 	@if cargo metadata --no-deps --format-version 1 | grep -Eq '"kind":\[[^]]*"(lib|rlib|proc-macro)"'; then \
 		cargo test --workspace --doc; \
 	fi
+msrv-rust: ## Check each published crate on the Rust of its rust-version
+	@if cargo metadata --no-deps --format-version 1 | grep -q '"rust_version":"'; then \
+		$(CARGO_HACK) hack check --rust-version --workspace --ignore-private --all-targets --all-features; \
+	fi
 audit-rust: ## Scan Cargo.lock for known vulnerabilities
 	$(CARGO_AUDIT) audit $(foreach id,$(RUST_AUDIT_IGNORE),--ignore $(id))
-check-rust: lint-rust test-rust audit-rust ## Run the gate of Rust
+check-rust: lint-rust test-rust msrv-rust audit-rust ## Run the gate of Rust
