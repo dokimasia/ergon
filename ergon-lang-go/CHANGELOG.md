@@ -1,5 +1,17 @@
 # go.dokimi.dev/ergon/lang/go
 
+## 0.9.0
+
+### Minor Changes
+
+- b23672b: Leave the modules of `go.work` out of the license check of the dependency review.
+
+### Patch Changes
+
+- Updated dependencies [0292353, 3c4519d, b23672b]
+  - go.dokimi.dev/ergon/service@0.17.0
+  - go.dokimi.dev/ergon/core@0.13.0
+
 ## 0.8.0
 
 ### Minor Changes

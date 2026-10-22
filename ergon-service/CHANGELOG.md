@@ -1,5 +1,19 @@
 # go.dokimi.dev/ergon/service
 
+## 0.17.0
+
+### Minor Changes
+
+- 0292353: Add the producer `spec`, which runs spec in the gate and the proposals of a repository by its `spec.roles`.
+- b23672b: Leave the packages of `ERGON_OWN_PACKAGES` out of the license check of the dependency review.
+- b23672b: Run the review steps of the contributions before the dependency review of `security.yml`.
+
+### Patch Changes
+
+- 0292353: Name the group of spec in the header of the Makefile.
+- Updated dependencies [3c4519d]
+  - go.dokimi.dev/ergon/core@0.13.0
+
 ## 0.16.0
 
 ### Minor Changes

@@ -1,5 +1,28 @@
 # go.dokimi.dev/ergon
 
+## 0.12.0
+
+### Minor Changes
+
+- 04511bf: Render the files of spec in a repository with a role in `spec.roles`.
+
+### Patch Changes
+
+- Updated dependencies [0292353, 3c4519d, b23672b]
+  - go.dokimi.dev/ergon/service@0.17.0
+  - go.dokimi.dev/ergon/core@0.13.0
+  - go.dokimi.dev/ergon/lang/go@0.9.0
+  - go.dokimi.dev/ergon/lang/csharp@0.3.8
+  - go.dokimi.dev/ergon/lang/java@0.4.8
+  - go.dokimi.dev/ergon/lang/javascript@0.4.7
+  - go.dokimi.dev/ergon/lang/kotlin@0.3.15
+  - go.dokimi.dev/ergon/lang/python@0.5.5
+  - go.dokimi.dev/ergon/lang/rust@0.5.5
+  - go.dokimi.dev/ergon/lang/terraform@0.4.8
+  - go.dokimi.dev/ergon/lang/typescript@0.3.7
+  - go.dokimi.dev/ergon/lang/bash@0.4.8
+  - go.dokimi.dev/ergon/lang/php@0.4.9
+
 ## 0.11.0
 
 ### Minor Changes
