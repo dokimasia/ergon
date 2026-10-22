@@ -8,13 +8,12 @@ import (
 	"slices"
 
 	"go.dokimi.dev/ergon/core/option"
-	"go.dokimi.dev/ergon/core/workflow"
 )
 
 // windows is the system of Windows, whose programs end in .exe.
 const windows = "windows"
 
-// repository is the repository on GitHub whose releases publish spec and its reusable workflows.
+// repository is the repository on GitHub whose releases publish spec.
 const repository = "stealth-scale/spec"
 
 // Role is what a repository is to spec. Each role is the name of the section of .spec.yaml that
@@ -75,22 +74,16 @@ type Tools struct {
 	Spec Spec `yaml:"spec" doc:"The release of spec, which checks the copies of the definitions and the manifest of a definition."`
 }
 
-// Actions are the pins of the actions of the section spec.
-type Actions struct {
-	// Propose is the reusable workflow propose.yml of spec, which spec.yml calls.
-	Propose workflow.Action `yaml:"propose" doc:"The reusable workflow propose.yml of spec, which spec.yml calls on each weekday."`
-}
-
 // Options are the options of the section spec of .ergon.yaml.
 type Options struct {
-	// Roles are what the repository is to spec, each once.
-	Roles []Role `yaml:"roles" doc:"What the repository is to spec: definition for the repository of a conformance definition, and implementation for a repository with copies of definitions. Each role needs its section of .spec.yaml, definition or implements. A repository without a role gets no target, job or workflow of spec."`
-
 	// Tools are the tools of spec.
 	Tools Tools `yaml:"tools" doc:"The tools of spec."`
 
-	// CI are the pin of the reusable workflow of spec and the limit of the job spec.
-	CI option.CI[Actions] `yaml:"ci" doc:"The pin of the reusable workflow propose.yml of spec, which spec.yml calls, and the limit in minutes of the job spec of ci.yml."`
+	// Roles are what the repository is to spec, each once.
+	Roles []Role `yaml:"roles" doc:"What the repository is to spec: definition for the repository of a conformance definition, and implementation for a repository with copies of definitions. Each role needs its section of .spec.yaml, definition or implements. A repository without a role gets no target or job of spec."`
+
+	// CI is the limit of the jobs of spec.
+	CI option.CI[struct{}] `yaml:"ci" doc:"The limit in minutes of the job spec of ci.yml and of the job propose-spec of nightly.yml. The jobs run spec through ergon, and they do not run an action of their own."`
 }
 
 // Validate returns an error that wraps [option.ErrInvalid] for a role that is not valid, as

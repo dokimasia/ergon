@@ -1,8 +1,8 @@
 // Copyright Dokimasia B.V. 2026
 // SPDX-License-Identifier: MIT
 
-// Package spec is the producer of the files of spec in ergon init: the targets of the Makefile, the
-// job of ci.yml and the workflow that run spec, the program of stealth-scale/spec that vendors
+// Package spec is the producer of the files of spec in ergon init: the targets of the Makefile and
+// the jobs of ci.yml and nightly.yml that run spec, the program of stealth-scale/spec that vendors
 // conformance definitions.
 //
 // spec reads its own configuration from .spec.yaml. Its section definition states the repository of
@@ -12,9 +12,9 @@
 //
 // # Options
 //
-// [Options] is the section spec of .ergon.yaml: the roles, the release of spec, the pin of the
-// reusable workflow propose.yml of spec, and the limit of the job spec. [Spec] is a release binary.
-// ergon tool run installs its archive and checks it against the digest of the platform.
+// [Options] is the section spec of .ergon.yaml: the roles, the release of spec, and the limit of the
+// jobs of spec. [Spec] is a release binary. ergon tool run installs its archive and checks it
+// against the digest of the platform.
 //
 // # Makefile
 //
@@ -29,9 +29,9 @@
 //
 // [Producer.Contribution] returns the job spec of ci.yml, a check of text with a step for each
 // role: spec check --remote for an implementation, and spec manifest --check for a definition. An
-// implementation also gets spec.yml, which calls propose.yml of spec on each weekday with the
-// version of the release binary. spec.yml passes the secret ERGON_APP_PRIVATE_KEY by name, because
-// GitHub passes secrets through inherit only to a workflow of the same organization or enterprise.
+// implementation also gets the job propose-spec of nightly.yml. The job runs spec propose for the
+// repository. It creates the token of the GitHub App of ergon and passes the token to spec in
+// GITHUB_TOKEN. spec does not read a variable or a secret of ergon.
 //
 // # Dependency position
 //

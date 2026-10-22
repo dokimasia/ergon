@@ -11,8 +11,8 @@ import (
 	"go.dokimi.dev/ergon/service/baseline/spec"
 )
 
-// specRelease is the address of the assets of spec 0.2.0, the release binary at the baseline.
-const specRelease = "https://github.com/stealth-scale/spec/releases/download/v0.2.0/"
+// specRelease is the address of the assets of spec 0.4.0, the release binary at the baseline.
+const specRelease = "https://github.com/stealth-scale/spec/releases/download/v0.4.0/"
 
 func TestOptions(t *testing.T) {
 	t.Parallel()
@@ -105,27 +105,27 @@ func TestOptions(t *testing.T) {
 				{
 					name: "returns the archive of Linux on x86-64",
 					give: option.LinuxAMD64,
-					want: option.Asset{URL: specRelease + "spec_0.2.0_linux_amd64.tar.gz", Program: "spec"},
+					want: option.Asset{URL: specRelease + "spec_0.4.0_linux_amd64.tar.gz", Program: "spec"},
 				},
 				{
 					name: "returns the archive of Linux on ARM",
 					give: option.LinuxARM64,
-					want: option.Asset{URL: specRelease + "spec_0.2.0_linux_arm64.tar.gz", Program: "spec"},
+					want: option.Asset{URL: specRelease + "spec_0.4.0_linux_arm64.tar.gz", Program: "spec"},
 				},
 				{
 					name: "returns the archive of macOS on Apple silicon",
 					give: option.DarwinARM64,
-					want: option.Asset{URL: specRelease + "spec_0.2.0_darwin_arm64.tar.gz", Program: "spec"},
+					want: option.Asset{URL: specRelease + "spec_0.4.0_darwin_arm64.tar.gz", Program: "spec"},
 				},
 				{
 					name: "returns the archive of Windows with the program of the suffix exe",
 					give: option.WindowsAMD64,
-					want: option.Asset{URL: specRelease + "spec_0.2.0_windows_amd64.tar.gz", Program: "spec.exe"},
+					want: option.Asset{URL: specRelease + "spec_0.4.0_windows_amd64.tar.gz", Program: "spec.exe"},
 				},
 				{
 					name: "returns the archive of Windows on ARM with the program of the suffix exe",
 					give: option.WindowsARM64,
-					want: option.Asset{URL: specRelease + "spec_0.2.0_windows_arm64.tar.gz", Program: "spec.exe"},
+					want: option.Asset{URL: specRelease + "spec_0.4.0_windows_arm64.tar.gz", Program: "spec.exe"},
 				},
 			}
 			for _, tt := range tests {

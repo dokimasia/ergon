@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"go.dokimi.dev/assert"
+	"go.dokimi.dev/assert/expect"
 	"go.dokimi.dev/assert/golden"
 	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/core/workflow"
@@ -35,6 +36,22 @@ var (
 	checkManifest = workflow.Step{
 		Name: "Check the manifest of the definition",
 		Run:  []string{"ergon tool run spec.spec -- manifest --check"},
+	}
+
+	// proposeSpec is the job of nightly.yml of an implementation.
+	proposeSpec = workflow.Job{
+		ID:          "propose-spec",
+		Name:        "Propose spec",
+		Timeout:     10,
+		Permissions: map[string]string{"contents": "write", "pull-requests": "write"},
+		Ergon:       true,
+		Tools:       true,
+		App:         true,
+		Steps: []workflow.Step{{
+			Name: "Propose the updates of the copies",
+			Env:  map[string]string{"GITHUB_TOKEN": workflow.AppToken},
+			Run:  []string{`ergon tool run spec.spec -- propose --repo "$GITHUB_REPOSITORY"`},
+		}},
 	}
 )
 
@@ -79,7 +96,7 @@ func TestSpec(t *testing.T) {
 			}{
 				{name: "renders no file of spec without a role", golden: "baseline", give: []spec.Role{}},
 				{
-					name:   "renders check-spec and spec.yml for an implementation",
+					name:   "renders check-spec for an implementation",
 					golden: "implementation",
 					give:   []spec.Role{spec.Implementation},
 				},
@@ -89,7 +106,7 @@ func TestSpec(t *testing.T) {
 					give:   []spec.Role{spec.Definition},
 				},
 				{
-					name:   "renders the targets and the workflow of both roles",
+					name:   "renders the targets of both roles",
 					golden: "both",
 					give:   []spec.Role{spec.Definition, spec.Implementation},
 				},
@@ -168,40 +185,46 @@ func TestSpec(t *testing.T) {
 			t.Parallel()
 
 			tests := []struct {
-				name string
-				give []spec.Role
-				want []workflow.Step
+				name        string
+				give        []spec.Role
+				wantSteps   []workflow.Step
+				wantNightly []workflow.Job
 			}{
 				{
-					name: "returns the job spec with the check of the copies for an implementation",
-					give: []spec.Role{spec.Implementation},
-					want: []workflow.Step{checkCopies},
+					name:        "returns the check of the copies and the proposals of an implementation",
+					give:        []spec.Role{spec.Implementation},
+					wantSteps:   []workflow.Step{checkCopies},
+					wantNightly: []workflow.Job{proposeSpec},
 				},
 				{
-					name: "returns the job spec with the check of the manifest for a definition",
-					give: []spec.Role{spec.Definition},
-					want: []workflow.Step{checkManifest},
+					name:      "returns the check of the manifest of a definition",
+					give:      []spec.Role{spec.Definition},
+					wantSteps: []workflow.Step{checkManifest},
 				},
 				{
-					name: "returns the check of the copies before the check of the manifest for both roles",
-					give: []spec.Role{spec.Definition, spec.Implementation},
-					want: []workflow.Step{checkCopies, checkManifest},
+					name:        "returns the check of the copies before the check of the manifest for both roles",
+					give:        []spec.Role{spec.Definition, spec.Implementation},
+					wantSteps:   []workflow.Step{checkCopies, checkManifest},
+					wantNightly: []workflow.Job{proposeSpec},
 				},
 			}
 			for _, tt := range tests {
 				t.Run(tt.name, func(t *testing.T) {
 					t.Parallel()
 					got := spec.Producer{}.Contribution(roled{roles: tt.give}.Options())
-					assert.Equal(t, got, workflow.Contribution{Jobs: []workflow.Job{{
-						ID:          "spec",
-						Name:        "Spec",
-						Text:        true,
-						Timeout:     10,
-						Permissions: read,
-						Ergon:       true,
-						Tools:       true,
-						Steps:       tt.want,
-					}}}, "the contribution")
+					assert.Equal(t, got, workflow.Contribution{
+						Jobs: []workflow.Job{{
+							ID:          "spec",
+							Name:        "Spec",
+							Text:        true,
+							Timeout:     10,
+							Permissions: read,
+							Ergon:       true,
+							Tools:       true,
+							Steps:       tt.wantSteps,
+						}},
+						Nightly: tt.wantNightly,
+					}, "the contribution")
 					assert.NoError(t, got.Validate(), "Validate of the contribution")
 				})
 			}
@@ -217,13 +240,15 @@ func TestSpec(t *testing.T) {
 				assert.Equal(t, spec.Producer{}.Contribution(nil), workflow.Contribution{}, "the contribution")
 			})
 
-			t.Run("returns the job with the timeout of the options", func(t *testing.T) {
+			t.Run("returns the jobs with the timeout of the options", func(t *testing.T) {
 				t.Parallel()
 				o, _ := roled{roles: []spec.Role{spec.Implementation}}.Options().(*spec.Options)
 				o.CI.Timeout = 25
 				got := spec.Producer{}.Contribution(o)
 				assert.Length(t, got.Jobs, 1, "the jobs")
-				assert.Equal(t, got.Jobs[0].Timeout, 25, "the timeout of spec")
+				assert.Length(t, got.Nightly, 1, "the nightly jobs")
+				expect.Equal(t, got.Jobs[0].Timeout, 25, "the timeout of spec")
+				expect.Equal(t, got.Nightly[0].Timeout, 25, "the timeout of propose-spec")
 			})
 		})
 	})
