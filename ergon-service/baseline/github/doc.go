@@ -20,7 +20,9 @@
 //     tools, and the steps of the job, as [Options.Jobs] states.
 //   - nightly.yml runs the nightly jobs of the contributions on the schedule of the section github
 //     and on demand, each from the same skeleton, on the Linux runner unless its setup lists
-//     runners, as [Options.NightlyJobs] states. When a job keeps the tools of ergon in the cache,
+//     runners, as [Options.NightlyJobs] states. A job with App creates the token of the GitHub App
+//     of ERGON_APP_CLIENT_ID and ERGON_APP_PRIVATE_KEY before its setup steps. It creates the token
+//     only when the repository has the variable. When a job keeps the tools of ergon in the cache,
 //     the job prune-tools deletes each cache of the tools that a newer cache of the same job
 //     replaced, through ergon tool ci prune. A repository without either job has no nightly.yml.
 //   - version.yml opens or updates the version pull request when the run of ci.yml for a push to

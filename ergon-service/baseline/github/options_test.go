@@ -231,6 +231,44 @@ func TestOptions(t *testing.T) {
 			expect.Equal(t, got[0].Name, "Audit", "the name")
 		})
 
+		t.Run("creates the token of the App before the setup steps of a job with App", func(t *testing.T) {
+			t.Parallel()
+			o := baselineOptions()
+			c := workflow.Contribution{Nightly: []workflow.Job{
+				{
+					ID:   "propose-alpha",
+					Name: "Propose alpha",
+					Setup: &workflow.Setup{
+						Files:   "alpha.lock",
+						Steps:   []workflow.Step{{Run: []string{"install alpha"}}},
+						Timeout: 10,
+					},
+					App: true,
+					Steps: []workflow.Step{
+						{Env: map[string]string{"TOKEN": workflow.AppToken}, Run: []string{"alpha propose"}},
+					},
+				},
+			}}
+			got, err := o.NightlyJobs(&c)
+			assert.NoError(t, err, "NightlyJobs")
+			assert.Length(t, got, 1, "the jobs")
+			assert.Equal(t, got[0].Setup, []workflow.Step{
+				{
+					Name: "Create a token of the GitHub App",
+					ID:   "app",
+					If:   "hashFiles('alpha.lock') != '' && (vars.ERGON_APP_CLIENT_ID != '')",
+					Uses: o.CI.Actions.CreateGitHubAppToken,
+					With: map[string]string{
+						"client-id":                "${{ vars.ERGON_APP_CLIENT_ID }}",
+						"private-key":              "${{ secrets.ERGON_APP_PRIVATE_KEY }}",
+						"permission-contents":      "write",
+						"permission-pull-requests": "write",
+					},
+				},
+				{If: "hashFiles('alpha.lock') != ''", Run: []string{"install alpha"}},
+			}, "the setup steps")
+		})
+
 		t.Run("returns a job whose setup lists versions on a matrix of the Linux runner", func(t *testing.T) {
 			t.Parallel()
 			c := workflow.Contribution{Nightly: []workflow.Job{{

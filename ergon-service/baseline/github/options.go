@@ -74,6 +74,18 @@ const (
 	authExpression = "${{ github.token }}"
 )
 
+// The step that creates the token of the GitHub App in a job with App. The constants are the name
+// of the step, its condition, the expressions of the client ID and the private key of the App, and
+// the access of the token to the contents and the pull requests. The condition is true when the
+// repository has the App. GitHub Actions replaces each expression before the step runs.
+const (
+	appName       = "Create a token of the GitHub App"
+	appIf         = "vars.ERGON_APP_CLIENT_ID != ''"
+	appClientID   = "${{ vars.ERGON_APP_CLIENT_ID }}"
+	appPrivateKey = "${{ secrets.ERGON_APP_PRIVATE_KEY }}"
+	appAccess     = "write"
+)
+
 // windows is the system of Windows, whose asset of actionlint is a .zip with a program that ends in
 // .exe.
 const windows = "windows"
@@ -239,8 +251,9 @@ type Actions struct {
 	// Cache keeps the tools of ergon of a job between its runs.
 	Cache workflow.Action `yaml:"cache" doc:"The action that restores the tool directory of ergon before the steps of each job of ci.yml that runs tools, and saves it after a run that succeeds."`
 
-	// CreateGitHubAppToken creates the token of a GitHub App that opens the version pull request.
-	CreateGitHubAppToken workflow.Action `yaml:"create-github-app-token" prefix:"create-github-app-token" doc:"The action that creates a token of the GitHub App of the variable ERGON_APP_CLIENT_ID and the secret ERGON_APP_PRIVATE_KEY in version.yml, whose pull request then runs its checks without an approval, and in the job homebrew of release.yml, which commits the casks of a release to the tap."`
+	// CreateGitHubAppToken creates the token of the GitHub App in version.yml, in the job homebrew
+	// of release.yml and in each job of nightly.yml with App.
+	CreateGitHubAppToken workflow.Action `yaml:"create-github-app-token" prefix:"create-github-app-token" doc:"The action that creates a token of the GitHub App of the variable ERGON_APP_CLIENT_ID and the secret ERGON_APP_PRIVATE_KEY. version.yml opens the version pull request with the token, so the checks of the pull request run without an approval. The job homebrew of release.yml commits the casks of a release to the tap with the token. A job of nightly.yml such as propose-spec writes its pull requests with the token."`
 
 	// Attest attests the assets of a release with SLSA build provenance.
 	Attest workflow.Action `yaml:"attest" doc:"The action that attests the assets of a release with SLSA build provenance in the job pack of release.yml, which GitHub stores in its attestation API."`
@@ -267,6 +280,9 @@ func (o *Options) Validate() error {
 //     setup, runs the setup steps before the installation of ergon, and installs GNU make and
 //     ergon. A setup that states files guards every step after the checkout.
 //   - Any other job runs on every runner of o, and installs ergon when it runs ergon.
+//   - A job with App creates the token of the GitHub App with the action CreateGitHubAppToken in a
+//     step before its setup steps. The step runs when the repository has the variable
+//     ERGON_APP_CLIENT_ID. The token has write access to the contents and the pull requests.
 //   - A job that runs tools keeps the tool directory of ergon in the cache with the action Cache,
 //     in a step before its own steps. The key of the cache names the runtime version of a matrix
 //     with versions, and covers the version files of its setup. Its prefix restores the newest
@@ -305,6 +321,21 @@ func (o *Options) Jobs(c *workflow.Contribution) ([]Job, error) {
 			if s.Files != "" {
 				job.Guard = "hashFiles('" + s.Files + "') != ''"
 			}
+		}
+		if j.App {
+			app := workflow.Step{
+				Name: appName,
+				ID:   workflow.AppStep,
+				If:   appIf,
+				Uses: o.CI.Actions.CreateGitHubAppToken,
+				With: map[string]string{
+					"client-id":                appClientID,
+					"private-key":              appPrivateKey,
+					"permission-contents":      appAccess,
+					"permission-pull-requests": appAccess,
+				},
+			}
+			job.Setup = slices.Concat([]workflow.Step{app}, job.Setup)
 		}
 		if j.Tools {
 			prefix := toolsPrefix

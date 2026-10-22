@@ -469,8 +469,8 @@ func toolchain() workflow.Contribution {
 // languages returns the contribution of the language alpha of the cases: a check that runs tools on
 // the setup of the toolchain tool, a check on a setup of its own, a check of text that runs tools,
 // and a job without a setup whose steps have each key of a step. Its nightly jobs fuzz alpha on the
-// setup of the toolchain tool, and mutate beta on a setup of their own. Its releases have assets with
-// casks for the tap dokimasia/homebrew-tap.
+// setup of the toolchain tool, mutate beta on a setup of their own, and propose the updates of alpha
+// with the token of the App. Its releases have assets with casks for the tap dokimasia/homebrew-tap.
 func languages() workflow.Contribution {
 	return workflow.Contribution{Assets: &workflow.Assets{Tap: "dokimasia/homebrew-tap"}, Nightly: []workflow.Job{
 		{
@@ -487,6 +487,19 @@ func languages() workflow.Contribution {
 			Setup:       &workflow.Setup{Files: "beta.lock", Timeout: 60},
 			Permissions: read,
 			Steps:       []workflow.Step{{Name: "Mutate beta", Run: []string{"make mutate-beta"}}},
+		},
+		{
+			ID:          "propose-alpha",
+			Name:        "Propose alpha",
+			Timeout:     10,
+			Permissions: map[string]string{"contents": "write", "pull-requests": "write"},
+			Ergon:       true,
+			App:         true,
+			Steps: []workflow.Step{{
+				Name: "Propose the updates of alpha",
+				Env:  map[string]string{"GITHUB_TOKEN": workflow.AppToken},
+				Run:  []string{`alpha propose --repo "$GITHUB_REPOSITORY"`},
+			}},
 		},
 	}, Jobs: []workflow.Job{
 		{
