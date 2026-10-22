@@ -21,15 +21,24 @@ audit-jvm: ## Scan the Gradle lockfiles for known vulnerabilities
 # of check-java. One run overrides an option on the command line, such as
 # make test-java JAVA_TEST_ARGS=--info.
 
+# The tools of the Java targets, which ergon runs at the versions of the section java.
+GOOGLE_JAVA_FORMAT := $(ERGON) tool run java.google-java-format --
+
 # The options of the section java.
 JAVA_TEST_ARGS ?=
 
-.PHONY: lint-java test-java audit-java check-java
+.PHONY: fmt-java lint-java test-java audit-java check-java
+fmt: fmt-java
 lint: lint-java
 test: test-java
 check: check-java
 
-lint-java: ## Check the Java sources with PMD, and with javac and javadoc warnings as errors
+fmt-java: ## Format the Java sources with google-java-format
+	git ls-files -z --cached --others --exclude-standard -- '*.java' | \
+		xargs -0 -r $(GOOGLE_JAVA_FORMAT) --replace
+lint-java: ## Check the Java sources with google-java-format, PMD, and javac and javadoc warnings as errors
+	git ls-files -z --cached --others --exclude-standard -- '*.java' | \
+		xargs -0 -r $(GOOGLE_JAVA_FORMAT) --dry-run --set-exit-if-changed
 	./gradlew --init-script gradle/ergon-java.init.gradle.kts check javadoc -x test
 test-java: ## Run the Java tests
 	./gradlew test $(JAVA_TEST_ARGS)

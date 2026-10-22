@@ -12,6 +12,9 @@ import (
 	"go.dokimi.dev/ergon/lang/java/baseline"
 )
 
+// formatRelease is the address of the assets of google-java-format 1.37.0.
+const formatRelease = "https://github.com/google/google-java-format/releases/download/v1.37.0/"
+
 func TestOptions(t *testing.T) {
 	t.Parallel()
 
@@ -43,6 +46,75 @@ func TestOptions(t *testing.T) {
 					`pmd "net.sourceforge.pmd:pmd-kotlin@7.28.0", which is not a version of net.sourceforge.pmd:pmd-java`,
 					"the error",
 				)
+			})
+		})
+	})
+
+	t.Run("GoogleJavaFormat", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Asset", func(t *testing.T) {
+			t.Parallel()
+
+			tests := []struct {
+				name string
+				give option.Platform
+				want option.Asset
+			}{
+				{
+					name: "returns the program of Linux on x86-64",
+					give: option.LinuxAMD64,
+					want: option.Asset{URL: formatRelease + "google-java-format_linux-x86-64"},
+				},
+				{
+					name: "returns the program of Linux on 64-bit ARM",
+					give: option.LinuxARM64,
+					want: option.Asset{URL: formatRelease + "google-java-format_linux-arm64"},
+				},
+				{
+					name: "returns the program of macOS on Apple silicon",
+					give: option.DarwinARM64,
+					want: option.Asset{URL: formatRelease + "google-java-format_darwin-arm64"},
+				},
+				{
+					name: "returns the program of Windows with the suffix exe",
+					give: option.WindowsAMD64,
+					want: option.Asset{URL: formatRelease + "google-java-format_windows-x86-64.exe"},
+				},
+			}
+			for _, tt := range tests {
+				t.Run(tt.name, func(t *testing.T) {
+					t.Parallel()
+					got, err := javaOptions().Tools.GoogleJavaFormat.Asset(tt.give)
+					assert.NoError(t, err, "Asset")
+					assert.Equal(t, got, tt.want, "the asset")
+				})
+			}
+
+			absent := []struct {
+				name string
+				give option.Platform
+			}{
+				{name: "returns ErrNoAsset for macOS on x86-64", give: option.DarwinAMD64},
+				{name: "returns ErrNoAsset for Windows on 64-bit ARM", give: option.WindowsARM64},
+				{name: "returns ErrNoAsset for an invalid platform", give: "plan9/amd64"},
+			}
+			for _, tt := range absent {
+				t.Run(tt.name, func(t *testing.T) {
+					t.Parallel()
+					_, err := javaOptions().Tools.GoogleJavaFormat.Asset(tt.give)
+					assert.ErrorIs(t, err, option.ErrNoAsset, "Asset")
+				})
+			}
+		})
+
+		t.Run("Repository", func(t *testing.T) {
+			t.Parallel()
+
+			t.Run("returns the repository of the releases of google-java-format", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, javaOptions().Tools.GoogleJavaFormat.Repository(), "google/google-java-format",
+					"Repository")
 			})
 		})
 	})

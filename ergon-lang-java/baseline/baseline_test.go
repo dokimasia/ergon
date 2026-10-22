@@ -104,6 +104,39 @@ func TestBaseline(t *testing.T) {
 				script := rendered(t, o, "gradle/ergon-java.init.gradle.kts")
 				assert.Contains(t, script, "\n            toolVersion = \"7.29.0\"\n", "the init script")
 			})
+
+			t.Run("checks the sources with the rule sets of the section java", func(t *testing.T) {
+				t.Parallel()
+				o := javaOptions()
+				o.Rulesets = baseline.Rulesets{"config/pmd.xml", "category/java/bestpractices.xml"}
+				script := rendered(t, o, "gradle/ergon-java.init.gradle.kts")
+				assert.Contains(
+					t,
+					script,
+					"\n        val rules = listOf(\"config/pmd.xml\", \"category/java/bestpractices.xml\")\n",
+					"the init script",
+				)
+			})
+
+			t.Run("formats the Java sources with the google-java-format of the section java", func(t *testing.T) {
+				t.Parallel()
+				expect.That(t, rendered(t, javaOptions(), "Makefile")).
+					Contains("\nGOOGLE_JAVA_FORMAT := $(ERGON) tool run java.google-java-format --\n",
+						"the google-java-format of the section").
+					Contains("\nfmt: fmt-java\n", "the aggregate fmt").
+					Contains("\nfmt-java: ## Format the Java sources with google-java-format\n"+
+						"\tgit ls-files -z --cached --others --exclude-standard -- '*.java' | \\\n"+
+						"\t\txargs -0 -r $(GOOGLE_JAVA_FORMAT) --replace\n", "the target that formats the sources")
+			})
+
+			t.Run("checks the format of the Java sources before the build checks them", func(t *testing.T) {
+				t.Parallel()
+				assert.Contains(t, rendered(t, javaOptions(), "Makefile"),
+					"\n\tgit ls-files -z --cached --others --exclude-standard -- '*.java' | \\\n"+
+						"\t\txargs -0 -r $(GOOGLE_JAVA_FORMAT) --dry-run --set-exit-if-changed\n"+
+						"\t./gradlew --init-script gradle/ergon-java.init.gradle.kts check javadoc -x test\n",
+					"the Makefile")
+			})
 		})
 
 		t.Run("Options", func(t *testing.T) {

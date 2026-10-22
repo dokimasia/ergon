@@ -28,12 +28,28 @@ jvm:
     steps: []
     timeout: 30
 java:
-  # The tools of the targets of Java, as <group>:<artifact>@<version> of Maven Central.
+  # The tools of the targets of Java: PMD as <group>:<artifact>@<version> of Maven Central, and the
+  # release binary of google-java-format by its version and the SHA-256 of the asset of each
+  # platform.
   tools:
-    # The PMD of lint-java, which the PMD plugin of Gradle runs with its base ruleset. The plugin
-    # runs net.sourceforge.pmd:pmd-java, so the tool accepts another version of it and no other
-    # artifact.
+    # The PMD of lint-java, which the PMD plugin of Gradle runs with the rule sets of rulesets. The
+    # plugin runs net.sourceforge.pmd:pmd-java, so the tool accepts another version of it and no
+    # other artifact.
     pmd: net.sourceforge.pmd:pmd-java@7.28.0
+    # The release of google-java-format, the formatter of fmt-java and lint-java, in Google Java
+    # Style.
+    google-java-format:
+      sha256:
+        darwin/arm64: 657cf1011c8dfb7e0dac08516db02b701436e59600b961077f83b89b69cc3495
+        linux/amd64: 881821ffd1a52b175886c4ebeeacce2ba5b5d7326b52d32a18d384d8a783bd77
+        windows/amd64: 48260bed87f6830bae44a7a27f66ce98f7d9fb245f500021bd7ae16c9e2daa06
+      version: 1.37.0
+  # The rule sets of PMD that lint-java checks the Java sources with. A rule set is the path of a
+  # rule set file of the repository, relative to its root, such as config/pmd.xml, or a rule set of
+  # PMD, such as its base ruleset rulesets/java/quickstart.xml or the category
+  # category/java/bestpractices.xml. A rule set file can refer to a rule set of PMD and exclude some
+  # of its rules.
+  rulesets: [rulesets/java/quickstart.xml]
   # The steps that check-java runs, in order: lint, test, generate or audit. audit runs audit-jvm of
   # the section jvm.
   check: [lint, test, audit]

@@ -2,8 +2,11 @@
 //
 // The lint of the Java sources, which lint-java applies to every project of the Gradle build with
 // --init-script, so the build files of the repository stay as they are. javac and javadoc report
-// every warning as an error, and PMD checks the sources with its base ruleset. PMD's own guide
-// advises against every rule of every category, which reports mostly unimportant findings.
+// every warning as an error, and PMD checks the sources with the rule sets of the key rulesets of
+// the section java of .ergon.yaml. PMD's own guide advises against every rule of every category,
+// which reports mostly unimportant findings, so the baseline checks the sources with the base
+// ruleset of PMD. A rule set that is a file of the repository is a rule set file of the task of
+// PMD, whose change runs the task again.
 
 allprojects {
     tasks.withType<JavaCompile>().configureEach {
@@ -17,10 +20,12 @@ allprojects {
     }
     pluginManager.withPlugin("java") {
         apply(plugin = "pmd")
+        val rules = listOf("rulesets/java/quickstart.xml")
         extensions.configure<PmdExtension> {
             toolVersion = "7.28.0"
             isConsoleOutput = true
-            ruleSets = listOf("rulesets/java/quickstart.xml")
+            ruleSets = rules.filterNot { rootDir.resolve(it).isFile }
+            ruleSetFiles = files(rules.filter { rootDir.resolve(it).isFile }.map { rootDir.resolve(it) })
         }
     }
 }

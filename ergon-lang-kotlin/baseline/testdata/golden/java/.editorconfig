@@ -1,6 +1,9 @@
 
+# google-java-format formats the Java sources in Google Java Style, with an indent of 2 spaces and
+# lines of at most 100 columns.
 [*.java]
-indent_size = 4
+indent_size = 2
+max_line_length = 100
 
 # ktlint reads its configuration from this section: the official code style of Kotlin, with the
 # experimental rules of ktlint.

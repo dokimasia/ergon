@@ -4,7 +4,7 @@
     {
       "path": ".editorconfig",
       "producer": "java",
-      "sha256": "e12568f6ef2cf895e6b817d0d3ccb04b89184083e0cb10d88cab932278215cd9"
+      "sha256": "835451dbaea496a4d8a88f83690f17add53445aad381d9b88ae87a87c4ec2ba9"
     },
     {
       "path": ".gitattributes",
@@ -19,12 +19,12 @@
     {
       "path": "Makefile",
       "producer": "jvm",
-      "sha256": "dab65fc571643d3e6c734eedd93930488881413c74dcf4a4a7acd73a47680cfa"
+      "sha256": "3ade02e79f3dd9160ebd9c553f695688d71e91b2f62351bf15d20531cc567e31"
     },
     {
       "path": "gradle/ergon-java.init.gradle.kts",
       "producer": "java",
-      "sha256": "7593a61cd2624d680236daad119a035f035ad5b0584e814f5ee65e6ca6725027"
+      "sha256": "bdce456863f14b4dc590d6f1697a319b4e82598ce79be745a493f034276a6831"
     }
   ],
   "settings": {
@@ -35,7 +35,16 @@
     ],
     "java.generate.args": [],
     "java.generate.command": [],
+    "java.rulesets": [
+      "rulesets/java/quickstart.xml"
+    ],
     "java.test.args": [],
+    "java.tools.google-java-format.sha256": {
+      "darwin/arm64": "657cf1011c8dfb7e0dac08516db02b701436e59600b961077f83b89b69cc3495",
+      "linux/amd64": "881821ffd1a52b175886c4ebeeacce2ba5b5d7326b52d32a18d384d8a783bd77",
+      "windows/amd64": "48260bed87f6830bae44a7a27f66ce98f7d9fb245f500021bd7ae16c9e2daa06"
+    },
+    "java.tools.google-java-format.version": "1.37.0",
     "java.tools.pmd": "net.sourceforge.pmd:pmd-java@7.28.0",
     "jvm.ci.actions.setup-java.commit": "de7274f081f381c8f8158605e0321c36c376e2e6",
     "jvm.ci.actions.setup-java.release": "v6.0.1",

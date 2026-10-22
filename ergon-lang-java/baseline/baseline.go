@@ -22,10 +22,6 @@ const Name = "java"
 //go:embed all:templates
 var templates embed.FS
 
-// tools are the tools of the section java at the baseline: a release of PMD. [Tools.Validate]
-// requires its package.
-var tools = Tools{PMD: "net.sourceforge.pmd:pmd-java@7.28.0"}
-
 // Producer renders the files of Java: the Gradle init script that lints the Java sources, and the
 // fragments of .editorconfig, .gitattributes, .gitignore and the Makefile. The jvm toolchain
 // renders what Java shares with Kotlin. Its zero value is ready to use, and it is safe for
@@ -46,11 +42,29 @@ func (Producer) Templates() fs.FS {
 	return sub
 }
 
-// Options returns the section java at the baseline: the release of PMD, the gate of lint, test and
-// audit, ./gradlew test without arguments, and no generators.
+// Options returns the section java at the baseline:
+//
+//   - the release of PMD, whose package [Tools.Validate] requires
+//   - the release of google-java-format with the digests of its programs for the runners of the
+//     section github
+//   - the base ruleset of PMD
+//   - the gate of lint, test and audit
+//   - ./gradlew test without arguments
+//   - no generators
 func (Producer) Options() language.Options {
 	return &Options{
-		Tools:    tools,
+		Tools: Tools{
+			PMD: "net.sourceforge.pmd:pmd-java@7.28.0",
+			GoogleJavaFormat: GoogleJavaFormat{Binary: option.Binary{
+				SHA256: map[option.Platform]string{
+					option.LinuxAMD64:   "881821ffd1a52b175886c4ebeeacce2ba5b5d7326b52d32a18d384d8a783bd77",
+					option.DarwinARM64:  "657cf1011c8dfb7e0dac08516db02b701436e59600b961077f83b89b69cc3495",
+					option.WindowsAMD64: "48260bed87f6830bae44a7a27f66ce98f7d9fb245f500021bd7ae16c9e2daa06",
+				},
+				Version: "1.37.0",
+			}},
+		},
+		Rulesets: Rulesets{"rulesets/java/quickstart.xml"},
 		Check:    option.Check{option.StepLint, option.StepTest, option.StepAudit},
 		Test:     option.Run{Args: []string{}},
 		Generate: option.Generate{Command: []string{}, Args: []string{}},
