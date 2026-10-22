@@ -1,5 +1,20 @@
 # go.dokimi.dev/ergon/lang/go
 
+## 0.8.0
+
+### Minor Changes
+
+- e73fbba: Add the key `cgo` of `go.binaries` to build a command with cgo for every platform on Linux with zig.
+- e73fbba: **Breaking:** Change `golang.Tools` to a struct with the functions `Run` and `Program`.
+- e73fbba: Pin zig 0.17.0 in `go.tools.zig`.
+
+### Patch Changes
+
+- fc0dc4d: Require Go 1.27.3.
+- Updated dependencies [b452c56, 786739b, 0f5df78, fc0dc4d]
+  - go.dokimi.dev/ergon/core@0.12.0
+  - go.dokimi.dev/ergon/service@0.16.0
+
 ## 0.7.7
 
 ### Patch Changes

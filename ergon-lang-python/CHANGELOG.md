@@ -1,5 +1,14 @@
 # go.dokimi.dev/ergon/lang/python
 
+## 0.5.4
+
+### Patch Changes
+
+- fc0dc4d: Require Go 1.27.3.
+- Updated dependencies [b452c56, 786739b, 0f5df78, fc0dc4d]
+  - go.dokimi.dev/ergon/core@0.12.0
+  - go.dokimi.dev/ergon/service@0.16.0
+
 ## 0.5.3
 
 ### Patch Changes
