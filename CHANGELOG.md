@@ -1,5 +1,31 @@
 # go.dokimi.dev/ergon
 
+## 0.14.0
+
+### Minor Changes
+
+- 926de92: Publish the crates of Cargo workspaces to crates.io through trusted publishing.
+- 926de92: Publish the packages of npm and pnpm workspaces to the npm registry through trusted publishing.
+- 926de92: Publish the releases of Python projects to PyPI through trusted publishing.
+
+### Patch Changes
+
+- 926de92: Resolve `--out-dir` and `--from-pack-dir` of `ergon release` against the working directory.
+- Updated dependencies [005bb4a, 5fcc594, 539a599, cce748c, a902417, 4ffdc5b, 926de92]
+  - go.dokimi.dev/ergon/lang/java@0.5.0
+  - go.dokimi.dev/ergon/lang/kotlin@0.3.17
+  - go.dokimi.dev/ergon/lang/javascript@0.5.0
+  - go.dokimi.dev/ergon/lang/rust@0.6.0
+  - go.dokimi.dev/ergon/core@0.15.0
+  - go.dokimi.dev/ergon/service@0.19.0
+  - go.dokimi.dev/ergon/lang/python@0.6.0
+  - go.dokimi.dev/ergon/lang/typescript@0.3.9
+  - go.dokimi.dev/ergon/lang/bash@0.4.10
+  - go.dokimi.dev/ergon/lang/csharp@0.3.10
+  - go.dokimi.dev/ergon/lang/go@0.9.2
+  - go.dokimi.dev/ergon/lang/php@0.4.11
+  - go.dokimi.dev/ergon/lang/terraform@0.4.10
+
 ## 0.13.0
 
 ### Minor Changes

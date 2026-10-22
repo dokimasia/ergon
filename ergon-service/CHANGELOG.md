@@ -1,5 +1,18 @@
 # go.dokimi.dev/ergon/service
 
+## 0.19.0
+
+### Minor Changes
+
+- a902417: Run the job publish of `release.yml` in the environment `release` with the OIDC token when a toolchain uploads to a registry.
+- a902417: Run the release steps in the job publish of `release.yml` when a toolchain uploads to a registry.
+
+### Patch Changes
+
+- a902417: Fix the format check of `vp check` on the seeded docs of a new repository.
+- Updated dependencies [cce748c, 926de92, a902417]
+  - go.dokimi.dev/ergon/core@0.15.0
+
 ## 0.18.0
 
 ### Minor Changes

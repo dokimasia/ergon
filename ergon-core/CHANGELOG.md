@@ -1,5 +1,13 @@
 # go.dokimi.dev/ergon/core
 
+## 0.15.0
+
+### Minor Changes
+
+- cce748c: Add the step `option.StepMSRV` to check that the sources compile on the oldest toolchain that they declare.
+- cce748c: Add `workflow.Contribution.Registry` for a toolchain that uploads its packages to a registry.
+- cce748c: **Breaking:** Pass the root of the repository to `language.Publisher.Publish`.
+
 ## 0.14.0
 
 ### Minor Changes

@@ -1,5 +1,21 @@
 # go.dokimi.dev/ergon/lang/rust
 
+## 0.6.0
+
+### Minor Changes
+
+- 539a599: Add `msrv-rust` to check each published crate on the Rust of its `rust-version`.
+- 539a599: Release the crates of a Cargo workspace to crates.io through trusted publishing.
+- 539a599: Run `msrv-rust` in `check-rust` by default.
+- 539a599: Set up Rust in the jobs of a release.
+- 539a599: **Breaking:** Take the tools and the client of crates.io in `rust.Register`.
+
+### Patch Changes
+
+- Updated dependencies [cce748c, a902417, 926de92]
+  - go.dokimi.dev/ergon/core@0.15.0
+  - go.dokimi.dev/ergon/service@0.19.0
+
 ## 0.5.6
 
 ### Patch Changes
