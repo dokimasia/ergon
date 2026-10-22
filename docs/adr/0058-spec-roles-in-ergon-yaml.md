@@ -4,7 +4,7 @@ title: The key spec.roles runs spec in the gate and the proposals of a repositor
 status: Accepted
 date: 2026-10-22
 supersedes: none
-superseded-by: none
+superseded-by: ADR-0059, in part
 rfc: RFC-0010
 ---
 
