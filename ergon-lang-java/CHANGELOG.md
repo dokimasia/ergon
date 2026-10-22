@@ -1,5 +1,13 @@
 # go.dokimi.dev/ergon/lang/java
 
+## 0.4.8
+
+### Patch Changes
+
+- Updated dependencies [0292353, 3c4519d, b23672b]
+  - go.dokimi.dev/ergon/service@0.17.0
+  - go.dokimi.dev/ergon/core@0.13.0
+
 ## 0.4.7
 
 ### Patch Changes

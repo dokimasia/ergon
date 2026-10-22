@@ -1,5 +1,11 @@
 # go.dokimi.dev/ergon/core
 
+## 0.13.0
+
+### Minor Changes
+
+- 3c4519d: Add `workflow.Contribution.Review` and `workflow.OwnPackages` for the steps before the dependency review.
+
 ## 0.12.0
 
 ### Minor Changes
