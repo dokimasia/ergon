@@ -13,17 +13,18 @@ import (
 	"go.dokimi.dev/ergon/service/baseline/common"
 	"go.dokimi.dev/ergon/service/baseline/github"
 	"go.dokimi.dev/ergon/service/baseline/lock"
+	"go.dokimi.dev/ergon/service/baseline/spec"
 	licensefiles "go.dokimi.dev/ergon/service/licenses/baseline"
 )
 
-// Producers returns the producers of the files that ergon init renders in every repository, before
-// the languages: the common files, the GitHub files and the license files, in that order. Each call
-// returns a new slice.
+// Producers returns the producers of the files that ergon init renders in every repository before
+// the languages, in the order common, github, license and spec. Each call returns a new slice.
 func Producers() []baseline.Producer {
 	return []baseline.Producer{
 		{Name: common.Name, Producer: common.Producer{}},
 		{Name: github.Name, Producer: github.Producer{}},
 		{Name: licensefiles.Name, Producer: licensefiles.Producer{}},
+		{Name: spec.Name, Producer: spec.Producer{}},
 	}
 }
 

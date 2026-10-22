@@ -31,7 +31,7 @@ func TestRepository(t *testing.T) {
 				baselinetest.Keys(t, p.Name, conf)
 				names = append(names, p.Name)
 			}
-			assert.Equal(t, names, []string{"common", "github", "license"}, "the sections of the producers")
+			assert.Equal(t, names, []string{"common", "github", "license", "spec"}, "the sections of the producers")
 		})
 	})
 
