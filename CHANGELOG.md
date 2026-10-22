@@ -1,5 +1,29 @@
 # go.dokimi.dev/ergon
 
+## 0.13.0
+
+### Minor Changes
+
+- 5bb672d: Propose the updates of the copies of spec in the job `propose-spec` of `nightly.yml` in place of `spec.yml`.
+- 5bb672d: **Breaking:** Remove the key `spec.ci.actions.propose` from `.ergon.yaml`.
+
+### Patch Changes
+
+- Updated dependencies [2ac18fe, 4bab617, 5bb672d]
+  - go.dokimi.dev/ergon/core@0.14.0
+  - go.dokimi.dev/ergon/service@0.18.0
+  - go.dokimi.dev/ergon/lang/bash@0.4.9
+  - go.dokimi.dev/ergon/lang/csharp@0.3.9
+  - go.dokimi.dev/ergon/lang/go@0.9.1
+  - go.dokimi.dev/ergon/lang/java@0.4.9
+  - go.dokimi.dev/ergon/lang/javascript@0.4.8
+  - go.dokimi.dev/ergon/lang/kotlin@0.3.16
+  - go.dokimi.dev/ergon/lang/php@0.4.10
+  - go.dokimi.dev/ergon/lang/python@0.5.6
+  - go.dokimi.dev/ergon/lang/rust@0.5.6
+  - go.dokimi.dev/ergon/lang/terraform@0.4.9
+  - go.dokimi.dev/ergon/lang/typescript@0.3.8
+
 ## 0.12.0
 
 ### Minor Changes
