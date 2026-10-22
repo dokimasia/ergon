@@ -16,7 +16,8 @@ const OwnPackages = "ERGON_OWN_PACKAGES"
 // Contribution is a producer's part of the workflows of a repository: the setup of a toolchain
 // that two languages share, the jobs of ci.yml and of nightly.yml, the setup of the toolchain in
 // release.yml, the assets of its releases, the CodeQL analyses of security.yml, the steps before
-// its dependency review and the updates of dependabot.yml. The zero value contributes nothing.
+// its dependency review, the updates of dependabot.yml, and the uploads of its packages to a
+// registry. The zero value is an empty contribution.
 type Contribution struct {
 	// Setup is the setup of the toolchain of the producer, which the jobs of the toolchain's
 	// languages run, or nil. Only a toolchain that two languages share contributes one: a language
@@ -31,10 +32,11 @@ type Contribution struct {
 	// lists runners.
 	Nightly []Job
 
-	// Release are the steps that set up the toolchain of the producer in the jobs version and pack
-	// of release.yml, which refresh the lockfiles of a release and build its artifacts. They run on
-	// the Linux runner of the section github, before the installation of ergon, in the order of the
-	// producers.
+	// Release are the steps that set up the toolchain of the producer in the job version of
+	// version.yml and in the job pack of release.yml, which refresh the lockfiles of a release and
+	// build its artifacts. The job publish of release.yml also runs them when a contribution uploads
+	// packages to a registry. They run on the Linux runner of the section github, before the
+	// installation of ergon, in the order of the producers.
 	Release []Step
 
 	// Assets states that the producer builds release assets in the job pack of release.yml, or is
@@ -51,6 +53,12 @@ type Contribution struct {
 
 	// Updates are the entries of dependabot.yml.
 	Updates []Update
+
+	// Registry reports that the toolchain of the producer uploads its packages to a registry in the
+	// job publish of release.yml, such as PyPI or the npm registry. The job then runs in the
+	// environment release with the release steps of the contributions. It requests the OIDC token of
+	// GitHub Actions, which the trusted publishing of the registry exchanges for a token of its own.
+	Registry bool
 }
 
 // Validate returns the first error of the parts of c, in the order of its fields: the error of

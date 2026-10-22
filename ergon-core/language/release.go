@@ -102,7 +102,8 @@ const (
 type Packer interface {
 	// Pack builds the artifacts of pkgs from root into dir: the files that the registry of a
 	// package receives, and the assets of the release of its tag under [AssetsDir]/<tag>/ of dir.
-	// Each package of pkgs has the Version of its release. Pack returns the error of the build.
+	// Each package of pkgs has the Version of its release, and dir is an absolute path. Pack returns
+	// the error of the build.
 	Pack(ctx context.Context, root string, pkgs []workspace.Package, dir string) error
 }
 
@@ -113,9 +114,10 @@ type Publisher interface {
 	// registry, and does not modify p.
 	Published(ctx context.Context, p *workspace.Package) (bool, error)
 
-	// Publish uploads the artifacts of pkgs from dir to the registry, in the order of pkgs. It
-	// returns the error of the first upload that fails.
-	Publish(ctx context.Context, dir string, pkgs []workspace.Package) error
+	// Publish uploads the artifacts of pkgs from dir to the registry, in the order of pkgs. root is
+	// the repository, from whose sources a registry tool such as cargo publish builds the upload,
+	// and dir is an absolute path. Publish returns the error of the first upload that fails.
+	Publish(ctx context.Context, root string, pkgs []workspace.Package, dir string) error
 }
 
 // Locker is the release role of a toolchain whose lockfiles record the content of the packages of

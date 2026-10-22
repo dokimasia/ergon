@@ -19,7 +19,7 @@ func TestStep(t *testing.T) {
 		t.Run("returns nil for every step", func(t *testing.T) {
 			t.Parallel()
 			assert.Total(t, option.Step.Validate, []option.Step{
-				"fmt", "lint", "test", "race", "fuzz", "bench", "mutate", "generate", "audit",
+				"fmt", "lint", "test", "msrv", "race", "fuzz", "bench", "mutate", "generate", "audit",
 			}, "Validate of the spelling of each step")
 		})
 

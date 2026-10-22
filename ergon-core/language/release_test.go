@@ -63,7 +63,7 @@ func (releaser) Published(context.Context, *workspace.Package) (bool, error) {
 }
 
 // Publish uploads nothing.
-func (releaser) Publish(context.Context, string, []workspace.Package) error {
+func (releaser) Publish(context.Context, string, []workspace.Package, string) error {
 	return nil
 }
 
