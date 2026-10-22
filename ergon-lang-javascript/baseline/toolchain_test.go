@@ -4,6 +4,7 @@
 package baseline_test
 
 import (
+	"strings"
 	"testing"
 
 	"go.dokimi.dev/assert"
@@ -20,8 +21,8 @@ import (
 // section.
 const toolchainName = "js"
 
-// prettierIgnore is the .prettierignore of the js toolchain alone for the toolkit vite-plus: .ergon/,
-// .ergon.yaml and the managed files of its rendering.
+// prettierIgnore is the .prettierignore of the js toolchain alone for the toolkit vite-plus. It lists
+// .ergon/, .ergon.yaml and the managed files of the rendering.
 const prettierIgnore = "# Managed by ergon init. Add repository settings to .ergon/local/.prettierignore " +
 	"and run ergon init sync.\n" +
 	"#\n" +
@@ -51,7 +52,7 @@ func TestToolchain(t *testing.T) {
 		t.Run("Templates", func(t *testing.T) {
 			t.Parallel()
 
-			t.Run("names the schema of the Biome of the section js", func(t *testing.T) {
+			t.Run("renders the schema of the Biome of the section js", func(t *testing.T) {
 				t.Parallel()
 				o := jsOptions()
 				o.Tools.Biome = "@biomejs/biome@2.6.0"
@@ -67,7 +68,7 @@ func TestToolchain(t *testing.T) {
 				assert.Contains(t, makefile, "\nJS_AUDIT_SEVERITY ?= high\n", "the Makefile")
 			})
 
-			t.Run("runs the tests with the test script of npm at the baseline", func(t *testing.T) {
+			t.Run("runs the targets with npm at the baseline", func(t *testing.T) {
 				t.Parallel()
 				makefile := rendered(t, "Makefile", jsOptions())
 				expect.That(t, makefile).
@@ -76,7 +77,7 @@ func TestToolchain(t *testing.T) {
 						"\tnpm audit --audit-level=$(JS_AUDIT_SEVERITY) --include=dev\n", "the scan of npm")
 			})
 
-			t.Run("runs the tests and the scan with pnpm for the package manager pnpm", func(t *testing.T) {
+			t.Run("runs the targets with pnpm for the package manager pnpm", func(t *testing.T) {
 				t.Parallel()
 				o := jsOptions()
 				o.PackageManager = option.PackageManagerPNPM
@@ -101,7 +102,7 @@ func TestToolchain(t *testing.T) {
 					NotContains("JS_PATHS", "the paths of Biome")
 			})
 
-			t.Run("runs vp of the packages with pnpm exec for vite-plus and pnpm", func(t *testing.T) {
+			t.Run("runs vp of the packages with pnpm exec for vite-plus with pnpm", func(t *testing.T) {
 				t.Parallel()
 				o := jsOptions()
 				o.PackageManager = option.PackageManagerPNPM
@@ -110,12 +111,12 @@ func TestToolchain(t *testing.T) {
 				assert.Contains(t, makefile, "\nVP := pnpm exec vp\n", "the vp of the packages")
 			})
 
-			t.Run("renders no .prettierignore for the toolkit biome", func(t *testing.T) {
+			t.Run("does not render .prettierignore for the toolkit biome", func(t *testing.T) {
 				t.Parallel()
 				assert.NotContains(t, paths(t, jsOptions()), ".prettierignore", "the paths of the files")
 			})
 
-			t.Run("renders no biome.json for the toolkit vite-plus", func(t *testing.T) {
+			t.Run("does not render biome.json for the toolkit vite-plus", func(t *testing.T) {
 				t.Parallel()
 				o := jsOptions()
 				o.Toolkit = baseline.ToolkitVitePlus
@@ -129,6 +130,83 @@ func TestToolchain(t *testing.T) {
 					o.Toolkit = baseline.ToolkitVitePlus
 					assert.Equal(t, rendered(t, ".prettierignore", o), prettierIgnore, ".prettierignore")
 				})
+
+			t.Run("excludes the globs of exclude in files.includes of biome.json", func(t *testing.T) {
+				t.Parallel()
+				o := jsOptions()
+				o.Exclude = baseline.Exclude{"vendor", "src/**/*.gen.ts"}
+				assert.Contains(t, rendered(t, "biome.json", o), "\n  },\n  \"files\": {\n"+
+					"    \"includes\": [\"**\", \"!vendor\", \"!src/**/*.gen.ts\"]\n  },\n  \"formatter\": {\n",
+					"biome.json")
+			})
+
+			t.Run("keeps files.includes on one line of 88 columns", func(t *testing.T) {
+				t.Parallel()
+				o := jsOptions()
+				o.Exclude = baseline.Exclude{strings.Repeat("a", 61)}
+				line := "    \"includes\": [\"**\", \"!" + strings.Repeat("a", 61) + "\"]\n"
+				assert.Length(t, strings.TrimSuffix(line, "\n"), 88, "the line of files.includes")
+				assert.Contains(t, rendered(t, "biome.json", o), line, "biome.json")
+			})
+
+			t.Run("puts each item of files.includes on a line of its own past 88 columns", func(t *testing.T) {
+				t.Parallel()
+				o := jsOptions()
+				o.Exclude = baseline.Exclude{strings.Repeat("a", 62), "vendor"}
+				assert.Contains(t, rendered(t, "biome.json", o), "    \"includes\": [\n      \"**\",\n"+
+					"      \"!"+strings.Repeat("a", 62)+"\",\n      \"!vendor\"\n    ]\n", "biome.json")
+			})
+
+			t.Run("does not render the key files in biome.json without exclusions", func(t *testing.T) {
+				t.Parallel()
+				assert.NotContains(t, rendered(t, "biome.json", jsOptions()), "\"files\"", "biome.json")
+			})
+
+			t.Run("lists the globs of exclude in .prettierignore for vite-plus", func(t *testing.T) {
+				t.Parallel()
+				o := jsOptions()
+				o.Toolkit = baseline.ToolkitVitePlus
+				o.Exclude = baseline.Exclude{"vendor", "**/dist"}
+				assert.HasSuffix(t, rendered(t, ".prettierignore", o), "\n/Makefile\n\n"+
+					"# vp fmt skips the paths of the key exclude of the section js.\n/vendor\n/**/dist\n",
+					".prettierignore")
+			})
+
+			t.Run("lists the globs of exclude in .eslintignore for vite-plus", func(t *testing.T) {
+				t.Parallel()
+				o := jsOptions()
+				o.Toolkit = baseline.ToolkitVitePlus
+				o.Exclude = baseline.Exclude{"vendor", "**/dist"}
+				assert.Equal(t, rendered(t, ".eslintignore", o), "# Managed by ergon init. Add repository settings "+
+					"to .ergon/local/.eslintignore and run ergon init sync.\n#\n"+
+					"# The lint of vp check skips the paths of the key exclude of the section js.\n/vendor\n/**/dist\n",
+					".eslintignore")
+			})
+
+			tests := []struct {
+				name        string
+				giveToolkit baseline.Toolkit
+				giveExclude baseline.Exclude
+			}{
+				{
+					name:        "does not render .eslintignore for vite-plus without exclusions",
+					giveToolkit: baseline.ToolkitVitePlus,
+				},
+				{
+					name:        "does not render .eslintignore for biome",
+					giveToolkit: baseline.ToolkitBiome,
+					giveExclude: baseline.Exclude{"vendor"},
+				},
+			}
+			for _, tt := range tests {
+				t.Run(tt.name, func(t *testing.T) {
+					t.Parallel()
+					o := jsOptions()
+					o.Toolkit = tt.giveToolkit
+					o.Exclude = tt.giveExclude
+					assert.NotContains(t, paths(t, o), ".eslintignore", "the paths of the files")
+				})
+			}
 		})
 
 		t.Run("Options", func(t *testing.T) {
@@ -153,14 +231,14 @@ func TestToolchain(t *testing.T) {
 				o.Toolkit = baseline.ToolkitVitePlus
 				got, err := baseline.Toolchain{}.Data(nil, o, &workflow.Contribution{})
 				assert.NoError(t, err, "Data")
-				assert.Equal(t, got, any(baseline.Choices{PNPM: true, VitePlus: true}), "the choices")
+				assert.Equal(t, got, any(baseline.Choices{LineWidth: 88, PNPM: true, VitePlus: true}), "the choices")
 			})
 
 			t.Run("returns the choices of the baseline for options of another type", func(t *testing.T) {
 				t.Parallel()
 				got, err := baseline.Toolchain{}.Data(nil, nil, &workflow.Contribution{})
 				assert.NoError(t, err, "Data")
-				assert.Equal(t, got, any(baseline.Choices{}), "the choices")
+				assert.Equal(t, got, any(baseline.Choices{LineWidth: 88}), "the choices")
 			})
 		})
 

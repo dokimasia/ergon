@@ -47,12 +47,14 @@
     "js.ci.steps": [],
     "js.ci.timeout": 30,
     "js.ci.versions": [],
+    "js.exclude": [],
     "js.package-manager": "npm",
     "js.paths": [
       "."
     ],
     "js.toolkit": "biome",
     "js.tools.biome": "@biomejs/biome@2.5.15",
+    "js.tools.npm": "npm@12.2.1",
     "typescript.check": [
       "lint",
       "test",

@@ -7,4 +7,11 @@
 {{%- range .Managed %}}
 /{{% . %}}
 {{%- end %}}
+{{%- with .Options.Exclude %}}
+
+# vp fmt skips the paths of the key exclude of the section js.
+{{%- range . %}}
+/{{% . %}}
+{{%- end %}}
+{{%- end %}}
 {{% end -%}}

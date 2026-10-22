@@ -4,6 +4,8 @@
 package baseline_test
 
 import (
+	"context"
+	"net/http"
 	"os"
 	"path"
 	"slices"
@@ -29,6 +31,12 @@ const name = "javascript"
 // workflows are the files of the GitHub files that the contributions of JavaScript and the js
 // toolchain change.
 var workflows = []string{".github/workflows/ci.yml", ".github/workflows/security.yml", ".github/dependabot.yml"}
+
+// jsTools are the tools of the js toolchain of the cases, which do not run a program or a tool.
+var jsTools = javascript.Tools{
+	Run:     func(context.Context, string, string, []string, []string) error { return nil },
+	Command: func(context.Context, string, string, []string, []string) error { return nil },
+}
 
 func TestBaseline(t *testing.T) {
 	t.Parallel()
@@ -177,7 +185,7 @@ func TestBaseline(t *testing.T) {
 func catalog(t *testing.T) *language.Catalog {
 	t.Helper()
 	c := new(language.Catalog)
-	assert.NoError(t, javascript.Register(c), "Register of JavaScript")
+	assert.NoError(t, javascript.Register(c, jsTools, &http.Client{}), "Register of JavaScript")
 	return c
 }
 

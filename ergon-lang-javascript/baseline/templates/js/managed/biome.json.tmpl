@@ -6,10 +6,15 @@
     "clientKind": "git",
     "useIgnoreFile": true
   },
+{{%- with .Data.Includes %}}
+  "files": {
+    "includes": {{% . %}}
+  },
+{{%- end %}}
   "formatter": {
     "indentStyle": "space",
     "indentWidth": 2,
-    "lineWidth": 88
+    "lineWidth": {{% .Data.LineWidth %}}
   },
   "javascript": {
     "formatter": {

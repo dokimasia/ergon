@@ -8,14 +8,24 @@ js:
   # vite-plus runs vp fmt, vp check and vp test --run of the packages of the repository with the
   # configuration of vite.config.ts, and ergon init renders .prettierignore in place of biome.json.
   toolkit: biome
-  # The tools of the targets that JavaScript and TypeScript share, as <package>@<version> of npm,
-  # which ergon tool run starts with the package manager.
+  # The tools of the targets that JavaScript and TypeScript share and of a release, as
+  # <package>@<version> of npm, which ergon tool run starts with the package manager.
   tools:
     # The linter and the formatter of lint-js and fmt-js, with the rules of biome.json, for the
     # toolkit biome.
     biome: '@biomejs/biome@2.5.15'
+    # The npm that uploads the tarballs of a release to the npm registry in the job publish of
+    # release.yml. The trusted publishing of npm needs npm 11.5.1 or later.
+    npm: npm@12.2.1
   # The paths that Biome formats and checks. vp reads its paths from vite.config.ts.
   paths: [.]
+  # The globs of the paths that fmt-js and lint-js skip. Each glob is relative to the root of the
+  # repository. The glob vendor matches the directory vendor, and src/**/*.gen.ts matches the files
+  # below src that end in .gen.ts. A glob has * inside a segment and ** only as a whole segment.
+  # biome skips the paths through files.includes of biome.json. vite-plus skips them through
+  # .prettierignore in vp fmt and in the format check of vp check, and through .eslintignore in the
+  # lint of vp check.
+  exclude: []
   # audit-js fails on a known vulnerability of a package of the lockfile of severity or above: low,
   # moderate, high or critical.
   audit:

@@ -1,0 +1,8 @@
+{{%- if and .Data.VitePlus .Options.Exclude -%}}
+# Managed by ergon init. Add repository settings to .ergon/local/.eslintignore and run ergon init sync.
+#
+# The lint of vp check skips the paths of the key exclude of the section js.
+{{%- range .Options.Exclude %}}
+/{{% . %}}
+{{%- end %}}
+{{% end -%}}

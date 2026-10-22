@@ -12,6 +12,15 @@
 // .prettierignore lists .ergon/, .ergon.yaml and every managed file of the rendering, so vp fmt
 // leaves them as ergon init renders them.
 //
+// # Exclusions
+//
+// The key exclude of the section js contains the globs of [Exclude]. fmt-js and lint-js skip the
+// paths that they match. For the toolkit biome, files.includes of biome.json starts with the glob of
+// every path and has each exclusion after it with the prefix !. ergon init lays the list out as Biome
+// formats it. For the toolkit vite-plus, ergon init writes each exclusion from the root into
+// .prettierignore and .eslintignore. vp fmt reads .prettierignore, and the lint of vp check reads
+// .eslintignore.
+//
 // # Package manager and toolkit
 //
 // The section js sets the package manager, npm or pnpm, and the toolkit, biome or vite-plus.
@@ -40,12 +49,26 @@
 //
 // # Options
 //
-// [ToolchainOptions] is the section js: the package manager and the toolkit, the version of Biome,
-// the paths that it checks, the lowest severity that fails the scan, and the key ci of the setup of
-// Node.js. [ToolchainOptions.Contribution] returns that setup, the CodeQL analysis of
-// javascript-typescript and the updates of the npm packages. [Options] is the section javascript:
-// the steps of the gate, and the options of test-javascript and of the generators.
-// [Options.Contribution] returns the job check-javascript, which runs the setup of the js toolchain.
+// [ToolchainOptions] is the section js. It sets these options:
+//
+//   - the package manager and the toolkit
+//   - the versions of Biome and of the npm of a publish
+//   - the paths that Biome checks
+//   - the paths that fmt-js and lint-js skip
+//   - the lowest severity that fails the scan
+//   - the key ci of the setup of Node.js
+//
+// [ToolchainOptions.Contribution] returns these parts of the workflows:
+//
+//   - the setup of Node.js and the packages in the jobs of the gate
+//   - the same setup in the jobs of a release
+//   - the CodeQL analysis of javascript-typescript
+//   - the updates of the npm packages
+//   - the uploads to the npm registry
+//
+// [Options] is the section javascript. It sets the steps of the gate, and the options of
+// test-javascript and of the generators. [Options.Contribution] returns the job check-javascript,
+// which runs the setup of the js toolchain.
 //
 // # Dependency position
 //

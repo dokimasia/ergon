@@ -15,9 +15,16 @@ import (
 // .ergon.yaml, which is the name of the toolchain.
 const ToolchainName = "js"
 
-// Choices are the package manager and the toolkit of the section js, which the templates of the js
-// toolchain read as .Data, and the templates of JavaScript and TypeScript as .Toolchain.
+// Choices are the values that the templates of the js toolchain read as .Data. The templates of
+// JavaScript and TypeScript read them as .Toolchain.
 type Choices struct {
+	// Includes is the value of files.includes of biome.json for the exclusions of the section js. It
+	// has the layout of Biome's formatter at LineWidth, and it is empty without exclusions.
+	Includes string
+
+	// LineWidth is the line width of the formatter of biome.json.
+	LineWidth int
+
 	// PNPM reports the package manager pnpm, and npm when false.
 	PNPM bool
 
@@ -26,9 +33,9 @@ type Choices struct {
 }
 
 // Toolchain renders the files that JavaScript and TypeScript share, once for a repository with
-// either or both: the configuration of Biome, or the .prettierignore of vite-plus, and the
-// fragments of .gitattributes, .gitignore and the Makefile with the targets fmt-js, lint-js and
-// audit-js. Its zero value is ready to use, and it is safe for concurrent use.
+// either or both: the configuration of Biome, or the .prettierignore and the .eslintignore of
+// vite-plus, and the fragments of .gitattributes, .gitignore and the Makefile with the targets
+// fmt-js, lint-js and audit-js. Its zero value is ready to use, and it is safe for concurrent use.
 type Toolchain struct{}
 
 var (
@@ -38,24 +45,30 @@ var (
 	_ language.Contributor  = Toolchain{}
 )
 
-// Templates returns the templates of the js toolchain: biome.json and .prettierignore under
-// managed/, and the fragments of the shared files under shared/.
+// Templates returns the templates of the js toolchain: biome.json, .prettierignore and
+// .eslintignore under managed/, and the fragments of the shared files under shared/.
 func (Toolchain) Templates() fs.FS {
 	// templates has the directory templates/js, so Sub returns no error.
 	sub, _ := fs.Sub(templates, "templates/"+ToolchainName)
 	return sub
 }
 
-// Options returns the section js at the baseline: npm and the toolkit biome, the release of Biome,
-// the root of the repository, a scan that fails on every known vulnerability, the releases of
-// setup-node and pnpm/setup, and a limit of 30 minutes for the jobs of JavaScript and TypeScript
-// on every runner and the Node.js of package.json.
+// Options returns the section js at the baseline:
+//
+//   - the package manager npm and the toolkit biome
+//   - the releases of Biome and of the npm of a publish
+//   - the root of the repository as the paths of Biome, without exclusions
+//   - a scan that fails on every known vulnerability
+//   - the releases of setup-node and pnpm/setup
+//   - jobs of JavaScript and TypeScript with a limit of 30 minutes, on every runner, with the
+//     Node.js of package.json
 func (Toolchain) Options() language.Options {
 	return &ToolchainOptions{
 		PackageManager: option.PackageManagerNPM,
 		Toolkit:        ToolkitBiome,
-		Tools:          ToolchainTools{Biome: "@biomejs/biome@2.5.15"},
+		Tools:          ToolchainTools{Biome: "@biomejs/biome@2.5.15", NPM: "npm@12.2.1"},
 		Paths:          option.Paths{"."},
+		Exclude:        Exclude{},
 		Audit:          option.Threshold{Severity: option.SeverityLow},
 		CI: option.MatrixCI[ToolchainActions]{
 			Actions: ToolchainActions{
@@ -86,8 +99,10 @@ func (t Toolchain) Data(_ *language.Answers, o language.Options, _ *workflow.Con
 		opts, _ = t.Options().(*ToolchainOptions)
 	}
 	return Choices{
-		PNPM:     opts.PackageManager == option.PackageManagerPNPM,
-		VitePlus: opts.Toolkit == ToolkitVitePlus,
+		Includes:  opts.Exclude.includes(),
+		LineWidth: biomeLineWidth,
+		PNPM:      opts.PackageManager == option.PackageManagerPNPM,
+		VitePlus:  opts.Toolkit == ToolkitVitePlus,
 	}, nil
 }
 

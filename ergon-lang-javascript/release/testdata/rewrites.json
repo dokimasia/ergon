@@ -1,0 +1,872 @@
+[
+ {
+  "req": "^1.2.3",
+  "version": "1.2.4",
+  "want": "^1.2.4"
+ },
+ {
+  "req": "^1.2.3",
+  "version": "1.3.0",
+  "want": "^1.3.0"
+ },
+ {
+  "req": "^1.2.3",
+  "version": "2.0.0",
+  "want": "^2.0.0"
+ },
+ {
+  "req": "^1.2.3",
+  "version": "2.1.0",
+  "want": "^2.1.0"
+ },
+ {
+  "req": "^1.2.3",
+  "version": "2.0.1",
+  "want": "^2.0.1"
+ },
+ {
+  "req": "^1.2.3",
+  "version": "1.3.0-beta.0",
+  "want": "^1.3.0-beta.0"
+ },
+ {
+  "req": "~1.2.3",
+  "version": "1.2.4",
+  "want": "~1.2.4"
+ },
+ {
+  "req": "~1.2.3",
+  "version": "1.3.0",
+  "want": "~1.3.0"
+ },
+ {
+  "req": "~1.2.3",
+  "version": "2.0.0",
+  "want": "~2.0.0"
+ },
+ {
+  "req": "~1.2.3",
+  "version": "2.1.0",
+  "want": "~2.1.0"
+ },
+ {
+  "req": "~1.2.3",
+  "version": "2.0.1",
+  "want": "~2.0.1"
+ },
+ {
+  "req": "~1.2.3",
+  "version": "1.3.0-beta.0",
+  "want": "~1.3.0-beta.0"
+ },
+ {
+  "req": ">=1.2.3",
+  "version": "1.2.4",
+  "want": ">=1.2.4"
+ },
+ {
+  "req": ">=1.2.3",
+  "version": "1.3.0",
+  "want": ">=1.3.0"
+ },
+ {
+  "req": ">=1.2.3",
+  "version": "2.0.0",
+  "want": ">=2.0.0"
+ },
+ {
+  "req": ">=1.2.3",
+  "version": "2.1.0",
+  "want": ">=2.1.0"
+ },
+ {
+  "req": ">=1.2.3",
+  "version": "2.0.1",
+  "want": ">=2.0.1"
+ },
+ {
+  "req": ">=1.2.3",
+  "version": "1.3.0-beta.0",
+  "want": ">=1.3.0-beta.0"
+ },
+ {
+  "req": "<=1.2.3",
+  "version": "1.2.4",
+  "want": "<=1.2.4"
+ },
+ {
+  "req": "<=1.2.3",
+  "version": "1.3.0",
+  "want": "<=1.3.0"
+ },
+ {
+  "req": "<=1.2.3",
+  "version": "2.0.0",
+  "want": "<=2.0.0"
+ },
+ {
+  "req": "<=1.2.3",
+  "version": "2.1.0",
+  "want": "<=2.1.0"
+ },
+ {
+  "req": "<=1.2.3",
+  "version": "2.0.1",
+  "want": "<=2.0.1"
+ },
+ {
+  "req": "<=1.2.3",
+  "version": "1.3.0-beta.0",
+  "want": "<=1.3.0-beta.0"
+ },
+ {
+  "req": ">1.2.3",
+  "version": "1.2.4",
+  "want": ">1.2.4"
+ },
+ {
+  "req": ">1.2.3",
+  "version": "1.3.0",
+  "want": ">1.3.0"
+ },
+ {
+  "req": ">1.2.3",
+  "version": "2.0.0",
+  "want": ">2.0.0"
+ },
+ {
+  "req": ">1.2.3",
+  "version": "2.1.0",
+  "want": ">2.1.0"
+ },
+ {
+  "req": ">1.2.3",
+  "version": "2.0.1",
+  "want": ">2.0.1"
+ },
+ {
+  "req": ">1.2.3",
+  "version": "1.3.0-beta.0",
+  "want": ">1.3.0-beta.0"
+ },
+ {
+  "req": "1.2.3",
+  "version": "1.2.4",
+  "want": "1.2.4"
+ },
+ {
+  "req": "1.2.3",
+  "version": "1.3.0",
+  "want": "1.3.0"
+ },
+ {
+  "req": "1.2.3",
+  "version": "2.0.0",
+  "want": "2.0.0"
+ },
+ {
+  "req": "1.2.3",
+  "version": "2.1.0",
+  "want": "2.1.0"
+ },
+ {
+  "req": "1.2.3",
+  "version": "2.0.1",
+  "want": "2.0.1"
+ },
+ {
+  "req": "1.2.3",
+  "version": "1.3.0-beta.0",
+  "want": "1.3.0-beta.0"
+ },
+ {
+  "req": "=1.2.3",
+  "version": "1.2.4",
+  "want": "1.2.4"
+ },
+ {
+  "req": "=1.2.3",
+  "version": "1.3.0",
+  "want": "1.3.0"
+ },
+ {
+  "req": "=1.2.3",
+  "version": "2.0.0",
+  "want": "2.0.0"
+ },
+ {
+  "req": "=1.2.3",
+  "version": "2.1.0",
+  "want": "2.1.0"
+ },
+ {
+  "req": "=1.2.3",
+  "version": "2.0.1",
+  "want": "2.0.1"
+ },
+ {
+  "req": "=1.2.3",
+  "version": "1.3.0-beta.0",
+  "want": "1.3.0-beta.0"
+ },
+ {
+  "req": "^0.2.3",
+  "version": "1.2.4",
+  "want": "^1.2.4"
+ },
+ {
+  "req": "^0.2.3",
+  "version": "1.3.0",
+  "want": "^1.3.0"
+ },
+ {
+  "req": "^0.2.3",
+  "version": "2.0.0",
+  "want": "^2.0.0"
+ },
+ {
+  "req": "^0.2.3",
+  "version": "2.1.0",
+  "want": "^2.1.0"
+ },
+ {
+  "req": "^0.2.3",
+  "version": "2.0.1",
+  "want": "^2.0.1"
+ },
+ {
+  "req": "^0.2.3",
+  "version": "1.3.0-beta.0",
+  "want": "^1.3.0-beta.0"
+ },
+ {
+  "req": ">=1.0.0 <2.0.0",
+  "version": "1.2.4",
+  "want": ">=1.2.4 <2.0.0"
+ },
+ {
+  "req": ">=1.0.0 <2.0.0",
+  "version": "1.3.0",
+  "want": ">=1.3.0 <2.0.0"
+ },
+ {
+  "req": ">=1.0.0 <2.0.0",
+  "version": "2.0.0",
+  "want": ">=2.0.0 <3.0.0"
+ },
+ {
+  "req": ">=1.0.0 <2.0.0",
+  "version": "2.1.0",
+  "want": ">=2.1.0 <2.2.0"
+ },
+ {
+  "req": ">=1.0.0 <2.0.0",
+  "version": "2.0.1",
+  "want": ">=2.0.1 <2.0.2"
+ },
+ {
+  "req": ">=1.0.0 <2.0.0",
+  "version": "1.3.0-beta.0",
+  "want": ">=1.3.0-beta.0 <1.3.0"
+ },
+ {
+  "req": "<2.0.0 >=1.0.0",
+  "version": "1.2.4",
+  "want": "<2.0.0 >=1.2.4"
+ },
+ {
+  "req": "<2.0.0 >=1.0.0",
+  "version": "1.3.0",
+  "want": "<2.0.0 >=1.3.0"
+ },
+ {
+  "req": "<2.0.0 >=1.0.0",
+  "version": "2.0.0",
+  "want": "<3.0.0 >=2.0.0"
+ },
+ {
+  "req": "<2.0.0 >=1.0.0",
+  "version": "2.1.0",
+  "want": "<2.2.0 >=2.1.0"
+ },
+ {
+  "req": "<2.0.0 >=1.0.0",
+  "version": "2.0.1",
+  "want": "<2.0.2 >=2.0.1"
+ },
+ {
+  "req": "<2.0.0 >=1.0.0",
+  "version": "1.3.0-beta.0",
+  "want": "<1.3.0 >=1.3.0-beta.0"
+ },
+ {
+  "req": ">=1.0.0 <1.3.0",
+  "version": "1.2.4",
+  "want": ">=1.2.4 <1.3.0"
+ },
+ {
+  "req": ">=1.0.0 <1.3.0",
+  "version": "1.3.0",
+  "want": ">=1.3.0 <1.4.0"
+ },
+ {
+  "req": ">=1.0.0 <1.3.0",
+  "version": "2.0.0",
+  "want": ">=2.0.0 <3.0.0"
+ },
+ {
+  "req": ">=1.0.0 <1.3.0",
+  "version": "2.1.0",
+  "want": ">=2.1.0 <2.2.0"
+ },
+ {
+  "req": ">=1.0.0 <1.3.0",
+  "version": "2.0.1",
+  "want": ">=2.0.1 <2.0.2"
+ },
+ {
+  "req": ">=1.0.0 <1.3.0",
+  "version": "1.3.0-beta.0",
+  "want": ">=1.3.0-beta.0 <1.3.0"
+ },
+ {
+  "req": "1.0.0 >=0.0.0 <2",
+  "version": "1.2.4",
+  "want": "1.2.4"
+ },
+ {
+  "req": "1.0.0 >=0.0.0 <2",
+  "version": "1.3.0",
+  "want": "1.3.0"
+ },
+ {
+  "req": "1.0.0 >=0.0.0 <2",
+  "version": "2.0.0",
+  "want": "2.0.0"
+ },
+ {
+  "req": "1.0.0 >=0.0.0 <2",
+  "version": "2.1.0",
+  "want": "2.1.0"
+ },
+ {
+  "req": "1.0.0 >=0.0.0 <2",
+  "version": "2.0.1",
+  "want": "2.0.1"
+ },
+ {
+  "req": "1.0.0 >=0.0.0 <2",
+  "version": "1.3.0-beta.0",
+  "want": "1.3.0-beta.0"
+ },
+ {
+  "req": "^1.0.0 || ^2.0.0",
+  "version": "1.2.4",
+  "want": "^1.2.4"
+ },
+ {
+  "req": "^1.0.0 || ^2.0.0",
+  "version": "1.3.0",
+  "want": "^1.3.0"
+ },
+ {
+  "req": "^1.0.0 || ^2.0.0",
+  "version": "2.0.0",
+  "want": "^2.0.0"
+ },
+ {
+  "req": "^1.0.0 || ^2.0.0",
+  "version": "2.1.0",
+  "want": "^2.1.0"
+ },
+ {
+  "req": "^1.0.0 || ^2.0.0",
+  "version": "2.0.1",
+  "want": "^2.0.1"
+ },
+ {
+  "req": "^1.0.0 || ^2.0.0",
+  "version": "1.3.0-beta.0",
+  "want": "^1.3.0-beta.0"
+ },
+ {
+  "req": "*",
+  "version": "1.2.4",
+  "want": null
+ },
+ {
+  "req": "*",
+  "version": "1.3.0",
+  "want": null
+ },
+ {
+  "req": "*",
+  "version": "2.0.0",
+  "want": null
+ },
+ {
+  "req": "*",
+  "version": "2.1.0",
+  "want": null
+ },
+ {
+  "req": "*",
+  "version": "2.0.1",
+  "want": null
+ },
+ {
+  "req": "*",
+  "version": "1.3.0-beta.0",
+  "want": "1.3.0-beta.0"
+ },
+ {
+  "req": "x",
+  "version": "1.2.4",
+  "want": null
+ },
+ {
+  "req": "x",
+  "version": "1.3.0",
+  "want": null
+ },
+ {
+  "req": "x",
+  "version": "2.0.0",
+  "want": null
+ },
+ {
+  "req": "x",
+  "version": "2.1.0",
+  "want": null
+ },
+ {
+  "req": "x",
+  "version": "2.0.1",
+  "want": null
+ },
+ {
+  "req": "x",
+  "version": "1.3.0-beta.0",
+  "want": "1.3.0-beta.0"
+ },
+ {
+  "req": "",
+  "version": "1.2.4",
+  "want": null
+ },
+ {
+  "req": "",
+  "version": "1.3.0",
+  "want": null
+ },
+ {
+  "req": "",
+  "version": "2.0.0",
+  "want": null
+ },
+ {
+  "req": "",
+  "version": "2.1.0",
+  "want": null
+ },
+ {
+  "req": "",
+  "version": "2.0.1",
+  "want": null
+ },
+ {
+  "req": "",
+  "version": "1.3.0-beta.0",
+  "want": "1.3.0-beta.0"
+ },
+ {
+  "req": "1.x",
+  "version": "1.2.4",
+  "want": "1.2.4"
+ },
+ {
+  "req": "1.x",
+  "version": "1.3.0",
+  "want": "1.3.0"
+ },
+ {
+  "req": "1.x",
+  "version": "2.0.0",
+  "want": "2.0.0"
+ },
+ {
+  "req": "1.x",
+  "version": "2.1.0",
+  "want": "2.1.0"
+ },
+ {
+  "req": "1.x",
+  "version": "2.0.1",
+  "want": "2.0.1"
+ },
+ {
+  "req": "1.x",
+  "version": "1.3.0-beta.0",
+  "want": "1.3.0-beta.0"
+ },
+ {
+  "req": "workspace:^1.2.3",
+  "version": "1.2.4",
+  "want": "workspace:^1.2.4"
+ },
+ {
+  "req": "workspace:^1.2.3",
+  "version": "1.3.0",
+  "want": "workspace:^1.3.0"
+ },
+ {
+  "req": "workspace:^1.2.3",
+  "version": "2.0.0",
+  "want": "workspace:^2.0.0"
+ },
+ {
+  "req": "workspace:^1.2.3",
+  "version": "2.1.0",
+  "want": "workspace:^2.1.0"
+ },
+ {
+  "req": "workspace:^1.2.3",
+  "version": "2.0.1",
+  "want": "workspace:^2.0.1"
+ },
+ {
+  "req": "workspace:^1.2.3",
+  "version": "1.3.0-beta.0",
+  "want": "workspace:^1.3.0-beta.0"
+ },
+ {
+  "req": "workspace:~1.2.3",
+  "version": "1.2.4",
+  "want": "workspace:~1.2.4"
+ },
+ {
+  "req": "workspace:~1.2.3",
+  "version": "1.3.0",
+  "want": "workspace:~1.3.0"
+ },
+ {
+  "req": "workspace:~1.2.3",
+  "version": "2.0.0",
+  "want": "workspace:~2.0.0"
+ },
+ {
+  "req": "workspace:~1.2.3",
+  "version": "2.1.0",
+  "want": "workspace:~2.1.0"
+ },
+ {
+  "req": "workspace:~1.2.3",
+  "version": "2.0.1",
+  "want": "workspace:~2.0.1"
+ },
+ {
+  "req": "workspace:~1.2.3",
+  "version": "1.3.0-beta.0",
+  "want": "workspace:~1.3.0-beta.0"
+ },
+ {
+  "req": "workspace:1.2.3",
+  "version": "1.2.4",
+  "want": "workspace:1.2.4"
+ },
+ {
+  "req": "workspace:1.2.3",
+  "version": "1.3.0",
+  "want": "workspace:1.3.0"
+ },
+ {
+  "req": "workspace:1.2.3",
+  "version": "2.0.0",
+  "want": "workspace:2.0.0"
+ },
+ {
+  "req": "workspace:1.2.3",
+  "version": "2.1.0",
+  "want": "workspace:2.1.0"
+ },
+ {
+  "req": "workspace:1.2.3",
+  "version": "2.0.1",
+  "want": "workspace:2.0.1"
+ },
+ {
+  "req": "workspace:1.2.3",
+  "version": "1.3.0-beta.0",
+  "want": "workspace:1.3.0-beta.0"
+ },
+ {
+  "req": "workspace:>=1.0.0 <2.0.0",
+  "version": "1.2.4",
+  "want": "workspace:>=1.2.4 <2.0.0"
+ },
+ {
+  "req": "workspace:>=1.0.0 <2.0.0",
+  "version": "1.3.0",
+  "want": "workspace:>=1.3.0 <2.0.0"
+ },
+ {
+  "req": "workspace:>=1.0.0 <2.0.0",
+  "version": "2.0.0",
+  "want": "workspace:>=2.0.0 <3.0.0"
+ },
+ {
+  "req": "workspace:>=1.0.0 <2.0.0",
+  "version": "2.1.0",
+  "want": "workspace:>=2.1.0 <2.2.0"
+ },
+ {
+  "req": "workspace:>=1.0.0 <2.0.0",
+  "version": "2.0.1",
+  "want": "workspace:>=2.0.1 <2.0.2"
+ },
+ {
+  "req": "workspace:>=1.0.0 <2.0.0",
+  "version": "1.3.0-beta.0",
+  "want": "workspace:>=1.3.0-beta.0 <1.3.0"
+ },
+ {
+  "req": "workspace:*",
+  "version": "1.2.4",
+  "want": null
+ },
+ {
+  "req": "workspace:*",
+  "version": "1.3.0",
+  "want": null
+ },
+ {
+  "req": "workspace:*",
+  "version": "2.0.0",
+  "want": null
+ },
+ {
+  "req": "workspace:*",
+  "version": "2.1.0",
+  "want": null
+ },
+ {
+  "req": "workspace:*",
+  "version": "2.0.1",
+  "want": null
+ },
+ {
+  "req": "workspace:*",
+  "version": "1.3.0-beta.0",
+  "want": null
+ },
+ {
+  "req": "workspace:^",
+  "version": "1.2.4",
+  "want": null
+ },
+ {
+  "req": "workspace:^",
+  "version": "1.3.0",
+  "want": null
+ },
+ {
+  "req": "workspace:^",
+  "version": "2.0.0",
+  "want": null
+ },
+ {
+  "req": "workspace:^",
+  "version": "2.1.0",
+  "want": null
+ },
+ {
+  "req": "workspace:^",
+  "version": "2.0.1",
+  "want": null
+ },
+ {
+  "req": "workspace:^",
+  "version": "1.3.0-beta.0",
+  "want": null
+ },
+ {
+  "req": "workspace:~",
+  "version": "1.2.4",
+  "want": null
+ },
+ {
+  "req": "workspace:~",
+  "version": "1.3.0",
+  "want": null
+ },
+ {
+  "req": "workspace:~",
+  "version": "2.0.0",
+  "want": null
+ },
+ {
+  "req": "workspace:~",
+  "version": "2.1.0",
+  "want": null
+ },
+ {
+  "req": "workspace:~",
+  "version": "2.0.1",
+  "want": null
+ },
+ {
+  "req": "workspace:~",
+  "version": "1.3.0-beta.0",
+  "want": null
+ },
+ {
+  "req": "workspace:../a",
+  "version": "1.2.4",
+  "want": null
+ },
+ {
+  "req": "workspace:../a",
+  "version": "1.3.0",
+  "want": null
+ },
+ {
+  "req": "workspace:../a",
+  "version": "2.0.0",
+  "want": null
+ },
+ {
+  "req": "workspace:../a",
+  "version": "2.1.0",
+  "want": null
+ },
+ {
+  "req": "workspace:../a",
+  "version": "2.0.1",
+  "want": null
+ },
+ {
+  "req": "workspace:../a",
+  "version": "1.3.0-beta.0",
+  "want": null
+ },
+ {
+  "req": "file:../a",
+  "version": "1.2.4",
+  "want": null
+ },
+ {
+  "req": "file:../a",
+  "version": "1.3.0",
+  "want": null
+ },
+ {
+  "req": "file:../a",
+  "version": "2.0.0",
+  "want": null
+ },
+ {
+  "req": "file:../a",
+  "version": "2.1.0",
+  "want": null
+ },
+ {
+  "req": "file:../a",
+  "version": "2.0.1",
+  "want": null
+ },
+ {
+  "req": "file:../a",
+  "version": "1.3.0-beta.0",
+  "want": null
+ },
+ {
+  "req": "link:../a",
+  "version": "1.2.4",
+  "want": null
+ },
+ {
+  "req": "link:../a",
+  "version": "1.3.0",
+  "want": null
+ },
+ {
+  "req": "link:../a",
+  "version": "2.0.0",
+  "want": null
+ },
+ {
+  "req": "link:../a",
+  "version": "2.1.0",
+  "want": null
+ },
+ {
+  "req": "link:../a",
+  "version": "2.0.1",
+  "want": null
+ },
+ {
+  "req": "link:../a",
+  "version": "1.3.0-beta.0",
+  "want": null
+ },
+ {
+  "req": "latest",
+  "version": "1.2.4",
+  "want": null
+ },
+ {
+  "req": "latest",
+  "version": "1.3.0",
+  "want": null
+ },
+ {
+  "req": "latest",
+  "version": "2.0.0",
+  "want": null
+ },
+ {
+  "req": "latest",
+  "version": "2.1.0",
+  "want": null
+ },
+ {
+  "req": "latest",
+  "version": "2.0.1",
+  "want": null
+ },
+ {
+  "req": "latest",
+  "version": "1.3.0-beta.0",
+  "want": null
+ },
+ {
+  "req": "npm:other@^1.0.0",
+  "version": "1.2.4",
+  "want": null
+ },
+ {
+  "req": "npm:other@^1.0.0",
+  "version": "1.3.0",
+  "want": null
+ },
+ {
+  "req": "npm:other@^1.0.0",
+  "version": "2.0.0",
+  "want": null
+ },
+ {
+  "req": "npm:other@^1.0.0",
+  "version": "2.1.0",
+  "want": null
+ },
+ {
+  "req": "npm:other@^1.0.0",
+  "version": "2.0.1",
+  "want": null
+ },
+ {
+  "req": "npm:other@^1.0.0",
+  "version": "1.3.0-beta.0",
+  "want": null
+ }
+]
