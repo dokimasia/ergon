@@ -15,6 +15,17 @@ import (
 // ErrInvalidJob is the error for a job, or the setup of a job, that a workflow cannot contain.
 var ErrInvalidJob = errors.New("workflow: invalid job")
 
+// The token of the GitHub App of a job with [Job.App].
+const (
+	// AppStep is the id of the step that creates the token of the GitHub App.
+	AppStep = "app"
+
+	// AppToken is the expression of GitHub Actions for the token of a job with [Job.App]. A step
+	// passes it to a program in a variable such as GITHUB_TOKEN. Its value is the token of the
+	// GitHub App. A repository without the App gets the token of the job.
+	AppToken = "${{ steps." + AppStep + ".outputs.token || github.token }}"
+)
+
 // The rules of the names of a job.
 var (
 	// runner matches the label of a runner image, such as ubuntu-26.04.
@@ -107,11 +118,12 @@ func (s *Setup) Validate() error {
 	return nil
 }
 
-// Job is a job of ci.yml. The producer of the GitHub files renders every job from one skeleton:
-// the checkout, then the installation of GNU make for a job with a setup, the setup steps, the
-// installation of ergon for a job that runs it, the cache of the tools of ergon for a job with
-// Tools, the steps of the job, and for a job with Tools the step that removes the tools that no
-// option names before the cache saves them.
+// Job is a job of ci.yml or of nightly.yml. The producer of the GitHub files renders every job from
+// one skeleton: the checkout, then the installation of GNU make for a job with a setup, the step
+// that creates the token of the GitHub App for a job with App, the setup steps, the installation of
+// ergon for a job that runs it, the cache of the tools of ergon for a job with Tools, the steps of
+// the job, and for a job with Tools the step that removes the tools that the options do not name
+// before the cache saves them.
 //
 // A job runs in one of three ways:
 //
@@ -163,6 +175,13 @@ type Job struct {
 	// of ergon, such as a Go module or a release binary. The job keeps that directory in the cache
 	// of GitHub Actions between its runs. A job with Tools runs ergon, through its setup or Ergon.
 	Tools bool
+
+	// App reports that the job creates the token of the GitHub App in the step [AppStep]. The step
+	// runs when the repository has the variable ERGON_APP_CLIENT_ID. It reads the private key of the
+	// App from the secret ERGON_APP_PRIVATE_KEY. The token has write access to the contents and the
+	// pull requests of the repository. A step reads it through [AppToken]. Only a job of nightly.yml
+	// has App.
+	App bool
 }
 
 // Validate returns an error that wraps [ErrInvalidJob] for the first value of j that a workflow

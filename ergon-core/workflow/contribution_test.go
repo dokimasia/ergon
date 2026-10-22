@@ -37,6 +37,13 @@ func TestContribution(t *testing.T) {
 			assert.NoError(t, c.Validate(), "Validate")
 		})
 
+		t.Run("returns nil for a nightly job with the token of the App", func(t *testing.T) {
+			t.Parallel()
+			c := goContribution()
+			c.Nightly[0].App = true
+			assert.NoError(t, c.Validate(), "Validate")
+		})
+
 		invalid := []struct {
 			name string
 			give func(*workflow.Contribution)
@@ -55,6 +62,11 @@ func TestContribution(t *testing.T) {
 			{
 				name: "returns ErrInvalidJob for a nightly job that is not valid",
 				give: func(c *workflow.Contribution) { c.Nightly[0].Steps = nil },
+				want: workflow.ErrInvalidJob,
+			},
+			{
+				name: "returns ErrInvalidJob for a job of ci.yml with the token of the App",
+				give: func(c *workflow.Contribution) { c.Jobs[0].App = true },
 				want: workflow.ErrInvalidJob,
 			},
 			{

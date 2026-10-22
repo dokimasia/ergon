@@ -54,10 +54,11 @@ type Contribution struct {
 }
 
 // Validate returns the first error of the parts of c, in the order of its fields: the error of
-// [Setup.Validate], [Job.Validate] of a job of ci.yml or of nightly.yml, [Step.Validate] with the
-// position of the release step, [Assets.Validate], [CodeQL.Validate], [Step.Validate] with the
-// position of the review step, or [Update.Validate], which wraps the sentinel of the part. It
-// returns nil for a contribution whose every part is valid, and for the zero value.
+// [Setup.Validate], [Job.Validate] of a job of ci.yml or of nightly.yml, an error that wraps
+// [ErrInvalidJob] for a job of ci.yml with App, [Step.Validate] with the position of the release
+// step, [Assets.Validate], [CodeQL.Validate], [Step.Validate] with the position of the review step,
+// or [Update.Validate], which wraps the sentinel of the part. It returns nil for a contribution
+// whose every part is valid, and for the zero value.
 func (c *Contribution) Validate() error {
 	if c.Setup != nil {
 		if err := c.Setup.Validate(); err != nil {
@@ -69,6 +70,12 @@ func (c *Contribution) Validate() error {
 			if err := jobs[i].Validate(); err != nil {
 				return err
 			}
+		}
+	}
+	for i := range c.Jobs {
+		if c.Jobs[i].App {
+			return fmt.Errorf("%w: %s of ci.yml creates the token of the GitHub App, which only a job of "+
+				"nightly.yml does", ErrInvalidJob, c.Jobs[i].ID)
 		}
 	}
 	for i := range c.Release {

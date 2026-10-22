@@ -20,6 +20,24 @@ var setupGo = workflow.Action{
 func TestJob(t *testing.T) {
 	t.Parallel()
 
+	t.Run("AppStep", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("is app", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, workflow.AppStep, "app", "AppStep")
+		})
+	})
+
+	t.Run("AppToken", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("is the token of the step app or the token of the job", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, workflow.AppToken, "${{ steps.app.outputs.token || github.token }}", "AppToken")
+		})
+	})
+
 	t.Run("Setup", func(t *testing.T) {
 		t.Parallel()
 

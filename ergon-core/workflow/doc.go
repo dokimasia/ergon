@@ -26,6 +26,10 @@
 // appends the package URLs of the repository's own packages to the environment variable
 // [OwnPackages]. The review leaves those packages out of its license check.
 //
+// A job of nightly.yml with [Job.App] creates the token of the GitHub App of the repository. Its
+// steps read that token through [AppToken]. [AppToken] is the token of the job in a repository
+// without the App.
+//
 // # Expressions
 //
 // A condition, such as [Job.If] or [Step.If], is an expression of GitHub Actions without the
