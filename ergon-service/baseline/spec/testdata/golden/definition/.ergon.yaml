@@ -1,0 +1,29 @@
+spec:
+  # What the repository is to spec: definition for the repository of a conformance definition, and
+  # implementation for a repository with copies of definitions. Each role needs its section of
+  # .spec.yaml, definition or implements. A repository without a role gets no target, job or
+  # workflow of spec.
+  roles: [definition]
+  # The tools of spec.
+  tools:
+    # The release of spec, which checks the copies of the definitions and the manifest of a
+    # definition.
+    spec:
+      sha256:
+        darwin/amd64: 15732d32ba1be34c1ed54160528b07ffb07f20edcc1f021cb8eb6f6a8cc56059
+        darwin/arm64: 47b21e000521e59b53d339960aff3acb3b37df3cd8245a4a0de66a682f07b8b6
+        linux/amd64: 256471ec74a0c622959072ca63f8ed4c663ff8a2182b4f367e8c344df2b54b1c
+        linux/arm64: ea90695c408e9766fdc9efd83cd7902279289fa055f37d30b1b5ee39244bd9ce
+        windows/amd64: 17037298e47775de63981b393c5c52f09f091aed7be560ceb0877b827745afc0
+        windows/arm64: d62da3e454ae9ebb928bc3c7860a6035af9a00569ea7b4a42106cee133145452
+      version: 0.2.0
+  # The pin of the reusable workflow propose.yml of spec, which spec.yml calls, and the limit in
+  # minutes of the job spec of ci.yml.
+  ci:
+    actions:
+      # The reusable workflow propose.yml of spec, which spec.yml calls on each weekday.
+      propose:
+        uses: stealth-scale/spec/.github/workflows/propose.yml
+        commit: 78d70fd5be63102e43f8dd9628d4594914bb390e
+        release: v0.2.0
+    timeout: 10

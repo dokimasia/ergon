@@ -1,0 +1,31 @@
+# Managed by ergon init. Add repository settings to .ergon/local/.github/workflows/spec.yml and run ergon init sync.
+#
+# The proposals of the copies of the definitions that .spec.yaml vendors. On each weekday the
+# reusable workflow propose.yml of spec compares each copy with the head of the track of its entry.
+# It opens or updates a pull request for a copy that differs, and closes the pull request of a copy
+# that matches. It writes the pull requests with the token of the GitHub App of the variable
+# ERGON_APP_CLIENT_ID and the secret ERGON_APP_PRIVATE_KEY, so their checks start without an
+# approval. The workflow passes the secret by name, because GitHub passes secrets through inherit
+# only to a workflow of the same organization or enterprise.
+
+name: Spec
+
+on:
+  schedule:
+    - cron: "41 6 * * 1-5"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  propose:
+    name: Propose
+    uses: stealth-scale/spec/.github/workflows/propose.yml@78d70fd5be63102e43f8dd9628d4594914bb390e # v0.2.0
+    with:
+      version: v0.2.0
+    secrets:
+      ERGON_APP_PRIVATE_KEY: ${{ secrets.ERGON_APP_PRIVATE_KEY }}
