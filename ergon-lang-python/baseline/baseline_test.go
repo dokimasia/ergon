@@ -5,6 +5,7 @@ package baseline_test
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"path"
 	"slices"
@@ -163,7 +164,7 @@ func catalog(t *testing.T) *language.Catalog {
 	t.Helper()
 	c := new(language.Catalog)
 	none := func(context.Context, string, string, []string, []string) error { return nil }
-	assert.NoError(t, python.Register(c, none), "Register of Python")
+	assert.NoError(t, python.Register(c, none, &http.Client{}), "Register of Python")
 	return c
 }
 

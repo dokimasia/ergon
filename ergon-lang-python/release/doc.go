@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 // Package release releases the projects of a uv workspace, which
-// [go.dokimi.dev/ergon/lang/python/workspace] discovers.
+// [go.dokimi.dev/ergon/lang/python/workspace] discovers, to PyPI.
 //
 // [Versioner] is the release role of the toolchain python. A requirement of a project on another
 // project is a version specifier of PEP 440, such as >=1.2.0, and pip and uv select the newest
@@ -19,10 +19,19 @@
 // runs uv lock through ergon tool run, which records the new versions in uv.lock. A repository
 // without uv.lock gets none.
 //
+// # Pack and publish
+//
+// [Packer] builds the sdist and the wheel of each project of a release with uv build into
+// python/<name>/ of the pack directory, and checks that each one is a distribution of the project at
+// the version of the release. [Publisher] reads the JSON API of PyPI for a release, and uploads the
+// distributions of a project with uv publish. In a job of GitHub Actions with the permission
+// id-token, uv publish exchanges the OIDC token of the job through the trusted publishing of PyPI.
+//
 // # Errors
 //
-// The errors wrap [ErrSpecifier] for a version specifier, and [ErrEdit] for an edit of a manifest
-// that changed since its discovery.
+// The errors wrap [ErrSpecifier] for a version specifier, [ErrEdit] for an edit of a manifest that
+// changed since its discovery, [ErrDistribution] for a build or a pack directory without the
+// distributions of a release, and [ErrIndex] for an unexpected status of PyPI.
 //
 // # Dependency position
 //

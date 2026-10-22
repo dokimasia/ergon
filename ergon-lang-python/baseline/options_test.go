@@ -90,7 +90,7 @@ func TestOptions(t *testing.T) {
 	t.Run("Contribution", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("returns the job, the analysis and the updates of Python at the baseline", func(t *testing.T) {
+		t.Run("returns the part of Python at the baseline", func(t *testing.T) {
 			t.Parallel()
 			assert.Equal(t, pythonOptions().Contribution(), workflow.Contribution{
 				Jobs: []workflow.Job{{
@@ -110,7 +110,8 @@ func TestOptions(t *testing.T) {
 				CodeQL: []workflow.CodeQL{
 					{Language: "python", Name: "Python", BuildMode: "none", Files: "pyproject.toml", Timeout: 30},
 				},
-				Updates: []workflow.Update{{Ecosystem: "uv", Directories: []string{"/"}}},
+				Updates:  []workflow.Update{{Ecosystem: "uv", Directories: []string{"/"}}},
+				Registry: true,
 			}, "the contribution")
 		})
 

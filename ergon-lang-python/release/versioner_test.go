@@ -4,9 +4,6 @@
 package release_test
 
 import (
-	"context"
-	"errors"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -39,39 +36,6 @@ optional-dependencies = { cli = ['probe-a'] }
 [dependency-groups]
 dev = ["probe-a"]
 `
-
-// errUV is the error of a run of uv that fails.
-var errUV = errors.New("uv: lock failed")
-
-// call is a run of a tool that a fake records.
-type call struct {
-	dir  string
-	tool string
-	args []string
-}
-
-// tools is a fake of ergon tool run: it records each call, writes lock into uv.lock of dir when
-// lock is not empty, removes uv.lock when remove is set, and returns err.
-type tools struct {
-	err    error
-	lock   string
-	calls  []call
-	remove bool
-}
-
-// run records the call and acts as tools states.
-func (f *tools) run(_ context.Context, dir, tool string, args, _ []string) error {
-	f.calls = append(f.calls, call{dir: dir, tool: tool, args: args})
-	if f.remove {
-		return os.Remove(filepath.Join(dir, lockFile))
-	}
-	if f.lock != "" {
-		if err := os.WriteFile(filepath.Join(dir, lockFile), []byte(f.lock), 0o644); err != nil {
-			return err
-		}
-	}
-	return f.err
-}
 
 // packageB is the package of probe-b as its discovery finds it in projectB.
 var packageB = workspace.Package{

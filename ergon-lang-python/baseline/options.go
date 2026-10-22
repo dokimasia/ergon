@@ -109,6 +109,8 @@ func (o *Options) Validate() error {
 //     ergon. The job keeps uv, which ergon tool run installs, in the cache of GitHub Actions.
 //   - The CodeQL analysis of python reads the sources without a build.
 //   - Dependabot updates uv.lock.
+//   - The job publish of release.yml uploads the distributions to PyPI, whose trusted publishing
+//     exchanges the OIDC token of the job.
 func (o *Options) Contribution() workflow.Contribution {
 	var env map[string]string
 	if len(o.CI.Versions) > 0 {
@@ -133,6 +135,7 @@ func (o *Options) Contribution() workflow.Contribution {
 		CodeQL: []workflow.CodeQL{
 			{Language: "python", Name: "Python", BuildMode: "none", Files: project, Timeout: o.CI.Timeout},
 		},
-		Updates: []workflow.Update{{Ecosystem: "uv", Directories: []string{"/"}}},
+		Updates:  []workflow.Update{{Ecosystem: "uv", Directories: []string{"/"}}},
+		Registry: true,
 	}
 }
