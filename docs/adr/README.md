@@ -66,3 +66,4 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 | [0055](0055-proposals-on-a-staging-branch.md) | A proposal is committed on a staging branch, and its branch moves once | Accepted |
 | [0056](0056-cgo-binaries-on-linux-with-zig.md) | Commands with cgo build every platform on Linux with zig | Accepted |
 | [0057](0057-own-go-modules-out-of-the-license-check.md) | The dependency review leaves the repository's own Go modules out of its license check | Accepted |
+| [0058](0058-spec-roles-in-ergon-yaml.md) | The key spec.roles runs spec in the gate and the proposals of a repository | Accepted |
