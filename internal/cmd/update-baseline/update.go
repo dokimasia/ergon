@@ -174,7 +174,7 @@ func update(ctx context.Context, p *process, o *options) error {
 	if len(changed) > 0 {
 		return fmt.Errorf("the working tree has changes, so commit them first: %s", strings.Join(changed, ", "))
 	}
-	err = p.register(u.catalog)
+	err = p.register(u.catalog, p.transport)
 	if err != nil {
 		return err
 	}

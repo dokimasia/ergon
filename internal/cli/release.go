@@ -434,7 +434,7 @@ func (s *session) releasePack(ctx context.Context, run *gocli.Run[noOptions, pac
 	if err != nil {
 		return err
 	}
-	return release.Pack(ctx, r.root, r.graph, &plan, o.OutDir)
+	return release.Pack(ctx, r.root, r.graph, &plan, s.path(o.OutDir))
 }
 
 // releasePublish publishes the publish plan of --from-publish-plan, or of the repository, with
@@ -449,7 +449,7 @@ func (s *session) releasePublish(ctx context.Context, run *gocli.Run[noOptions, 
 	if err != nil {
 		return err
 	}
-	return s.publish(ctx, r, &plan, o.FromPackDir, o.Output, releaser)
+	return s.publish(ctx, r, &plan, s.path(o.FromPackDir), o.Output, releaser)
 }
 
 // releaseGitTag tags each package of the publish plan of the repository with the git of the
@@ -613,7 +613,7 @@ func (s *session) releaseCIHomebrew(ctx context.Context, run *gocli.Run[noOption
 	if err != nil {
 		return err
 	}
-	casks, err := release.Homebrew(ctx, client, o.Tap, &plan, o.FromPackDir)
+	casks, err := release.Homebrew(ctx, client, o.Tap, &plan, s.path(o.FromPackDir))
 	for _, c := range casks {
 		fmt.Fprintf(s.stdout, "committed %s to %s\n", c, o.Tap)
 	}

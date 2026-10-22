@@ -898,6 +898,21 @@ func TestRelease(t *testing.T) {
 			assert.Contains(t, h.commits()[0], `"headline":"demo 1.0.0"`, "the message of the commit")
 		})
 
+		t.Run("ci homebrew reads a relative --from-pack-dir in the working directory", func(t *testing.T) {
+			t.Parallel()
+			h := &hub{head: laterCommit}
+			env := h.start(t)
+			dir := goModule(t, gitConfig, nil)
+			files.Write(t, dir, files.Tree{
+				"plan.json":                 files.Text(publishPlan),
+				"dist/casks/v1.0.0/demo.rb": files.Text("cask \"demo\" do\nend\n"),
+			})
+			status, stdout, stderr := runRelease(t, dir, env, "release", "ci", "homebrew", "--tap", tapRepo,
+				"--from-publish-plan", filepath.Join(dir, "plan.json"), "--from-pack-dir", "dist")
+			assert.Equal(t, status, statusOK, "the exit status: "+stderr)
+			assert.Equal(t, stdout, "committed Casks/demo.rb to "+tapRepo+"\n", "the standard output")
+		})
+
 		t.Run("ci homebrew returns 1 for a plan file that does not exist", func(t *testing.T) {
 			t.Parallel()
 			plan := filepath.Join(t.TempDir(), "absent.json")

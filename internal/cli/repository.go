@@ -56,3 +56,13 @@ func (s *session) root() string {
 		}
 	}
 }
+
+// path returns the path name of the command line as an absolute path: name when it is absolute,
+// and name in the working directory of s otherwise. A packer and a publisher pass the paths of the
+// pack directory to tools that run in another directory.
+func (s *session) path(name string) string {
+	if filepath.IsAbs(name) {
+		return name
+	}
+	return filepath.Join(s.dir, name)
+}

@@ -55,8 +55,9 @@ type process struct {
 	// execute runs a program, as [execute] states.
 	execute func(ctx context.Context, dir string, stdout, stderr io.Writer, program string, args ...string) error
 
-	// register fills the catalog of the languages whose producers the command updates.
-	register func(*language.Catalog) error
+	// register fills the catalog of the languages whose producers the command updates. Their
+	// toolchains send their requests to a registry through the transport.
+	register func(*language.Catalog, http.RoundTripper) error
 
 	// random is the source of the random digits of the name of the changeset.
 	random io.Reader

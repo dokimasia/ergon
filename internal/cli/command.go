@@ -57,8 +57,9 @@ type Program struct {
 	// release binaries ergon tool run and ergon init upgrade install.
 	Platform option.Platform
 
-	// Register fills the catalog of the languages.
-	Register func(*language.Catalog) error
+	// Register fills the catalog of the languages. Their toolchains send their requests to a
+	// registry through the transport, such as the check of PyPI for a release.
+	Register func(*language.Catalog, http.RoundTripper) error
 
 	// Version is the version of the running ergon.
 	Version Version
@@ -186,7 +187,7 @@ func (p *Program) Main(ctx context.Context, env *gocli.Env) int {
 		args:      env.Args,
 		env:       env.Environ(),
 	}
-	if err := p.Register(s.catalog); err != nil {
+	if err := p.Register(s.catalog, p.Transport); err != nil {
 		fmt.Fprintf(env.Stderr, "%s: %v\n", program, err)
 		return gocli.ExitFailure
 	}

@@ -91,7 +91,14 @@ ergon release follows the workflow of changesets:
 
 `ergon release status` reports each package that a branch changed without a changeset. A run of `ci.yml` skips its jobs when a passed run already covers its content, such as the run of a version pull request whose parent passed. A repository can set the variable `ERGON_APP_CLIENT_ID` and the secret `ERGON_APP_PRIVATE_KEY` of a GitHub App, so that the checks of the version pull request start without an approval.
 
-ergon release publishes Go modules. It also writes the versions of the projects of a uv workspace, which it does not upload to PyPI. [The roadmap](docs/roadmap/README.md) lists the releases of the other toolchains.
+ergon release publishes these packages:
+
+- Go modules, through their tags
+- the projects of a uv workspace, to PyPI
+- the packages of an npm or a pnpm workspace, to the npm registry
+- the crates of a Cargo workspace, to crates.io
+
+The job publish of `release.yml` uploads through trusted publishing. Each project on pypi.org, each package on npmjs.com and each crate on crates.io needs a trusted publisher for the repository, the workflow `release.yml` and the environment `release`. npm and crates.io configure a trusted publisher only for a package that they already have, so publish the first version of a package by hand. A trusted publisher of npm also has to allow `npm publish`. Cargo packages and publishes crates that require each other in one run from version 1.90, so such a workspace pins Cargo 1.90 or later in `rust-toolchain.toml`. [The roadmap](docs/roadmap/README.md) lists the releases of the other toolchains.
 
 ## Documentation
 

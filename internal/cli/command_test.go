@@ -151,7 +151,7 @@ func TestCommand(t *testing.T) {
 
 		t.Run("returns 1 when the registration fails", func(t *testing.T) {
 			t.Parallel()
-			p := program(t.TempDir(), func(*language.Catalog) error { return errRegister })
+			p := program(t.TempDir(), func(*language.Catalog, http.RoundTripper) error { return errRegister })
 			res := clitest.Main(t.Context(), p.Main, &clitest.Input{Args: []string{"--help"}})
 			assert.Equal(t, res.Status, statusFailure, "the exit status")
 			assert.Empty(t, res.Stdout, "the standard output")
@@ -179,7 +179,7 @@ func TestCommand(t *testing.T) {
 
 		t.Run("writes the languages of the help in lines of at most 80 columns", func(t *testing.T) {
 			t.Parallel()
-			ten := func(c *language.Catalog) error {
+			ten := func(c *language.Catalog, _ http.RoundTripper) error {
 				if err := language.RegisterToolchain(c, language.Toolchain{Name: tool}); err != nil {
 					return err
 				}
@@ -203,7 +203,7 @@ func TestCommand(t *testing.T) {
 // program returns the program of a case: the working directory dir, the time now, the temporary
 // directory of the system as the cache directory, the random digits ab and cd, the transport of
 // net/http, the platform of the test, the registration register and the version of the cases.
-func program(dir string, register func(*language.Catalog) error) *cli.Program {
+func program(dir string, register func(*language.Catalog, http.RoundTripper) error) *cli.Program {
 	return &cli.Program{
 		Getwd:     func() (string, error) { return dir, nil },
 		Now:       func() time.Time { return now },
@@ -239,7 +239,7 @@ func run(t *testing.T, dir string, args ...string) (status int, stdout, stderr s
 // register and the environment of environ, and returns the exit status, the standard output and
 // the standard error.
 func runWith(
-	t *testing.T, register func(*language.Catalog) error, dir string, args ...string,
+	t *testing.T, register func(*language.Catalog, http.RoundTripper) error, dir string, args ...string,
 ) (status int, stdout, stderr string) {
 	t.Helper()
 	res := clitest.Main(t.Context(), program(dir, register).Main, &clitest.Input{Args: args, Vars: environ()})
@@ -248,7 +248,7 @@ func runWith(
 
 // register adds the toolchain tool and the languages alpha and beta to c. Each language renders
 // its own file and a fragment of .gitignore.
-func register(c *language.Catalog) error {
+func register(c *language.Catalog, _ http.RoundTripper) error {
 	if err := language.RegisterToolchain(c, language.Toolchain{Name: tool}); err != nil {
 		return err
 	}

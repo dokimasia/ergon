@@ -188,6 +188,8 @@ linters:
           files: ["**/ergon-lang-php/**", "!$test"]
           list-mode: strict
           allow: [$gostd, go.dokimi.dev/ergon/core, go.dokimi.dev/ergon/lang/php$, go.dokimi.dev/ergon/lang/php/]
+        # The discovery of a release matches the globs of an npm or a pnpm workspace with doublestar,
+        # and reads pnpm-workspace.yaml with go.yaml.in/yaml/v3.
         javascript-module:
           files: ["**/ergon-lang-javascript/**", "!$test"]
           list-mode: strict
@@ -196,6 +198,8 @@ linters:
             - go.dokimi.dev/ergon/core
             - go.dokimi.dev/ergon/lang/javascript$
             - go.dokimi.dev/ergon/lang/javascript/
+            - github.com/bmatcuk/doublestar/v4
+            - go.yaml.in/yaml/v3
         # A release reads and writes go.work and go.mod, and writes the zips of the released
         # modules, with golang.org/x/mod. The packer reads the dist directory from the GoReleaser
         # configuration of each module with go.yaml.in/yaml/v3.
@@ -221,10 +225,18 @@ linters:
             - go.dokimi.dev/ergon/lang/python/
             - github.com/bmatcuk/doublestar/v4
             - github.com/pelletier/go-toml/v2
+        # A release reads the members of a Cargo workspace with the globs of doublestar, and rewrites
+        # the strings of a Cargo.toml in place at the ranges of the parser of go-toml.
         rust-module:
           files: ["**/ergon-lang-rust/**", "!$test"]
           list-mode: strict
-          allow: [$gostd, go.dokimi.dev/ergon/core, go.dokimi.dev/ergon/lang/rust$, go.dokimi.dev/ergon/lang/rust/]
+          allow:
+            - $gostd
+            - go.dokimi.dev/ergon/core
+            - go.dokimi.dev/ergon/lang/rust$
+            - go.dokimi.dev/ergon/lang/rust/
+            - github.com/bmatcuk/doublestar/v4
+            - github.com/pelletier/go-toml/v2
         terraform-module:
           files: ["**/ergon-lang-terraform/**", "!$test"]
           list-mode: strict

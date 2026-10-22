@@ -703,7 +703,7 @@ func TestUpgrade(t *testing.T) {
 
 		unproposed := []struct {
 			name      string
-			register  func(*language.Catalog) error
+			register  func(*language.Catalog, http.RoundTripper) error
 			languages []workspace.Language
 			change    func(t *testing.T, dir string)
 			want      string
@@ -844,8 +844,8 @@ func TestUpgrade(t *testing.T) {
 
 // registerGamma adds the toolchain tool, the languages alpha and beta, and the language gamma of the
 // producer unsourced to c.
-func registerGamma(c *language.Catalog) error {
-	if err := register(c); err != nil {
+func registerGamma(c *language.Catalog, t http.RoundTripper) error {
+	if err := register(c, t); err != nil {
 		return err
 	}
 	return language.Register(c, language.Declaration{Name: gamma, Toolchain: tool},
@@ -897,7 +897,8 @@ func serveUpstream(t *testing.T, u *upstream) map[string]string {
 // repository that init new writes under the registration register with a flag --language for each
 // of languages, after change modified it. A nil change modifies nothing.
 func committed(
-	t *testing.T, register func(*language.Catalog) error, change func(dir string), languages ...workspace.Language,
+	t *testing.T, register func(*language.Catalog, http.RoundTripper) error, change func(dir string),
+	languages ...workspace.Language,
 ) string {
 	t.Helper()
 	dir := vcstest.Repository(t, files.Tree{})
@@ -931,7 +932,7 @@ func upgrade(
 // upgradeProgram returns the program of an upgrade case in the working directory dir with the
 // registration register: the program of a case with a cache directory of the test t, and a transport
 // that the test checks for bodies that ergon left open when it ends.
-func upgradeProgram(t *testing.T, dir string, register func(*language.Catalog) error) *cli.Program {
+func upgradeProgram(t *testing.T, dir string, register func(*language.Catalog, http.RoundTripper) error) *cli.Program {
 	t.Helper()
 	p := program(dir, register)
 	cache := t.TempDir()

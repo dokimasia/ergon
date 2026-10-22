@@ -6,6 +6,7 @@ package cli_test
 import (
 	"encoding/json"
 	"io/fs"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -530,7 +531,7 @@ func TestInit(t *testing.T) {
 
 		t.Run("returns 1 for a catalog with a language named as the common files", func(t *testing.T) {
 			t.Parallel()
-			named := func(c *language.Catalog) error {
+			named := func(c *language.Catalog, _ http.RoundTripper) error {
 				if err := language.RegisterToolchain(c, language.Toolchain{Name: tool}); err != nil {
 					return err
 				}
@@ -543,7 +544,7 @@ func TestInit(t *testing.T) {
 		})
 
 		var catalog language.Catalog
-		assert.NoError(t, app.Register(&catalog), "Register of the languages of ergon")
+		assert.NoError(t, app.Register(&catalog, http.DefaultTransport), "Register of the languages of ergon")
 		var names []string
 		for d := range catalog.Languages() {
 			names = append(names, string(d.Name))

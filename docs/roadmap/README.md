@@ -14,9 +14,9 @@ What we are building, in what order, and what has to be true first. Milestone nu
 | 3 | 0000 Vocabulary, changeset files and the release planner | Built | 0007 |
 | 4 | 0002 Go releases in one commit through the file proxy | Built | 0000 |
 | 5 | 0003 The CI flow: select-mode, version, pack and publish, the workflow `release.yml` and the job `changeset` of ergon init | Built | 0002 |
-| 6 | 0001 TypeScript and JavaScript releases, checked against changesets 3.0.3 on the same repositories | Planned | 0003 |
-| 7 | 0004 Rust releases | Planned | 0003 |
-| 8 | 0005 Python releases | Planned | 0003 |
+| 6 | 0001 TypeScript and JavaScript releases, checked against changesets 3.0.3 on the same repositories | Built | 0003 |
+| 7 | 0004 Rust releases | Built | 0003 |
+| 8 | 0005 Python releases | Built | 0003 |
 | 9 | 0006 Java and Kotlin releases through Gradle | Planned | 0003 |
 
 The module layout, `go.work` and the depguard rules are built and proven on `ergon init`.
@@ -28,5 +28,5 @@ Go comes before JavaScript, because ergon releases its own modules through the f
 ## Deferred
 
 - The code structure that RFC-0008 proposes, with ADR-0024 to ADR-0028. It waits until the repositories have moved to the current ergon.
-- A format target for Java and one for Bash: `fmt-java` with google-java-format and `fmt-bash` with shfmt, each a pinned release binary in its section of `.ergon.yaml`. The other languages have a format target, which `make fmt` runs.
+- A format target for Bash: `fmt-bash` with shfmt, a pinned release binary in the section `bash` of `.ergon.yaml`. The other languages have a format target, which `make fmt` runs.
 - The skip of the CodeQL analysis of the version pull request: on a pull request, a job `skip` of `security.yml` runs `ergon release ci skip --workflow security.yml`, and the CodeQL jobs run only when it writes `false`. Every push to `main` keeps its analysis, because code scanning compares a pull request with the analysis of its base commit.

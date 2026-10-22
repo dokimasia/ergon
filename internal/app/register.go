@@ -6,10 +6,12 @@ package app
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"slices"
 	"strings"
+	"time"
 
 	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/lang/bash"
@@ -18,6 +20,7 @@ import (
 	gobaseline "go.dokimi.dev/ergon/lang/go/baseline"
 	"go.dokimi.dev/ergon/lang/java"
 	"go.dokimi.dev/ergon/lang/javascript"
+	jsbaseline "go.dokimi.dev/ergon/lang/javascript/baseline"
 	"go.dokimi.dev/ergon/lang/kotlin"
 	"go.dokimi.dev/ergon/lang/php"
 	"go.dokimi.dev/ergon/lang/python"
@@ -32,30 +35,48 @@ import (
 // and creates the tag of a module with commands through.
 var git = golang.Git{Tags: vcs.Tags, Snapshot: vcs.Snapshot, Head: vcs.Head, LightTag: vcs.LightTag}
 
-// registrations are the Register functions of the language modules, in the order that [Register]
-// calls them. Java precedes Kotlin and JavaScript precedes TypeScript, because Kotlin and
-// TypeScript name the toolchains that Java and JavaScript register.
-var registrations = []func(*language.Catalog) error{
-	csharp.Register,
-	java.Register,
-	kotlin.Register,
-	php.Register,
-	javascript.Register,
-	typescript.Register,
-	func(c *language.Catalog) error {
-		return golang.Register(c, git, golang.Tools{Run: tools(gobaseline.Name), Program: programs(gobaseline.Name)})
-	},
-	func(c *language.Catalog) error { return python.Register(c, tools(pybaseline.Name)) },
-	rust.Register,
-	terraform.Register,
-	bash.Register,
+// registryTimeout is the limit of a request of a toolchain to its registry, such as the check of
+// PyPI, of the npm registry or of the index of crates.io for a release.
+const registryTimeout = time.Minute
+
+// registrations returns the Register functions of the language modules, in the order that
+// [Register] calls them, with client as the client of the requests to the registries. Java precedes
+// Kotlin and JavaScript precedes TypeScript, because Kotlin and TypeScript name the toolchains that
+// Java and JavaScript register.
+func registrations(client *http.Client) []func(*language.Catalog) error {
+	return []func(*language.Catalog) error{
+		csharp.Register,
+		java.Register,
+		kotlin.Register,
+		php.Register,
+		func(c *language.Catalog) error {
+			jsTools := javascript.Tools{Run: tools(jsbaseline.ToolchainName), Command: command}
+			return javascript.Register(c, jsTools, client)
+		},
+		typescript.Register,
+		func(c *language.Catalog) error {
+			goTools := golang.Tools{Run: tools(gobaseline.Name), Program: programs(gobaseline.Name)}
+			return golang.Register(c, git, goTools)
+		},
+		func(c *language.Catalog) error { return python.Register(c, tools(pybaseline.Name), client) },
+		func(c *language.Catalog) error {
+			return rust.Register(c, rust.Tools{Command: command, Getenv: os.Getenv}, client)
+		},
+		terraform.Register,
+		bash.Register,
+	}
 }
 
-// Register adds the toolchains and the languages of ergon to c, one language module at a time.
-// It stops at the first error of a module's Register and returns it, such as an error that wraps
-// [language.ErrRegistered] for a catalog that already has one of the names.
-func Register(c *language.Catalog) error {
-	for _, register := range registrations {
+// Register adds the toolchains and the languages of ergon to c, one language module at a time. The
+// toolchains send their requests to a registry through transport, such as the check of PyPI, of the
+// npm registry or of the index of crates.io for a release, each within registryTimeout. The
+// toolchain of Rust reads the variables of the OIDC token of a job of GitHub Actions from the
+// environment of the process. Register stops at the first error of a module's Register and
+// returns it, such as an error that wraps [language.ErrRegistered] for a catalog that already has
+// one of the names.
+func Register(c *language.Catalog, transport http.RoundTripper) error {
+	client := &http.Client{Transport: transport, Timeout: registryTimeout}
+	for _, register := range registrations(client) {
 		if err := register(c); err != nil {
 			return err
 		}
@@ -84,6 +105,21 @@ func tools(section string) func(ctx context.Context, dir, tool string, args, env
 		}
 		return nil
 	}
+}
+
+// command runs the program name of the PATH of the process with args in dir, with env added to the
+// environment of the process. The program writes its output to the standard error of the process,
+// so the log of a release shows the output of the program, such as npm pack. command returns the
+// error of the program, such as an exit status other than 0.
+func command(ctx context.Context, dir, name string, args, env []string) error {
+	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), env...)
+	cmd.Stdout, cmd.Stderr = os.Stderr, os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("app: %s: %w", name, err)
+	}
+	return nil
 }
 
 // programs returns a function that installs the tool of the section of .ergon.yaml for dir through

@@ -6,8 +6,10 @@ package app_test
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -57,6 +59,24 @@ const (
 // zigProgram is the program of zig that the test binary writes as ergon tool path.
 const zigProgram = "/cache/zig/zig"
 
+// registry is a transport that records the address of each request and answers it with 404, as
+// PyPI and the npm registry answer for a release that they do not have.
+type registry struct {
+	urls []string
+}
+
+// RoundTrip records the address of r and answers it with 404.
+func (f *registry) RoundTrip(r *http.Request) (*http.Response, error) {
+	f.urls = append(f.urls, r.URL.String())
+	return &http.Response{
+		StatusCode: http.StatusNotFound,
+		Status:     "404 Not Found",
+		Header:     http.Header{},
+		Body:       http.NoBody,
+		Request:    r,
+	}, nil
+}
+
 // TestMain acts as ergon run by the tools of the toolchain of Go when recordEnv is set. Otherwise it
 // isolates git from the configuration of the user and runs the tests.
 func TestMain(m *testing.M) {
@@ -94,7 +114,7 @@ func TestRegister(t *testing.T) {
 		t.Run("adds every language with the toolchain that builds it", func(t *testing.T) {
 			t.Parallel()
 			var c language.Catalog
-			assert.NoError(t, app.Register(&c), "Register of every language module")
+			assert.NoError(t, app.Register(&c, &registry{}), "Register of every language module")
 			assert.Equal(t, slices.Collect(c.Languages()), []language.Declaration{
 				{Name: csharp.Language, Toolchain: csharp.Toolchain},
 				{Name: java.Language, Toolchain: java.Toolchain},
@@ -113,7 +133,7 @@ func TestRegister(t *testing.T) {
 		t.Run("adds producers whose sections go-cli decodes with every key", func(t *testing.T) {
 			t.Parallel()
 			var c language.Catalog
-			assert.NoError(t, app.Register(&c), "Register of every language module")
+			assert.NoError(t, app.Register(&c, &registry{}), "Register of every language module")
 			var names []string
 			for d := range c.Languages() {
 				p, _ := language.Role[language.Producer](&c, d.Name)
@@ -135,11 +155,53 @@ func TestRegister(t *testing.T) {
 			}, "the sections of the catalog")
 		})
 
+		publishers := []struct {
+			name          string
+			giveToolchain workspace.Toolchain
+			wantURL       string
+		}{
+			{
+				name:          "adds the publisher of Python, which reads PyPI through the transport",
+				giveToolchain: python.Toolchain,
+				wantURL:       "https://pypi.org/pypi/demo/0.2.0/json",
+			},
+			{
+				name:          "adds the publisher of JavaScript, which reads the npm registry through the transport",
+				giveToolchain: javascript.Toolchain,
+				wantURL:       "https://registry.npmjs.org/demo/0.2.0",
+			},
+			{
+				name:          "adds the publisher of Rust, which reads the index of crates.io through the transport",
+				giveToolchain: rust.Toolchain,
+				wantURL:       "https://index.crates.io/de/mo/demo",
+			},
+		}
+		for _, tt := range publishers {
+			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+				var c language.Catalog
+				f := &registry{}
+				assert.NoError(t, app.Register(&c, f), "Register of every language module")
+				publisher, ok := language.ToolchainRole[language.Publisher](&c, tt.giveToolchain)
+				assert.True(t, ok, "the publisher of the toolchain")
+				pkg := &workspace.Package{Name: "demo", Version: version.Version{Minor: 2}}
+				got, err := publisher.Published(t.Context(), pkg)
+				assert.NoError(t, err, "Published")
+				assert.False(t, got, "Published")
+				assert.Equal(t, f.urls, []string{tt.wantURL}, "the requests")
+			})
+		}
+
 		t.Run("returns ErrRegistered for a catalog that has a language of ergon", func(t *testing.T) {
 			t.Parallel()
 			var c language.Catalog
 			assert.NoError(t, csharp.Register(&c), "Register of C#")
-			assert.ErrorIs(t, app.Register(&c), language.ErrRegistered, "Register of every language module")
+			assert.ErrorIs(
+				t,
+				app.Register(&c, &registry{}),
+				language.ErrRegistered,
+				"Register of every language module",
+			)
 		})
 	})
 }
@@ -160,7 +222,7 @@ func TestRegisterProcess(t *testing.T) {
 				t.Setenv(recordEnv, record)
 				t.Chdir(root)
 				var c language.Catalog
-				assert.NoError(t, app.Register(&c), "Register of every language module")
+				assert.NoError(t, app.Register(&c, &registry{}), "Register of every language module")
 				packer, ok := language.ToolchainRole[language.Packer](&c, golang.Toolchain)
 				assert.True(t, ok, "the packer of Go")
 				v, err := version.Parse("1.0.0")
@@ -182,7 +244,7 @@ func TestRegisterProcess(t *testing.T) {
 			t.Setenv(recordEnv, t.TempDir())
 			t.Chdir(root)
 			var c language.Catalog
-			assert.NoError(t, app.Register(&c), "Register of every language module")
+			assert.NoError(t, app.Register(&c, &registry{}), "Register of every language module")
 			packer, ok := language.ToolchainRole[language.Packer](&c, golang.Toolchain)
 			assert.True(t, ok, "the packer of Go")
 			v, err := version.Parse("1.0.0")
@@ -203,7 +265,7 @@ func TestRegisterProcess(t *testing.T) {
 			t.Setenv(recordEnv, record)
 			t.Chdir(root)
 			var c language.Catalog
-			assert.NoError(t, app.Register(&c), "Register of every language module")
+			assert.NoError(t, app.Register(&c, &registry{}), "Register of every language module")
 			packer, ok := language.ToolchainRole[language.Packer](&c, golang.Toolchain)
 			assert.True(t, ok, "the packer of Go")
 			v, err := version.Parse("1.0.0")
@@ -223,7 +285,7 @@ func TestRegisterProcess(t *testing.T) {
 			t.Setenv(recordEnv, t.TempDir())
 			t.Chdir(root)
 			var c language.Catalog
-			assert.NoError(t, app.Register(&c), "Register of every language module")
+			assert.NoError(t, app.Register(&c, &registry{}), "Register of every language module")
 			packer, ok := language.ToolchainRole[language.Packer](&c, golang.Toolchain)
 			assert.True(t, ok, "the packer of Go")
 			v, err := version.Parse("1.0.0")
@@ -242,7 +304,7 @@ func TestRegisterProcess(t *testing.T) {
 			record := filepath.Join(t.TempDir(), "record")
 			t.Setenv(recordEnv, record)
 			var c language.Catalog
-			assert.NoError(t, app.Register(&c), "Register of every language module")
+			assert.NoError(t, app.Register(&c, &registry{}), "Register of every language module")
 			versioner, ok := language.ToolchainRole[language.Versioner](&c, python.Toolchain)
 			assert.True(t, ok, "the versioner of Python")
 			_, err := versioner.Apply(t.Context(), root, []language.Edit{{
@@ -251,6 +313,91 @@ func TestRegisterProcess(t *testing.T) {
 			}})
 			assert.NoError(t, err, "Apply")
 			files.HasContent(t, record, "tool\nrun\npython.uv\n--\nlock\n\n", "the arguments of the run")
+		})
+
+		t.Run("refreshes package-lock.json of a release of JavaScript with npm of the PATH", func(t *testing.T) {
+			self, err := os.Executable()
+			assert.NoError(t, err, "Executable")
+			npm := "npm"
+			if runtime.GOOS == "windows" {
+				npm += ".exe"
+			}
+			t.Setenv("PATH", files.Workspace(t, files.Tree{npm: files.Executable(files.Read(t, self))}))
+			record := filepath.Join(t.TempDir(), "record")
+			t.Setenv(recordEnv, record)
+			root := files.Workspace(t, files.Tree{
+				"package.json":      files.Text(`{"name": "demo", "version": "0.1.0"}`),
+				"package-lock.json": files.Text("{}\n"),
+			})
+			var c language.Catalog
+			assert.NoError(t, app.Register(&c, &registry{}), "Register of every language module")
+			versioner, ok := language.ToolchainRole[language.Versioner](&c, javascript.Toolchain)
+			assert.True(t, ok, "the versioner of JavaScript")
+			_, err = versioner.Apply(t.Context(), root, []language.Edit{{
+				Version: version.Version{Minor: 2},
+				Package: workspace.Package{Name: "demo", Dir: ".", Version: version.Version{Minor: 1}},
+			}})
+			assert.NoError(t, err, "Apply")
+			files.HasContent(t, record, "install\n--package-lock-only\n\n", "the arguments of the run of npm")
+		})
+
+		t.Run("returns the error of a program that the PATH does not have", func(t *testing.T) {
+			t.Setenv("PATH", t.TempDir())
+			root := files.Workspace(t, files.Tree{
+				"package.json":      files.Text(`{"name": "demo", "version": "0.1.0"}`),
+				"package-lock.json": files.Text("{}\n"),
+			})
+			var c language.Catalog
+			assert.NoError(t, app.Register(&c, &registry{}), "Register of every language module")
+			versioner, ok := language.ToolchainRole[language.Versioner](&c, javascript.Toolchain)
+			assert.True(t, ok, "the versioner of JavaScript")
+			_, err := versioner.Apply(t.Context(), root, []language.Edit{{
+				Version: version.Version{Minor: 2},
+				Package: workspace.Package{Name: "demo", Dir: ".", Version: version.Version{Minor: 1}},
+			}})
+			assert.HasError(t, err, "Apply")
+			assert.Contains(t, err.Error(), "app: npm: ", "the error")
+		})
+
+		t.Run("uploads a tarball of JavaScript with npm through ergon tool run", func(t *testing.T) {
+			pack := files.Workspace(t, files.Tree{"js/demo/demo-0.2.0.tgz": files.Text("")})
+			record := filepath.Join(t.TempDir(), "record")
+			t.Setenv(recordEnv, record)
+			var c language.Catalog
+			assert.NoError(t, app.Register(&c, &registry{}), "Register of every language module")
+			publisher, ok := language.ToolchainRole[language.Publisher](&c, javascript.Toolchain)
+			assert.True(t, ok, "the publisher of JavaScript")
+			pkgs := []workspace.Package{{Name: "demo", Dir: ".", Version: version.Version{Minor: 2}}}
+			assert.NoError(t, publisher.Publish(t.Context(), t.TempDir(), pkgs, pack), "Publish")
+			files.HasContent(t, record, "tool\nrun\njs.npm\n--\npublish\n"+
+				filepath.Join(pack, "js", "demo", "demo-0.2.0.tgz")+"\n\n", "the arguments of the run")
+		})
+
+		t.Run("uploads a crate of Rust with cargo of the PATH", func(t *testing.T) {
+			self, err := os.Executable()
+			assert.NoError(t, err, "Executable")
+			cargo := "cargo"
+			if runtime.GOOS == "windows" {
+				cargo += ".exe"
+			}
+			t.Setenv("PATH", files.Workspace(t, files.Tree{cargo: files.Executable(files.Read(t, self))}))
+			// The case runs outside a job of GitHub Actions with the permission id-token.
+			t.Setenv("ACTIONS_ID_TOKEN_REQUEST_URL", "")
+			record := filepath.Join(t.TempDir(), "record")
+			t.Setenv(recordEnv, record)
+			pack := files.Workspace(t, files.Tree{"rust/demo/demo-0.2.0.crate": files.Text("")})
+			var c language.Catalog
+			assert.NoError(t, app.Register(&c, &registry{}), "Register of every language module")
+			publisher, ok := language.ToolchainRole[language.Publisher](&c, rust.Toolchain)
+			assert.True(t, ok, "the publisher of Rust")
+			pkgs := []workspace.Package{{Name: "demo", Dir: ".", Version: version.Version{Minor: 2}}}
+			assert.NoError(t, publisher.Publish(t.Context(), t.TempDir(), pkgs, pack), "Publish")
+			files.HasContent(
+				t,
+				record,
+				"publish\n--no-verify\n--package\ndemo\n\n",
+				"the arguments of the run of cargo",
+			)
 		})
 	})
 }

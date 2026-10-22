@@ -486,7 +486,7 @@ func (fx *fixture) process(stdout, stderr io.Writer, args ...string) *process {
 		getenv:     func(name string) string { return fx.env[name] },
 		now:        func() time.Time { return now },
 		execute:    fx.execute,
-		register:   func(c *language.Catalog) error { return fx.register(c) },
+		register:   func(c *language.Catalog, _ http.RoundTripper) error { return fx.register(c) },
 		random:     bytes.NewReader(digits),
 		stdout:     stdout,
 		stderr:     stderr,

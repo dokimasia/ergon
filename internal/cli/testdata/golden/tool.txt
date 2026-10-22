@@ -179,7 +179,7 @@ ergon: cli: "biome", which is not <section>.<tool>
 [exit 2]
 
 $ ergon tool run js.prettier
-ergon: tool: the section names no such tool: js.prettier, which is none of js.biome
+ergon: tool: the section names no such tool: js.prettier, which is none of js.biome, js.npm
 [exit 2]
 
 $ ergon tool run go.vet
@@ -191,7 +191,7 @@ ergon: tool: the tool does not install: js.biome runs through npx
 [exit 1]
 
 $ ergon tool path js.prettier
-ergon: tool: the section names no such tool: js.prettier, which is none of js.biome
+ergon: tool: the section names no such tool: js.prettier, which is none of js.biome, js.npm
 [exit 2]
 
 $ ergon tool prune main
