@@ -1,5 +1,16 @@
 # go.dokimi.dev/ergon/core
 
+## 0.12.0
+
+### Minor Changes
+
+- b452c56: Add `option.Asset.Tree` for a program that needs the other files of its archive.
+- b452c56: Add `option.Zig`, the release binary of zig from ziglang.org.
+
+### Patch Changes
+
+- fc0dc4d: Require Go 1.27.3.
+
 ## 0.11.0
 
 ### Minor Changes

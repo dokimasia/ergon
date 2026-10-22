@@ -1,5 +1,19 @@
 # go.dokimi.dev/ergon/service
 
+## 0.16.0
+
+### Minor Changes
+
+- 786739b: Add `pin.KindZig` to resolve zig from the download index of ziglang.org.
+- 786739b: Add `tool.Runner.Program` to install a tool and return its program.
+- 786739b: Install the whole archive of a release binary whose asset sets `Tree` in `tool.Runner`.
+
+### Patch Changes
+
+- fc0dc4d: Require Go 1.27.3.
+- Updated dependencies [b452c56, fc0dc4d]
+  - go.dokimi.dev/ergon/core@0.12.0
+
 ## 0.15.0
 
 ### Minor Changes

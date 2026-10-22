@@ -1,5 +1,15 @@
 # go.dokimi.dev/ergon/lang/kotlin
 
+## 0.3.14
+
+### Patch Changes
+
+- fc0dc4d: Require Go 1.27.3.
+- Updated dependencies [b452c56, 786739b, 0f5df78, fc0dc4d]
+  - go.dokimi.dev/ergon/core@0.12.0
+  - go.dokimi.dev/ergon/service@0.16.0
+  - go.dokimi.dev/ergon/lang/java@0.4.7
+
 ## 0.3.13
 
 ### Patch Changes

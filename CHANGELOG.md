@@ -1,5 +1,29 @@
 # go.dokimi.dev/ergon
 
+## 0.11.0
+
+### Minor Changes
+
+- 730a376: Add `ergon tool path` to install a tool and print its program.
+
+### Patch Changes
+
+- fc0dc4d: Require Go 1.27.3.
+- Updated dependencies [b452c56, 786739b, e73fbba, 0f5df78, fc0dc4d]
+  - go.dokimi.dev/ergon/core@0.12.0
+  - go.dokimi.dev/ergon/service@0.16.0
+  - go.dokimi.dev/ergon/lang/go@0.8.0
+  - go.dokimi.dev/ergon/lang/bash@0.4.7
+  - go.dokimi.dev/ergon/lang/csharp@0.3.7
+  - go.dokimi.dev/ergon/lang/java@0.4.7
+  - go.dokimi.dev/ergon/lang/javascript@0.4.6
+  - go.dokimi.dev/ergon/lang/kotlin@0.3.14
+  - go.dokimi.dev/ergon/lang/php@0.4.8
+  - go.dokimi.dev/ergon/lang/python@0.5.4
+  - go.dokimi.dev/ergon/lang/rust@0.5.4
+  - go.dokimi.dev/ergon/lang/terraform@0.4.7
+  - go.dokimi.dev/ergon/lang/typescript@0.3.6
+
 ## 0.10.4
 
 ### Patch Changes
