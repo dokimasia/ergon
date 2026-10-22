@@ -95,7 +95,8 @@
     {
       "path": ".gitignore",
       "producer": "common",
-      "sha256": "fa0369ca6988428a798efe232d57354c3db66f5914954bbc7ca2448966b504c4"
+      "local": "5316754909cfba3847915bb69e8db743515828f7a0e2a5df7232852b8a0307d8",
+      "sha256": "105b81290b5be90e9e91533a0ed516445807b6c12acb2837ee4f26929ea208b8"
     },
     {
       "path": ".golangci.yml",

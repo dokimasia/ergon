@@ -1,0 +1,6 @@
+# Copyright Dokimasia B.V. 2026
+# SPDX-License-Identifier: MIT
+
+# The build directory of the generator of the Cargo requirements of the Rust releases, which cargo
+# and rust-analyzer write beside its Cargo.toml
+/ergon-lang-rust/release/testdata/generate/target/
