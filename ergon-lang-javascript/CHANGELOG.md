@@ -1,5 +1,21 @@
 # go.dokimi.dev/ergon/lang/javascript
 
+## 0.5.0
+
+### Minor Changes
+
+- 5fcc594: Add `js.exclude` for the paths that `fmt-js` and `lint-js` skip.
+- 5fcc594: Add `js.tools.npm` for the npm that uploads the tarballs of a release.
+- 5fcc594: Release the packages of npm and pnpm workspaces with their package manager and `npm publish`.
+- 5fcc594: Set up Node.js and the packages in the jobs of a release.
+- 5fcc594: **Breaking:** Take the tools and the client of the npm registry in `javascript.Register`.
+
+### Patch Changes
+
+- Updated dependencies [cce748c, a902417, 926de92]
+  - go.dokimi.dev/ergon/core@0.15.0
+  - go.dokimi.dev/ergon/service@0.19.0
+
 ## 0.4.8
 
 ### Patch Changes

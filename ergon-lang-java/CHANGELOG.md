@@ -1,5 +1,20 @@
 # go.dokimi.dev/ergon/lang/java
 
+## 0.5.0
+
+### Minor Changes
+
+- 005bb4a: Add `fmt-java` to format the Java sources with google-java-format.
+- 005bb4a: Add `java.rulesets` for the rule sets of PMD that `lint-java` checks the sources with.
+- 005bb4a: Check the format of the Java sources with google-java-format in `lint-java`.
+- 005bb4a: Set the indent of the Java sources to 2 spaces and their lines to 100 columns in `.editorconfig`.
+
+### Patch Changes
+
+- Updated dependencies [cce748c, a902417, 926de92]
+  - go.dokimi.dev/ergon/core@0.15.0
+  - go.dokimi.dev/ergon/service@0.19.0
+
 ## 0.4.9
 
 ### Patch Changes

@@ -1,5 +1,13 @@
 # go.dokimi.dev/ergon/lang/go
 
+## 0.9.2
+
+### Patch Changes
+
+- Updated dependencies [cce748c, a902417, 926de92]
+  - go.dokimi.dev/ergon/core@0.15.0
+  - go.dokimi.dev/ergon/service@0.19.0
+
 ## 0.9.1
 
 ### Patch Changes

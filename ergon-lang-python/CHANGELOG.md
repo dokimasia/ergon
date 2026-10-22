@@ -1,5 +1,18 @@
 # go.dokimi.dev/ergon/lang/python
 
+## 0.6.0
+
+### Minor Changes
+
+- 4ffdc5b: Build the distributions of a release with `uv build` and upload them to PyPI with `uv publish`.
+- 4ffdc5b: **Breaking:** Take the client of PyPI in `python.Register`.
+
+### Patch Changes
+
+- Updated dependencies [cce748c, a902417, 926de92]
+  - go.dokimi.dev/ergon/core@0.15.0
+  - go.dokimi.dev/ergon/service@0.19.0
+
 ## 0.5.6
 
 ### Patch Changes
