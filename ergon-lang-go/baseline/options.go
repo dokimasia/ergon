@@ -32,6 +32,29 @@ const (
 	privateRun  = `echo "GOPRIVATE=$(go list -m -f '{{.Path}}' | paste -sd , -)" >> "$GITHUB_ENV"`
 )
 
+// ownName is the name of the step before the dependency review that appends the package URL of
+// each directory replace of a module of go.work to [workflow.OwnPackages]. The dependency graph of
+// GitHub uses the path of such a replace as the name of the dependency. It does not find a license
+// under that name.
+const ownName = "Leave the modules of go.work out of the license check"
+
+// ownRun is the command of the step of [ownName]. It reads the replaces of the go.mod of each module
+// of go.work with go mod edit -json. A replace counts when its target is a directory and the module
+// that it replaces is a module of go.work. The command does not write to GITHUB_ENV when no replace
+// counts.
+var ownRun = []string{
+	`own="$(go list -m -f '{{.Path}}' | jq -Rn '[inputs]')"`,
+	`purls="$(go list -m -f '{{.GoMod}}' |`,
+	`  while IFS= read -r file; do go mod edit -json "$file"; done |`,
+	`  jq -r --argjson own "$own" '.Replace[]? | select(.New.Version == null)`,
+	`    | select(.Old.Path | IN($own[])) | "pkg:golang/" + .New.Path' |`,
+	`  sort -u | paste -sd , -)"`,
+	`if [ -n "$purls" ]; then`,
+	`  echo "` + workflow.OwnPackages + `=${` + workflow.OwnPackages + `:+$` + workflow.OwnPackages +
+		`,}$purls" >> "$GITHUB_ENV"`,
+	`fi`,
+}
+
 // steps are the steps of the gate of Go, which the key check of the section names.
 var steps = []option.Step{
 	option.StepLint, option.StepTest, option.StepRace, option.StepFuzz, option.StepBench, option.StepMutate,
@@ -237,8 +260,13 @@ func (o *Options) Validate() error {
 //     Before the analysis, setup-go installs the version of go.work, and GOPRIVATE names the
 //     modules of go.work, so the go mod tidy of the autobuild fetches them from their origin and
 //     not from the module proxy.
+//   - Once the repository has go.work, setup-go installs the version of go.work without a cache
+//     before the dependency review. The step of [ownName] then appends the package URL of each
+//     directory replace of a module of go.work to [workflow.OwnPackages], so the review leaves the
+//     modules of the repository out of its license check.
 //   - Dependabot updates the modules of every directory.
 func (o *Options) Contribution() workflow.Contribution {
+	present := "hashFiles('" + workspace + "') != ''"
 	pinned := map[string]string{"go-version-file": workspace, "cache-dependency-path": "**/go.sum"}
 	with := pinned
 	if len(o.CI.Versions) > 0 {
@@ -301,12 +329,7 @@ func (o *Options) Contribution() workflow.Contribution {
 			Steps: []workflow.Step{{Name: "Check Go", Run: []string{"make --keep-going check-go"}}},
 		}},
 		Nightly: scheduled,
-		Release: []workflow.Step{{
-			Name: setupName,
-			If:   "hashFiles('" + workspace + "') != ''",
-			Uses: o.CI.Actions.SetupGo,
-			With: pinned,
-		}},
+		Release: []workflow.Step{{Name: setupName, If: present, Uses: o.CI.Actions.SetupGo, With: pinned}},
 		CodeQL: []workflow.CodeQL{{
 			Language:  "go",
 			Name:      "Go",
@@ -318,6 +341,15 @@ func (o *Options) Contribution() workflow.Contribution {
 			},
 			Timeout: o.CI.Timeout,
 		}},
+		Review: []workflow.Step{
+			{
+				Name: setupName,
+				If:   present,
+				Uses: o.CI.Actions.SetupGo,
+				With: map[string]string{"go-version-file": workspace, "cache": "false"},
+			},
+			{Name: ownName, If: present, Run: ownRun},
+		},
 		Updates: []workflow.Update{{Ecosystem: "gomod", Directories: []string{"/", "/**/*"}}},
 	}
 }

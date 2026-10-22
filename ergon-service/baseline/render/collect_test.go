@@ -49,9 +49,13 @@ func TestCollect(t *testing.T) {
 					Nightly: []workflow.Job{text("fuzz-go"), text("check-go")},
 					Release: []workflow.Step{{Run: []string{"go version"}}},
 					CodeQL:  []workflow.CodeQL{analysis("go")},
+					Review:  []workflow.Step{{Run: []string{"go list -m"}}},
 					Updates: []workflow.Update{{Ecosystem: "gomod", Directories: []string{"/"}}},
 				}),
-				contributing("java", workflow.Contribution{Release: []workflow.Step{{Uses: setupJava}}}),
+				contributing("java", workflow.Contribution{
+					Release: []workflow.Step{{Uses: setupJava}},
+					Review:  []workflow.Step{{Uses: setupJava}},
+				}),
 			})
 			assert.NoError(t, err, "Collect")
 			assert.Equal(t, got, workflow.Contribution{
@@ -59,6 +63,7 @@ func TestCollect(t *testing.T) {
 				Nightly: []workflow.Job{text("fuzz-go"), text("check-go")},
 				Release: []workflow.Step{{Run: []string{"go version"}}, {Uses: setupJava}},
 				CodeQL:  []workflow.CodeQL{analysis("go")},
+				Review:  []workflow.Step{{Run: []string{"go list -m"}}, {Uses: setupJava}},
 				Updates: []workflow.Update{{Ecosystem: "gomod", Directories: []string{"/"}}},
 			}, "the contributions")
 		})

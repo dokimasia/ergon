@@ -20,9 +20,10 @@ var ErrInvalidContribution = errors.New("render: invalid contribution")
 
 // Collect returns the contributions of units to the workflows, in the order of units: every job of
 // ci.yml and of nightly.yml, every step of a release, the assets of the releases with their tap,
-// every CodeQL analysis and every update. A job that names a toolchain runs the setup that the unit
-// of that name contributes, which Collect sets as the job's Setup. A unit that is not a
-// [language.Contributor] contributes nothing, and the result has no Setup of its own.
+// every CodeQL analysis, every step before the dependency review and every update. A job that names
+// a toolchain runs the setup that the unit of that name contributes, which Collect sets as the
+// job's Setup. A unit that is not a [language.Contributor] contributes nothing, and the result has
+// no Setup of its own.
 //
 // It returns an error that wraps [ErrInvalidContribution] for a contribution that a producer
 // declares wrong, for a job that two contributions declare in the same workflow, and for two
@@ -67,6 +68,7 @@ func Collect(units []Unit) (workflow.Contribution, error) {
 			}
 			all.CodeQL = append(all.CodeQL, c)
 		}
+		all.Review = append(all.Review, part.Review...)
 		for _, u := range part.Updates {
 			for _, dir := range u.Directories {
 				twice := func(v workflow.Update) bool {

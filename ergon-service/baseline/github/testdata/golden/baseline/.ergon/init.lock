@@ -64,7 +64,7 @@
     {
       "path": ".github/workflows/security.yml",
       "producer": "github",
-      "sha256": "d4864f6366efee14b45b4b442fe842b48dda6126837dc6109d2fbe68627ad8f3"
+      "sha256": "de7fd2281ed606e8c0f9a1af2b66d3f5d3298ed59b7f1876fb28dfcdf46688f9"
     },
     {
       "path": ".github/workflows/version.yml",

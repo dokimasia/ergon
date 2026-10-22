@@ -417,7 +417,8 @@ func producer() baseline.Producer {
 
 // toolchain returns the contribution of the toolchain tool of the cases: the setup of alpha on
 // every runner and two versions, its setup in a release, its analysis of CodeQL with a step without
-// a condition and a step with one before it, and its updates.
+// a condition and a step with one before it, its setup and a list of its own packages before the
+// dependency review, and its updates.
 func toolchain() workflow.Contribution {
 	return workflow.Contribution{
 		Setup: &workflow.Setup{
@@ -448,6 +449,19 @@ func toolchain() workflow.Contribution {
 			},
 			Timeout: 20,
 		}},
+		Review: []workflow.Step{
+			{
+				Name: "Set up alpha",
+				If:   "hashFiles('alpha.lock') != ''",
+				Uses: setupAlpha,
+				With: map[string]string{"version-file": ".alpha-version"},
+			},
+			{
+				Name: "Leave the modules of alpha out of the license check",
+				If:   "hashFiles('alpha.lock') != ''",
+				Run:  []string{`echo "` + workflow.OwnPackages + `=pkg:alpha/../core" >> "$GITHUB_ENV"`},
+			},
+		},
 		Updates: []workflow.Update{{Ecosystem: "alpha", Directories: []string{"/", "/**/*"}}},
 	}
 }

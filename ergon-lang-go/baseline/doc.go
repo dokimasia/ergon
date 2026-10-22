@@ -59,7 +59,9 @@
 // nightly.yml with the limit of each, the options of each step, the commands and the tap of their
 // casks, and the key ci of the job check-go. [Options.Contribution] returns the job check-go, a job
 // of nightly.yml for each step of the key nightly, the setup of Go in the jobs of release.yml, the
-// assets of the releases of the commands, the CodeQL analysis of go and the updates of the modules.
+// assets of the releases of the commands, the CodeQL analysis of go, the steps that leave the
+// modules of go.work out of the license check of the dependency review, and the updates of the
+// modules.
 //
 // # Dependency position
 //

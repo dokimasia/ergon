@@ -36,6 +36,24 @@ var requireWork = workflow.Step{
 	},
 }
 
+// ownPackages is the step before the dependency review that appends the package URL of each
+// directory replace of a module of go.work to ERGON_OWN_PACKAGES.
+var ownPackages = workflow.Step{
+	Name: "Leave the modules of go.work out of the license check",
+	If:   "hashFiles('go.work') != ''",
+	Run: []string{
+		`own="$(go list -m -f '{{.Path}}' | jq -Rn '[inputs]')"`,
+		`purls="$(go list -m -f '{{.GoMod}}' |`,
+		`  while IFS= read -r file; do go mod edit -json "$file"; done |`,
+		`  jq -r --argjson own "$own" '.Replace[]? | select(.New.Version == null)`,
+		`    | select(.Old.Path | IN($own[])) | "pkg:golang/" + .New.Path' |`,
+		`  sort -u | paste -sd , -)"`,
+		`if [ -n "$purls" ]; then`,
+		`  echo "ERGON_OWN_PACKAGES=${ERGON_OWN_PACKAGES:+$ERGON_OWN_PACKAGES,}$purls" >> "$GITHUB_ENV"`,
+		`fi`,
+	},
+}
+
 func TestOptions(t *testing.T) {
 	t.Parallel()
 
@@ -303,6 +321,15 @@ func TestOptions(t *testing.T) {
 						},
 						Timeout: 30,
 					}},
+					Review: []workflow.Step{
+						{
+							Name: "Set up Go",
+							If:   "hashFiles('go.work') != ''",
+							Uses: setupGo,
+							With: map[string]string{"go-version-file": "go.work", "cache": "false"},
+						},
+						ownPackages,
+					},
 					Updates: []workflow.Update{{Ecosystem: "gomod", Directories: []string{"/", "/**/*"}}},
 				}, "the contribution")
 			},
@@ -359,6 +386,17 @@ func TestOptions(t *testing.T) {
 					"go-version-file":       "go.work",
 					"cache-dependency-path": "**/go.sum",
 				}, "the inputs of setup-go")
+			})
+
+		t.Run("sets up the version of go.work before the dependency review for versions of the options",
+			func(t *testing.T) {
+				t.Parallel()
+				o := goOptions()
+				o.CI.Versions = []string{"1.27", "1.26"}
+				got := o.Contribution().Review
+				assert.Length(t, got, 2, "the steps before the dependency review")
+				assert.Equal(t, got[0].With, map[string]string{"go-version-file": "go.work", "cache": "false"},
+					"the inputs of setup-go")
 			})
 
 		t.Run("sets up the version of go.work in each nightly job for versions of the options", func(t *testing.T) {
