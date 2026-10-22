@@ -5,9 +5,9 @@
 //
 // A producer of ergon init returns its part as a [Contribution]: the jobs of ci.yml and of
 // nightly.yml, the steps that set up its toolchain in release.yml, the [Assets] of its releases,
-// the CodeQL analyses of security.yml and the updates of dependabot.yml. The producer of the
-// GitHub files renders the contributions of every producer into those files, so no toolchain
-// appears in its templates.
+// the CodeQL analyses of security.yml, the steps before its dependency review and the updates of
+// dependabot.yml. The producer of the GitHub files renders the contributions of every producer into
+// those files, so no toolchain appears in its templates.
 //
 //   - A [Job] is a job of ci.yml or of nightly.yml: the steps that follow the checkout, the
 //     permissions, and the runners. A check job of a language runs the [Setup] of its toolchain
@@ -21,6 +21,10 @@
 // A toolchain that two languages share contributes the setup of their jobs, and each language
 // names the toolchain in [Job.Toolchain]. A language whose toolchain is its own sets [Job.Setup]
 // itself.
+//
+// The steps of [Contribution.Review] run before the dependency review of a pull request. A step
+// appends the package URLs of the repository's own packages to the environment variable
+// [OwnPackages]. The review leaves those packages out of its license check.
 //
 // # Expressions
 //

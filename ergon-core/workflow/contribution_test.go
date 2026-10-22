@@ -13,6 +13,15 @@ import (
 func TestContribution(t *testing.T) {
 	t.Parallel()
 
+	t.Run("OwnPackages", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("is ERGON_OWN_PACKAGES", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, workflow.OwnPackages, "ERGON_OWN_PACKAGES", "OwnPackages")
+		})
+	})
+
 	t.Run("Validate", func(t *testing.T) {
 		t.Parallel()
 
@@ -64,6 +73,11 @@ func TestContribution(t *testing.T) {
 				want: workflow.ErrInvalidCodeQL,
 			},
 			{
+				name: "returns ErrInvalidStep for a review step that is not valid",
+				give: func(c *workflow.Contribution) { c.Review[1].Run = []string{""} },
+				want: workflow.ErrInvalidStep,
+			},
+			{
 				name: "returns ErrInvalidUpdate for an update that is not valid",
 				give: func(c *workflow.Contribution) { c.Updates[0].Directories = nil },
 				want: workflow.ErrInvalidUpdate,
@@ -82,7 +96,8 @@ func TestContribution(t *testing.T) {
 
 // goContribution returns a new valid contribution of the cases with every part: a shared setup,
 // the check of Go, the check of Go as a nightly job, the setup of Go in a release, the assets of
-// its commands with a tap, its analysis and its updates.
+// its commands with a tap, its analysis, the setup of Go and a command before the dependency
+// review, and its updates.
 func goContribution() workflow.Contribution {
 	return workflow.Contribution{
 		Setup:   goSetup(),
@@ -91,6 +106,10 @@ func goContribution() workflow.Contribution {
 		Release: []workflow.Step{{Uses: setupGo, With: map[string]string{"go-version-file": "go.work"}}},
 		Assets:  &workflow.Assets{Tap: "dokimasia/homebrew-tap"},
 		CodeQL:  []workflow.CodeQL{goAnalysis()},
+		Review: []workflow.Step{
+			{Uses: setupGo, With: map[string]string{"go-version-file": "go.work"}},
+			{Run: []string{`echo "` + workflow.OwnPackages + `=pkg:golang/../core" >> "$GITHUB_ENV"`}},
+		},
 		Updates: []workflow.Update{{Ecosystem: "gomod", Directories: []string{"/"}}},
 	}
 }
