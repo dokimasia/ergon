@@ -4,7 +4,7 @@ title: make generate runs the generators of every language, and make help groups
 status: Accepted
 date: 2026-10-08
 supersedes: none
-superseded-by: none
+superseded-by: ADR-0062, in part
 rfc: RFC-0004
 ---
 

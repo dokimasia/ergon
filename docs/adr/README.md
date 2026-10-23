@@ -25,7 +25,7 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 | [0014](0014-lint-and-test-before-a-commit.md) | The hooks lint and test each commit, and run the gate before each push | Accepted, superseded in part by ADR-0015 |
 | [0015](0015-hook-targets-in-ergon-yaml.md) | The targets of the hooks are options of .ergon.yaml | Accepted |
 | [0016](0016-version-pull-request-gates-the-release.md) | The CI run of the version pull request is the gate of a release | Accepted, superseded in part by ADR-0018 |
-| [0017](0017-generate-and-help-groups.md) | make generate runs the generators of every language, and make help groups the targets | Accepted |
+| [0017](0017-generate-and-help-groups.md) | make generate runs the generators of every language, and make help groups the targets | Accepted, superseded in part by ADR-0062 |
 | [0018](0018-ci-skips-tested-content.md) | ci.yml skips its jobs on content that already passed | Accepted |
 | [0019](0019-no-lock-of-a-development-build.md) | A build of ergon without a release does not write a lock of a release | Accepted |
 | [0020](0020-nightly-workflow.md) | nightly.yml runs the long steps of a language on a schedule | Accepted |
@@ -70,3 +70,4 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 | [0059](0059-spec-proposals-in-nightly.md) | A job of nightly.yml proposes the updates of the copies of spec with the GitHub App of ergon | Accepted |
 | [0060](0060-biome-test-files-without-magic-numbers-and-lengths.md) | The managed biome.json turns off noMagicNumbers and the two length rules in test files | Accepted |
 | [0061](0061-merge-of-a-local-json-file.md) | A local JSON file is a JSON document that merges into its managed file | Accepted |
+| [0062](0062-generate-step-runs-a-list-of-commands.md) | The step generate runs a list of command lines | Accepted |
