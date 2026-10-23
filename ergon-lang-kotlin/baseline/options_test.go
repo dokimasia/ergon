@@ -62,15 +62,15 @@ func TestOptions(t *testing.T) {
 			assert.ErrorIs(t, o.Validate(), option.ErrInvalid, "Validate")
 		})
 
-		t.Run("returns nil for the step generate with a command", func(t *testing.T) {
+		t.Run("returns nil for the step generate with a command line", func(t *testing.T) {
 			t.Parallel()
 			o := kotlinOptions()
 			o.Check = option.Check{option.StepGenerate}
-			o.Generate.Command = []string{"./gradlew", "openApiGenerate"}
+			o.Generate.Commands = [][]string{{"./gradlew", "openApiGenerate"}}
 			assert.NoError(t, o.Validate(), "Validate")
 		})
 
-		t.Run("returns ErrInvalid for the step generate without a command", func(t *testing.T) {
+		t.Run("returns ErrInvalid for the step generate without a command line", func(t *testing.T) {
 			t.Parallel()
 			o := kotlinOptions()
 			o.Check = option.Check{option.StepGenerate}

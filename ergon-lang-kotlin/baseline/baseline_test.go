@@ -86,16 +86,16 @@ func TestBaseline(t *testing.T) {
 				assert.Contains(t, makefile, "\ncheck-kotlin: audit-kotlin ## Run the gate of Kotlin\n", "the Makefile")
 			})
 
-			t.Run("runs the command of the generators and checks their files in the step generate", func(t *testing.T) {
+			t.Run("runs the command lines of the generators in the step generate", func(t *testing.T) {
 				t.Parallel()
 				o := kotlinOptions()
 				o.Generate = option.Generate{
-					Command: []string{"./gradlew", "openApiGenerate"},
-					Args:    []string{"--info"},
+					Commands: [][]string{{"./gradlew", "openApiGenerate", "--info"}, {"./gradlew", "kspKotlin"}},
 				}
 				o.Check = option.Check{option.StepGenerate}
 				expect.That(t, rendered(t, o, "Makefile")).
-					Contains("\nKOTLIN_GENERATE ?= ./gradlew openApiGenerate --info\n", "the command of the generators").
+					Contains("\nKOTLIN_GENERATE ?= ./gradlew openApiGenerate --info && ./gradlew kspKotlin\n",
+						"the command lines of the generators").
 					Contains("\ngenerate: generate-kotlin\n", "the aggregate generate").
 					Contains("\ngenerate-kotlin: ## Run the generators of Kotlin\n\t$(KOTLIN_GENERATE)\n",
 						"the target that runs the generators").
@@ -103,7 +103,7 @@ func TestBaseline(t *testing.T) {
 					Contains("\ncheck-kotlin: verify-generate-kotlin ## Run the gate of Kotlin\n", "the gate")
 			})
 
-			t.Run("renders no target of the generators without a command", func(t *testing.T) {
+			t.Run("renders no target of the generators without a command line", func(t *testing.T) {
 				t.Parallel()
 				assert.NotContains(t, rendered(t, kotlinOptions(), "Makefile"), "generate", "the Makefile")
 			})

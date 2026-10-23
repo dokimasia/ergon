@@ -40,9 +40,9 @@ kotlin:
   # test-kotlin runs ./gradlew test with args.
   test:
     args: []
-  # generate-kotlin runs command with args at the root of the repository, such as ./gradlew with a
-  # task of a generator. verify-generate-kotlin, the step generate of check, runs the same and fails
-  # when the run changes a file of the repository. Without a command Kotlin has neither target.
+  # generate-kotlin runs each command line of commands in order at the root of the repository, such
+  # as ./gradlew with a task of a generator. verify-generate-kotlin, the step generate of check,
+  # runs the same and fails when the run changes a file of the repository. Without a command line
+  # Kotlin has neither target.
   generate:
-    command: []
-    args: []
+    commands: []

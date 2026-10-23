@@ -15,9 +15,10 @@
 // The fragment of the Makefile runs fmt-kotlin and lint-kotlin with ktlint through ergon tool run,
 // over the Kotlin files that git lists, lint-kotlin also with the checks of the Gradle build,
 // test-kotlin with ./gradlew test, and check-kotlin, which requires the targets of the steps that
-// the key check of the section names. audit-kotlin requires audit-jvm. With a command in the key
-// generate, the fragment also renders generate-kotlin, which runs it, and verify-generate-kotlin,
-// which fails when it changes a file. A line ##@ Kotlin starts the group of Kotlin in make help.
+// the key check of the section names. audit-kotlin requires audit-jvm. With command lines in the
+// key generate, the fragment also renders generate-kotlin, which runs them in order, and
+// verify-generate-kotlin, which fails when they change a file. A line ##@ Kotlin starts the group
+// of Kotlin in make help.
 //
 // # Options
 //

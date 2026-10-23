@@ -27,7 +27,7 @@ type Options struct {
 	Test option.Run `yaml:"test" doc:"test-kotlin runs ./gradlew test with args."`
 
 	// Generate are the options of generate-kotlin and verify-generate-kotlin.
-	Generate option.Generate `yaml:"generate" doc:"generate-kotlin runs command with args at the root of the repository, such as ./gradlew with a task of a generator. verify-generate-kotlin, the step generate of check, runs the same and fails when the run changes a file of the repository. Without a command Kotlin has neither target."`
+	Generate option.Generate `yaml:"generate" doc:"generate-kotlin runs each command line of commands in order at the root of the repository, such as ./gradlew with a task of a generator. verify-generate-kotlin, the step generate of check, runs the same and fails when the run changes a file of the repository. Without a command line Kotlin has neither target."`
 }
 
 // Tools are the tools of the targets of Kotlin.

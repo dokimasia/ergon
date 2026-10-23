@@ -41,8 +41,7 @@
       "test",
       "audit"
     ],
-    "kotlin.generate.args": [],
-    "kotlin.generate.command": [],
+    "kotlin.generate.commands": [],
     "kotlin.test.args": [],
     "kotlin.tools.ktlint": "com.pinterest.ktlint:ktlint-cli@1.8.0"
   },
