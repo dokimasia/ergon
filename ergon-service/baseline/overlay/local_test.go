@@ -259,6 +259,14 @@ func TestLocal(t *testing.T) {
 				local:   "[lint]\nignore = [\"D\"]\n",
 				want:    "# " + ruffMerged + "\n\n[lint]\nselect = [\"ALL\"]\nignore = [\"D\"]\n",
 			},
+			{
+				name:    "merges a JSON file",
+				path:    "biome.json",
+				content: "{\n  \"overrides\": [\n    {}\n  ]\n}\n",
+				local:   "{\"overrides\": [{\"includes\": [\"src/**\"]}]}\n",
+				want: "{\n  \"overrides\": [\n    {},\n    {\n      \"includes\": [\n        \"src/**\"\n      ]\n" +
+					"    }\n  ]\n}\n",
+			},
 		}
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
@@ -281,6 +289,13 @@ func TestLocal(t *testing.T) {
 			_, err := overlay.Apply("ruff.toml", []byte("a = 1\n"), []byte("b = 1\nb = 2\n"))
 			assert.HasError(t, err, "Apply")
 			assert.Contains(t, err.Error(), "overlay: merge .ergon/local/ruff.toml: invalid: ", "the error")
+		})
+
+		t.Run("returns an error that names the local file of a JSON file that does not parse", func(t *testing.T) {
+			t.Parallel()
+			_, err := overlay.Apply("biome.json", []byte("{}\n"), []byte("{\"a\": }\n"))
+			assert.HasError(t, err, "Apply")
+			assert.Contains(t, err.Error(), "overlay: merge .ergon/local/biome.json: parse: ", "the error")
 		})
 	})
 
@@ -321,6 +336,26 @@ func TestLocal(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, overlay.IsTOML(tt.give), tt.want, "IsTOML of "+tt.give)
+			})
+		}
+	})
+
+	t.Run("IsJSON", func(t *testing.T) {
+		t.Parallel()
+
+		tests := []struct {
+			name string
+			give string
+			want bool
+		}{
+			{name: "reports true for the extension json", give: "biome.json", want: true},
+			{name: "reports false for another extension", give: "biome.jsonc", want: false},
+			{name: "reports false for a name without an extension", give: "Makefile", want: false},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, overlay.IsJSON(tt.give), tt.want, "IsJSON of "+tt.give)
 			})
 		}
 	})
