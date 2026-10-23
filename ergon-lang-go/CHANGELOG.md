@@ -1,5 +1,17 @@
 # go.dokimi.dev/ergon/lang/go
 
+## 0.10.0
+
+### Minor Changes
+
+- 27980dd: **Breaking:** Run each command line of the key `generate.commands` in `generate-go` and `verify-generate-go` in place of the keys `generate.command` and `generate.args`.
+
+### Patch Changes
+
+- Updated dependencies [2e44067, 3af4e3d, 43a3f4c]
+  - go.dokimi.dev/ergon/core@0.16.0
+  - go.dokimi.dev/ergon/service@0.21.0
+
 ## 0.9.3
 
 ### Patch Changes

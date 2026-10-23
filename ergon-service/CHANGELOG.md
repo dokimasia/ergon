@@ -1,5 +1,17 @@
 # go.dokimi.dev/ergon/service
 
+## 0.21.0
+
+### Minor Changes
+
+- 43a3f4c: Write each list of scalars inside a list of `.ergon.yaml` in flow style, such as each command line of `generate.commands`.
+
+### Patch Changes
+
+- 3af4e3d: Update go.stealthscale.io/cli to v0.7.0 to decode the command lines of `generate.commands`.
+- Updated dependencies [2e44067]
+  - go.dokimi.dev/ergon/core@0.16.0
+
 ## 0.20.0
 
 ### Minor Changes

@@ -1,5 +1,17 @@
 # go.dokimi.dev/ergon/lang/terraform
 
+## 0.5.0
+
+### Minor Changes
+
+- 0b95e6a: **Breaking:** Run each command line of the key `generate.commands` in `generate-terraform` and `verify-generate-terraform` in place of the keys `generate.command` and `generate.args`.
+
+### Patch Changes
+
+- Updated dependencies [2e44067, 3af4e3d, 43a3f4c]
+  - go.dokimi.dev/ergon/core@0.16.0
+  - go.dokimi.dev/ergon/service@0.21.0
+
 ## 0.4.11
 
 ### Patch Changes
