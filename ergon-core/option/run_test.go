@@ -38,10 +38,17 @@ func TestRun(t *testing.T) {
 				give option.Generate
 			}{
 				{
-					name: "returns nil for a command with arguments",
-					give: option.Generate{Command: []string{"go", "generate"}, Args: []string{"-x"}},
+					name: "returns nil for a command line with arguments",
+					give: option.Generate{Commands: [][]string{{"go", "generate", "-x"}}},
 				},
-				{name: "returns nil for no command and no arguments", give: option.Generate{}},
+				{
+					name: "returns nil for two command lines",
+					give: option.Generate{Commands: [][]string{
+						{"go", "run", "go.dokimi.dev/dokimi/cmd/dokimi@main", "run"},
+						{"go", "generate", "-run", "go tool kanon"},
+					}},
+				},
+				{name: "returns nil for no command line", give: option.Generate{}},
 			}
 			for _, tt := range valid {
 				t.Run(tt.name, func(t *testing.T) {
@@ -55,16 +62,16 @@ func TestRun(t *testing.T) {
 				give option.Generate
 			}{
 				{
-					name: "returns ErrInvalid for a word of the command that spans lines",
-					give: option.Generate{Command: []string{"npm\nrun"}},
+					name: "returns ErrInvalid for a word that spans lines",
+					give: option.Generate{Commands: [][]string{{"npm\nrun"}}},
 				},
 				{
-					name: "returns ErrInvalid for an argument that spans lines",
-					give: option.Generate{Command: []string{"buf", "generate"}, Args: []string{"a\nb"}},
+					name: "returns ErrInvalid for a word of the second command line that spans lines",
+					give: option.Generate{Commands: [][]string{{"buf", "generate"}, {"go", "a\nb"}}},
 				},
 				{
-					name: "returns ErrInvalid for arguments without a command",
-					give: option.Generate{Args: []string{"-x"}},
+					name: "returns ErrInvalid for a command line without a word",
+					give: option.Generate{Commands: [][]string{{"buf", "generate"}, {}}},
 				},
 			}
 			for _, tt := range invalid {
@@ -84,12 +91,12 @@ func TestRun(t *testing.T) {
 				check option.Check
 			}{
 				{
-					name:  "returns nil for a gate with the step generate and a command",
-					give:  option.Generate{Command: []string{"buf", "generate"}},
+					name:  "returns nil for the step generate with a command line",
+					give:  option.Generate{Commands: [][]string{{"buf", "generate"}}},
 					check: option.Check{option.StepLint, option.StepGenerate},
 				},
 				{
-					name:  "returns nil for a gate without the step generate and without a command",
+					name:  "returns nil for a gate without the step generate",
 					give:  option.Generate{},
 					check: option.Check{option.StepLint},
 				},
@@ -101,12 +108,12 @@ func TestRun(t *testing.T) {
 				})
 			}
 
-			t.Run("returns ErrInvalid for a gate with the step generate and without a command", func(t *testing.T) {
+			t.Run("returns ErrInvalid for the step generate without a command line", func(t *testing.T) {
 				t.Parallel()
 				err := option.Generate{}.CheckStep(option.Check{option.StepGenerate})
 				assert.ErrorIs(t, err, option.ErrInvalid, "CheckStep")
-				assert.Equal(t, err.Error(), "option: invalid value: check names generate, which needs a command in "+
-					"generate.command", "the error")
+				assert.Equal(t, err.Error(), "option: invalid value: check names generate, which needs a command line "+
+					"in generate.commands", "the error")
 			})
 		})
 	})

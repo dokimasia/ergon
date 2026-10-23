@@ -23,37 +23,33 @@ func (r Run) Validate() error {
 	return lines("args", r.Args)
 }
 
-// Generate is the options of the step generate: the command of the generators of a section and
-// the arguments that follow it. A section whose command is empty has no generate targets.
+// Generate is the options of the step generate: the command lines of the generators of a section,
+// which the step runs in order. A section without a command line has no generate targets.
 type Generate struct {
-	// Command is the command of the generators with its first arguments, each on one line, such as
-	// go and generate.
-	Command []string `yaml:"command"`
-
-	// Args are the arguments that follow the command, each on one line.
-	Args []string `yaml:"args"`
+	// Commands are the command lines of the generators. Each line is a command with its arguments,
+	// one word on each line of the list, such as go and generate.
+	Commands [][]string `yaml:"commands"`
 }
 
-// Validate returns an error that wraps [ErrInvalid] for a word of the command or an argument that
-// spans lines, and for arguments without a command.
+// Validate returns an error that wraps [ErrInvalid] for a command line without a word, and for a
+// word that spans lines.
 func (g Generate) Validate() error {
-	if err := lines("command", g.Command); err != nil {
-		return err
-	}
-	if err := lines("args", g.Args); err != nil {
-		return err
-	}
-	if len(g.Command) == 0 && len(g.Args) > 0 {
-		return fmt.Errorf("%w: args %q, which follow no command", ErrInvalid, g.Args)
+	for _, line := range g.Commands {
+		if len(line) == 0 {
+			return fmt.Errorf("%w: commands has a command line without a word", ErrInvalid)
+		}
+		if err := lines("commands", line); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
 // CheckStep returns an error that wraps [ErrInvalid] when c names the step generate and g has no
-// command, which leaves the step without a target. A producer's Validate calls it.
+// command line, which leaves the step without a target. A producer's Validate calls it.
 func (g Generate) CheckStep(c Check) error {
-	if len(g.Command) == 0 && slices.Contains(c, StepGenerate) {
-		return fmt.Errorf("%w: check names generate, which needs a command in generate.command", ErrInvalid)
+	if len(g.Commands) == 0 && slices.Contains(c, StepGenerate) {
+		return fmt.Errorf("%w: check names generate, which needs a command line in generate.commands", ErrInvalid)
 	}
 	return nil
 }
