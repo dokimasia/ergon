@@ -1,5 +1,11 @@
 # go.dokimi.dev/ergon/service
 
+## 0.20.0
+
+### Minor Changes
+
+- a0544e1: Merge a local JSON file into its managed JSON file.
+
 ## 0.19.0
 
 ### Minor Changes

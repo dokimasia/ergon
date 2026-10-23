@@ -1,5 +1,12 @@
 # go.dokimi.dev/ergon/lang/bash
 
+## 0.4.11
+
+### Patch Changes
+
+- Updated dependencies [a0544e1]
+  - go.dokimi.dev/ergon/service@0.20.0
+
 ## 0.4.10
 
 ### Patch Changes
