@@ -61,7 +61,7 @@ func (Producer) Options() language.Options {
 		Paths:    option.Paths{"."},
 		Check:    option.Check{option.StepLint, option.StepTest, option.StepAudit},
 		Test:     option.Run{Args: []string{}},
-		Generate: option.Generate{Command: []string{}, Args: []string{}},
+		Generate: option.Generate{Commands: [][]string{}},
 		CI: option.MatrixCI[Actions]{
 			Actions: Actions{SetupPHP: workflow.Action{
 				Uses:    "shivammathur/setup-php",

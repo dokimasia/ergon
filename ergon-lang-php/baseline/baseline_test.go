@@ -74,13 +74,17 @@ func TestBaseline(t *testing.T) {
 				assert.Contains(t, makefile, "\ncheck-php: audit-php ## Run the gate of PHP\n", "the Makefile")
 			})
 
-			t.Run("runs the command of the generators and checks their files in the step generate", func(t *testing.T) {
+			t.Run("runs the command lines of the generators in the step generate", func(t *testing.T) {
 				t.Parallel()
 				o, _ := baseline.Producer{}.Options().(*baseline.Options)
-				o.Generate = option.Generate{Command: []string{"composer", "run-script", "generate"}, Args: []string{}}
+				o.Generate = option.Generate{Commands: [][]string{
+					{"composer", "run-script", "generate"},
+					{"composer", "run-script", "docs"},
+				}}
 				o.Check = option.Check{option.StepGenerate}
 				expect.That(t, rendered(t, o, "Makefile")).
-					Contains("\nPHP_GENERATE ?= composer run-script generate\n", "the command of the generators").
+					Contains("\nPHP_GENERATE ?= composer run-script generate && composer run-script docs\n",
+						"the command lines of the generators").
 					Contains("\ngenerate: generate-php\n", "the aggregate generate").
 					Contains("\ngenerate-php: ## Run the generators of PHP\n\t$(PHP_GENERATE)\n",
 						"the target that runs the generators").
@@ -88,7 +92,7 @@ func TestBaseline(t *testing.T) {
 					Contains("\ncheck-php: verify-generate-php ## Run the gate of PHP\n", "the gate")
 			})
 
-			t.Run("renders no target of the generators without a command", func(t *testing.T) {
+			t.Run("renders no target of the generators without a command line", func(t *testing.T) {
 				t.Parallel()
 				makefile := rendered(t, baseline.Producer{}.Options(), "Makefile")
 				assert.NotContains(t, makefile, "generate", "the Makefile")

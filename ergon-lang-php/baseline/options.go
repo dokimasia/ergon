@@ -32,7 +32,7 @@ type Options struct {
 	Test option.Run `yaml:"test" doc:"test-php runs PHPUnit with args."`
 
 	// Generate are the options of generate-php and verify-generate-php.
-	Generate option.Generate `yaml:"generate" doc:"generate-php runs command with args at the root of the repository. verify-generate-php, the step generate of check, runs the same and fails when the run changes a file of the repository. Without a command PHP has neither target."`
+	Generate option.Generate `yaml:"generate" doc:"generate-php runs each command line of commands in order at the root of the repository. verify-generate-php, the step generate of check, runs the same and fails when the run changes a file of the repository. Without a command line PHP has neither target."`
 
 	// CI are the pin of the setup of PHP, the runners, the versions and the limit of the job
 	// check-php.

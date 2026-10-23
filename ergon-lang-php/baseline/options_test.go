@@ -104,15 +104,15 @@ func TestOptions(t *testing.T) {
 			assert.ErrorIs(t, o.Validate(), option.ErrInvalid, "Validate")
 		})
 
-		t.Run("returns nil for the step generate with a command", func(t *testing.T) {
+		t.Run("returns nil for the step generate with a command line", func(t *testing.T) {
 			t.Parallel()
 			o := phpOptions()
 			o.Check = option.Check{option.StepGenerate}
-			o.Generate.Command = []string{"composer", "run-script", "generate"}
+			o.Generate.Commands = [][]string{{"composer", "run-script", "generate"}}
 			assert.NoError(t, o.Validate(), "Validate")
 		})
 
-		t.Run("returns ErrInvalid for the step generate without a command", func(t *testing.T) {
+		t.Run("returns ErrInvalid for the step generate without a command line", func(t *testing.T) {
 			t.Parallel()
 			o := phpOptions()
 			o.Check = option.Check{option.StepGenerate}
