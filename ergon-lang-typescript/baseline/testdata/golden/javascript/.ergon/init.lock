@@ -24,7 +24,7 @@
     {
       "path": "biome.json",
       "producer": "js",
-      "sha256": "7f7f7d5278736969aee1fcd835eb6896f102561474e7501143634c7e221f8e97"
+      "sha256": "281cc67604ab65ee1018f076c6f971c3f53eb1f4ec29e2c656f2f1f32be75c0c"
     }
   ],
   "settings": {

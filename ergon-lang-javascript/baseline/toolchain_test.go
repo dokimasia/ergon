@@ -4,7 +4,6 @@
 package baseline_test
 
 import (
-	"strings"
 	"testing"
 
 	"go.dokimi.dev/assert"
@@ -14,12 +13,17 @@ import (
 	"go.dokimi.dev/ergon/lang/javascript"
 	"go.dokimi.dev/ergon/lang/javascript/baseline"
 	"go.dokimi.dev/ergon/service/baseline/baselinetest"
+	"go.dokimi.dev/ergon/service/baseline/overlay"
 	"go.dokimi.dev/ergon/service/baseline/render"
 )
 
 // toolchainName pins the name of the producer of the js toolchain, which is the name of its
 // section.
 const toolchainName = "js"
+
+// baselineIncludes is the value of files.includes of biome.json at the baseline, without
+// exclusions: the glob of every path and the force-ignore of .ergon, each on a line of its own.
+const baselineIncludes = "[\n      \"**\",\n      \"!!**/.ergon\"\n    ]"
 
 // prettierIgnore is the .prettierignore of the js toolchain alone for the toolkit vite-plus. It lists
 // .ergon/, .ergon.yaml and the managed files of the rendering.
@@ -136,30 +140,54 @@ func TestToolchain(t *testing.T) {
 				o := jsOptions()
 				o.Exclude = baseline.Exclude{"vendor", "src/**/*.gen.ts"}
 				assert.Contains(t, rendered(t, "biome.json", o), "\n  },\n  \"files\": {\n"+
-					"    \"includes\": [\"**\", \"!vendor\", \"!src/**/*.gen.ts\"]\n  },\n  \"formatter\": {\n",
+					"    \"includes\": [\n      \"**\",\n      \"!!**/.ergon\",\n      \"!vendor\",\n"+
+					"      \"!src/**/*.gen.ts\"\n    ]\n  },\n  \"formatter\": {\n", "biome.json")
+			})
+
+			t.Run("force-ignores .ergon in files.includes of biome.json without exclusions", func(t *testing.T) {
+				t.Parallel()
+				assert.Contains(t, rendered(t, "biome.json", jsOptions()), "\n  \"files\": {\n"+
+					"    \"includes\": [\n      \"**\",\n      \"!!**/.ergon\"\n    ]\n  },\n", "biome.json")
+			})
+
+			t.Run("applies the override of the rules of biome.json to every file", func(t *testing.T) {
+				t.Parallel()
+				assert.Contains(t, rendered(t, "biome.json", jsOptions()), "\n  \"overrides\": [\n    {\n"+
+					"      \"includes\": [\n        \"**\"\n      ],\n      \"linter\": {\n", "biome.json")
+			})
+
+			t.Run("asks for the extension .js in the imports of biome.json", func(t *testing.T) {
+				t.Parallel()
+				assert.Contains(t, rendered(t, "biome.json", jsOptions()), "\n          \"correctness\": {\n"+
+					"            \"useImportExtensions\": {\n              \"level\": \"error\",\n"+
+					"              \"options\": {\n                \"forceJsExtensions\": true\n", "biome.json")
+			})
+
+			t.Run("turns off noMagicNumbers and the length rules of biome.json in the test files", func(t *testing.T) {
+				t.Parallel()
+				assert.Contains(t, rendered(t, "biome.json", jsOptions()), "\n    {\n      \"includes\": [\n"+
+					"        \"**/tests/**\",\n        \"**/*.test.*\",\n        \"**/*.spec.*\"\n      ],\n"+
+					"      \"linter\": {\n        \"rules\": {\n          \"complexity\": {\n"+
+					"            \"noExcessiveLinesPerFunction\": \"off\"\n          },\n          \"style\": {\n"+
+					"            \"noExcessiveLinesPerFile\": \"off\",\n            \"noMagicNumbers\": \"off\"\n",
 					"biome.json")
 			})
 
-			t.Run("keeps files.includes on one line of 88 columns", func(t *testing.T) {
+			t.Run("formats biome.json with every array and object expanded", func(t *testing.T) {
 				t.Parallel()
-				o := jsOptions()
-				o.Exclude = baseline.Exclude{strings.Repeat("a", 61)}
-				line := "    \"includes\": [\"**\", \"!" + strings.Repeat("a", 61) + "\"]\n"
-				assert.Length(t, strings.TrimSuffix(line, "\n"), 88, "the line of files.includes")
-				assert.Contains(t, rendered(t, "biome.json", o), line, "biome.json")
+				assert.Contains(t, rendered(t, "biome.json", jsOptions()), "\n      \"includes\": [\n"+
+					"        \"biome.json\"\n      ],\n      \"json\": {\n        \"formatter\": {\n"+
+					"          \"expand\": \"always\"\n", "biome.json")
 			})
 
-			t.Run("puts each item of files.includes on a line of its own past 88 columns", func(t *testing.T) {
+			t.Run("renders biome.json in the layout of the merge of a local file", func(t *testing.T) {
 				t.Parallel()
 				o := jsOptions()
-				o.Exclude = baseline.Exclude{strings.Repeat("a", 62), "vendor"}
-				assert.Contains(t, rendered(t, "biome.json", o), "    \"includes\": [\n      \"**\",\n"+
-					"      \"!"+strings.Repeat("a", 62)+"\",\n      \"!vendor\"\n    ]\n", "biome.json")
-			})
-
-			t.Run("does not render the key files in biome.json without exclusions", func(t *testing.T) {
-				t.Parallel()
-				assert.NotContains(t, rendered(t, "biome.json", jsOptions()), "\"files\"", "biome.json")
+				o.Exclude = baseline.Exclude{"vendor"}
+				config := rendered(t, "biome.json", o)
+				merged, err := overlay.MergeJSON([]byte(config), []byte("{}"))
+				assert.NoError(t, err, "MergeJSON")
+				assert.Equal(t, string(merged), config, "biome.json after a merge without members")
 			})
 
 			t.Run("lists the globs of exclude in .prettierignore for vite-plus", func(t *testing.T) {
@@ -231,14 +259,15 @@ func TestToolchain(t *testing.T) {
 				o.Toolkit = baseline.ToolkitVitePlus
 				got, err := baseline.Toolchain{}.Data(nil, o, &workflow.Contribution{})
 				assert.NoError(t, err, "Data")
-				assert.Equal(t, got, any(baseline.Choices{LineWidth: 88, PNPM: true, VitePlus: true}), "the choices")
+				want := baseline.Choices{Includes: baselineIncludes, LineWidth: 88, PNPM: true, VitePlus: true}
+				assert.Equal(t, got, any(want), "the choices")
 			})
 
 			t.Run("returns the choices of the baseline for options of another type", func(t *testing.T) {
 				t.Parallel()
 				got, err := baseline.Toolchain{}.Data(nil, nil, &workflow.Contribution{})
 				assert.NoError(t, err, "Data")
-				assert.Equal(t, got, any(baseline.Choices{LineWidth: 88}), "the choices")
+				assert.Equal(t, got, any(baseline.Choices{Includes: baselineIncludes, LineWidth: 88}), "the choices")
 			})
 		})
 

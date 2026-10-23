@@ -6,11 +6,9 @@
     "clientKind": "git",
     "useIgnoreFile": true
   },
-{{%- with .Data.Includes %}}
   "files": {
-    "includes": {{% . %}}
+    "includes": {{% .Data.Includes %}}
   },
-{{%- end %}}
   "formatter": {
     "indentStyle": "space",
     "indentWidth": 2,
@@ -39,10 +37,21 @@
   },
   "overrides": [
     {
+      "includes": [
+        "**"
+      ],
       "linter": {
         "rules": {
           "complexity": {
             "useLiteralKeys": "off"
+          },
+          "correctness": {
+            "useImportExtensions": {
+              "level": "error",
+              "options": {
+                "forceJsExtensions": true
+              }
+            }
           },
           "style": {
             "useNamingConvention": {
@@ -65,12 +74,43 @@
                     "selector": {
                       "kind": "typeProperty"
                     },
-                    "formats": ["camelCase", "snake_case"]
+                    "formats": [
+                      "camelCase",
+                      "snake_case"
+                    ]
                   }
                 ]
               }
             }
           }
+        }
+      }
+    },
+    {
+      "includes": [
+        "**/tests/**",
+        "**/*.test.*",
+        "**/*.spec.*"
+      ],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noExcessiveLinesPerFunction": "off"
+          },
+          "style": {
+            "noExcessiveLinesPerFile": "off",
+            "noMagicNumbers": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "biome.json"
+      ],
+      "json": {
+        "formatter": {
+          "expand": "always"
         }
       }
     }

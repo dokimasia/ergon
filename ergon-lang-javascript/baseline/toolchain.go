@@ -18,8 +18,8 @@ const ToolchainName = "js"
 // Choices are the values that the templates of the js toolchain read as .Data. The templates of
 // JavaScript and TypeScript read them as .Toolchain.
 type Choices struct {
-	// Includes is the value of files.includes of biome.json for the exclusions of the section js. It
-	// has the layout of Biome's formatter at LineWidth, and it is empty without exclusions.
+	// Includes is the value of files.includes of biome.json: the glob of every path, the
+	// force-ignore of .ergon and the exclusions of the section js, each item on a line of its own.
 	Includes string
 
 	// LineWidth is the line width of the formatter of biome.json.

@@ -8,18 +8,36 @@
 // templates/javascript/. [Toolchain] renders its managed file and its fragments of .gitattributes,
 // .gitignore and the Makefile from templates/js/, once for a repository with JavaScript,
 // TypeScript or both. The managed file is biome.json for the toolkit biome, and .prettierignore
-// for the toolkit vite-plus. biome.json is JSON, so it opens with no managed comment.
-// .prettierignore lists .ergon/, .ergon.yaml and every managed file of the rendering, so vp fmt
-// leaves them as ergon init renders them.
+// for the toolkit vite-plus. biome.json is JSON, so it opens with no managed comment, and ergon init
+// merges the local file .ergon/local/biome.json into it. .prettierignore lists .ergon/, .ergon.yaml
+// and every managed file of the rendering, so vp fmt leaves them as ergon init renders them.
+//
+// # biome.json
+//
+// biome.json turns on every stable group of Biome's rules as an error. Its overrides change these
+// rules:
+//
+//   - useLiteralKeys is off, because it contradicts the flag --noPropertyAccessFromIndexSignature
+//     of tsc.
+//   - useImportExtensions has the option forceJsExtensions, so an import refers to the .js file that
+//     tsc writes.
+//   - useNamingConvention allows four cases for a property of an object literal and two for a
+//     property of a type.
+//   - noMagicNumbers, noExcessiveLinesPerFunction and noExcessiveLinesPerFile are off in the test
+//     files, which state their values inline and have a case for each behaviour.
+//
+// Each item of an array of biome.json is on a line of its own, as the merge of a local JSON file
+// writes it. An override sets the option expand of Biome's JSON formatter to always for biome.json,
+// so Biome formats the file the same way. files.includes force-ignores .ergon, so Biome reads no
+// configuration under it.
 //
 // # Exclusions
 //
 // The key exclude of the section js contains the globs of [Exclude]. fmt-js and lint-js skip the
 // paths that they match. For the toolkit biome, files.includes of biome.json starts with the glob of
-// every path and has each exclusion after it with the prefix !. ergon init lays the list out as Biome
-// formats it. For the toolkit vite-plus, ergon init writes each exclusion from the root into
-// .prettierignore and .eslintignore. vp fmt reads .prettierignore, and the lint of vp check reads
-// .eslintignore.
+// every path and the force-ignore of .ergon, and has each exclusion after it with the prefix !. For
+// the toolkit vite-plus, ergon init writes each exclusion from the root into .prettierignore and
+// .eslintignore. vp fmt reads .prettierignore, and the lint of vp check reads .eslintignore.
 //
 // # Package manager and toolkit
 //

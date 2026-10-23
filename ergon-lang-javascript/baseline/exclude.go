@@ -14,23 +14,26 @@ import (
 
 // The parts of the value of files.includes of biome.json.
 const (
-	// includeAll is the glob of every path. The exclusions follow it in files.includes.
+	// includeAll is the glob of every path. The force-ignore of .ergon and the exclusions follow it
+	// in files.includes.
 	includeAll = "**"
+
+	// ergonIgnored is the force-ignore of the directory .ergon in files.includes. Biome's scanner
+	// then does not read a file under .ergon. Without it, Biome reads the local biome.json as a
+	// second root configuration and stops.
+	ergonIgnored = "!!**/.ergon"
 
 	// excluded is the prefix of an exclusion in files.includes.
 	excluded = "!"
 )
 
-// The layout of files.includes in the managed biome.json.
+// The layout of the managed biome.json.
 const (
 	// keyIndent is the indent of the line of the key includes.
 	keyIndent = "    "
 
-	// itemIndent is the indent of an item that Biome puts on a line of its own.
+	// itemIndent is the indent of an item of files.includes, each on a line of its own.
 	itemIndent = keyIndent + "  "
-
-	// includesKey is the key includes with its indent.
-	includesKey = keyIndent + `"includes": `
 
 	// biomeLineWidth is the line width of the formatter of the managed biome.json. The template
 	// renders it from [Choices.LineWidth].
@@ -74,19 +77,13 @@ func (e Exclude) Validate() error {
 }
 
 // includes returns the value of files.includes of biome.json for e. The value starts with the glob
-// of every path, and each glob of e follows with the prefix !. The items are on the line of the key
-// when that line fits the line width of biome.json. Otherwise each item is on a line of its own.
-// Biome formats the array the same way. includes returns the empty string for an empty e.
+// of every path and the force-ignore of .ergon, and each glob of e follows with the prefix !. Each
+// item is on a line of its own, as every array of the managed biome.json is.
 func (e Exclude) includes() string {
-	if len(e) == 0 {
-		return ""
-	}
-	items := []string{`"` + includeAll + `"`}
+	items := make([]string, 0, 2+len(e))
+	items = append(items, `"`+includeAll+`"`, `"`+ergonIgnored+`"`)
 	for _, glob := range e {
 		items = append(items, `"`+excluded+glob+`"`)
-	}
-	if line := "[" + strings.Join(items, ", ") + "]"; len(includesKey)+len(line) <= biomeLineWidth {
-		return line
 	}
 	return "[\n" + itemIndent + strings.Join(items, ",\n"+itemIndent) + "\n" + keyIndent + "]"
 }
