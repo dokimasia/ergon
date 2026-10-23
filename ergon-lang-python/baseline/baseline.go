@@ -64,7 +64,7 @@ func (Producer) Options() language.Options {
 		Paths:    option.Paths{"."},
 		Check:    option.Check{option.StepLint, option.StepTest, option.StepAudit},
 		Test:     option.Run{Args: []string{}},
-		Generate: option.Generate{Command: []string{}, Args: []string{}},
+		Generate: option.Generate{Commands: [][]string{}},
 		Audit:    Audit{Audit: option.Audit{Ignore: []string{}}, Skip: []string{}},
 		CI: option.MatrixCI[struct{}]{
 			Runners:  option.Runners{},

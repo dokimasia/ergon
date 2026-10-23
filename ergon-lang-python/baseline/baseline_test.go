@@ -80,16 +80,16 @@ func TestBaseline(t *testing.T) {
 				assert.Contains(t, makefile, "\ncheck-python: test-python ## Run the gate of Python\n", "the Makefile")
 			})
 
-			t.Run("runs the command of the generators and checks their files in the step generate", func(t *testing.T) {
+			t.Run("runs the command lines of the generators in the step generate", func(t *testing.T) {
 				t.Parallel()
 				o, _ := baseline.Producer{}.Options().(*baseline.Options)
 				o.Generate = option.Generate{
-					Command: []string{"datamodel-codegen"},
-					Args:    []string{"--input", "api.yaml"},
+					Commands: [][]string{{"datamodel-codegen", "--input", "api.yaml"}, {"make", "api-docs"}},
 				}
 				o.Check = option.Check{option.StepGenerate}
 				expect.That(t, rendered(t, o, "Makefile")).
-					Contains("\nPYTHON_GENERATE ?= datamodel-codegen --input api.yaml\n", "the command of the generators").
+					Contains("\nPYTHON_GENERATE ?= datamodel-codegen --input api.yaml && make api-docs\n",
+						"the command lines of the generators").
 					Contains("\ngenerate: generate-python\n", "the aggregate generate").
 					Contains("\ngenerate-python: ## Run the generators of Python\n\t$(PYTHON_GENERATE)\n",
 						"the target that runs the generators").

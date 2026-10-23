@@ -37,7 +37,7 @@ type Options struct {
 	Test option.Run `yaml:"test" doc:"test-python runs pytest with args."`
 
 	// Generate are the options of generate-python and verify-generate-python.
-	Generate option.Generate `yaml:"generate" doc:"generate-python runs command with args at the root of the repository. verify-generate-python, the step generate of check, runs the same and fails when the run changes a file of the repository. Without a command Python has neither target."`
+	Generate option.Generate `yaml:"generate" doc:"generate-python runs each command line of commands in order at the root of the repository. verify-generate-python, the step generate of check, runs the same and fails when the run changes a file of the repository. Without a command line Python has neither target."`
 
 	// Audit are the options of audit-python.
 	Audit Audit `yaml:"audit" doc:"audit-python scans the packages of uv.lock with pip-audit, and accepts each advisory of ignore, by its identifier, such as PYSEC-2024-1."`

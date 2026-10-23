@@ -39,8 +39,7 @@
     "python.ci.steps": [],
     "python.ci.timeout": 30,
     "python.ci.versions": [],
-    "python.generate.args": [],
-    "python.generate.command": [],
+    "python.generate.commands": [],
     "python.paths": [
       "."
     ],

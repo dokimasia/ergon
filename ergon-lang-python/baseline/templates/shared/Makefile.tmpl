@@ -17,8 +17,8 @@ PYTHON_PATHS ?={{% with words .Options.Paths %}} {{% . %}}{{% end %}}
 PYTHON_TEST_ARGS ?={{% with words .Options.Test.Args %}} {{% . %}}{{% end %}}
 PYTHON_AUDIT_IGNORE ?={{% with words .Options.Audit.Ignore %}} {{% . %}}{{% end %}}
 PYTHON_AUDIT_SKIP ?={{% with words .Options.Audit.Skip %}} {{% . %}}{{% end %}}
-{{%- with .Options.Generate.Command %}}
-PYTHON_GENERATE ?={{% with words $.Options.Generate.Command %}} {{% . %}}{{% end %}}{{% with words $.Options.Generate.Args %}} {{% . %}}{{% end %}}
+{{%- with .Options.Generate.Commands %}}
+PYTHON_GENERATE ?={{% range $i, $line := . %}}{{% if $i %}} &&{{% end %}} {{% words $line %}}{{% end %}}
 {{%- end %}}
 
 # The error codes of mypy that neither its defaults nor --strict turn on.
@@ -26,11 +26,11 @@ MYPY_CODES := $(foreach code,redundant-expr possibly-undefined truthy-bool truth
 	unused-awaitable redundant-self explicit-override mutable-override unimported-reveal exhaustive-match deprecated,\
 	--enable-error-code $(code))
 
-.PHONY: fmt-python lint-python test-python{{% if .Options.Generate.Command %}} generate-python verify-generate-python{{% end %}} audit-python check-python
+.PHONY: fmt-python lint-python test-python{{% if .Options.Generate.Commands %}} generate-python verify-generate-python{{% end %}} audit-python check-python
 fmt: fmt-python
 lint: lint-python
 test: test-python
-{{%- if .Options.Generate.Command %}}
+{{%- if .Options.Generate.Commands %}}
 generate: generate-python
 {{%- end %}}
 audit: audit-python
@@ -44,7 +44,7 @@ lint-python: ## Check the Python sources with ruff.toml and with mypy in its str
 	$(MYPY) --strict --warn-unreachable --strict-equality-for-none $(MYPY_CODES) --exclude-gitignore $(PYTHON_PATHS)
 test-python: ## Run the Python tests
 	$(PYTEST) $(PYTHON_TEST_ARGS)
-{{%- if .Options.Generate.Command %}}
+{{%- if .Options.Generate.Commands %}}
 generate-python: ## Run the generators of Python
 	$(PYTHON_GENERATE)
 verify-generate-python: ## Fail when the generators of Python change a file of the repository
