@@ -83,8 +83,8 @@ github.com/xanzy/ssh-agent v0.3.3 h1:+/15pJfg/RsTxqYcX6fHqOXZwwMP+2VyYWJeWM2qQFM
 github.com/xanzy/ssh-agent v0.3.3/go.mod h1:6dzNDKs0J9rVPHPhaGCukekBHKqfl+L3KghI1Bc68Uw=
 go.dokimi.dev/assert v0.3.0 h1:YIxocE3ReJ9kxFY/1KDtMK7Pfua4OxHH3SXVsgTI+QU=
 go.dokimi.dev/assert v0.3.0/go.mod h1:NeZvtoRhjUZSooEp8kN1mMakVUowb+EDKFR/YOUey2w=
-go.stealthscale.io/cli v0.6.0 h1:LqKYHar99cVEZtwplRIPs8md79SxnbMfdydOXwMNijE=
-go.stealthscale.io/cli v0.6.0/go.mod h1:w7GqdYhhdgdg6RhRO5dgGH/2g4u58BRsncVxfqqties=
+go.stealthscale.io/cli v0.7.0 h1:dbYq6cskLyEZOWBM54Gt2B5BIeW8qvtVejsFZlrZQM8=
+go.stealthscale.io/cli v0.7.0/go.mod h1:w7GqdYhhdgdg6RhRO5dgGH/2g4u58BRsncVxfqqties=
 go.yaml.in/yaml/v3 v3.0.5 h1:N6y/pJk8buWs9NY5ERU2HSMfm+IuD/OtfdAnq6kESPw=
 go.yaml.in/yaml/v3 v3.0.5/go.mod h1:HVTZu1O7/Vkt2N+BFy8Zza+lnLsABggaTM2ZpNIGuKg=
 golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d/go.mod h1:IxCIyHEi3zRg3s0A5j5BB6A9Jmi73HwBIUl50j+osU4=

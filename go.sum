@@ -109,8 +109,8 @@ go.dokimi.dev/ergon/lang/typescript v0.3.10 h1:2m1JvaBJ05ZDxB1uqGAPcKcoW1QL32mZj
 go.dokimi.dev/ergon/lang/typescript v0.3.10/go.mod h1:HOUiD3bSF6nxHaoo4by3PgpCdB/xXqUQn5DLxD61V7s=
 go.dokimi.dev/ergon/service v0.20.0 h1:2fsrjbRxR61EitiEWN2HudFi7sk0lZthJXMquETJlEc=
 go.dokimi.dev/ergon/service v0.20.0/go.mod h1:Q8BZy0fHzzxAzSlRX2g7AkWUhtfFNijAT5Lk+oIkXYI=
-go.stealthscale.io/cli v0.6.0 h1:LqKYHar99cVEZtwplRIPs8md79SxnbMfdydOXwMNijE=
-go.stealthscale.io/cli v0.6.0/go.mod h1:w7GqdYhhdgdg6RhRO5dgGH/2g4u58BRsncVxfqqties=
+go.stealthscale.io/cli v0.7.0 h1:dbYq6cskLyEZOWBM54Gt2B5BIeW8qvtVejsFZlrZQM8=
+go.stealthscale.io/cli v0.7.0/go.mod h1:w7GqdYhhdgdg6RhRO5dgGH/2g4u58BRsncVxfqqties=
 go.yaml.in/yaml/v3 v3.0.5 h1:N6y/pJk8buWs9NY5ERU2HSMfm+IuD/OtfdAnq6kESPw=
 go.yaml.in/yaml/v3 v3.0.5/go.mod h1:HVTZu1O7/Vkt2N+BFy8Zza+lnLsABggaTM2ZpNIGuKg=
 golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d/go.mod h1:IxCIyHEi3zRg3s0A5j5BB6A9Jmi73HwBIUl50j+osU4=
