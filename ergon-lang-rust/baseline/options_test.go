@@ -41,11 +41,11 @@ func TestOptions(t *testing.T) {
 			assert.ErrorIs(t, o.Validate(), option.ErrInvalid, "Validate")
 		})
 
-		t.Run("returns nil for the step generate with a command", func(t *testing.T) {
+		t.Run("returns nil for the step generate with a command line", func(t *testing.T) {
 			t.Parallel()
 			o := rustOptions()
 			o.Check = option.Check{option.StepGenerate}
-			o.Generate.Command = []string{"cargo", "run", "--package", "codegen"}
+			o.Generate.Commands = [][]string{{"cargo", "run", "--package", "codegen"}}
 			assert.NoError(t, o.Validate(), "Validate")
 		})
 
@@ -56,7 +56,7 @@ func TestOptions(t *testing.T) {
 			assert.NoError(t, o.Validate(), "Validate")
 		})
 
-		t.Run("returns ErrInvalid for the step generate without a command", func(t *testing.T) {
+		t.Run("returns ErrInvalid for the step generate without a command line", func(t *testing.T) {
 			t.Parallel()
 			o := rustOptions()
 			o.Check = option.Check{option.StepGenerate}

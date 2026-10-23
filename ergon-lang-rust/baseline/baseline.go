@@ -59,7 +59,7 @@ func (Producer) Options() language.Options {
 		},
 		Check:    option.Check{option.StepLint, option.StepTest, option.StepMSRV, option.StepAudit},
 		Test:     option.Run{Args: []string{"--workspace", "--all-targets"}},
-		Generate: option.Generate{Command: []string{}, Args: []string{}},
+		Generate: option.Generate{Commands: [][]string{}},
 		Audit:    option.Audit{Ignore: []string{}},
 		CI: option.MatrixCI[Actions]{
 			Actions: Actions{SetupRustToolchain: workflow.Action{

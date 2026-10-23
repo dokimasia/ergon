@@ -32,7 +32,7 @@ type Options struct {
 	Test option.Run `yaml:"test" doc:"test-rust runs cargo test with args."`
 
 	// Generate are the options of generate-rust and verify-generate-rust.
-	Generate option.Generate `yaml:"generate" doc:"generate-rust runs command with args at the root of the repository. verify-generate-rust, the step generate of check, runs the same and fails when the run changes a file of the repository. Without a command Rust has neither target."`
+	Generate option.Generate `yaml:"generate" doc:"generate-rust runs each command line of commands in order at the root of the repository. verify-generate-rust, the step generate of check, runs the same and fails when the run changes a file of the repository. Without a command line Rust has neither target."`
 
 	// Audit are the options of audit-rust.
 	Audit option.Audit `yaml:"audit" doc:"audit-rust scans Cargo.lock with cargo-audit, and accepts each advisory of ignore, by its identifier, such as RUSTSEC-2024-0001."`

@@ -22,9 +22,10 @@
 // rustup and checks the crate on it. It fails for a published crate without a rust-version.
 // audit-rust and msrv-rust run their tools through ergon tool run, which installs a crate with
 // cargo install --locked. CARGO_LLVM_COV runs the cargo-llvm-cov of the section for a target of
-// .ergon/local/Makefile, because the gate does not measure coverage. With a command in the key
-// generate, the fragment also renders generate-rust, which runs it, and verify-generate-rust, which
-// fails when it changes a file. A line ##@ Rust starts the group of Rust in make help.
+// .ergon/local/Makefile, because the gate does not measure coverage. With command lines in the key
+// generate, the fragment also renders generate-rust, which runs them in order, and
+// verify-generate-rust, which fails when they change a file. A line ##@ Rust starts the group of
+// Rust in make help.
 //
 // # Options
 //

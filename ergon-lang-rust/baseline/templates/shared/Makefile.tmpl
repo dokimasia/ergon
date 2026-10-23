@@ -16,15 +16,15 @@ CARGO_HACK := $(ERGON) tool run rust.cargo-hack --
 # The options of the section rust.
 RUST_TEST_ARGS ?={{% with words .Options.Test.Args %}} {{% . %}}{{% end %}}
 RUST_AUDIT_IGNORE ?={{% with words .Options.Audit.Ignore %}} {{% . %}}{{% end %}}
-{{%- with .Options.Generate.Command %}}
-RUST_GENERATE ?={{% with words $.Options.Generate.Command %}} {{% . %}}{{% end %}}{{% with words $.Options.Generate.Args %}} {{% . %}}{{% end %}}
+{{%- with .Options.Generate.Commands %}}
+RUST_GENERATE ?={{% range $i, $line := . %}}{{% if $i %}} &&{{% end %}} {{% words $line %}}{{% end %}}
 {{%- end %}}
 
-.PHONY: fmt-rust lint-rust test-rust msrv-rust{{% if .Options.Generate.Command %}} generate-rust verify-generate-rust{{% end %}} audit-rust check-rust
+.PHONY: fmt-rust lint-rust test-rust msrv-rust{{% if .Options.Generate.Commands %}} generate-rust verify-generate-rust{{% end %}} audit-rust check-rust
 fmt: fmt-rust
 lint: lint-rust
 test: test-rust
-{{%- if .Options.Generate.Command %}}
+{{%- if .Options.Generate.Commands %}}
 generate: generate-rust
 {{%- end %}}
 audit: audit-rust
@@ -47,7 +47,7 @@ msrv-rust: ## Check each published crate on the Rust of its rust-version
 	@if cargo metadata --no-deps --format-version 1 | grep -q '"rust_version":"'; then \
 		$(CARGO_HACK) hack check --rust-version --workspace --ignore-private --all-targets --all-features; \
 	fi
-{{%- if .Options.Generate.Command %}}
+{{%- if .Options.Generate.Commands %}}
 generate-rust: ## Run the generators of Rust
 	$(RUST_GENERATE)
 verify-generate-rust: ## Fail when the generators of Rust change a file of the repository

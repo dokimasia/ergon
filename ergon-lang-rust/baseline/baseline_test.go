@@ -87,16 +87,17 @@ func TestBaseline(t *testing.T) {
 				assert.Contains(t, makefile, "\ncheck-rust: audit-rust ## Run the gate of Rust\n", "the Makefile")
 			})
 
-			t.Run("runs the command of the generators and checks their files in the step generate", func(t *testing.T) {
+			t.Run("runs the command lines of the generators in the step generate", func(t *testing.T) {
 				t.Parallel()
 				o, _ := baseline.Producer{}.Options().(*baseline.Options)
-				o.Generate = option.Generate{
-					Command: []string{"cargo", "run", "--package", "codegen"},
-					Args:    []string{},
-				}
+				o.Generate = option.Generate{Commands: [][]string{
+					{"cargo", "run", "--package", "codegen"},
+					{"cargo", "run", "--package", "bindings"},
+				}}
 				o.Check = option.Check{option.StepGenerate}
 				expect.That(t, rendered(t, o, "Makefile")).
-					Contains("\nRUST_GENERATE ?= cargo run --package codegen\n", "the command of the generators").
+					Contains("\nRUST_GENERATE ?= cargo run --package codegen && cargo run --package bindings\n",
+						"the command lines of the generators").
 					Contains("\ngenerate: generate-rust\n", "the aggregate generate").
 					Contains("\ngenerate-rust: ## Run the generators of Rust\n\t$(RUST_GENERATE)\n",
 						"the target that runs the generators").

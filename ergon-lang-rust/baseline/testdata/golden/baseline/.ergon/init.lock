@@ -42,8 +42,7 @@
     "rust.ci.steps": [],
     "rust.ci.timeout": 30,
     "rust.ci.versions": [],
-    "rust.generate.args": [],
-    "rust.generate.command": [],
+    "rust.generate.commands": [],
     "rust.test.args": [
       "--workspace",
       "--all-targets"
