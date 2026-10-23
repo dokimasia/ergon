@@ -74,13 +74,16 @@ func TestBaseline(t *testing.T) {
 				assert.Contains(t, makefile, "\ncheck-bash: ## Run the gate of Bash\n", "the Makefile")
 			})
 
-			t.Run("runs the command of the generators and checks their files in the step generate", func(t *testing.T) {
+			t.Run("runs the command lines of the generators in the step generate", func(t *testing.T) {
 				t.Parallel()
 				o, _ := baseline.Producer{}.Options().(*baseline.Options)
-				o.Generate = option.Generate{Command: []string{"./scripts/generate.sh"}, Args: []string{"--all"}}
+				o.Generate = option.Generate{
+					Commands: [][]string{{"./scripts/generate.sh", "--all"}, {"./scripts/docs.sh"}},
+				}
 				o.Check = option.Check{option.StepGenerate}
 				expect.That(t, rendered(t, o, "Makefile")).
-					Contains("\nBASH_GENERATE ?= ./scripts/generate.sh --all\n", "the command of the generators").
+					Contains("\nBASH_GENERATE ?= ./scripts/generate.sh --all && ./scripts/docs.sh\n",
+						"the command lines of the generators").
 					Contains("\ngenerate: generate-bash\n", "the aggregate generate").
 					Contains("\ngenerate-bash: ## Run the generators of Bash\n\t$(BASH_GENERATE)\n",
 						"the target that runs the generators").
@@ -88,7 +91,7 @@ func TestBaseline(t *testing.T) {
 					Contains("\ncheck-bash: verify-generate-bash ## Run the gate of Bash\n", "the gate")
 			})
 
-			t.Run("renders no target of the generators without a command", func(t *testing.T) {
+			t.Run("renders no target of the generators without a command line", func(t *testing.T) {
 				t.Parallel()
 				makefile := rendered(t, baseline.Producer{}.Options(), "Makefile")
 				assert.NotContains(t, makefile, "generate", "the Makefile")

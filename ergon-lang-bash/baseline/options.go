@@ -28,7 +28,7 @@ type Options struct {
 	Check option.Check `yaml:"check" doc:"The steps that check-bash runs, in order: lint or generate."`
 
 	// Generate are the options of generate-bash and verify-generate-bash.
-	Generate option.Generate `yaml:"generate" doc:"generate-bash runs command with args at the root of the repository. verify-generate-bash, the step generate of check, runs the same and fails when the run changes a file of the repository. Without a command Bash has neither target."`
+	Generate option.Generate `yaml:"generate" doc:"generate-bash runs each command line of commands in order at the root of the repository. verify-generate-bash, the step generate of check, runs the same and fails when the run changes a file of the repository. Without a command line Bash has neither target."`
 
 	// CI are the runners and the limit of the job check-bash.
 	CI option.RunnerCI[struct{}] `yaml:"ci" doc:"The runners of the job check-bash, and its limit in minutes. Bash needs no setup, so the job runs no action of its own. Empty runners select every runner of the section github."`
