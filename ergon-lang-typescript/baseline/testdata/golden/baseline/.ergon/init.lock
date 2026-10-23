@@ -52,8 +52,7 @@
       "test",
       "audit"
     ],
-    "typescript.generate.args": [],
-    "typescript.generate.command": [],
+    "typescript.generate.commands": [],
     "typescript.test.args": [],
     "typescript.tools.typescript": "typescript@7.0.2"
   },

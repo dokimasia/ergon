@@ -26,7 +26,7 @@ type Options struct {
 	Test option.Run `yaml:"test" doc:"test-typescript runs the tests with args: the test script of package.json through the package manager of the section js, or vp test --run for the toolkit vite-plus."`
 
 	// Generate are the options of generate-typescript and verify-generate-typescript.
-	Generate option.Generate `yaml:"generate" doc:"generate-typescript runs command with args at the root of the repository, such as npm run generate. verify-generate-typescript, the step generate of check, runs the same and fails when the run changes a file of the repository. Without a command TypeScript has neither target."`
+	Generate option.Generate `yaml:"generate" doc:"generate-typescript runs each command line of commands in order at the root of the repository, such as npm run generate. verify-generate-typescript, the step generate of check, runs the same and fails when the run changes a file of the repository. Without a command line TypeScript has neither target."`
 }
 
 // Tools are the tools of the targets of TypeScript.

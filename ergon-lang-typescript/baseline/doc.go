@@ -16,9 +16,9 @@
 // lint-typescript then runs tsc through ergon tool run with the type-safety options of tsc. For
 // vite-plus, vp check of lint-js checks the types. test-typescript runs JS_TEST, the command of the
 // tests of the js toolchain, and check-typescript requires the targets of the steps that the key
-// check of the section names. audit-typescript requires audit-js. With a command in the key
-// generate, the fragment also renders generate-typescript, which runs it, and
-// verify-generate-typescript, which fails when it changes a file. A line ##@ TypeScript starts the
+// check of the section names. audit-typescript requires audit-js. With command lines in the key
+// generate, the fragment also renders generate-typescript, which runs them in order, and
+// verify-generate-typescript, which fails when they change a file. A line ##@ TypeScript starts the
 // group of TypeScript in make help.
 //
 // # Options

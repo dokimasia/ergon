@@ -12,14 +12,14 @@ TSC := $(ERGON) tool run typescript.typescript --
 
 # The options of the section typescript.
 TYPESCRIPT_TEST_ARGS ?={{% with words .Options.Test.Args %}} {{% . %}}{{% end %}}
-{{%- with .Options.Generate.Command %}}
-TYPESCRIPT_GENERATE ?={{% with words $.Options.Generate.Command %}} {{% . %}}{{% end %}}{{% with words $.Options.Generate.Args %}} {{% . %}}{{% end %}}
+{{%- with .Options.Generate.Commands %}}
+TYPESCRIPT_GENERATE ?={{% range $i, $line := . %}}{{% if $i %}} &&{{% end %}} {{% words $line %}}{{% end %}}
 {{%- end %}}
 
-.PHONY: lint-typescript test-typescript{{% if .Options.Generate.Command %}} generate-typescript verify-generate-typescript{{% end %}} audit-typescript check-typescript
+.PHONY: lint-typescript test-typescript{{% if .Options.Generate.Commands %}} generate-typescript verify-generate-typescript{{% end %}} audit-typescript check-typescript
 lint: lint-typescript
 test: test-typescript
-{{%- if .Options.Generate.Command %}}
+{{%- if .Options.Generate.Commands %}}
 generate: generate-typescript
 {{%- end %}}
 check: check-typescript
@@ -34,7 +34,7 @@ lint-typescript: lint-js ## Check the TypeScript sources with Biome, and with ts
 {{%- end %}}
 test-typescript: ## Run the TypeScript tests
 	$(JS_TEST)$(if $(TYPESCRIPT_TEST_ARGS), $(TYPESCRIPT_TEST_ARGS))
-{{%- if .Options.Generate.Command %}}
+{{%- if .Options.Generate.Commands %}}
 generate-typescript: ## Run the generators of TypeScript
 	$(TYPESCRIPT_GENERATE)
 verify-generate-typescript: ## Fail when the generators of TypeScript change a file of the repository

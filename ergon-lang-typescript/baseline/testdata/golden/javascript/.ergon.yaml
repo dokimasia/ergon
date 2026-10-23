@@ -64,12 +64,12 @@ javascript:
   # manager of the section js, or vp test --run for the toolkit vite-plus.
   test:
     args: []
-  # generate-javascript runs command with args at the root of the repository, such as npm run
-  # generate. verify-generate-javascript, the step generate of check, runs the same and fails when
-  # the run changes a file of the repository. Without a command JavaScript has neither target.
+  # generate-javascript runs each command line of commands in order at the root of the repository,
+  # such as npm run generate. verify-generate-javascript, the step generate of check, runs the same
+  # and fails when the run changes a file of the repository. Without a command line JavaScript has
+  # neither target.
   generate:
-    command: []
-    args: []
+    commands: []
 typescript:
   # The tools of the targets of TypeScript, as <package>@<version> of npm, which ergon tool run
   # starts with the package manager of the section js.
@@ -83,9 +83,9 @@ typescript:
   # manager of the section js, or vp test --run for the toolkit vite-plus.
   test:
     args: []
-  # generate-typescript runs command with args at the root of the repository, such as npm run
-  # generate. verify-generate-typescript, the step generate of check, runs the same and fails when
-  # the run changes a file of the repository. Without a command TypeScript has neither target.
+  # generate-typescript runs each command line of commands in order at the root of the repository,
+  # such as npm run generate. verify-generate-typescript, the step generate of check, runs the same
+  # and fails when the run changes a file of the repository. Without a command line TypeScript has
+  # neither target.
   generate:
-    command: []
-    args: []
+    commands: []
