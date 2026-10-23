@@ -14,9 +14,9 @@
 // audit-terraform over the directories of the section, and check-terraform, which requires the
 // targets of the steps that the key check of the section names. tflint and uv are release
 // binaries of the section, and checkov runs through uv on Python 3.13. audit-terraform fails on a
-// file that checkov cannot parse. With a command in the key generate, the fragment also renders
-// generate-terraform, which runs it, and verify-generate-terraform, which fails when it changes a
-// file. A line ##@ Terraform starts the group of Terraform in make help.
+// file that checkov cannot parse. With command lines in the key generate, the fragment also renders
+// generate-terraform, which runs them in order, and verify-generate-terraform, which fails when they
+// change a file. A line ##@ Terraform starts the group of Terraform in make help.
 //
 // # Options
 //

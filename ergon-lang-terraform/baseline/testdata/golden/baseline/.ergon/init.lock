@@ -41,8 +41,7 @@
     "terraform.ci.steps": [],
     "terraform.ci.timeout": 30,
     "terraform.ci.versions": [],
-    "terraform.generate.args": [],
-    "terraform.generate.command": [],
+    "terraform.generate.commands": [],
     "terraform.paths": [
       "."
     ],

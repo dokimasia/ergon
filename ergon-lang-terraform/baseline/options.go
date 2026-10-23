@@ -35,7 +35,7 @@ type Options struct {
 	Test option.Run `yaml:"test" doc:"test-terraform runs terraform test with args."`
 
 	// Generate are the options of generate-terraform and verify-generate-terraform.
-	Generate option.Generate `yaml:"generate" doc:"generate-terraform runs command with args at the root of the repository, such as terraform-docs. verify-generate-terraform, the step generate of check, runs the same and fails when the run changes a file of the repository. Without a command Terraform has neither target."`
+	Generate option.Generate `yaml:"generate" doc:"generate-terraform runs each command line of commands in order at the root of the repository, such as terraform-docs. verify-generate-terraform, the step generate of check, runs the same and fails when the run changes a file of the repository. Without a command line Terraform has neither target."`
 
 	// Audit are the options of audit-terraform.
 	Audit option.Audit `yaml:"audit" doc:"audit-terraform scans the configuration with checkov, and accepts each check of ignore, by its identifier, such as CKV_AWS_20."`

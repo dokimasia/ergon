@@ -25,12 +25,12 @@ terraform:
   # test-terraform runs terraform test with args.
   test:
     args: []
-  # generate-terraform runs command with args at the root of the repository, such as terraform-docs.
-  # verify-generate-terraform, the step generate of check, runs the same and fails when the run
-  # changes a file of the repository. Without a command Terraform has neither target.
+  # generate-terraform runs each command line of commands in order at the root of the repository,
+  # such as terraform-docs. verify-generate-terraform, the step generate of check, runs the same and
+  # fails when the run changes a file of the repository. Without a command line Terraform has
+  # neither target.
   generate:
-    command: []
-    args: []
+    commands: []
   # audit-terraform scans the configuration with checkov, and accepts each check of ignore, by its
   # identifier, such as CKV_AWS_20.
   audit:

@@ -78,13 +78,17 @@ func TestBaseline(t *testing.T) {
 					"the Makefile")
 			})
 
-			t.Run("runs the command of the generators and checks their files in the step generate", func(t *testing.T) {
+			t.Run("runs the command lines of the generators in the step generate", func(t *testing.T) {
 				t.Parallel()
 				o, _ := baseline.Producer{}.Options().(*baseline.Options)
-				o.Generate = option.Generate{Command: []string{"terraform-docs", "markdown"}, Args: []string{"."}}
+				o.Generate = option.Generate{Commands: [][]string{
+					{"terraform-docs", "markdown", "."},
+					{"terraform-docs", "markdown", "modules/vpc"},
+				}}
 				o.Check = option.Check{option.StepGenerate}
 				expect.That(t, rendered(t, o, "Makefile")).
-					Contains("\nTERRAFORM_GENERATE ?= terraform-docs markdown .\n", "the command of the generators").
+					Contains("\nTERRAFORM_GENERATE ?= terraform-docs markdown . && terraform-docs markdown modules/vpc\n",
+						"the command lines of the generators").
 					Contains("\ngenerate: generate-terraform\n", "the aggregate generate").
 					Contains("\ngenerate-terraform: ## Run the generators of Terraform\n\t$(TERRAFORM_GENERATE)\n",
 						"the target that runs the generators").
@@ -93,7 +97,7 @@ func TestBaseline(t *testing.T) {
 					Contains("\ncheck-terraform: verify-generate-terraform ## Run the gate of Terraform\n", "the gate")
 			})
 
-			t.Run("renders no target of the generators without a command", func(t *testing.T) {
+			t.Run("renders no target of the generators without a command line", func(t *testing.T) {
 				t.Parallel()
 				makefile := rendered(t, baseline.Producer{}.Options(), "Makefile")
 				assert.NotContains(t, makefile, "generate", "the Makefile")
