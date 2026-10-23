@@ -122,15 +122,18 @@ func TestBaseline(t *testing.T) {
 					"\nlint-javascript: lint-js ## Check the JavaScript sources with vp check\n", "the Makefile")
 			})
 
-			t.Run("runs the command of the generators and checks their files in the step generate", func(t *testing.T) {
+			t.Run("runs the command lines of the generators in the step generate", func(t *testing.T) {
 				t.Parallel()
 				o, _ := baseline.Producer{}.Options().(*baseline.Options)
-				o.Generate = option.Generate{Command: []string{"npm", "run", "generate"}, Args: []string{}}
+				o.Generate = option.Generate{
+					Commands: [][]string{{"npm", "run", "generate"}, {"npm", "run", "api-docs"}},
+				}
 				o.Check = option.Check{option.StepGenerate}
 				makefile := rendered(t, "Makefile", jsOptions(),
 					render.Unit{Name: baseline.Name, Producer: baseline.Producer{}, Options: o})
 				expect.That(t, makefile).
-					Contains("\nJAVASCRIPT_GENERATE ?= npm run generate\n", "the command of the generators").
+					Contains("\nJAVASCRIPT_GENERATE ?= npm run generate && npm run api-docs\n",
+						"the command lines of the generators").
 					Contains("\ngenerate: generate-javascript\n", "the aggregate generate").
 					Contains("\ngenerate-javascript: ## Run the generators of JavaScript\n\t$(JAVASCRIPT_GENERATE)\n",
 						"the target that runs the generators").
@@ -139,7 +142,7 @@ func TestBaseline(t *testing.T) {
 					Contains("\ncheck-javascript: verify-generate-javascript ## Run the gate of JavaScript\n", "the gate")
 			})
 
-			t.Run("renders no target of the generators without a command", func(t *testing.T) {
+			t.Run("renders no target of the generators without a command line", func(t *testing.T) {
 				t.Parallel()
 				unit := render.Unit{
 					Name:     baseline.Name,

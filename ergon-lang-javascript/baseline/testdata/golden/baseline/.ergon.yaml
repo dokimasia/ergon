@@ -64,9 +64,9 @@ javascript:
   # manager of the section js, or vp test --run for the toolkit vite-plus.
   test:
     args: []
-  # generate-javascript runs command with args at the root of the repository, such as npm run
-  # generate. verify-generate-javascript, the step generate of check, runs the same and fails when
-  # the run changes a file of the repository. Without a command JavaScript has neither target.
+  # generate-javascript runs each command line of commands in order at the root of the repository,
+  # such as npm run generate. verify-generate-javascript, the step generate of check, runs the same
+  # and fails when the run changes a file of the repository. Without a command line JavaScript has
+  # neither target.
   generate:
-    command: []
-    args: []
+    commands: []

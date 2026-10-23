@@ -22,7 +22,7 @@ type Options struct {
 	Test option.Run `yaml:"test" doc:"test-javascript runs the tests with args: the test script of package.json through the package manager of the section js, or vp test --run for the toolkit vite-plus."`
 
 	// Generate are the options of generate-javascript and verify-generate-javascript.
-	Generate option.Generate `yaml:"generate" doc:"generate-javascript runs command with args at the root of the repository, such as npm run generate. verify-generate-javascript, the step generate of check, runs the same and fails when the run changes a file of the repository. Without a command JavaScript has neither target."`
+	Generate option.Generate `yaml:"generate" doc:"generate-javascript runs each command line of commands in order at the root of the repository, such as npm run generate. verify-generate-javascript, the step generate of check, runs the same and fails when the run changes a file of the repository. Without a command line JavaScript has neither target."`
 }
 
 // Validate returns an error that wraps [option.ErrInvalid] for a step of check that JavaScript does

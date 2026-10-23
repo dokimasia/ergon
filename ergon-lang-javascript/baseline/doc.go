@@ -59,11 +59,11 @@
 //
 // audit-js runs npm audit or pnpm audit. The fragment of JavaScript runs test-javascript with
 // JS_TEST, and check-javascript, which requires the targets of the steps that the key check of the
-// section names. lint-javascript and audit-javascript require lint-js and audit-js. With a command
-// in the key generate, the fragment of JavaScript also renders generate-javascript, which runs it,
-// and verify-generate-javascript, which fails when it changes a file. In make help, the line
-// ##@ JavaScript and TypeScript starts the group of the js toolchain, and the line ##@ JavaScript
-// starts the group of JavaScript.
+// section names. lint-javascript and audit-javascript require lint-js and audit-js. With command
+// lines in the key generate, the fragment of JavaScript also renders generate-javascript, which
+// runs them in order, and verify-generate-javascript, which fails when they change a file. In make
+// help, the line ##@ JavaScript and TypeScript starts the group of the js toolchain, and the line
+// ##@ JavaScript starts the group of JavaScript.
 //
 // # Options
 //

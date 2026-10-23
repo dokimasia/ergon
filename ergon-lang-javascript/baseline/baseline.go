@@ -47,7 +47,7 @@ func (Producer) Options() language.Options {
 	return &Options{
 		Check:    option.Check{option.StepLint, option.StepTest, option.StepAudit},
 		Test:     option.Run{Args: []string{}},
-		Generate: option.Generate{Command: []string{}, Args: []string{}},
+		Generate: option.Generate{Commands: [][]string{}},
 	}
 }
 
