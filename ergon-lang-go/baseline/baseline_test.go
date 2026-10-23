@@ -142,16 +142,17 @@ func TestBaseline(t *testing.T) {
 				assert.Contains(t, makefile, "\ncheck-go: verify-generate-go ## Run the gate of Go\n", "the Makefile")
 			})
 
-			t.Run("runs the command and the arguments of the generators in every module", func(t *testing.T) {
+			t.Run("runs the command lines of the generators in every module", func(t *testing.T) {
 				t.Parallel()
 				o, _ := baseline.Producer{}.Options().(*baseline.Options)
-				o.Generate = option.Generate{
-					Command: []string{"buf", "generate"},
-					Args:    []string{"--template", "buf.gen.yaml"},
-				}
+				o.Generate = option.Generate{Commands: [][]string{
+					{"buf", "generate", "--template", "buf.gen.yaml"},
+					{"go", "generate", "-run", "go tool kanon"},
+				}}
 				expect.That(t, rendered(t, o, "Makefile")).
-					Contains("\nGO_GENERATE_COMMAND ?= buf generate\nGO_GENERATE_ARGS ?= --template buf.gen.yaml\n",
-						"the variables of the generators").
+					Contains("\nGO_GENERATE_COMMANDS ?= buf generate --template buf.gen.yaml $(GO_PATHS) && "+
+						"go generate -run 'go tool kanon' $(GO_PATHS)\n", "the command lines of the generators").
+					Contains("\n\t(cd \"$$dir\" && $(GO_GENERATE_COMMANDS)) || exit 1; done\n", "the run in every module").
 					Contains("\ngenerate: generate-go\n", "the aggregate generate").
 					Contains(
 						"\ngenerate-go: ## Run the generators of every module, such as go generate\n\t@$(GO_GENERATE)\n",
@@ -160,7 +161,7 @@ func TestBaseline(t *testing.T) {
 					Contains("\n\t@$(call verify-generated,GO_GENERATE,generate-go)\n", "the target that checks them")
 			})
 
-			t.Run("renders no target of the generators without a command", func(t *testing.T) {
+			t.Run("renders no target of the generators without a command line", func(t *testing.T) {
 				t.Parallel()
 				o, _ := baseline.Producer{}.Options().(*baseline.Options)
 				o.Generate = option.Generate{}

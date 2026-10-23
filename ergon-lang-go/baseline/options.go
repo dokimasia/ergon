@@ -100,7 +100,7 @@ type Options struct {
 	Mutate option.Mutate `yaml:"mutate" doc:"mutate-go runs dokimi-mutate-go with workers mutants of a module at a time and args, and ends the run after timeout. A timeout of 0s sets no limit."`
 
 	// Generate are the options of generate-go and verify-generate-go.
-	Generate option.Generate `yaml:"generate" doc:"generate-go runs command with args and the paths in every module. verify-generate-go, the step generate of check, runs the same and fails when the run changes a tracked file or writes a file that git does not track. An empty command removes both targets."`
+	Generate option.Generate `yaml:"generate" doc:"generate-go runs each command line of commands in order with the paths in every module. verify-generate-go, the step generate of check, runs the same and fails when the run changes a tracked file or writes a file that git does not track. An empty list of commands removes both targets."`
 
 	// Audit are the options of audit-go.
 	Audit option.Run `yaml:"audit" doc:"audit-go runs govulncheck with args in every module."`

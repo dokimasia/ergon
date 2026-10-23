@@ -149,7 +149,7 @@ func TestOptions(t *testing.T) {
 			assert.ErrorIs(t, o.Validate(), option.ErrInvalid, "Validate")
 		})
 
-		t.Run("returns ErrInvalid for the step generate without a command", func(t *testing.T) {
+		t.Run("returns ErrInvalid for the step generate without a command line", func(t *testing.T) {
 			t.Parallel()
 			o := goOptions()
 			o.Check = option.Check{option.StepGenerate}

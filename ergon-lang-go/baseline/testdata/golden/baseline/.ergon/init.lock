@@ -24,7 +24,7 @@
     {
       "path": "Makefile",
       "producer": "go",
-      "sha256": "962272b657ed0490a7e0e13978e178e787ee5aeebfe23a7c881b5616b7dd5376"
+      "sha256": "35648f766bb184dc7f06201ce290db46da4d1488c378b674e21a0f1194b323ce"
     }
   ],
   "settings": {
@@ -54,10 +54,11 @@
     ],
     "go.fuzz.match": ".",
     "go.fuzz.time": "30s",
-    "go.generate.args": [],
-    "go.generate.command": [
-      "go",
-      "generate"
+    "go.generate.commands": [
+      [
+        "go",
+        "generate"
+      ]
     ],
     "go.homebrew.tap": "",
     "go.lint.analyzers": "go.dokimi.dev/lint/golangci@v0.2.0",

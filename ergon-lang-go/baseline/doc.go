@@ -18,9 +18,9 @@
 // audit-go, and check-go, which requires the targets of the steps that the key check of the section
 // names. Every tool runs through ergon tool run, which installs the version that the section names.
 // The fragment states each option of a step as a variable, such as GO_FUZZ_TIME, which one run of
-// make overrides on its command line. generate-go runs the command of the generators, go generate
-// at the baseline, and verify-generate-go fails when that command changes a file of the repository.
-// A line ##@ Go starts the group of Go in make help.
+// make overrides on its command line. generate-go runs the command lines of the generators in
+// order, go generate at the baseline, and verify-generate-go fails when they change a file of the
+// repository. A line ##@ Go starts the group of Go in make help.
 //
 // # Binaries
 //

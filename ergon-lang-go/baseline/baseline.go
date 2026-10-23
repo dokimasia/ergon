@@ -117,7 +117,7 @@ func (Producer) Options() language.Options {
 		Fuzz:     option.Fuzz{Match: ".", Time: "30s", Args: []string{"-fuzzminimizetime=5s"}},
 		Bench:    option.Bench{Match: ".", Time: "1s", Args: []string{"-benchmem"}, Count: 6},
 		Mutate:   option.Mutate{Timeout: "0s", Args: []string{}, Workers: 1},
-		Generate: option.Generate{Command: []string{"go", "generate"}, Args: []string{}},
+		Generate: option.Generate{Commands: [][]string{{"go", "generate"}}},
 		Audit:    option.Run{Args: []string{}},
 		Binaries: []Command{},
 		Homebrew: Homebrew{Tap: ""},
