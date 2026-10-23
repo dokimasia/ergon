@@ -56,9 +56,9 @@ java:
   # test-java runs ./gradlew test with args.
   test:
     args: []
-  # generate-java runs command with args at the root of the repository, such as ./gradlew with a
-  # task of a generator. verify-generate-java, the step generate of check, runs the same and fails
-  # when the run changes a file of the repository. Without a command Java has neither target.
+  # generate-java runs each command line of commands in order at the root of the repository, such as
+  # ./gradlew with a task of a generator. verify-generate-java, the step generate of check, runs the
+  # same and fails when the run changes a file of the repository. Without a command line Java has
+  # neither target.
   generate:
-    command: []
-    args: []
+    commands: []

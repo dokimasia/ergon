@@ -44,7 +44,7 @@ type Options struct {
 	Test option.Run `yaml:"test" doc:"test-java runs ./gradlew test with args."`
 
 	// Generate are the options of generate-java and verify-generate-java.
-	Generate option.Generate `yaml:"generate" doc:"generate-java runs command with args at the root of the repository, such as ./gradlew with a task of a generator. verify-generate-java, the step generate of check, runs the same and fails when the run changes a file of the repository. Without a command Java has neither target."`
+	Generate option.Generate `yaml:"generate" doc:"generate-java runs each command line of commands in order at the root of the repository, such as ./gradlew with a task of a generator. verify-generate-java, the step generate of check, runs the same and fails when the run changes a file of the repository. Without a command line Java has neither target."`
 }
 
 // Tools are the tools of the targets of Java.

@@ -33,8 +33,7 @@
       "test",
       "audit"
     ],
-    "java.generate.args": [],
-    "java.generate.command": [],
+    "java.generate.commands": [],
     "java.rulesets": [
       "rulesets/java/quickstart.xml"
     ],

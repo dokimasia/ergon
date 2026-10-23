@@ -24,10 +24,10 @@
 //   - check-java requires the targets of the steps that the key check of the section names.
 //   - audit-java requires audit-jvm.
 //
-// With a command in the key generate, the fragment of Java also renders generate-java, which runs
-// it, and verify-generate-java, which fails when it changes a file. In make help, the line
-// ##@ Java and Kotlin starts the group of the jvm toolchain, and the line ##@ Java starts the group
-// of Java.
+// With command lines in the key generate, the fragment of Java also renders generate-java, which
+// runs them in order, and verify-generate-java, which fails when they change a file. In make help,
+// the line ##@ Java and Kotlin starts the group of the jvm toolchain, and the line ##@ Java starts
+// the group of Java.
 //
 // # Options
 //

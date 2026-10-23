@@ -78,13 +78,16 @@ func TestBaseline(t *testing.T) {
 				assert.Contains(t, makefile, "\ncheck-java: audit-java ## Run the gate of Java\n", "the Makefile")
 			})
 
-			t.Run("runs the command of the generators and checks their files in the step generate", func(t *testing.T) {
+			t.Run("runs the command lines of the generators in the step generate", func(t *testing.T) {
 				t.Parallel()
 				o := javaOptions()
-				o.Generate = option.Generate{Command: []string{"./gradlew", "generateProto"}, Args: []string{}}
+				o.Generate = option.Generate{
+					Commands: [][]string{{"./gradlew", "generateProto"}, {"./gradlew", "openApiGenerate"}},
+				}
 				o.Check = option.Check{option.StepGenerate}
 				expect.That(t, rendered(t, o, "Makefile")).
-					Contains("\nJAVA_GENERATE ?= ./gradlew generateProto\n", "the command of the generators").
+					Contains("\nJAVA_GENERATE ?= ./gradlew generateProto && ./gradlew openApiGenerate\n",
+						"the command lines of the generators").
 					Contains("\ngenerate: generate-java\n", "the aggregate generate").
 					Contains("\ngenerate-java: ## Run the generators of Java\n\t$(JAVA_GENERATE)\n",
 						"the target that runs the generators").
@@ -92,7 +95,7 @@ func TestBaseline(t *testing.T) {
 					Contains("\ncheck-java: verify-generate-java ## Run the gate of Java\n", "the gate")
 			})
 
-			t.Run("renders no target of the generators without a command", func(t *testing.T) {
+			t.Run("renders no target of the generators without a command line", func(t *testing.T) {
 				t.Parallel()
 				assert.NotContains(t, rendered(t, javaOptions(), "Makefile"), "generate", "the Makefile")
 			})
