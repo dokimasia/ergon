@@ -68,3 +68,5 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 | [0057](0057-own-go-modules-out-of-the-license-check.md) | The dependency review leaves the repository's own Go modules out of its license check | Accepted |
 | [0058](0058-spec-roles-in-ergon-yaml.md) | The key spec.roles runs spec in the gate and the proposals of a repository | Accepted, superseded in part by ADR-0059 |
 | [0059](0059-spec-proposals-in-nightly.md) | A job of nightly.yml proposes the updates of the copies of spec with the GitHub App of ergon | Accepted |
+| [0060](0060-biome-test-files-without-magic-numbers-and-lengths.md) | The managed biome.json turns off noMagicNumbers and the two length rules in test files | Accepted |
+| [0061](0061-merge-of-a-local-json-file.md) | A local JSON file is a JSON document that merges into its managed file | Accepted |

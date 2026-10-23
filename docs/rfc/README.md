@@ -12,7 +12,7 @@ Proposals, and the argument that produced them. An RFC is written to be argued w
 | [0001](0001-module-boundaries.md) | Module boundaries | Accepted, superseded in part by ADR-0052 |
 | [0002](0002-release.md) | Release | Accepted, superseded in part by RFC-0007, ADR-0016, ADR-0018, ADR-0053, ADR-0054 and ADR-0055 |
 | [0003](0003-license-headers.md) | Licenses | Accepted, superseded in part by ADR-0051 |
-| [0004](0004-repository-initialization.md) | Repository initialization | Accepted, superseded in part by RFC-0005, RFC-0006, RFC-0007, ADR-0016, ADR-0017, ADR-0018, ADR-0029 and ADR-0052 |
+| [0004](0004-repository-initialization.md) | Repository initialization | Accepted, superseded in part by RFC-0005, RFC-0006, RFC-0007, ADR-0016, ADR-0017, ADR-0018, ADR-0029, ADR-0031, ADR-0033, ADR-0034, ADR-0035, ADR-0039, ADR-0042, ADR-0043, ADR-0044, ADR-0046, ADR-0052, ADR-0060 and ADR-0061 |
 | [0005](0005-baseline-updates.md) | Baseline updates | Accepted |
 | [0006](0006-configurable-hooks.md) | Configurable hooks | Accepted |
 | [0007](0007-binary-releases.md) | Binary releases | Accepted, superseded in part by ADR-0022, ADR-0023 and RFC-0009 |
