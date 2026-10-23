@@ -74,13 +74,17 @@ func TestBaseline(t *testing.T) {
 				assert.Contains(t, makefile, "\ncheck-csharp: audit-csharp ## Run the gate of C#\n", "the Makefile")
 			})
 
-			t.Run("runs the command of the generators and checks their files in the step generate", func(t *testing.T) {
+			t.Run("runs the command lines of the generators in the step generate", func(t *testing.T) {
 				t.Parallel()
 				o, _ := baseline.Producer{}.Options().(*baseline.Options)
-				o.Generate = option.Generate{Command: []string{"dotnet", "tool", "run", "nswag"}, Args: []string{"run"}}
+				o.Generate = option.Generate{Commands: [][]string{
+					{"dotnet", "tool", "run", "nswag", "run"},
+					{"dotnet", "run", "--project", "tools/codegen"},
+				}}
 				o.Check = option.Check{option.StepGenerate}
 				expect.That(t, rendered(t, o, "Makefile")).
-					Contains("\nCSHARP_GENERATE ?= dotnet tool run nswag run\n", "the command of the generators").
+					Contains("\nCSHARP_GENERATE ?= dotnet tool run nswag run && dotnet run --project tools/codegen\n",
+						"the command lines of the generators").
 					Contains("\ngenerate: generate-csharp\n", "the aggregate generate").
 					Contains("\ngenerate-csharp: ## Run the generators of C#\n\t$(CSHARP_GENERATE)\n",
 						"the target that runs the generators").
@@ -88,7 +92,7 @@ func TestBaseline(t *testing.T) {
 					Contains("\ncheck-csharp: verify-generate-csharp ## Run the gate of C#\n", "the gate")
 			})
 
-			t.Run("renders no target of the generators without a command", func(t *testing.T) {
+			t.Run("renders no target of the generators without a command line", func(t *testing.T) {
 				t.Parallel()
 				makefile := rendered(t, baseline.Producer{}.Options(), "Makefile")
 				assert.NotContains(t, makefile, "generate", "the Makefile")

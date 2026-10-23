@@ -14,10 +14,10 @@
 // dotnet command, and check-csharp, which requires the targets of the steps that the key check of
 // the section names. lint-csharp builds with every rule of the latest analysis level as an error,
 // with nullable references and the documentation of every member. audit-csharp restores the
-// packages with the audit of NuGet, whose warnings NU1900 to NU1904 fail the build. With a command
-// in the key generate, the fragment also renders generate-csharp, which runs it, and
-// verify-generate-csharp, which fails when it changes a file. A line ##@ C# starts the group of C#
-// in make help.
+// packages with the audit of NuGet, whose warnings NU1900 to NU1904 fail the build. With command
+// lines in the key generate, the fragment also renders generate-csharp, which runs them in order,
+// and verify-generate-csharp, which fails when they change a file. A line ##@ C# starts the group of
+// C# in make help.
 //
 // # Options
 //

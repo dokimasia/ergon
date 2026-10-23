@@ -25,7 +25,7 @@ type Options struct {
 	Test option.Run `yaml:"test" doc:"test-csharp runs dotnet test with args."`
 
 	// Generate are the options of generate-csharp and verify-generate-csharp.
-	Generate option.Generate `yaml:"generate" doc:"generate-csharp runs command with args at the root of the repository. verify-generate-csharp, the step generate of check, runs the same and fails when the run changes a file of the repository. Without a command C# has neither target."`
+	Generate option.Generate `yaml:"generate" doc:"generate-csharp runs each command line of commands in order at the root of the repository. verify-generate-csharp, the step generate of check, runs the same and fails when the run changes a file of the repository. Without a command line C# has neither target."`
 
 	// Audit are the options of audit-csharp.
 	Audit option.Threshold `yaml:"audit" doc:"audit-csharp fails on a known vulnerability of a NuGet package of severity or above: low, moderate, high or critical."`

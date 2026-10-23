@@ -41,8 +41,7 @@
     "csharp.ci.steps": [],
     "csharp.ci.timeout": 30,
     "csharp.ci.versions": [],
-    "csharp.generate.args": [],
-    "csharp.generate.command": [],
+    "csharp.generate.commands": [],
     "csharp.test.args": []
   },
   "answers": {

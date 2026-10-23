@@ -4,12 +4,11 @@ csharp:
   # test-csharp runs dotnet test with args.
   test:
     args: []
-  # generate-csharp runs command with args at the root of the repository. verify-generate-csharp,
-  # the step generate of check, runs the same and fails when the run changes a file of the
-  # repository. Without a command C# has neither target.
+  # generate-csharp runs each command line of commands in order at the root of the repository.
+  # verify-generate-csharp, the step generate of check, runs the same and fails when the run changes
+  # a file of the repository. Without a command line C# has neither target.
   generate:
-    command: []
-    args: []
+    commands: []
   # audit-csharp fails on a known vulnerability of a NuGet package of severity or above: low,
   # moderate, high or critical.
   audit:

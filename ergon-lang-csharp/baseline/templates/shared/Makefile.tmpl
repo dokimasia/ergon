@@ -8,15 +8,15 @@
 # The options of the section csharp.
 CSHARP_TEST_ARGS ?={{% with words .Options.Test.Args %}} {{% . %}}{{% end %}}
 CSHARP_AUDIT_SEVERITY ?= {{% make .Options.Audit.Severity %}}
-{{%- with .Options.Generate.Command %}}
-CSHARP_GENERATE ?={{% with words $.Options.Generate.Command %}} {{% . %}}{{% end %}}{{% with words $.Options.Generate.Args %}} {{% . %}}{{% end %}}
+{{%- with .Options.Generate.Commands %}}
+CSHARP_GENERATE ?={{% range $i, $line := . %}}{{% if $i %}} &&{{% end %}} {{% words $line %}}{{% end %}}
 {{%- end %}}
 
-.PHONY: fmt-csharp lint-csharp test-csharp{{% if .Options.Generate.Command %}} generate-csharp verify-generate-csharp{{% end %}} audit-csharp check-csharp
+.PHONY: fmt-csharp lint-csharp test-csharp{{% if .Options.Generate.Commands %}} generate-csharp verify-generate-csharp{{% end %}} audit-csharp check-csharp
 fmt: fmt-csharp
 lint: lint-csharp
 test: test-csharp
-{{%- if .Options.Generate.Command %}}
+{{%- if .Options.Generate.Commands %}}
 generate: generate-csharp
 {{%- end %}}
 audit: audit-csharp
@@ -31,7 +31,7 @@ lint-csharp: ## Check the C# sources with every analyzer rule as an error
 		-p:GenerateDocumentationFile=true -p:WarningLevel=9999
 test-csharp: ## Run the C# tests
 	dotnet test $(CSHARP_TEST_ARGS)
-{{%- if .Options.Generate.Command %}}
+{{%- if .Options.Generate.Commands %}}
 generate-csharp: ## Run the generators of C#
 	$(CSHARP_GENERATE)
 verify-generate-csharp: ## Fail when the generators of C# change a file of the repository
