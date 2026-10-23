@@ -38,8 +38,8 @@ const (
 // other key of existing with its comments, and the key of each section with its comments.
 //
 // Write writes each option of a section under a comment with the doc tag of the option. It writes a
-// list of scalars in flow style. Write reports whether the result differs from existing in more
-// than the layout of existing.
+// list of scalars in flow style, also as an item of a list. Write reports whether the result differs
+// from existing in more than the layout of existing.
 //
 // It returns an error that wraps [ErrInvalid] for an existing that does not parse or whose root is
 // not a mapping. It returns an error that wraps [ErrDefect] for options that are not a pointer to a
@@ -93,9 +93,10 @@ func parse(file []byte) (*yaml.Node, bool, error) {
 	return &doc, true, nil
 }
 
-// section returns the mapping of the options o. Each key has the comment of its doc tag, and a list
-// of scalars is in flow style. It returns an error that wraps [ErrDefect] for options that are not a
-// pointer to a struct, that declare a field wrong, or that YAML cannot encode.
+// section returns the mapping of the options o. Each key has the comment of its doc tag, and
+// each list of scalars is in flow style, as [flow] sets it. It returns an error that wraps
+// [ErrDefect] for options that are not a pointer to a struct, that declare a field wrong, or that
+// YAML cannot encode.
 func section(o language.Options) (*yaml.Node, error) {
 	fs, err := Fields(o)
 	if err != nil {
@@ -112,13 +113,25 @@ func section(o language.Options) (*yaml.Node, error) {
 		}
 		depth := strings.Count(f.Key, ".") + 1
 		key.HeadComment = comment(f.Doc, width-indent*depth-len("# "))
-		if value.Kind == yaml.SequenceNode &&
-			!slices.ContainsFunc(value.Content, func(e *yaml.Node) bool { return e.Kind != yaml.ScalarNode }) {
-
-			value.Style = yaml.FlowStyle
+		if value.Kind == yaml.SequenceNode {
+			flow(value)
 		}
 	}
 	return &n, nil
+}
+
+// flow sets the flow style of the list n when every item of n is a scalar. Otherwise it sets the
+// flow style of each item of n that is such a list, such as each command line of the step generate.
+func flow(n *yaml.Node) {
+	if !slices.ContainsFunc(n.Content, func(e *yaml.Node) bool { return e.Kind != yaml.ScalarNode }) {
+		n.Style = yaml.FlowStyle
+		return
+	}
+	for _, item := range n.Content {
+		if item.Kind == yaml.SequenceNode {
+			flow(item)
+		}
+	}
 }
 
 // lookup returns the key node and the value node of the dotted key in the mapping n. It returns nil

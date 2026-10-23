@@ -82,6 +82,17 @@ func (*nested) Validate() error {
 	return nil
 }
 
+// lines is options with a list of lists of scalars, such as the command lines of the step generate.
+type lines struct {
+	// Lines are lists of words.
+	Lines [][]string `yaml:"lines" doc:"The lines."`
+}
+
+// Validate returns nil.
+func (*lines) Validate() error {
+	return nil
+}
+
 // sparse is options with a field that its encoding omits when it is empty.
 type sparse struct {
 	// Note is omitted when it is empty.
@@ -194,6 +205,23 @@ func TestWrite(t *testing.T) {
 				"    # x"+strings.Repeat(" ab ac", 15)+" ab\n"+
 				"    # zz\n"+
 				"    text: x\n", "the file")
+		})
+
+		t.Run("writes each list of scalars in a list in flow style", func(t *testing.T) {
+			t.Parallel()
+			o := &lines{Lines: [][]string{{"go", "generate"}, {"go", "run", "-v"}}}
+			got, _, err := options.Write(nil, []options.Section{{Name: "lines", Options: o}}, nil)
+			assert.NoError(t, err, "Write")
+			assert.Equal(t, string(got), "lines:\n  # The lines.\n  lines:\n    - [go, generate]\n"+
+				"    - [go, run, -v]\n", "the file")
+		})
+
+		t.Run("writes an empty list of lists in flow style", func(t *testing.T) {
+			t.Parallel()
+			o := &lines{Lines: [][]string{}}
+			got, _, err := options.Write(nil, []options.Section{{Name: "lines", Options: o}}, nil)
+			assert.NoError(t, err, "Write")
+			assert.Equal(t, string(got), "lines:\n  # The lines.\n  lines: []\n", "the file")
 		})
 
 		t.Run("skips the comment of a field that the encoding omits", func(t *testing.T) {
