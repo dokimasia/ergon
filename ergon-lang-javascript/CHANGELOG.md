@@ -1,5 +1,20 @@
 # go.dokimi.dev/ergon/lang/javascript
 
+## 0.6.0
+
+### Minor Changes
+
+- 30797a4: Turn off `noMagicNumbers`, `noExcessiveLinesPerFunction` and `noExcessiveLinesPerFile` of `biome.json` in test files.
+
+### Patch Changes
+
+- 30797a4: Fix the overrides of `biome.json` to apply to every file.
+- 30797a4: Fix `useImportExtensions` of `biome.json` to ask for the `.js` extension that tsc needs.
+- 30797a4: Force-ignore `.ergon` in `files.includes` of `biome.json`.
+- 30797a4: Write each item of an array of `biome.json` on a line of its own.
+- Updated dependencies [a0544e1]
+  - go.dokimi.dev/ergon/service@0.20.0
+
 ## 0.5.0
 
 ### Minor Changes

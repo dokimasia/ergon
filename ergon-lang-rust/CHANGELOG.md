@@ -1,5 +1,12 @@
 # go.dokimi.dev/ergon/lang/rust
 
+## 0.6.1
+
+### Patch Changes
+
+- Updated dependencies [a0544e1]
+  - go.dokimi.dev/ergon/service@0.20.0
+
 ## 0.6.0
 
 ### Minor Changes
