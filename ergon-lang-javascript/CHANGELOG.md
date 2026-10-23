@@ -1,5 +1,17 @@
 # go.dokimi.dev/ergon/lang/javascript
 
+## 0.7.0
+
+### Minor Changes
+
+- 0332c9e: **Breaking:** Run each command line of the key `generate.commands` in `generate-javascript` and `verify-generate-javascript` in place of the keys `generate.command` and `generate.args`.
+
+### Patch Changes
+
+- Updated dependencies [2e44067, 3af4e3d, 43a3f4c]
+  - go.dokimi.dev/ergon/core@0.16.0
+  - go.dokimi.dev/ergon/service@0.21.0
+
 ## 0.6.0
 
 ### Minor Changes

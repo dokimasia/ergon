@@ -1,5 +1,25 @@
 # go.dokimi.dev/ergon
 
+## 0.14.2
+
+### Patch Changes
+
+- 3af4e3d: Update go.stealthscale.io/cli to v0.7.0 to decode the command lines of `generate.commands`.
+- Updated dependencies [2e44067, 8281533, 477d633, 52edc26, 0b95e6a, cc6847b, e59b9e1, 1cd83e5, 27980dd, 993f78e, 0332c9e, f928381, 3af4e3d, 43a3f4c]
+  - go.dokimi.dev/ergon/core@0.16.0
+  - go.dokimi.dev/ergon/lang/php@0.5.0
+  - go.dokimi.dev/ergon/lang/python@0.7.0
+  - go.dokimi.dev/ergon/lang/rust@0.7.0
+  - go.dokimi.dev/ergon/lang/terraform@0.5.0
+  - go.dokimi.dev/ergon/lang/typescript@0.4.0
+  - go.dokimi.dev/ergon/lang/bash@0.5.0
+  - go.dokimi.dev/ergon/lang/csharp@0.4.0
+  - go.dokimi.dev/ergon/lang/go@0.10.0
+  - go.dokimi.dev/ergon/lang/java@0.6.0
+  - go.dokimi.dev/ergon/lang/javascript@0.7.0
+  - go.dokimi.dev/ergon/lang/kotlin@0.4.0
+  - go.dokimi.dev/ergon/service@0.21.0
+
 ## 0.14.1
 
 ### Patch Changes

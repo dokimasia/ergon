@@ -1,5 +1,11 @@
 # go.dokimi.dev/ergon/core
 
+## 0.16.0
+
+### Minor Changes
+
+- 2e44067: **Breaking:** Replace `option.Generate.Command` and `option.Generate.Args` with `option.Generate.Commands`, a list of command lines.
+
 ## 0.15.0
 
 ### Minor Changes

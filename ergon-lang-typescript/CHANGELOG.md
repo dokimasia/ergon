@@ -1,5 +1,18 @@
 # go.dokimi.dev/ergon/lang/typescript
 
+## 0.4.0
+
+### Minor Changes
+
+- cc6847b: **Breaking:** Run each command line of the key `generate.commands` in `generate-typescript` and `verify-generate-typescript` in place of the keys `generate.command` and `generate.args`.
+
+### Patch Changes
+
+- Updated dependencies [2e44067, 0332c9e, 3af4e3d, 43a3f4c]
+  - go.dokimi.dev/ergon/core@0.16.0
+  - go.dokimi.dev/ergon/lang/javascript@0.7.0
+  - go.dokimi.dev/ergon/service@0.21.0
+
 ## 0.3.10
 
 ### Patch Changes
