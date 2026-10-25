@@ -1,5 +1,5 @@
 ---
-"go.dokimi.dev/ergon/service": patch
+"go.dokimi.dev/ergon/lang/rust": patch
 ---
 
-Fix `release.Pack` to create the pack directory before the first packer runs, so `ergon release pack --out-dir dist` packs the crates of a Cargo workspace.
+Fix the Cargo packer to create the pack directory, so `ergon release pack --out-dir dist` packs the crates of a Cargo workspace.

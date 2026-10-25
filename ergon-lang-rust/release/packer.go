@@ -59,12 +59,13 @@ var _ language.Packer = Packer{}
 // Pack packages the crates of pkgs from the workspace at root with one run of cargo package with a
 // flag --package for each crate, into the target directory target/ergon of root. cargo package
 // builds each crate from its package, and a crate that requires a new version of another crate of
-// the run builds against the package of that crate. Pack then copies the .crate file of each crate
-// to dir/rust/<name>/<name>-<version>.crate. It runs nothing for no crate. cargo package of Cargo
-// 1.90 or later packages crates that require each other in one run.
+// the run builds against the package of that crate. Pack then creates dir when it does not exist,
+// and copies the .crate file of each crate to dir/rust/<name>/<name>-<version>.crate. It runs
+// nothing for no crate. cargo package of Cargo 1.90 or later packages crates that require each
+// other in one run.
 //
 // It returns an error that wraps [ErrCrate] for a crate whose .crate file cargo package does not
-// write, and the errors of cargo package and of writing the pack directory.
+// write, and the errors of cargo package, of creating dir and of writing the pack directory.
 func (p Packer) Pack(ctx context.Context, root string, pkgs []workspace.Package, dir string) error {
 	if len(pkgs) == 0 {
 		return nil
@@ -76,6 +77,9 @@ func (p Packer) Pack(ctx context.Context, root string, pkgs []workspace.Package,
 	}
 	if err := p.Command(ctx, root, cargoProgram, args, nil); err != nil {
 		return fmt.Errorf("release: package the crates: %w", err)
+	}
+	if err := os.MkdirAll(dir, dirMode); err != nil {
+		return fmt.Errorf("release: create the pack directory: %w", err)
 	}
 	pack, err := os.OpenRoot(dir)
 	if err != nil {
