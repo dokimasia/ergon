@@ -1,5 +1,12 @@
 # go.dokimi.dev/ergon/lang/javascript
 
+## 0.7.1
+
+### Patch Changes
+
+- 7b12cbc: Fix `useImportExtensions` of `biome.json` to keep the extension of a JSON import and to ask for `.mjs` and `.cjs` for `.mts` and `.cts` modules.
+- 7b12cbc: Fix `biome.json` to leave the rules of a framework domain such as Qwik or Solid off in a repository that does not set the domain.
+
 ## 0.7.0
 
 ### Minor Changes
