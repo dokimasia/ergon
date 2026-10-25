@@ -93,8 +93,8 @@ go.dokimi.dev/ergon/lang/go v0.10.0 h1:GIFrElHi2Ee/ILbdB7DXhY1ZvCdllJcqLCJ1JeZwr
 go.dokimi.dev/ergon/lang/go v0.10.0/go.mod h1:uikVoEDVN3aDHjPRYVPklbVqhzXZB3Yy/0OwzDyedkE=
 go.dokimi.dev/ergon/lang/java v0.6.0 h1:DuuvvNkAUjPGQiMlsCnNHFiFbeF4lksk8rZcWSKU6qo=
 go.dokimi.dev/ergon/lang/java v0.6.0/go.mod h1:tptohehWk00IWr/xP/pI0bYsOjDM2gpkeMAO8vOIwaM=
-go.dokimi.dev/ergon/lang/javascript v0.7.0 h1:R1mEKPCXTTXf7Xv+gI77kQtYaHXo4vRJsoPVJvxlf0c=
-go.dokimi.dev/ergon/lang/javascript v0.7.0/go.mod h1:DJmf1v9+NKfJCK+C185/roesXzqu5ZOQF70eBdyvdCE=
+go.dokimi.dev/ergon/lang/javascript v0.7.1 h1:kIKFAFMHgKMFEQeppllsI0z2+C74Dnb6KjWHkRSXBcI=
+go.dokimi.dev/ergon/lang/javascript v0.7.1/go.mod h1:DJmf1v9+NKfJCK+C185/roesXzqu5ZOQF70eBdyvdCE=
 go.dokimi.dev/ergon/lang/kotlin v0.4.0 h1:LO66YVIxU3EHLakh5K6N6GtOqEqcWSGrWDS3lkZ3uLU=
 go.dokimi.dev/ergon/lang/kotlin v0.4.0/go.mod h1:X/EY0TapE1Fj8Uz5UV+98C5IyMIv54QOFyfjLqcOsBQ=
 go.dokimi.dev/ergon/lang/php v0.5.0 h1:flcTSNW3HHtGKuEeWvsiOV0Gp294/QGhL2aTHw5KWxw=
@@ -105,8 +105,8 @@ go.dokimi.dev/ergon/lang/rust v0.7.0 h1:A/Sb326MoHmjc1+VG6qdBqr84AVEj4VVr3RQ2KWS
 go.dokimi.dev/ergon/lang/rust v0.7.0/go.mod h1:SoatrF68MkvTxP6mlX0B/doird4BbmJLujZKjz4rUXM=
 go.dokimi.dev/ergon/lang/terraform v0.5.0 h1:BatQBZKgFhKleV3HFRERDDgolCZPDtnFhwYNYGeCboY=
 go.dokimi.dev/ergon/lang/terraform v0.5.0/go.mod h1:rD+y2pxQRtrNdCXXy48kTqOBI/Od2WMBUYX2zVwdZVs=
-go.dokimi.dev/ergon/lang/typescript v0.4.0 h1:5jCQ2MWQmlaSDycdJUGhxCkSseW8uvQNYK9Ajl9ZLIU=
-go.dokimi.dev/ergon/lang/typescript v0.4.0/go.mod h1:1WsjTk2tkS/SlJkq1LBWOWk7wgPcLzR7ghjH6GJiqt8=
+go.dokimi.dev/ergon/lang/typescript v0.4.1 h1:4O3LmbFUXazIK5wvsbTFy4Vf5Qyxvc97DocmJ4SNrM0=
+go.dokimi.dev/ergon/lang/typescript v0.4.1/go.mod h1:sRP1ZRmVw8EZWNs8jsBkFde7acysIrRIpVs8v55/0DQ=
 go.dokimi.dev/ergon/service v0.21.0 h1:ugsqN50LsRktYCn9VcADIsQF9XsiQVHU4FdM74Xyrs8=
 go.dokimi.dev/ergon/service v0.21.0/go.mod h1:cAq0dp2qTmhvKDC9DIIpMlx7ssXHbKpQP8ciCnLkUXA=
 go.stealthscale.io/cli v0.7.0 h1:dbYq6cskLyEZOWBM54Gt2B5BIeW8qvtVejsFZlrZQM8=

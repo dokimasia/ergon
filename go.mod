@@ -12,13 +12,13 @@ require (
 	go.dokimi.dev/ergon/lang/csharp v0.4.0
 	go.dokimi.dev/ergon/lang/go v0.10.0
 	go.dokimi.dev/ergon/lang/java v0.6.0
-	go.dokimi.dev/ergon/lang/javascript v0.7.0
+	go.dokimi.dev/ergon/lang/javascript v0.7.1
 	go.dokimi.dev/ergon/lang/kotlin v0.4.0
 	go.dokimi.dev/ergon/lang/php v0.5.0
 	go.dokimi.dev/ergon/lang/python v0.7.0
 	go.dokimi.dev/ergon/lang/rust v0.7.0
 	go.dokimi.dev/ergon/lang/terraform v0.5.0
-	go.dokimi.dev/ergon/lang/typescript v0.4.0
+	go.dokimi.dev/ergon/lang/typescript v0.4.1
 	go.dokimi.dev/ergon/service v0.21.0
 	go.stealthscale.io/cli v0.7.0
 	go.yaml.in/yaml/v3 v3.0.5
