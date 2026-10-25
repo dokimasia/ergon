@@ -6,9 +6,14 @@ package release
 import (
 	"context"
 	"fmt"
+	"io/fs"
+	"os"
 
 	"go.dokimi.dev/ergon/core/workspace"
 )
+
+// packDirPerm is the mode of the pack directory that [Pack] creates.
+const packDirPerm fs.FileMode = 0o755
 
 // Pack builds the artifacts of the packages of the entries of plan, of both kinds, from the
 // repository at root into dir, with the packer of each toolchain: one call of a packer for the
@@ -16,10 +21,11 @@ import (
 // of a registry for an entry of [KindPublish], and the assets of the release of a tag for an entry
 // of either kind. A package of a toolchain without a packer has no artifact, as the registry of
 // such a toolchain reads the source of a package. dir is an absolute path, which each packer
-// receives.
+// receives. Pack creates dir and its parents before the first packer runs. It does not create dir
+// for a plan without a package that a packer packs.
 //
 // It returns an error that wraps [ErrPublishPlan] for an entry of a package that the repository
-// does not have, and the error of a packer.
+// does not have, the error of creating dir, and the error of a packer.
 func Pack(ctx context.Context, root string, g *Graph, plan *PublishPlan, dir string) error {
 	var order []*roles
 	pending := map[*roles][]workspace.Package{}
@@ -41,6 +47,12 @@ func Pack(ctx context.Context, root string, g *Graph, plan *PublishPlan, dir str
 			}
 			pending[r] = append(pending[r], g.pkgs[i])
 		}
+	}
+	if len(order) == 0 {
+		return nil
+	}
+	if err := os.MkdirAll(dir, packDirPerm); err != nil {
+		return fmt.Errorf("release: pack: create the pack directory: %w", err)
 	}
 	for _, r := range order {
 		if err := r.packer.Pack(ctx, root, pending[r], dir); err != nil {

@@ -102,8 +102,8 @@ const (
 type Packer interface {
 	// Pack builds the artifacts of pkgs from root into dir: the files that the registry of a
 	// package receives, and the assets of the release of its tag under [AssetsDir]/<tag>/ of dir.
-	// Each package of pkgs has the Version of its release, and dir is an absolute path. Pack returns
-	// the error of the build.
+	// Each package of pkgs has the Version of its release, and dir is the absolute path of a
+	// directory that exists. Pack returns the error of the build.
 	Pack(ctx context.Context, root string, pkgs []workspace.Package, dir string) error
 }
 
