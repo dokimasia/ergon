@@ -156,11 +156,25 @@ func TestToolchain(t *testing.T) {
 					"      \"includes\": [\n        \"**\"\n      ],\n      \"linter\": {\n", "biome.json")
 			})
 
-			t.Run("asks for the extension .js in the imports of biome.json", func(t *testing.T) {
+			t.Run("asks for the extension that tsc writes in the imports of biome.json", func(t *testing.T) {
 				t.Parallel()
-				assert.Contains(t, rendered(t, "biome.json", jsOptions()), "\n          \"correctness\": {\n"+
-					"            \"useImportExtensions\": {\n              \"level\": \"error\",\n"+
-					"              \"options\": {\n                \"forceJsExtensions\": true\n", "biome.json")
+				assert.Contains(t, rendered(t, "biome.json", jsOptions()), "\n      \"correctness\": {\n"+
+					"        \"useImportExtensions\": {\n          \"level\": \"error\",\n          \"options\": {\n"+
+					"            \"extensionMappings\": {\n              \"ts\": \"js\",\n              \"tsx\": \"js\",\n"+
+					"              \"mts\": \"mjs\",\n              \"cts\": \"cjs\"\n            }\n", "biome.json")
+			})
+
+			t.Run("configures useNamingConvention at the top level of biome.json", func(t *testing.T) {
+				t.Parallel()
+				assert.Contains(t, rendered(t, "biome.json", jsOptions()), "\n      \"style\": {\n"+
+					"        \"useNamingConvention\": {\n          \"level\": \"error\",\n", "biome.json")
+			})
+
+			t.Run("sets correctness and style to error in the override of every file", func(t *testing.T) {
+				t.Parallel()
+				assert.Contains(t, rendered(t, "biome.json", jsOptions()), "\n          \"complexity\": {\n"+
+					"            \"useLiteralKeys\": \"off\"\n          },\n          \"correctness\": \"error\",\n"+
+					"          \"style\": \"error\"\n        }\n", "biome.json")
 			})
 
 			t.Run("turns off noMagicNumbers and the length rules of biome.json in the test files", func(t *testing.T) {

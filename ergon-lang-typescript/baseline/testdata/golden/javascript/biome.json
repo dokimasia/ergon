@@ -30,10 +30,51 @@
     "rules": {
       "a11y": "error",
       "complexity": "error",
-      "correctness": "error",
+      "correctness": {
+        "useImportExtensions": {
+          "level": "error",
+          "options": {
+            "extensionMappings": {
+              "ts": "js",
+              "tsx": "js",
+              "mts": "mjs",
+              "cts": "cjs"
+            }
+          }
+        }
+      },
       "performance": "error",
       "security": "error",
-      "style": "error",
+      "style": {
+        "useNamingConvention": {
+          "level": "error",
+          "options": {
+            "strictCase": false,
+            "conventions": [
+              {
+                "selector": {
+                  "kind": "objectLiteralProperty"
+                },
+                "formats": [
+                  "camelCase",
+                  "CONSTANT_CASE",
+                  "PascalCase",
+                  "snake_case"
+                ]
+              },
+              {
+                "selector": {
+                  "kind": "typeProperty"
+                },
+                "formats": [
+                  "camelCase",
+                  "snake_case"
+                ]
+              }
+            ]
+          }
+        }
+      },
       "suspicious": "error"
     }
   },
@@ -47,44 +88,8 @@
           "complexity": {
             "useLiteralKeys": "off"
           },
-          "correctness": {
-            "useImportExtensions": {
-              "level": "error",
-              "options": {
-                "forceJsExtensions": true
-              }
-            }
-          },
-          "style": {
-            "useNamingConvention": {
-              "level": "error",
-              "options": {
-                "strictCase": false,
-                "conventions": [
-                  {
-                    "selector": {
-                      "kind": "objectLiteralProperty"
-                    },
-                    "formats": [
-                      "camelCase",
-                      "CONSTANT_CASE",
-                      "PascalCase",
-                      "snake_case"
-                    ]
-                  },
-                  {
-                    "selector": {
-                      "kind": "typeProperty"
-                    },
-                    "formats": [
-                      "camelCase",
-                      "snake_case"
-                    ]
-                  }
-                ]
-              }
-            }
-          }
+          "correctness": "error",
+          "style": "error"
         }
       }
     },

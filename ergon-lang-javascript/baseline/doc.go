@@ -14,17 +14,24 @@
 //
 // # biome.json
 //
-// biome.json turns on every stable group of Biome's rules as an error. Its overrides change these
-// rules:
+// biome.json turns on every stable group of Biome's rules as an error. It changes these rules:
 //
-//   - useLiteralKeys is off, because it contradicts the flag --noPropertyAccessFromIndexSignature
-//     of tsc.
-//   - useImportExtensions has the option forceJsExtensions, so an import refers to the .js file that
-//     tsc writes.
+//   - useImportExtensions maps ts and tsx to js, mts to mjs and cts to cjs, so an import refers to
+//     the file that tsc writes. An import of a JSON file keeps its extension.
 //   - useNamingConvention allows four cases for a property of an object literal and two for a
 //     property of a type.
+//   - useLiteralKeys is off, because it contradicts the flag --noPropertyAccessFromIndexSignature
+//     of tsc.
 //   - noMagicNumbers, noExcessiveLinesPerFunction and noExcessiveLinesPerFile are off in the test
 //     files, which state their values inline and have a case for each behaviour.
+//
+// The options of useImportExtensions and useNamingConvention are in their groups at the top level,
+// and the override of every file sets correctness and style to error. With this layout Biome does
+// not turn on the rules of a framework domain such as qwik or solid, even when package.json declares
+// the package of the framework. A repository that uses a framework sets its domain in
+// .ergon/local/biome.json. The override of the test files configures style as an object to turn
+// three rules off, and in those files Biome turns on the rules of style of the domains next and
+// react, such as noHeadElement.
 //
 // Each item of an array of biome.json is on a line of its own, as the merge of a local JSON file
 // writes it. An override sets the option expand of Biome's JSON formatter to always for biome.json,
