@@ -98,7 +98,7 @@ ergon release publishes these packages:
 - the packages of an npm or a pnpm workspace, to the npm registry
 - the crates of a Cargo workspace, to crates.io
 
-The job publish of `release.yml` uploads through trusted publishing. Each project on pypi.org, each package on npmjs.com and each crate on crates.io needs a trusted publisher for the repository, the workflow `release.yml` and the environment `release`. npm and crates.io configure a trusted publisher only for a package that they already have, so publish the first version of a package by hand. A trusted publisher of npm also has to allow `npm publish`. Cargo packages and publishes crates that require each other in one run from version 1.90, so such a workspace pins Cargo 1.90 or later in `rust-toolchain.toml`. [The roadmap](docs/roadmap/README.md) lists the releases of the other toolchains.
+The job publish of `release.yml` uploads through trusted publishing. Each project on pypi.org, each package on npmjs.com and each crate on crates.io needs a trusted publisher for the repository, the workflow `release.yml` and the environment `release`. npm and crates.io configure a trusted publisher only for a package that they already have, so publish the first version of a package by hand. Then rerun the failed job publish of that release. It skips the upload of a version that the registry has, and writes the tag and the release of the version. A trusted publisher of npm also has to allow `npm publish`. Cargo packages and publishes crates that require each other in one run from version 1.90, so such a workspace pins Cargo 1.90 or later in `rust-toolchain.toml`. [The roadmap](docs/roadmap/README.md) lists the releases of the other toolchains.
 
 ## Documentation
 
