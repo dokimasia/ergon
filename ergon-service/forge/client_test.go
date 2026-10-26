@@ -8,10 +8,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 
 	"go.dokimi.dev/assert"
+	"go.dokimi.dev/assert/expect"
 	"go.dokimi.dev/ergon/service/forge"
 )
 
@@ -23,6 +25,9 @@ const (
 
 // graphqlPath is the path of the GraphQL API of the fake GitHub.
 const graphqlPath = "/graphql"
+
+// maxResponse is the largest response that a client reads, 10 MiB.
+const maxResponse = 10 << 20
 
 // request is a request that the fake GitHub received.
 type request struct {
@@ -162,6 +167,27 @@ func TestClient(t *testing.T) {
 			c, _ := serve(t, map[string][]response{"GET /repos/" + repo + "/git/ref/heads/main": {{body: "<html>"}}})
 			_, _, err := c.Branch(t.Context(), repo, "main")
 			assert.ErrorIs(t, err, forge.ErrGitHub, "Branch")
+		})
+
+		t.Run("decodes a response of 10 MiB", func(t *testing.T) {
+			t.Parallel()
+			ref := `{"object":{"sha":"a085003"}}`
+			body := strings.Repeat(" ", maxResponse-len(ref)) + ref
+			c, _ := serve(t, map[string][]response{"GET /repos/" + repo + "/git/ref/heads/main": {{body: body}}})
+			got, found, err := c.Branch(t.Context(), repo, "main")
+			assert.NoError(t, err, "Branch")
+			expect.True(t, found, "whether the branch exists")
+			expect.Equal(t, got, "a085003", "the commit of the branch")
+		})
+
+		t.Run("returns ErrGitHub for a response of more than 10 MiB", func(t *testing.T) {
+			t.Parallel()
+			ref := `{"object":{"sha":"a085003"}}`
+			body := strings.Repeat(" ", maxResponse+1-len(ref)) + ref
+			c, _ := serve(t, map[string][]response{"GET /repos/" + repo + "/git/ref/heads/main": {{body: body}}})
+			_, _, err := c.Branch(t.Context(), repo, "main")
+			assert.ErrorIs(t, err, forge.ErrGitHub, "Branch")
+			assert.Contains(t, err.Error(), "the response has more than 10485760 bytes", "the error")
 		})
 
 		t.Run("returns ErrGitHub for a response shorter than its length", func(t *testing.T) {

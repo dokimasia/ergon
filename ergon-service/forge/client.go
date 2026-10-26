@@ -109,8 +109,8 @@ func (c *Client) Server() string {
 // rest sends a request of method to path of the REST API, with in as its JSON body when in is not
 // nil, and decodes the JSON of a response into out when out is not nil. It returns the status of
 // the response. It returns an error that wraps [ErrGitHub] for a status outside 2xx, except for
-// the statuses of allowed, with the message of GitHub, and the error of the request and of the
-// decode.
+// the statuses of allowed, with the message of GitHub, and for a response of more than 10 MiB. It
+// also returns the error of the request and of the decode.
 func (c *Client) rest(ctx context.Context, method, path string, in, out any, allowed ...int) (int, error) {
 	if in == nil {
 		return c.send(ctx, method, c.config.API+path, nil, "", out, allowed)
@@ -172,9 +172,14 @@ func (c *Client) send(
 		return 0, fmt.Errorf("%w: %s %s: %w", ErrGitHub, method, address, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
-	data, err := io.ReadAll(io.LimitReader(resp.Body, maxResponse))
+	// One byte past the limit tells a response of the limit from a longer one.
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxResponse+1))
 	if err != nil {
 		return resp.StatusCode, fmt.Errorf("%w: read %s %s: %w", ErrGitHub, method, address, err)
+	}
+	if len(data) > maxResponse {
+		return resp.StatusCode, fmt.Errorf("%w: read %s %s: the response has more than %d bytes", ErrGitHub, method,
+			address, maxResponse)
 	}
 	ok := resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices
 	if !ok {
