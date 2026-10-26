@@ -1,5 +1,12 @@
 # go.dokimi.dev/ergon
 
+## 0.14.4
+
+### Patch Changes
+
+- Updated dependencies [da17cc2]
+  - go.dokimi.dev/ergon/lang/rust@0.7.1
+
 ## 0.14.3
 
 ### Patch Changes

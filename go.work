@@ -36,7 +36,7 @@ replace (
 	go.dokimi.dev/ergon/lang/kotlin v0.4.0 => ./ergon-lang-kotlin
 	go.dokimi.dev/ergon/lang/php v0.5.0 => ./ergon-lang-php
 	go.dokimi.dev/ergon/lang/python v0.7.0 => ./ergon-lang-python
-	go.dokimi.dev/ergon/lang/rust v0.7.0 => ./ergon-lang-rust
+	go.dokimi.dev/ergon/lang/rust v0.7.1 => ./ergon-lang-rust
 	go.dokimi.dev/ergon/lang/terraform v0.5.0 => ./ergon-lang-terraform
 	go.dokimi.dev/ergon/lang/typescript v0.4.1 => ./ergon-lang-typescript
 	go.dokimi.dev/ergon/service v0.21.0 => ./ergon-service
