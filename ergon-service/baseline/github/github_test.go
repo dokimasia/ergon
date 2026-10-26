@@ -155,7 +155,7 @@ func TestGithub(t *testing.T) {
 				assert.HasSuffix(t, got, "\njobs:\n  prune-tools:\n    name: Prune the tool caches\n"+
 					"    runs-on: ubuntu-26.04\n    timeout-minutes: 15\n    permissions:\n      actions: write\n"+
 					"      contents: read\n    steps:\n"+
-					"      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1\n"+
+					"      - uses: "+baselineOptions().CI.Actions.Checkout.String()+"\n"+
 					"        with:\n          persist-credentials: false\n      - uses: ./.github/actions/setup-ergon\n"+
 					"      - name: Delete the tool caches that newer caches replaced\n        env:\n"+
 					"          GITHUB_TOKEN: \"${{ github.token }}\"\n        run: |\n          ergon tool ci prune\n",

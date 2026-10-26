@@ -17,11 +17,7 @@ import (
 )
 
 // setupGo is the pin of setup-go at the baseline.
-var setupGo = workflow.Action{
-	Uses:    "actions/setup-go",
-	Commit:  "b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
-	Release: "v7.0.0",
-}
+var setupGo = goOptions().CI.Actions.SetupGo
 
 // installTypeScript is a step of ci.steps, which installs a compiler that the tests run.
 var installTypeScript = workflow.Step{Name: "Install TypeScript", Run: []string{"npm install --global typescript"}}

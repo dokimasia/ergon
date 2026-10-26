@@ -11,11 +11,13 @@ import (
 	"go.dokimi.dev/ergon/service/baseline/common"
 )
 
-// The addresses of the assets of the release binaries of the section at the baseline: commitlint
-// 0.12.0 and rumdl 0.2.79.
+// version is the version of the release binaries of the cases.
+const version = "1.2.3"
+
+// The addresses of the assets of commitlint and rumdl at the version of the cases.
 const (
-	commitlintRelease = "https://github.com/conventionalcommit/commitlint/releases/download/v0.12.0/"
-	rumdlRelease      = "https://github.com/rvben/rumdl/releases/download/v0.2.79/"
+	commitlintRelease = "https://github.com/conventionalcommit/commitlint/releases/download/v1.2.3/"
+	rumdlRelease      = "https://github.com/rvben/rumdl/releases/download/v1.2.3/"
 )
 
 func TestOptions(t *testing.T) {
@@ -92,7 +94,7 @@ func TestOptions(t *testing.T) {
 					name: "returns the archive of Linux on x86-64",
 					give: option.LinuxAMD64,
 					want: option.Asset{
-						URL:     commitlintRelease + "commitlint_v0.12.0_linux_amd64.tar.gz",
+						URL:     commitlintRelease + "commitlint_v1.2.3_linux_amd64.tar.gz",
 						Program: "commitlint",
 					},
 				},
@@ -100,7 +102,7 @@ func TestOptions(t *testing.T) {
 					name: "returns the archive of macOS on Apple silicon",
 					give: option.DarwinARM64,
 					want: option.Asset{
-						URL:     commitlintRelease + "commitlint_v0.12.0_darwin_arm64.tar.gz",
+						URL:     commitlintRelease + "commitlint_v1.2.3_darwin_arm64.tar.gz",
 						Program: "commitlint",
 					},
 				},
@@ -108,7 +110,7 @@ func TestOptions(t *testing.T) {
 					name: "returns the archive of Windows with the program of the suffix exe",
 					give: option.WindowsAMD64,
 					want: option.Asset{
-						URL:     commitlintRelease + "commitlint_v0.12.0_windows_amd64.tar.gz",
+						URL:     commitlintRelease + "commitlint_v1.2.3_windows_amd64.tar.gz",
 						Program: "commitlint.exe",
 					},
 				},
@@ -116,8 +118,7 @@ func TestOptions(t *testing.T) {
 			for _, tt := range tests {
 				t.Run(tt.name, func(t *testing.T) {
 					t.Parallel()
-					o, _ := common.Producer{}.Options().(*common.Options)
-					got, err := o.Tools.Commitlint.Asset(tt.give)
+					got, err := common.Commitlint{Version: version}.Asset(tt.give)
 					assert.NoError(t, err, "Asset")
 					assert.Equal(t, got, tt.want, "the asset")
 				})
@@ -125,8 +126,7 @@ func TestOptions(t *testing.T) {
 
 			t.Run("returns ErrNoAsset for an invalid platform", func(t *testing.T) {
 				t.Parallel()
-				o, _ := common.Producer{}.Options().(*common.Options)
-				_, err := o.Tools.Commitlint.Asset("plan9/amd64")
+				_, err := common.Commitlint{Version: version}.Asset("plan9/amd64")
 				assert.ErrorIs(t, err, option.ErrNoAsset, "Asset")
 			})
 		})
@@ -156,7 +156,7 @@ func TestOptions(t *testing.T) {
 					name: "returns the static archive of Linux on x86-64",
 					give: option.LinuxAMD64,
 					want: option.Asset{
-						URL:     rumdlRelease + "rumdl-v0.2.79-x86_64-unknown-linux-musl.tar.gz",
+						URL:     rumdlRelease + "rumdl-v1.2.3-x86_64-unknown-linux-musl.tar.gz",
 						Program: "rumdl",
 					},
 				},
@@ -164,7 +164,7 @@ func TestOptions(t *testing.T) {
 					name: "returns the archive of macOS on Apple silicon",
 					give: option.DarwinARM64,
 					want: option.Asset{
-						URL:     rumdlRelease + "rumdl-v0.2.79-aarch64-apple-darwin.tar.gz",
+						URL:     rumdlRelease + "rumdl-v1.2.3-aarch64-apple-darwin.tar.gz",
 						Program: "rumdl",
 					},
 				},
@@ -172,7 +172,7 @@ func TestOptions(t *testing.T) {
 					name: "returns the zip of Windows with the program of the suffix exe",
 					give: option.WindowsAMD64,
 					want: option.Asset{
-						URL:     rumdlRelease + "rumdl-v0.2.79-x86_64-pc-windows-msvc.zip",
+						URL:     rumdlRelease + "rumdl-v1.2.3-x86_64-pc-windows-msvc.zip",
 						Program: "rumdl.exe",
 					},
 				},
@@ -180,8 +180,7 @@ func TestOptions(t *testing.T) {
 			for _, tt := range tests {
 				t.Run(tt.name, func(t *testing.T) {
 					t.Parallel()
-					o, _ := common.Producer{}.Options().(*common.Options)
-					got, err := o.Tools.Rumdl.Asset(tt.give)
+					got, err := common.Rumdl{Version: version}.Asset(tt.give)
 					assert.NoError(t, err, "Asset")
 					assert.Equal(t, got, tt.want, "the asset")
 				})
@@ -197,8 +196,7 @@ func TestOptions(t *testing.T) {
 			for _, tt := range noAsset {
 				t.Run(tt.name, func(t *testing.T) {
 					t.Parallel()
-					o, _ := common.Producer{}.Options().(*common.Options)
-					_, err := o.Tools.Rumdl.Asset(tt.give)
+					_, err := common.Rumdl{Version: version}.Asset(tt.give)
 					assert.ErrorIs(t, err, option.ErrNoAsset, "Asset")
 				})
 			}

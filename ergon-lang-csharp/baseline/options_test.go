@@ -14,11 +14,7 @@ import (
 )
 
 // setupDotnet is the pin of setup-dotnet at the baseline.
-var setupDotnet = workflow.Action{
-	Uses:    "actions/setup-dotnet",
-	Commit:  "a98b56852c35b8e3190ac28c8c2271da59106c68",
-	Release: "v6.0.0",
-}
+var setupDotnet = csharpOptions().CI.Actions.SetupDotnet
 
 // installTypeScript is a step of ci.steps, which installs a compiler that the tests run.
 var installTypeScript = workflow.Step{Name: "Install TypeScript", Run: []string{"npm install --global typescript"}}

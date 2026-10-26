@@ -13,19 +13,11 @@ import (
 	"go.dokimi.dev/ergon/lang/javascript/baseline"
 )
 
-// setupNode is the pin of setup-node at the baseline.
-var setupNode = workflow.Action{
-	Uses:    "actions/setup-node",
-	Commit:  "820762786026740c76f36085b0efc47a31fe5020",
-	Release: "v7.0.0",
-}
-
-// setupPNPM is the pin of pnpm/setup at the baseline.
-var setupPNPM = workflow.Action{
-	Uses:    "pnpm/setup",
-	Commit:  "a0881977cd8ea73b1ed212236c99ca10dcc80cf4",
-	Release: "v3.1.1",
-}
+// The pins of setup-node and pnpm/setup at the baseline.
+var (
+	setupNode = jsOptions().CI.Actions.SetupNode
+	setupPNPM = jsOptions().CI.Actions.SetupPNPM
+)
 
 // installTypeScript is a step of ci.steps, which installs a compiler that the tests run.
 var installTypeScript = workflow.Step{Name: "Install TypeScript", Run: []string{"npm install --global typescript"}}

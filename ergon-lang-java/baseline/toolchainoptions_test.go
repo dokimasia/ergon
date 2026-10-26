@@ -13,15 +13,14 @@ import (
 	"go.dokimi.dev/ergon/lang/java/baseline"
 )
 
-// release is the address of the assets of osv-scanner 2.6.0.
-const release = "https://github.com/google/osv-scanner/releases/download/v2.6.0/"
+// version is the version of the release binaries of the cases.
+const version = "1.2.3"
+
+// release is the address of the assets of osv-scanner at the version of the cases.
+const release = "https://github.com/google/osv-scanner/releases/download/v1.2.3/"
 
 // setupJava is the pin of setup-java at the baseline.
-var setupJava = workflow.Action{
-	Uses:    "actions/setup-java",
-	Commit:  "de7274f081f381c8f8158605e0321c36c376e2e6",
-	Release: "v6.0.1",
-}
+var setupJava = jvmOptions().CI.Actions.SetupJava
 
 // installTypeScript is a step of ci.steps, which installs a compiler that the tests run.
 var installTypeScript = workflow.Step{Name: "Install TypeScript", Run: []string{"npm install --global typescript"}}
@@ -127,7 +126,7 @@ func TestToolchainOptions(t *testing.T) {
 			for _, tt := range tests {
 				t.Run(tt.name, func(t *testing.T) {
 					t.Parallel()
-					got, err := jvmOptions().Tools.OSVScanner.Asset(tt.give)
+					got, err := baseline.OSVScanner{Version: version}.Asset(tt.give)
 					assert.NoError(t, err, "Asset")
 					assert.Equal(t, got, tt.want, "the asset")
 				})
@@ -135,7 +134,7 @@ func TestToolchainOptions(t *testing.T) {
 
 			t.Run("returns ErrNoAsset for an invalid platform", func(t *testing.T) {
 				t.Parallel()
-				_, err := jvmOptions().Tools.OSVScanner.Asset("plan9/amd64")
+				_, err := baseline.OSVScanner{Version: version}.Asset("plan9/amd64")
 				assert.ErrorIs(t, err, option.ErrNoAsset, "Asset")
 			})
 		})

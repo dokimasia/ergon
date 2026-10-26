@@ -14,11 +14,7 @@ import (
 )
 
 // setupPHP is the pin of setup-php at the baseline.
-var setupPHP = workflow.Action{
-	Uses:    "shivammathur/setup-php",
-	Commit:  "f3e473d116dcccaddc5834248c87452386958240",
-	Release: "2.37.2",
-}
+var setupPHP = phpOptions().CI.Actions.SetupPHP
 
 // installTypeScript is a step of ci.steps, which installs a compiler that the tests run.
 var installTypeScript = workflow.Step{Name: "Install TypeScript", Run: []string{"npm install --global typescript"}}

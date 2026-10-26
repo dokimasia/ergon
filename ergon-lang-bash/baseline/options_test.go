@@ -12,8 +12,12 @@ import (
 	"go.dokimi.dev/ergon/lang/bash/baseline"
 )
 
-// release is the address of the assets of shellcheck 0.11.0, before the name of the asset.
-const release = "https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0"
+// version is the version of the release binary of the cases.
+const version = "1.2.3"
+
+// release is the address of the assets of shellcheck at the version of the cases, before the name
+// of the asset.
+const release = "https://github.com/koalaman/shellcheck/releases/download/v1.2.3/shellcheck-v1.2.3"
 
 // installTypeScript is a step of ci.steps, which installs a compiler that the tests run.
 var installTypeScript = workflow.Step{Name: "Install TypeScript", Run: []string{"npm install --global typescript"}}
@@ -96,14 +100,14 @@ func TestOptions(t *testing.T) {
 				{
 					name: "returns the .tar.gz of Linux on x86-64",
 					give: option.LinuxAMD64,
-					want: option.Asset{URL: release + ".linux.x86_64.tar.gz", Program: "shellcheck-v0.11.0/shellcheck"},
+					want: option.Asset{URL: release + ".linux.x86_64.tar.gz", Program: "shellcheck-v1.2.3/shellcheck"},
 				},
 				{
 					name: "returns the .tar.gz of Linux on ARM",
 					give: option.LinuxARM64,
 					want: option.Asset{
 						URL:     release + ".linux.aarch64.tar.gz",
-						Program: "shellcheck-v0.11.0/shellcheck",
+						Program: "shellcheck-v1.2.3/shellcheck",
 					},
 				},
 				{
@@ -111,7 +115,7 @@ func TestOptions(t *testing.T) {
 					give: option.DarwinARM64,
 					want: option.Asset{
 						URL:     release + ".darwin.aarch64.tar.gz",
-						Program: "shellcheck-v0.11.0/shellcheck",
+						Program: "shellcheck-v1.2.3/shellcheck",
 					},
 				},
 				{
@@ -123,7 +127,7 @@ func TestOptions(t *testing.T) {
 			for _, tt := range tests {
 				t.Run(tt.name, func(t *testing.T) {
 					t.Parallel()
-					got, err := bashOptions().Tools.Shellcheck.Asset(tt.give)
+					got, err := baseline.Shellcheck{Version: version}.Asset(tt.give)
 					assert.NoError(t, err, "Asset")
 					assert.Equal(t, got, tt.want, "the asset")
 				})
@@ -142,7 +146,7 @@ func TestOptions(t *testing.T) {
 			for _, tt := range invalid {
 				t.Run(tt.name, func(t *testing.T) {
 					t.Parallel()
-					_, err := bashOptions().Tools.Shellcheck.Asset(tt.give)
+					_, err := baseline.Shellcheck{Version: version}.Asset(tt.give)
 					assert.ErrorIs(t, err, option.ErrNoAsset, "Asset")
 				})
 			}

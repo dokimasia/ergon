@@ -17,8 +17,11 @@ import (
 // The runners of the section github at the baseline.
 var runners = option.Runners{"ubuntu-26.04", "macos-26", "windows-2025"}
 
-// actionlintRelease is the address of the assets of actionlint 1.7.12.
-const actionlintRelease = "https://github.com/rhysd/actionlint/releases/download/v1.7.12/"
+// version is the version of the release binary of the cases.
+const version = "1.2.3"
+
+// actionlintRelease is the address of the assets of actionlint at the version of the cases.
+const actionlintRelease = "https://github.com/rhysd/actionlint/releases/download/v1.2.3/"
 
 // The step that keeps the tools of ergon in the cache: its name and its ID, the tool directory of
 // ergon on each system, the start of its keys, the prefix that a job without and with the runtime
@@ -104,7 +107,7 @@ func TestOptions(t *testing.T) {
 					name: "returns the archive of Linux on x86-64",
 					give: option.LinuxAMD64,
 					want: option.Asset{
-						URL:     actionlintRelease + "actionlint_1.7.12_linux_amd64.tar.gz",
+						URL:     actionlintRelease + "actionlint_1.2.3_linux_amd64.tar.gz",
 						Program: "actionlint",
 					},
 				},
@@ -112,7 +115,7 @@ func TestOptions(t *testing.T) {
 					name: "returns the archive of macOS on Apple silicon",
 					give: option.DarwinARM64,
 					want: option.Asset{
-						URL:     actionlintRelease + "actionlint_1.7.12_darwin_arm64.tar.gz",
+						URL:     actionlintRelease + "actionlint_1.2.3_darwin_arm64.tar.gz",
 						Program: "actionlint",
 					},
 				},
@@ -120,7 +123,7 @@ func TestOptions(t *testing.T) {
 					name: "returns the zip of Windows with the program of the suffix exe",
 					give: option.WindowsAMD64,
 					want: option.Asset{
-						URL:     actionlintRelease + "actionlint_1.7.12_windows_amd64.zip",
+						URL:     actionlintRelease + "actionlint_1.2.3_windows_amd64.zip",
 						Program: "actionlint.exe",
 					},
 				},
@@ -128,7 +131,7 @@ func TestOptions(t *testing.T) {
 			for _, tt := range tests {
 				t.Run(tt.name, func(t *testing.T) {
 					t.Parallel()
-					got, err := baselineOptions().Tools.Actionlint.Asset(tt.give)
+					got, err := github.Actionlint{Version: version}.Asset(tt.give)
 					assert.NoError(t, err, "Asset")
 					assert.Equal(t, got, tt.want, "the asset")
 				})
@@ -136,7 +139,7 @@ func TestOptions(t *testing.T) {
 
 			t.Run("returns ErrNoAsset for an invalid platform", func(t *testing.T) {
 				t.Parallel()
-				_, err := baselineOptions().Tools.Actionlint.Asset("plan9/amd64")
+				_, err := github.Actionlint{Version: version}.Asset("plan9/amd64")
 				assert.ErrorIs(t, err, option.ErrNoAsset, "Asset")
 			})
 		})

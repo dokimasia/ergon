@@ -14,11 +14,7 @@ import (
 )
 
 // setupRust is the pin of setup-rust-toolchain at the baseline.
-var setupRust = workflow.Action{
-	Uses:    "actions-rust-lang/setup-rust-toolchain",
-	Commit:  "ecabd13d1c56bd1345c230e542e9144811ad706f",
-	Release: "v2.0.0",
-}
+var setupRust = rustOptions().CI.Actions.SetupRustToolchain
 
 // installTypeScript is a step of ci.steps, which installs a compiler that the tests run.
 var installTypeScript = workflow.Step{Name: "Install TypeScript", Run: []string{"npm install --global typescript"}}

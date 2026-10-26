@@ -37,13 +37,9 @@ func TestToolchain(t *testing.T) {
 				t.Parallel()
 				first := jvmOptions()
 				second := jvmOptions()
-				first.Tools.OSVScanner.SHA256[option.LinuxAMD64] = "0"
-				assert.Equal(
-					t,
-					second.Tools.OSVScanner.SHA256[option.LinuxAMD64],
-					"ca69b3d3cd08f889a49dc0a383122f71cc528b83803671df5fd874d97485b108",
-					"the digest of the second value",
-				)
+				assert.Pure(t, func() string { return second.Tools.OSVScanner.SHA256[option.LinuxAMD64] }, func() {
+					first.Tools.OSVScanner.SHA256[option.LinuxAMD64] = "0"
+				}, "the digest of the second value")
 			})
 		})
 

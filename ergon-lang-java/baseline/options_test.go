@@ -12,8 +12,8 @@ import (
 	"go.dokimi.dev/ergon/lang/java/baseline"
 )
 
-// formatRelease is the address of the assets of google-java-format 1.37.0.
-const formatRelease = "https://github.com/google/google-java-format/releases/download/v1.37.0/"
+// formatRelease is the address of the assets of google-java-format at the version of the cases.
+const formatRelease = "https://github.com/google/google-java-format/releases/download/v1.2.3/"
 
 func TestOptions(t *testing.T) {
 	t.Parallel()
@@ -85,7 +85,7 @@ func TestOptions(t *testing.T) {
 			for _, tt := range tests {
 				t.Run(tt.name, func(t *testing.T) {
 					t.Parallel()
-					got, err := javaOptions().Tools.GoogleJavaFormat.Asset(tt.give)
+					got, err := baseline.GoogleJavaFormat{Version: version}.Asset(tt.give)
 					assert.NoError(t, err, "Asset")
 					assert.Equal(t, got, tt.want, "the asset")
 				})
@@ -102,7 +102,7 @@ func TestOptions(t *testing.T) {
 			for _, tt := range absent {
 				t.Run(tt.name, func(t *testing.T) {
 					t.Parallel()
-					_, err := javaOptions().Tools.GoogleJavaFormat.Asset(tt.give)
+					_, err := baseline.GoogleJavaFormat{Version: version}.Asset(tt.give)
 					assert.ErrorIs(t, err, option.ErrNoAsset, "Asset")
 				})
 			}

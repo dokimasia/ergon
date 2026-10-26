@@ -11,12 +11,15 @@ import (
 	"go.dokimi.dev/ergon/lang/go/baseline"
 )
 
+// version is the version of the release binaries of the cases.
+const version = "1.2.3"
+
 // The downloads of the releases of the tools of the cases.
 const (
-	goreleaserDownload = "https://github.com/goreleaser/goreleaser/releases/download/v2.18.2/"
-	cosignDownload     = "https://github.com/sigstore/cosign/releases/download/v3.1.3/"
-	syftDownload       = "https://github.com/anchore/syft/releases/download/v1.54.1/"
-	upxDownload        = "https://github.com/upx/upx/releases/download/v5.2.1/"
+	goreleaserDownload = "https://github.com/goreleaser/goreleaser/releases/download/v1.2.3/"
+	cosignDownload     = "https://github.com/sigstore/cosign/releases/download/v1.2.3/"
+	syftDownload       = "https://github.com/anchore/syft/releases/download/v1.2.3/"
+	upxDownload        = "https://github.com/upx/upx/releases/download/v1.2.3/"
 )
 
 func TestBinaries(t *testing.T) {
@@ -61,7 +64,7 @@ func TestBinaries(t *testing.T) {
 			for _, tt := range tests {
 				t.Run(tt.name, func(t *testing.T) {
 					t.Parallel()
-					got, err := goOptions().Tools.GoReleaser.Asset(tt.give)
+					got, err := baseline.GoReleaser{Version: version}.Asset(tt.give)
 					assert.NoError(t, err, "Asset")
 					assert.Equal(t, got, tt.want, "the asset")
 				})
@@ -69,7 +72,7 @@ func TestBinaries(t *testing.T) {
 
 			t.Run("returns ErrNoAsset for a platform that is not valid", func(t *testing.T) {
 				t.Parallel()
-				_, err := goOptions().Tools.GoReleaser.Asset("linux/386")
+				_, err := baseline.GoReleaser{Version: version}.Asset("linux/386")
 				assert.ErrorIs(t, err, option.ErrNoAsset, "Asset")
 			})
 		})
@@ -109,7 +112,7 @@ func TestBinaries(t *testing.T) {
 			for _, tt := range tests {
 				t.Run(tt.name, func(t *testing.T) {
 					t.Parallel()
-					got, err := goOptions().Tools.Cosign.Asset(tt.give)
+					got, err := baseline.Cosign{Version: version}.Asset(tt.give)
 					assert.NoError(t, err, "Asset")
 					assert.Equal(t, got, tt.want, "the asset")
 				})
@@ -118,7 +121,7 @@ func TestBinaries(t *testing.T) {
 			for _, p := range []option.Platform{option.WindowsARM64, "linux/386"} {
 				t.Run("returns ErrNoAsset for "+string(p), func(t *testing.T) {
 					t.Parallel()
-					_, err := goOptions().Tools.Cosign.Asset(p)
+					_, err := baseline.Cosign{Version: version}.Asset(p)
 					assert.ErrorIs(t, err, option.ErrNoAsset, "Asset")
 				})
 			}
@@ -148,18 +151,18 @@ func TestBinaries(t *testing.T) {
 				{
 					name: "returns the archive of macOS on x86-64 with the version in its name",
 					give: option.DarwinAMD64,
-					want: option.Asset{URL: syftDownload + "syft_1.54.1_darwin_amd64.tar.gz", Program: "syft"},
+					want: option.Asset{URL: syftDownload + "syft_1.2.3_darwin_amd64.tar.gz", Program: "syft"},
 				},
 				{
 					name: "returns a .zip with syft.exe on Windows",
 					give: option.WindowsARM64,
-					want: option.Asset{URL: syftDownload + "syft_1.54.1_windows_arm64.zip", Program: "syft.exe"},
+					want: option.Asset{URL: syftDownload + "syft_1.2.3_windows_arm64.zip", Program: "syft.exe"},
 				},
 			}
 			for _, tt := range tests {
 				t.Run(tt.name, func(t *testing.T) {
 					t.Parallel()
-					got, err := goOptions().Tools.Syft.Asset(tt.give)
+					got, err := baseline.Syft{Version: version}.Asset(tt.give)
 					assert.NoError(t, err, "Asset")
 					assert.Equal(t, got, tt.want, "the asset")
 				})
@@ -167,7 +170,7 @@ func TestBinaries(t *testing.T) {
 
 			t.Run("returns ErrNoAsset for a platform that is not valid", func(t *testing.T) {
 				t.Parallel()
-				_, err := goOptions().Tools.Syft.Asset("darwin/386")
+				_, err := baseline.Syft{Version: version}.Asset("darwin/386")
 				assert.ErrorIs(t, err, option.ErrNoAsset, "Asset")
 			})
 		})
@@ -197,28 +200,28 @@ func TestBinaries(t *testing.T) {
 					name: "returns the .tar.xz of Linux on x86-64 with the program in the directory of its name",
 					give: option.LinuxAMD64,
 					want: option.Asset{
-						URL:     upxDownload + "upx-5.2.1-amd64_linux.tar.xz",
-						Program: "upx-5.2.1-amd64_linux/upx",
+						URL:     upxDownload + "upx-1.2.3-amd64_linux.tar.xz",
+						Program: "upx-1.2.3-amd64_linux/upx",
 					},
 				},
 				{
 					name: "returns the .tar.xz of Linux on 64-bit ARM",
 					give: option.LinuxARM64,
 					want: option.Asset{
-						URL:     upxDownload + "upx-5.2.1-arm64_linux.tar.xz",
-						Program: "upx-5.2.1-arm64_linux/upx",
+						URL:     upxDownload + "upx-1.2.3-arm64_linux.tar.xz",
+						Program: "upx-1.2.3-arm64_linux/upx",
 					},
 				},
 				{
 					name: "returns the .zip of Windows on x86-64 with upx.exe",
 					give: option.WindowsAMD64,
-					want: option.Asset{URL: upxDownload + "upx-5.2.1-win64.zip", Program: "upx-5.2.1-win64/upx.exe"},
+					want: option.Asset{URL: upxDownload + "upx-1.2.3-win64.zip", Program: "upx-1.2.3-win64/upx.exe"},
 				},
 			}
 			for _, tt := range tests {
 				t.Run(tt.name, func(t *testing.T) {
 					t.Parallel()
-					got, err := goOptions().Tools.UPX.Asset(tt.give)
+					got, err := baseline.UPX{Version: version}.Asset(tt.give)
 					assert.NoError(t, err, "Asset")
 					assert.Equal(t, got, tt.want, "the asset")
 				})
@@ -227,7 +230,7 @@ func TestBinaries(t *testing.T) {
 			for _, p := range []option.Platform{option.DarwinARM64, option.WindowsARM64, "linux/386"} {
 				t.Run("returns ErrNoAsset for "+string(p), func(t *testing.T) {
 					t.Parallel()
-					_, err := goOptions().Tools.UPX.Asset(p)
+					_, err := baseline.UPX{Version: version}.Asset(p)
 					assert.ErrorIs(t, err, option.ErrNoAsset, "Asset")
 				})
 			}

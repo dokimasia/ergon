@@ -13,15 +13,14 @@ import (
 	"go.dokimi.dev/ergon/lang/terraform/baseline"
 )
 
-// release is the address of the assets of tflint 0.64.0.
-const release = "https://github.com/terraform-linters/tflint/releases/download/v0.64.0/"
+// version is the version of the release binary of the cases.
+const version = "1.2.3"
+
+// release is the address of the assets of tflint at the version of the cases.
+const release = "https://github.com/terraform-linters/tflint/releases/download/v1.2.3/"
 
 // setupTerraform is the pin of setup-terraform at the baseline.
-var setupTerraform = workflow.Action{
-	Uses:    "hashicorp/setup-terraform",
-	Commit:  "dfe3c3f87815947d99a8997f908cb6525fc44e9e",
-	Release: "v4.0.1",
-}
+var setupTerraform = terraformOptions().CI.Actions.SetupTerraform
 
 // installTypeScript is a step of ci.steps, which installs a compiler that the tests run.
 var installTypeScript = workflow.Step{Name: "Install TypeScript", Run: []string{"npm install --global typescript"}}
@@ -155,7 +154,7 @@ func TestOptions(t *testing.T) {
 			for _, tt := range tests {
 				t.Run(tt.name, func(t *testing.T) {
 					t.Parallel()
-					got, err := terraformOptions().Tools.TFLint.Asset(tt.give)
+					got, err := baseline.TFLint{Version: version}.Asset(tt.give)
 					assert.NoError(t, err, "Asset")
 					assert.Equal(t, got, tt.want, "the asset")
 				})
@@ -163,7 +162,7 @@ func TestOptions(t *testing.T) {
 
 			t.Run("returns ErrNoAsset for an invalid platform", func(t *testing.T) {
 				t.Parallel()
-				_, err := terraformOptions().Tools.TFLint.Asset("plan9/amd64")
+				_, err := baseline.TFLint{Version: version}.Asset("plan9/amd64")
 				assert.ErrorIs(t, err, option.ErrNoAsset, "Asset")
 			})
 		})
