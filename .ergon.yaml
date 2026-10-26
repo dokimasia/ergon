@@ -181,7 +181,7 @@ go:
     # The comparison of two runs of bench-go in benchstat-go.
     benchstat: golang.org/x/perf/cmd/benchstat@v0.0.0-20260929162123-406019bb8b68
     # The mutation engine of mutate-go.
-    dokimi-mutate-go: go.dokimi.dev/mutate/cmd/dokimi-mutate-go@v0.0.0-20261006212535-719083ce3457
+    dokimi-mutate-go: go.dokimi.dev/mutate/cmd/dokimi-mutate-go@v0.1.0
     # The release of GoReleaser, which builds, packs and signs the commands of binaries in the job
     # pack of release.yml.
     goreleaser:
@@ -271,17 +271,21 @@ go:
     time: 30s
     args: [-fuzzminimizetime=5s]
   # bench-go runs each benchmark whose name matches the regular expression match, count times, for
-  # time each, with args. benchstat states a 95% confidence interval from 6 runs.
+  # time each, with args. It leaves out the packages of the patterns of skip, which go list resolves
+  # in each module. benchstat states a 95% confidence interval from 6 runs.
   bench:
     match: .
     time: 1s
     args: [-benchmem]
+    skip: []
     count: 6
   # mutate-go runs dokimi-mutate-go with workers mutants of a module at a time and args, and ends
-  # the run after timeout. A timeout of 0s sets no limit.
+  # the run after timeout. A timeout of 0s sets no limit. It tests no mutant of the packages of the
+  # patterns of skip, such as ./internal/fixture/..., which go list resolves in each module.
   mutate:
     timeout: 0s
     args: []
+    skip: []
     workers: 1
   # generate-go runs each command line of commands in order with the paths in every module.
   # verify-generate-go, the step generate of check, runs the same and fails when the run changes a

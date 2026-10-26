@@ -94,10 +94,10 @@ type Options struct {
 	Fuzz option.Fuzz `yaml:"fuzz" doc:"fuzz-go fuzzes each fuzz target whose name matches the regular expression match, for time each, with args. -fuzzminimizetime bounds the minimization of a new input, which go test runs for 60s by default."`
 
 	// Bench are the options of bench-go.
-	Bench option.Bench `yaml:"bench" doc:"bench-go runs each benchmark whose name matches the regular expression match, count times, for time each, with args. benchstat states a 95% confidence interval from 6 runs."`
+	Bench option.Bench `yaml:"bench" doc:"bench-go runs each benchmark whose name matches the regular expression match, count times, for time each, with args. It leaves out the packages of the patterns of skip, which go list resolves in each module. benchstat states a 95% confidence interval from 6 runs."`
 
 	// Mutate are the options of mutate-go.
-	Mutate option.Mutate `yaml:"mutate" doc:"mutate-go runs dokimi-mutate-go with workers mutants of a module at a time and args, and ends the run after timeout. A timeout of 0s sets no limit."`
+	Mutate option.Mutate `yaml:"mutate" doc:"mutate-go runs dokimi-mutate-go with workers mutants of a module at a time and args, and ends the run after timeout. A timeout of 0s sets no limit. It tests no mutant of the packages of the patterns of skip, such as ./internal/fixture/..., which go list resolves in each module."`
 
 	// Generate are the options of generate-go and verify-generate-go.
 	Generate option.Generate `yaml:"generate" doc:"generate-go runs each command line of commands in order with the paths in every module. verify-generate-go, the step generate of check, runs the same and fails when the run changes a tracked file or writes a file that git does not track. An empty list of commands removes both targets."`

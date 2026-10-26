@@ -55,7 +55,7 @@ func (Producer) Options() language.Options {
 			GolangCILint:   "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0",
 			Govulncheck:    "golang.org/x/vuln/cmd/govulncheck@v1.8.0",
 			Benchstat:      "golang.org/x/perf/cmd/benchstat@v0.0.0-20260929162123-406019bb8b68",
-			DokimiMutateGo: "go.dokimi.dev/mutate/cmd/dokimi-mutate-go@v0.0.0-20261006212535-719083ce3457",
+			DokimiMutateGo: "go.dokimi.dev/mutate/cmd/dokimi-mutate-go@v0.1.0",
 			GoReleaser: GoReleaser{Binary: option.Binary{
 				Version: "2.18.2",
 				SHA256: map[option.Platform]string{
@@ -115,8 +115,8 @@ func (Producer) Options() language.Options {
 		Test:     option.Run{Args: []string{"-count=1"}},
 		Race:     option.Run{Args: []string{"-count=1", "-p=1"}},
 		Fuzz:     option.Fuzz{Match: ".", Time: "30s", Args: []string{"-fuzzminimizetime=5s"}},
-		Bench:    option.Bench{Match: ".", Time: "1s", Args: []string{"-benchmem"}, Count: 6},
-		Mutate:   option.Mutate{Timeout: "0s", Args: []string{}, Workers: 1},
+		Bench:    option.Bench{Match: ".", Time: "1s", Args: []string{"-benchmem"}, Skip: []string{}, Count: 6},
+		Mutate:   option.Mutate{Timeout: "0s", Args: []string{}, Skip: []string{}, Workers: 1},
 		Generate: option.Generate{Commands: [][]string{{"go", "generate"}}},
 		Audit:    option.Run{Args: []string{}},
 		Binaries: []Command{},

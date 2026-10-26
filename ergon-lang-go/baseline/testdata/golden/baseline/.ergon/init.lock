@@ -24,7 +24,7 @@
     {
       "path": "Makefile",
       "producer": "go",
-      "sha256": "35648f766bb184dc7f06201ce290db46da4d1488c378b674e21a0f1194b323ce"
+      "sha256": "9c258004a53b652365f50b6b3c8d1a6d2e0ac72b0f1b98599e41435cd8b93c11"
     }
   ],
   "settings": {
@@ -34,6 +34,7 @@
     ],
     "go.bench.count": 6,
     "go.bench.match": ".",
+    "go.bench.skip": [],
     "go.bench.time": "1s",
     "go.binaries": [],
     "go.check": [
@@ -64,6 +65,7 @@
     "go.lint.analyzers": "go.dokimi.dev/lint/golangci@v0.2.0",
     "go.lint.plugins": {},
     "go.mutate.args": [],
+    "go.mutate.skip": [],
     "go.mutate.timeout": "0s",
     "go.mutate.workers": 1,
     "go.nightly": {
@@ -90,7 +92,7 @@
       "windows/amd64": "9fe59be0eca1271873ce019061335eb1ac419b7059202e797828467ddabe33be"
     },
     "go.tools.cosign.version": "3.1.3",
-    "go.tools.dokimi-mutate-go": "go.dokimi.dev/mutate/cmd/dokimi-mutate-go@v0.0.0-20261006212535-719083ce3457",
+    "go.tools.dokimi-mutate-go": "go.dokimi.dev/mutate/cmd/dokimi-mutate-go@v0.1.0",
     "go.tools.golangci-lint": "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0",
     "go.tools.goreleaser.sha256": {
       "darwin/amd64": "5e97d6517f73a0b6f71675a2911b15d3136c03c8907650c2b18e114b1c0f5205",

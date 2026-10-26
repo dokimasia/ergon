@@ -20,7 +20,9 @@
 // The fragment states each option of a step as a variable, such as GO_FUZZ_TIME, which one run of
 // make overrides on its command line. generate-go runs the command lines of the generators in
 // order, go generate at the baseline, and verify-generate-go fails when they change a file of the
-// repository. A line ##@ Go starts the group of Go in make help.
+// repository. bench-go and mutate-go leave out the packages of the patterns of the keys bench.skip
+// and mutate.skip. go list resolves the patterns in each module, and a pattern that matches no
+// package of a module is no error. A line ##@ Go starts the group of Go in make help.
 //
 // # Binaries
 //

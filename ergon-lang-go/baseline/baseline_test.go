@@ -5,6 +5,7 @@ package baseline_test
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path"
@@ -33,6 +34,13 @@ const name = "go"
 // passing is the module of the workspace of the case of make test-go whose tests pass. The tests
 // of the module before it fail.
 const passing = "example.com/b"
+
+// benchmark is the source of a test file of the package %[1]s with the benchmark Benchmark%[2]s.
+const benchmark = "package %[1]s\n\nimport \"testing\"\n\nfunc Benchmark%[2]s(b *testing.B) {\n\tfor b.Loop() {\n\t}\n}\n"
+
+// fixtures is the pattern of skip of the cases of bench-go and mutate-go, which names the packages
+// below fixture/ of a module.
+const fixtures = "./fixture/..."
 
 // git is the access to a repository that the catalog of the cases does not read.
 var git = golang.Git{
@@ -190,6 +198,65 @@ func TestBaseline(t *testing.T) {
 				assert.Equal(t, exit.ExitCode(), 2, "the exit status of make after a target fails")
 				assert.Contains(t, string(out), "ok  \t"+passing, "the output of make test-go")
 			})
+
+			t.Run("runs the benchmarks of every package that bench.skip does not name", func(t *testing.T) {
+				t.Parallel()
+				o, _ := baseline.Producer{}.Options().(*baseline.Options)
+				o.Bench.Time, o.Bench.Count, o.Bench.Skip = "1x", 1, []string{fixtures}
+				dir := files.Workspace(t, files.Tree{
+					"Makefile":                  files.Text(rendered(t, o, "Makefile")),
+					"go.work":                   files.Text("go 1.27\n\nuse (\n\t./a\n\t./b\n)\n"),
+					"a/go.mod":                  files.Text("module example.com/a\n\ngo 1.27\n"),
+					"a/a_test.go":               files.Text(fmt.Sprintf(benchmark, "a", "A")),
+					"a/fixture/fixture_test.go": files.Text(fmt.Sprintf(benchmark, "fixture", "Fixture")),
+					"b/go.mod":                  files.Text("module example.com/b\n\ngo 1.27\n"),
+					"b/b_test.go":               files.Text(fmt.Sprintf(benchmark, "b", "B")),
+				})
+				out, err := makeTarget(t, dir, "bench-go")
+				assert.NoError(t, err, "make bench-go:\n"+out)
+				expect.That(t, out).
+					Contains("BenchmarkA", "the output of the package that skip does not name").
+					Contains("BenchmarkB", "the output of the module without a package of skip").
+					NotContains("BenchmarkFixture", "the output of the package that skip names")
+			})
+
+			t.Run("runs no benchmark of a module whose packages bench.skip names", func(t *testing.T) {
+				t.Parallel()
+				o, _ := baseline.Producer{}.Options().(*baseline.Options)
+				o.Bench.Time, o.Bench.Count, o.Bench.Skip = "1x", 1, []string{"./..."}
+				dir := files.Workspace(t, files.Tree{
+					"Makefile":    files.Text(rendered(t, o, "Makefile")),
+					"go.work":     files.Text("go 1.27\n\nuse ./a\n"),
+					"a/go.mod":    files.Text("module example.com/a\n\ngo 1.27\n"),
+					"a/a_test.go": files.Text(fmt.Sprintf(benchmark, "a", "A")),
+				})
+				out, err := makeTarget(t, dir, "bench-go")
+				assert.NoError(t, err, "make bench-go:\n"+out)
+				assert.NotContains(t, out, "BenchmarkA", "the output of make bench-go")
+			})
+
+			t.Run("passes the packages of mutate.skip in each module to --skip", func(t *testing.T) {
+				t.Parallel()
+				o, _ := baseline.Producer{}.Options().(*baseline.Options)
+				o.Mutate.Skip = []string{fixtures}
+				dir := files.Workspace(t, files.Tree{
+					"Makefile":             files.Text(rendered(t, o, "Makefile")),
+					"go.work":              files.Text("go 1.27\n\nuse (\n\t./a\n\t./b\n)\n"),
+					"a/go.mod":             files.Text("module example.com/a\n\ngo 1.27\n"),
+					"a/a.go":               files.Text("package a\n"),
+					"a/fixture/one/one.go": files.Text("package one\n"),
+					"a/fixture/two/two.go": files.Text("package two\n"),
+					"b/go.mod":             files.Text("module example.com/b\n\ngo 1.27\n"),
+					"b/b.go":               files.Text("package b\n"),
+				})
+				// echo writes the arguments of dokimi-mutate-go in place of a run.
+				out, err := makeTarget(t, dir, "mutate-go", "DOKIMI_MUTATE_GO=echo")
+				assert.NoError(t, err, "make mutate-go:\n"+out)
+				expect.That(t, out).
+					Contains(" --workers 1 --timeout 0s --skip example.com/a/fixture/one,example.com/a/fixture/two ./...\n",
+						"the arguments in the module with the packages of skip").
+					Contains(" --workers 1 --timeout 0s ./...\n", "the arguments in the module without a package of skip")
+			})
 		})
 
 		t.Run("Options", func(t *testing.T) {
@@ -229,6 +296,17 @@ func catalog(t *testing.T) *language.Catalog {
 	c := new(language.Catalog)
 	assert.NoError(t, golang.Register(c, git, tools), "Register of Go")
 	return c
+}
+
+// makeTarget runs make with args in dir, whose go commands find the go.work of dir, and returns the
+// output and the error of make.
+func makeTarget(t *testing.T, dir string, args ...string) (string, error) {
+	t.Helper()
+	cmd := exec.CommandContext(t.Context(), "make", args...)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "GOWORK=auto")
+	out, err := cmd.CombinedOutput()
+	return string(out), err
 }
 
 // rendered returns the file name that the producer of Go renders for the options o and the answers

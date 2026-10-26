@@ -184,11 +184,30 @@ func TestRun(t *testing.T) {
 		t.Run("Validate", func(t *testing.T) {
 			t.Parallel()
 
-			t.Run("returns nil for the options of the baseline", func(t *testing.T) {
-				t.Parallel()
-				b := option.Bench{Match: ".", Time: "1s", Args: []string{"-benchmem"}, Count: 6}
-				assert.NoError(t, b.Validate(), "Validate")
-			})
+			valid := []struct {
+				name string
+				give option.Bench
+			}{
+				{
+					name: "returns nil for the options of the baseline",
+					give: option.Bench{Match: ".", Time: "1s", Args: []string{"-benchmem"}, Skip: []string{}, Count: 6},
+				},
+				{
+					name: "returns nil for package patterns in skip",
+					give: option.Bench{
+						Match: ".",
+						Time:  "1s",
+						Skip:  []string{"./internal/fixture/...", "./examples/..."},
+						Count: 1,
+					},
+				},
+			}
+			for _, tt := range valid {
+				t.Run(tt.name, func(t *testing.T) {
+					t.Parallel()
+					assert.NoError(t, tt.give.Validate(), "Validate")
+				})
+			}
 
 			invalid := []struct {
 				name string
@@ -204,6 +223,10 @@ func TestRun(t *testing.T) {
 					give: option.Bench{Match: ".", Time: "1s", Args: []string{"\r"}, Count: 1},
 				},
 				{name: "returns ErrInvalid for a count of 0", give: option.Bench{Match: ".", Time: "1s"}},
+				{
+					name: "returns ErrInvalid for a pattern of skip that spans lines",
+					give: option.Bench{Match: ".", Time: "1s", Skip: []string{"./a/...\n./b/..."}, Count: 1},
+				},
 			}
 			for _, tt := range invalid {
 				t.Run(tt.name, func(t *testing.T) {
@@ -227,7 +250,15 @@ func TestRun(t *testing.T) {
 				{name: "returns nil for a timeout of 0s", give: option.Mutate{Timeout: "0s", Workers: 1}},
 				{
 					name: "returns nil for a limit and arguments",
-					give: option.Mutate{Timeout: "30m", Args: []string{"-confirm"}, Workers: 2},
+					give: option.Mutate{Timeout: "30m", Args: []string{"--confirm"}, Workers: 2},
+				},
+				{
+					name: "returns nil for package patterns in skip",
+					give: option.Mutate{
+						Timeout: "0s",
+						Skip:    []string{"./internal/fixture/...", "./examples/..."},
+						Workers: 1,
+					},
 				},
 			}
 			for _, tt := range valid {
@@ -251,6 +282,10 @@ func TestRun(t *testing.T) {
 					give: option.Mutate{Timeout: "0s", Args: []string{"a\nb"}, Workers: 1},
 				},
 				{name: "returns ErrInvalid for 0 workers", give: option.Mutate{Timeout: "0s"}},
+				{
+					name: "returns ErrInvalid for a pattern of skip that spans lines",
+					give: option.Mutate{Timeout: "0s", Skip: []string{"./a/...\r./b/..."}, Workers: 1},
+				},
 			}
 			for _, tt := range invalid {
 				t.Run(tt.name, func(t *testing.T) {

@@ -81,7 +81,8 @@ func (f Fuzz) Validate() error {
 	return lines("args", f.Args)
 }
 
-// Bench is the options of the step bench: which benchmarks run, for how long, and how often.
+// Bench is the options of the step bench: the packages that it leaves out, which benchmarks run,
+// for how long, and how often.
 type Bench struct {
 	// Match is a regular expression of the names of the benchmarks that run, on one line and
 	// without a single quote, which the Makefile writes in single quotes.
@@ -94,15 +95,19 @@ type Bench struct {
 	// Args are the arguments that follow the step's command, each on one line.
 	Args []string `yaml:"args"`
 
+	// Skip are the patterns of the packages whose benchmarks the step does not run, each on one
+	// line. The step resolves them in each module.
+	Skip []string `yaml:"skip"`
+
 	// Count is the number of runs of each benchmark, at least 1.
 	Count int `yaml:"count"`
 }
 
 // Validate returns an error that wraps [ErrInvalid] for a Match that does not compile as a
 // regular expression of Go, spans lines or has a single quote, a Time that is neither a positive
-// duration nor a positive number of iterations, an argument that spans lines, and a Count below
-// 1.
-func (b Bench) Validate() error {
+// duration nor a positive number of iterations, an argument or a pattern of Skip that spans lines,
+// and a Count below 1.
+func (b *Bench) Validate() error {
 	if err := match(b.Match); err != nil {
 		return err
 	}
@@ -112,14 +117,17 @@ func (b Bench) Validate() error {
 	if err := lines("args", b.Args); err != nil {
 		return err
 	}
+	if err := lines("skip", b.Skip); err != nil {
+		return err
+	}
 	if b.Count < 1 {
 		return fmt.Errorf("%w: count %d, which is less than 1", ErrInvalid, b.Count)
 	}
 	return nil
 }
 
-// Mutate is the options of the step mutate: the limit of the run, and how many mutants run at
-// once.
+// Mutate is the options of the step mutate: the packages that it leaves out, the limit of the run,
+// and how many mutants run at once.
 type Mutate struct {
 	// Timeout is the limit of the whole run, as a duration of at least 0s. 0s sets no limit.
 	Timeout string `yaml:"timeout"`
@@ -127,17 +135,24 @@ type Mutate struct {
 	// Args are the arguments that follow the step's command, each on one line.
 	Args []string `yaml:"args"`
 
+	// Skip are the patterns of the packages whose mutants the step does not test, such as
+	// ./internal/fixture/..., each on one line. The step resolves them in each module.
+	Skip []string `yaml:"skip"`
+
 	// Workers is the number of mutants that run at once, at least 1.
 	Workers int `yaml:"workers"`
 }
 
 // Validate returns an error that wraps [ErrInvalid] for a Timeout that is not a duration of at
-// least 0s, an argument that spans lines, and a Workers below 1.
+// least 0s, an argument or a pattern of Skip that spans lines, and a Workers below 1.
 func (m Mutate) Validate() error {
 	if d, err := time.ParseDuration(m.Timeout); err != nil || d < 0 {
 		return fmt.Errorf("%w: timeout %q, which is not a duration of at least 0s", ErrInvalid, m.Timeout)
 	}
 	if err := lines("args", m.Args); err != nil {
+		return err
+	}
+	if err := lines("skip", m.Skip); err != nil {
 		return err
 	}
 	if m.Workers < 1 {
