@@ -17,8 +17,9 @@ import (
 )
 
 // releasesPage is the number of releases of one page of the list of the releases of a repository,
-// the most that the API returns.
-const releasesPage = 100
+// the default of the API. The JSON of a release lists every asset, so a page of 100 releases of
+// sigstore/cosign has 10.8 MB, more than a Client reads. A page of 30 has 4.8 MB.
+const releasesPage = 30
 
 // digestPrefix starts the digest of an asset that GitHub states as a SHA-256, as sha256:<hex>.
 const digestPrefix = "sha256:"
@@ -97,7 +98,7 @@ func (c *Client) CreateDraft(ctx context.Context, repo, tag, body string, prerel
 }
 
 // Releases returns the published releases of repo, as owner/name, in the order of the API: the
-// newest first. It reads the list page by page, 100 releases at a time, and leaves out a draft. It
+// newest first. It reads the list page by page, 30 releases at a time, and leaves out a draft. It
 // returns an error that wraps [ErrGitHub] for a request that fails, such as for a repository that
 // does not exist.
 func (c *Client) Releases(ctx context.Context, repo string) ([]Release, error) {

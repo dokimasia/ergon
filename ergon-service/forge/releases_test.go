@@ -27,8 +27,8 @@ const uploadURL = "https://uploads.github.com/repos/" + repo + "/releases/7/asse
 
 // The routes of the first two pages of the list of the releases of the repository of the cases.
 const (
-	firstPage  = "GET /repos/" + repo + "/releases?per_page=100&page=1"
-	secondPage = "GET /repos/" + repo + "/releases?per_page=100&page=2"
+	firstPage  = "GET /repos/" + repo + "/releases?per_page=30&page=1"
+	secondPage = "GET /repos/" + repo + "/releases?per_page=30&page=2"
 )
 
 // The asset of the release of the cases, with the digest that GitHub states for it.
@@ -208,8 +208,8 @@ func TestReleases(t *testing.T) {
 
 		t.Run("reads the next page after a full page", func(t *testing.T) {
 			t.Parallel()
-			tags := make([]string, 0, 100)
-			for k := range 100 {
+			tags := make([]string, 0, 30)
+			for k := range 30 {
 				tags = append(
 					tags,
 					`{"tag_name":"v1.0.`+strconv.Itoa(k)+`","published_at":"`+published+`","assets":[]}`,
@@ -221,8 +221,8 @@ func TestReleases(t *testing.T) {
 			})
 			got, err := c.Releases(t.Context(), repo)
 			assert.NoError(t, err, "Releases")
-			assert.Length(t, got, 101, "the releases of both pages")
-			expect.Equal(t, got[100].Tag, "v0.9.0", "the release of the second page")
+			assert.Length(t, got, 31, "the releases of both pages")
+			expect.Equal(t, got[30].Tag, "v0.9.0", "the release of the second page")
 			expect.Length(t, fake.recorded(), 2, "the requests")
 		})
 

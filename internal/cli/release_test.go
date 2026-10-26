@@ -877,7 +877,7 @@ func TestRelease(t *testing.T) {
 				"GET /repos/" + hubRepo + "/git/ref/tags/v1.0.0",
 				"GET /repos/" + hubRepo + "/git/ref/tags/v1.0.0",
 				"POST /repos/" + hubRepo + "/git/refs",
-				"GET /repos/" + hubRepo + "/releases?per_page=100&page=1",
+				"GET /repos/" + hubRepo + "/releases?per_page=30&page=1",
 				"POST /repos/" + hubRepo + "/releases",
 				"PATCH /repos/" + hubRepo + "/releases/7",
 			}, "the requests to GitHub")
