@@ -4,7 +4,7 @@ title: nightly.yml runs the long steps of a language on a schedule
 status: Accepted
 date: 2026-10-09
 supersedes: none
-superseded-by: none
+superseded-by: ADR-0065, in part
 rfc: RFC-0004
 ---
 

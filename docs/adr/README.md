@@ -28,7 +28,7 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 | [0017](0017-generate-and-help-groups.md) | make generate runs the generators of every language, and make help groups the targets | Accepted, superseded in part by ADR-0062 |
 | [0018](0018-ci-skips-tested-content.md) | ci.yml skips its jobs on content that already passed | Accepted |
 | [0019](0019-no-lock-of-a-development-build.md) | A build of ergon without a release does not write a lock of a release | Accepted |
-| [0020](0020-nightly-workflow.md) | nightly.yml runs the long steps of a language on a schedule | Accepted |
+| [0020](0020-nightly-workflow.md) | nightly.yml runs the long steps of a language on a schedule | Accepted, superseded in part by ADR-0065 |
 | [0021](0021-binary-releases.md) | Each release of a Go module attaches the signed binaries of its commands | Accepted, superseded in part by ADR-0023 |
 | [0022](0022-upx-for-go-binaries.md) | The release of a Go module packs the Linux binaries of its commands with UPX | Accepted |
 | [0023](0023-buildinfo-in-the-root-module.md) | ergon reads the version of its binary in a package of the root module | Accepted |
@@ -71,3 +71,6 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 | [0060](0060-biome-test-files-without-magic-numbers-and-lengths.md) | The managed biome.json turns off noMagicNumbers and the two length rules in test files | Accepted |
 | [0061](0061-merge-of-a-local-json-file.md) | A local JSON file is a JSON document that merges into its managed file | Accepted |
 | [0062](0062-generate-step-runs-a-list-of-commands.md) | The step generate runs a list of command lines | Accepted |
+| [0063](0063-app-token-commits-workflows.md) | The scheduled proposals commit with a token of the GitHub App that may change workflows | Accepted |
+| [0064](0064-skip-lists-of-mutate-and-bench.md) | The Go steps mutate and bench leave out the packages of the key skip | Accepted |
+| [0065](0065-history-of-nightly-mutation.md) | The nightly mutation reuses the verdicts of its earlier runs | Accepted |

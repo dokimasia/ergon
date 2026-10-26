@@ -2,13 +2,13 @@
 rfc: 0011
 title: Scheduled jobs that finish
 author: Roy Klopper
-status: Draft
+status: Accepted
 created: 2026-10-26
 updated: 2026-10-26
 discussion: none
 supersedes: RFC-0005 and ADR-0020, in part
 superseded-by: none
-produces-adr: tbd
+produces-adr: ADR-0063, ADR-0064, ADR-0065
 ---
 
 <!--
