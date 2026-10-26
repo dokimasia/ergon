@@ -1,5 +1,28 @@
 # go.dokimi.dev/ergon
 
+## 0.15.0
+
+### Minor Changes
+
+- 2bccfb2: Name the workflows and the GitHub App in the error of `ergon init ci upgrade` when GitHub refuses a commit of a workflow.
+
+### Patch Changes
+
+- Updated dependencies [2bccfb2, efca217, c960170, f61f91e, 0488606, 6da7d0b]
+  - go.dokimi.dev/ergon/service@0.22.0
+  - go.dokimi.dev/ergon/core@0.17.0
+  - go.dokimi.dev/ergon/lang/go@0.11.0
+  - go.dokimi.dev/ergon/lang/bash@0.5.1
+  - go.dokimi.dev/ergon/lang/csharp@0.4.1
+  - go.dokimi.dev/ergon/lang/java@0.6.1
+  - go.dokimi.dev/ergon/lang/javascript@0.7.2
+  - go.dokimi.dev/ergon/lang/php@0.5.1
+  - go.dokimi.dev/ergon/lang/rust@0.7.2
+  - go.dokimi.dev/ergon/lang/terraform@0.5.1
+  - go.dokimi.dev/ergon/lang/kotlin@0.4.1
+  - go.dokimi.dev/ergon/lang/python@0.7.1
+  - go.dokimi.dev/ergon/lang/typescript@0.4.2
+
 ## 0.14.4
 
 ### Patch Changes

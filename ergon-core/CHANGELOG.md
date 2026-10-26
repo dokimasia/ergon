@@ -1,5 +1,12 @@
 # go.dokimi.dev/ergon/core
 
+## 0.17.0
+
+### Minor Changes
+
+- efca217: Add `Skip` to `option.Mutate` and `option.Bench` for the patterns of the packages that a step leaves out.
+- efca217: **Breaking:** Change `option.Bench.Validate` to a method of `*option.Bench`.
+
 ## 0.16.0
 
 ### Minor Changes
