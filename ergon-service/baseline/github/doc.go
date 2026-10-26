@@ -53,7 +53,10 @@
 //     the repository, because a scheduled run has no event payload. The Scorecard runs only in a
 //     public repository.
 //   - baseline.yml runs ergon init ci upgrade weekly, which moves the managed files to the newest
-//     release of ergon and opens or updates the pull request of the change.
+//     release of ergon and opens or updates the pull request of the change. With the variable
+//     ERGON_APP_CLIENT_ID and the secret ERGON_APP_PRIVATE_KEY of a GitHub App, it commits the change
+//     with a token of the App with the permission workflows, because GITHUB_TOKEN cannot commit a
+//     change of a workflow.
 //   - dependabot.yml updates the package manager of each update of the contributions weekly, with
 //     the minor and patch updates of each directory in one pull request and each major update in a
 //     pull request of its own. A repository without an update has no dependabot.yml.

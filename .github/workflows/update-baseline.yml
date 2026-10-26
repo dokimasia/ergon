@@ -3,8 +3,10 @@
 
 # The weekly update of the baseline of ergon init. update-baseline moves each pin of the baselines
 # of ergon's producers to its newest release that is at least seven days old and of the same major
-# version, and opens the change as a pull request on the branch ergon-update/<base>. The workflow is
-# no managed file of ergon init.
+# version, and opens the change as a pull request on the branch ergon-update/<base>. The update
+# also rewrites the workflows of ergon, so the job commits with a token of the GitHub App of
+# ERGON_APP_CLIENT_ID and ERGON_APP_PRIVATE_KEY with the permission workflows. GITHUB_TOKEN cannot
+# commit a change of a workflow. The workflow is no managed file of ergon init.
 
 name: Update the baseline
 
@@ -40,7 +42,17 @@ jobs:
         with:
           go-version-file: go.work
           cache-dependency-path: "**/go.sum"
+      - name: Create a token of the GitHub App
+        id: app
+        if: vars.ERGON_APP_CLIENT_ID != ''
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.ERGON_APP_CLIENT_ID }}
+          private-key: ${{ secrets.ERGON_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-workflows: write
       - name: Update the pins of the baseline
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ steps.app.outputs.token || github.token }}
         run: go run ./internal/cmd/update-baseline -propose

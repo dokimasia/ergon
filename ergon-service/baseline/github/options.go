@@ -251,9 +251,9 @@ type Actions struct {
 	// Cache keeps the tools of ergon of a job between its runs.
 	Cache workflow.Action `yaml:"cache" doc:"The action that restores the tool directory of ergon before the steps of each job of ci.yml that runs tools, and saves it after a run that succeeds."`
 
-	// CreateGitHubAppToken creates the token of the GitHub App in version.yml, in the job homebrew
-	// of release.yml and in each job of nightly.yml with App.
-	CreateGitHubAppToken workflow.Action `yaml:"create-github-app-token" prefix:"create-github-app-token" doc:"The action that creates a token of the GitHub App of the variable ERGON_APP_CLIENT_ID and the secret ERGON_APP_PRIVATE_KEY. version.yml opens the version pull request with the token, so the checks of the pull request run without an approval. The job homebrew of release.yml commits the casks of a release to the tap with the token. A job of nightly.yml such as propose-spec writes its pull requests with the token."`
+	// CreateGitHubAppToken creates the token of the GitHub App in version.yml, in baseline.yml, in
+	// the job homebrew of release.yml and in each job of nightly.yml with App.
+	CreateGitHubAppToken workflow.Action `yaml:"create-github-app-token" prefix:"create-github-app-token" doc:"The action that creates a token of the GitHub App of the variable ERGON_APP_CLIENT_ID and the secret ERGON_APP_PRIVATE_KEY. version.yml opens the version pull request with the token, so the checks of the pull request run without an approval. baseline.yml commits the upgrade of the managed files with the token, which needs the permission workflows of the App. The job homebrew of release.yml commits the casks of a release to the tap with the token. A job of nightly.yml such as propose-spec writes its pull requests with the token."`
 
 	// Attest attests the assets of a release with SLSA build provenance.
 	Attest workflow.Action `yaml:"attest" doc:"The action that attests the assets of a release with SLSA build provenance in the job pack of release.yml, which GitHub stores in its attestation API."`
