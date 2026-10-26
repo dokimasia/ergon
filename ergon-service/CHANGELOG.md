@@ -1,5 +1,19 @@
 # go.dokimi.dev/ergon/service
 
+## 0.22.0
+
+### Minor Changes
+
+- 2bccfb2: Add `forge.ErrForbidden` for a GraphQL request that the permissions of the token do not allow.
+- c960170: Commit the upgrade of `baseline.yml` with a token of the GitHub App with the permission workflows.
+
+### Patch Changes
+
+- f61f91e: Fix `forge.Client.Releases` to read pages of 30 releases.
+- 0488606: Fix `forge.Client` to return `ErrGitHub` for a response of more than 10 MiB.
+- Updated dependencies [efca217]
+  - go.dokimi.dev/ergon/core@0.17.0
+
 ## 0.21.0
 
 ### Minor Changes

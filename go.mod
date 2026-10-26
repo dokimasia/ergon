@@ -7,19 +7,19 @@ go 1.27.3
 
 require (
 	go.dokimi.dev/assert v0.3.0
-	go.dokimi.dev/ergon/core v0.16.0
-	go.dokimi.dev/ergon/lang/bash v0.5.0
-	go.dokimi.dev/ergon/lang/csharp v0.4.0
-	go.dokimi.dev/ergon/lang/go v0.10.0
-	go.dokimi.dev/ergon/lang/java v0.6.0
-	go.dokimi.dev/ergon/lang/javascript v0.7.1
-	go.dokimi.dev/ergon/lang/kotlin v0.4.0
-	go.dokimi.dev/ergon/lang/php v0.5.0
-	go.dokimi.dev/ergon/lang/python v0.7.0
-	go.dokimi.dev/ergon/lang/rust v0.7.1
-	go.dokimi.dev/ergon/lang/terraform v0.5.0
-	go.dokimi.dev/ergon/lang/typescript v0.4.1
-	go.dokimi.dev/ergon/service v0.21.0
+	go.dokimi.dev/ergon/core v0.17.0
+	go.dokimi.dev/ergon/lang/bash v0.5.1
+	go.dokimi.dev/ergon/lang/csharp v0.4.1
+	go.dokimi.dev/ergon/lang/go v0.11.0
+	go.dokimi.dev/ergon/lang/java v0.6.1
+	go.dokimi.dev/ergon/lang/javascript v0.7.2
+	go.dokimi.dev/ergon/lang/kotlin v0.4.1
+	go.dokimi.dev/ergon/lang/php v0.5.1
+	go.dokimi.dev/ergon/lang/python v0.7.1
+	go.dokimi.dev/ergon/lang/rust v0.7.2
+	go.dokimi.dev/ergon/lang/terraform v0.5.1
+	go.dokimi.dev/ergon/lang/typescript v0.4.2
+	go.dokimi.dev/ergon/service v0.22.0
 	go.stealthscale.io/cli v0.7.0
 	go.yaml.in/yaml/v3 v3.0.5
 	golang.org/x/mod v0.41.0

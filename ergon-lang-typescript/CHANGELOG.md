@@ -1,5 +1,14 @@
 # go.dokimi.dev/ergon/lang/typescript
 
+## 0.4.2
+
+### Patch Changes
+
+- Updated dependencies [2bccfb2, efca217, c960170, f61f91e, 0488606, 6da7d0b]
+  - go.dokimi.dev/ergon/service@0.22.0
+  - go.dokimi.dev/ergon/core@0.17.0
+  - go.dokimi.dev/ergon/lang/javascript@0.7.2
+
 ## 0.4.1
 
 ### Patch Changes
