@@ -144,6 +144,9 @@ var releaseVariables = []string{
 // errRandom is the error of a source of random digits that fails.
 var errRandom = errors.New("random: failed")
 
+// refused is the message of GitHub for a request that the permissions of the token do not allow.
+const refused = "Resource not accessible by integration"
+
 // hub is a fake API of GitHub for the release cases. It responds as GitHub does for a repository
 // whose branch main points at head, without the branch of the version pull request until a request
 // creates it, without tags and without pull requests, and makes each commit as hubCommit, whose
@@ -152,10 +155,14 @@ var errRandom = errors.New("random: failed")
 // state success, and no other commit has a status. It creates each release as the draft 7, and has
 // the tap tapRepo with the default branch main and no file. It responds with runs to a request for
 // the runs of a workflow, and with the status 500 to a request whose method and path start with
-// fail. It is safe for concurrent use, as the goroutines of a server use it.
+// fail. It refuses each commit as GitHub refuses a token without a permission when forbidden is
+// true. It is safe for concurrent use, as the goroutines of a server use it.
 type hub struct {
 	// fail is the start of the method and the path of the requests that fail, or empty for none.
 	fail string
+
+	// forbidden makes each request of GraphQL fail with the error of the type FORBIDDEN.
+	forbidden bool
 
 	// head is the commit of the branch main, or empty for a repository without the branch.
 	head string
@@ -244,6 +251,9 @@ func (h *hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.WriteString(w, h.commit())
 	case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/status"):
 		_, _ = io.WriteString(w, h.status(r.URL.Path))
+	case r.URL.Path == graphqlPath && h.forbidden:
+		_, _ = io.WriteString(w, `{"data":{"createCommitOnBranch":null},"errors":[{"type":"FORBIDDEN",`+
+			`"path":["createCommitOnBranch"],"message":"`+refused+`"}]}`)
 	case r.URL.Path == graphqlPath:
 		_, _ = io.WriteString(w, `{"data":{"createCommitOnBranch":{"commit":{"oid":"`+hubCommit+`"}}}}`)
 	case strings.Contains(r.URL.Path, "/actions/workflows/"):

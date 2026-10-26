@@ -10,10 +10,12 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"go.dokimi.dev/ergon/core/changeset"
@@ -86,6 +88,16 @@ const (
 	// upgradeSummary is the summary of the changeset without packages of the pull request, before the
 	// release.
 	upgradeSummary = "Upgrade ergon to "
+
+	// workflowsDir is the directory of the workflows of GitHub Actions. A token commits a change of a
+	// file in it only with the permission workflows.
+	workflowsDir = ".github/workflows/"
+
+	// refusedWorkflows is the error of a proposal of workflows that GitHub refuses, with the
+	// workflows and the error of GitHub.
+	refusedWorkflows = "cli: the upgrade changes %s, which a token without the permission workflows cannot " +
+		"commit: set the variable ERGON_APP_CLIENT_ID and the secret ERGON_APP_PRIVATE_KEY of a GitHub App with " +
+		"the permission workflows: %w"
 )
 
 // The help texts of the upgrade commands. The first line of each is its summary in the list of the
@@ -185,7 +197,9 @@ func (s *session) initUpgrade(ctx context.Context, run *gocli.Run[noOptions, upg
 // into the base branch. For the [release.ErrMoved] of the proposal it writes that it skipped the
 // commit of HEAD. It returns the errors of the environment, of the upgrade and of the proposal, and
 // the error of a sync that left a managed file, which wraps [baseline.ErrConflict], after it
-// proposed the change.
+// proposed the change. The error of a proposal that changes a workflow and that the permissions of
+// the token do not allow, which wraps [forge.ErrForbidden], lists the workflows and the GitHub App
+// that commits them.
 func (s *session) ciUpgrade(ctx context.Context, run *gocli.Run[noOptions, upgradeOptions]) error {
 	o := run.Config()
 	launched, err := s.launch(ctx, o.Major)
@@ -237,11 +251,34 @@ func (s *session) ciUpgrade(ctx context.Context, run *gocli.Run[noOptions, upgra
 		fmt.Fprintf(s.stdout, skippedLine, head, base)
 		return synced
 	}
+	if workflows := changedWorkflows(&p); errors.Is(err, forge.ErrForbidden) && workflows != "" {
+		return fmt.Errorf(refusedWorkflows, workflows, err)
+	}
 	if err != nil {
 		return err
 	}
 	fmt.Fprintf(s.stdout, "pull request %d\n", number)
 	return synced
+}
+
+// changedWorkflows returns the workflows that p adds, changes or deletes, sorted, as a list in
+// English, such as a, b and c, and the empty string for a proposal without a workflow.
+func changedWorkflows(p *release.Proposal) string {
+	var workflows []string
+	for _, file := range slices.Concat(slices.Collect(maps.Keys(p.Files)), p.Deleted) {
+		if strings.HasPrefix(file, workflowsDir) {
+			workflows = append(workflows, file)
+		}
+	}
+	if len(workflows) == 0 {
+		return ""
+	}
+	slices.Sort(workflows)
+	last := len(workflows) - 1
+	if last == 0 {
+		return workflows[0]
+	}
+	return strings.Join(workflows[:last], ", ") + " and " + workflows[last]
 }
 
 // launch starts the newest release of ergon with the arguments of the process of s, when it is newer

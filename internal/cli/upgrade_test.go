@@ -34,6 +34,8 @@ import (
 	"go.dokimi.dev/ergon/core/option"
 	"go.dokimi.dev/ergon/core/workspace"
 	"go.dokimi.dev/ergon/internal/cli"
+	"go.dokimi.dev/ergon/service/baseline/github"
+	lockfile "go.dokimi.dev/ergon/service/baseline/lock"
 	"go.dokimi.dev/ergon/service/vcs/vcstest"
 	"go.stealthscale.io/cli/clitest"
 )
@@ -70,6 +72,19 @@ const changesetOfUpgrade = ".changeset/upgrade-ergon-to-1-2-abcd.md"
 // overridden is the line of .ergon.yaml that sets actions/checkout to another release than the
 // baseline v7.0.1.
 const overridden = "release: v7.0.0"
+
+// The error of ergon init ci upgrade for a proposal of workflows that GitHub refuses: its start
+// before the workflows, and its end after them, with the error of GitHub.
+const (
+	refusedStart = "ergon: cli: the upgrade changes "
+	refusedEnd   = ", which a token without the permission workflows cannot commit: set the variable " +
+		"ERGON_APP_CLIENT_ID and the secret ERGON_APP_PRIVATE_KEY of a GitHub App with the permission workflows: " +
+		"forge: GitHub failed: the token lacks a permission: GraphQL: " + refused + "\n"
+)
+
+// specWorkflow is a managed workflow that the baseline of the cases does not render, so a sync
+// removes it.
+const specWorkflow = ".github/workflows/spec.yml"
 
 // The parts of the body of the pull request of ergon init ci upgrade 1.2.3, pinned because a person
 // reads them: the files of a sync that wrote the LICENSE, the override of overridden, and the
@@ -659,6 +674,72 @@ func TestUpgrade(t *testing.T) {
 			expect.HasPrefix(t, stderr, conflict+ignorePath, "the standard error")
 			expect.Contains(t, stdout, ", which is no longer the head of main\n", "the standard output")
 			expect.Empty(t, h.opened(), "the pull requests")
+		})
+
+		forbidden := []struct {
+			name   string
+			change func(t *testing.T, dir string)
+			want   string
+		}{
+			{
+				name: "writes the remedy for a workflow that GitHub refuses to commit",
+				change: func(t *testing.T, dir string) {
+					t.Helper()
+					ci := filepath.Join(dir, ".github", "workflows", "ci.yml")
+					assert.NoError(t, os.Remove(ci), "Remove of ci.yml")
+				},
+				want: refusedStart + ".github/workflows/ci.yml" + refusedEnd,
+			},
+			{
+				name: "writes the remedy for three workflows that GitHub refuses to commit",
+				change: func(t *testing.T, dir string) {
+					t.Helper()
+					for _, name := range []string{"baseline.yml", "ci.yml", "version.yml"} {
+						workflow := filepath.Join(dir, ".github", "workflows", name)
+						assert.NoError(t, os.Remove(workflow), "Remove of "+name)
+					}
+				},
+				want: refusedStart + ".github/workflows/baseline.yml, .github/workflows/ci.yml and " +
+					".github/workflows/version.yml" + refusedEnd,
+			},
+			{
+				name: "writes the remedy for a workflow that GitHub refuses to delete",
+				change: func(t *testing.T, dir string) {
+					t.Helper()
+					content := "name: Spec\n"
+					write(t, dir, specWorkflow, content)
+					l, err := lockfile.Decode([]byte(read(t, dir, lockPath)))
+					assert.NoError(t, err, "Decode of the lock")
+					l.Files = append(l.Files, lockfile.File{
+						Path: specWorkflow, Producer: github.Name, SHA256: lockfile.Digest([]byte(content)),
+					})
+					slices.SortFunc(l.Files, func(a, b lockfile.File) int { return strings.Compare(a.Path, b.Path) })
+					write(t, dir, lockPath, string(l.Encode()))
+				},
+				want: refusedStart + specWorkflow + refusedEnd,
+			},
+		}
+		for _, tt := range forbidden {
+			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+				dir := committed(t, register, func(dir string) { tt.change(t, dir) })
+				h := &hub{head: strings.TrimSpace(vcstest.Git(t, dir, "rev-parse", "HEAD")), forbidden: true}
+				status, _, stderr := upgrade(t.Context(), t, version, dir, h.start(t), "init", "ci", "upgrade")
+				assert.Equal(t, status, statusFailure, "the exit status")
+				assert.Equal(t, stderr, tt.want, "the standard error")
+			})
+		}
+
+		t.Run("writes the error of GitHub for a refused proposal without a workflow", func(t *testing.T) {
+			t.Parallel()
+			dir := committed(t, register, func(dir string) {
+				assert.NoError(t, os.Remove(filepath.Join(dir, licensePath)), "Remove of the LICENSE")
+			})
+			h := &hub{head: strings.TrimSpace(vcstest.Git(t, dir, "rev-parse", "HEAD")), forbidden: true}
+			status, _, stderr := upgrade(t.Context(), t, version, dir, h.start(t), "init", "ci", "upgrade")
+			assert.Equal(t, status, statusFailure, "the exit status")
+			assert.Equal(t, stderr, "ergon: forge: GitHub failed: the token lacks a permission: GraphQL: "+refused+"\n",
+				"the standard error")
 		})
 
 		t.Run("lists the overrides and the conflicts in the pull request", func(t *testing.T) {

@@ -32,7 +32,8 @@
 // # Errors
 //
 // Each error of a request wraps [ErrGitHub], with the method, the path and the status or the
-// message of GitHub. [New] returns [ErrToken] for a configuration without a token.
+// message of GitHub. An error of a GraphQL request that the permissions of the token do not allow
+// also wraps [ErrForbidden]. [New] returns [ErrToken] for a configuration without a token.
 //
 // # Concurrency
 //

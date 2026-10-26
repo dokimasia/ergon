@@ -67,7 +67,9 @@ type fileDeletion struct {
 // commit, then a blank line and its body. GitHub signs the commit and marks it as verified.
 //
 // It returns an error that wraps [ErrGitHub] for a branch whose head is not head, and for a
-// request that fails, such as one over the size that GitHub accepts in 10 seconds.
+// request that fails, such as one over the size that GitHub accepts in 10 seconds. The error wraps
+// [ErrForbidden] for a change that the permissions of the token do not allow, such as a change of a
+// workflow without the permission workflows.
 func (c *Client) Commit(
 	ctx context.Context, repo, branch, head, message string, files map[string][]byte, deleted []string,
 ) (string, error) {

@@ -48,11 +48,19 @@ const maxResponse = 10 << 20
 // perPage is the parameter of the query of a list that states the number of items of a page.
 const perPage = "per_page"
 
+// forbidden is the type of an error of the GraphQL API for a request that the permissions of the
+// token do not allow.
+const forbidden = "FORBIDDEN"
+
 // ErrToken is the error of [New] for a configuration without a token.
 var ErrToken = errors.New("forge: no token")
 
 // ErrGitHub is the error for a request that GitHub refuses or that fails.
 var ErrGitHub = errors.New("forge: GitHub failed")
+
+// ErrForbidden is the error for a request that the permissions of the token do not allow, such as a
+// commit of a workflow with a token without the permission workflows. It wraps [ErrGitHub].
+var ErrForbidden = fmt.Errorf("%w: the token lacks a permission", ErrGitHub)
 
 // Config is the access to a repository host: the token and the addresses, as GitHub Actions states
 // them in GITHUB_TOKEN, GITHUB_API_URL, GITHUB_GRAPHQL_URL and GITHUB_SERVER_URL.
@@ -121,8 +129,8 @@ func (c *Client) rest(ctx context.Context, method, path string, in, out any, all
 }
 
 // graphql sends query with variables to the GraphQL API, and decodes the data of the response into
-// out. It returns an error that wraps [ErrGitHub] for a response with errors, and the error of
-// rest.
+// out. It returns an error that wraps [ErrGitHub] for a response with errors, which wraps
+// [ErrForbidden] when an error has the type FORBIDDEN, and the error of rest.
 func (c *Client) graphql(ctx context.Context, query string, variables map[string]any, out any) error {
 	// The variables of every query of the package are strings, numbers and lists of objects of
 	// strings, which encode.
@@ -130,6 +138,7 @@ func (c *Client) graphql(ctx context.Context, query string, variables map[string
 	var response struct {
 		Data   json.RawMessage `json:"data"`
 		Errors []struct {
+			Type    string `json:"type"`
 			Message string `json:"message"`
 		} `json:"errors"`
 	}
@@ -138,11 +147,15 @@ func (c *Client) graphql(ctx context.Context, query string, variables map[string
 		return err
 	}
 	if len(response.Errors) > 0 {
+		cause := ErrGitHub
 		messages := make([]string, 0, len(response.Errors))
 		for _, e := range response.Errors {
+			if e.Type == forbidden {
+				cause = ErrForbidden
+			}
 			messages = append(messages, e.Message)
 		}
-		return fmt.Errorf("%w: GraphQL: %s", ErrGitHub, strings.Join(messages, "; "))
+		return fmt.Errorf("%w: GraphQL: %s", cause, strings.Join(messages, "; "))
 	}
 	if err := json.Unmarshal(response.Data, out); err != nil {
 		return fmt.Errorf("%w: decode the data of a query: %w", ErrGitHub, err)

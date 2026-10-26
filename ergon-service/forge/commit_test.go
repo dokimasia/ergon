@@ -64,8 +64,25 @@ func TestCommit(t *testing.T) {
 				},
 			})
 			_, err := c.Commit(t.Context(), repo, "ergon-release/main", commitA, "Version Packages", nil, nil)
-			assert.ErrorIs(t, err, forge.ErrGitHub, "Commit")
+			assert.That(t, err).
+				ErrorIs(forge.ErrGitHub, "Commit").
+				ErrorIsNot(forge.ErrForbidden, "Commit")
 			assert.Contains(t, err.Error(), "Expected branch to point to", "the error")
+		})
+
+		t.Run("returns ErrForbidden for a change that the permissions of the token do not allow", func(t *testing.T) {
+			t.Parallel()
+			c, _ := serve(t, map[string][]response{
+				"POST " + graphqlPath: {{
+					body: `{"data":{"createCommitOnBranch":null},"errors":[{"type":"FORBIDDEN",` +
+						`"path":["createCommitOnBranch"],"message":"Resource not accessible by integration"}]}`,
+				}},
+			})
+			files := map[string][]byte{".github/workflows/ci.yml": []byte("name: CI\n")}
+			_, err := c.Commit(t.Context(), repo, "ergon-baseline/main", commitA, "build: upgrade ergon", files, nil)
+			assert.ErrorIs(t, err, forge.ErrForbidden, "Commit")
+			assert.Equal(t, err.Error(), "forge: GitHub failed: the token lacks a permission: GraphQL: Resource not "+
+				"accessible by integration", "the error")
 		})
 	})
 
