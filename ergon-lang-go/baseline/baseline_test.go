@@ -257,6 +257,27 @@ func TestBaseline(t *testing.T) {
 						"the arguments in the module with the packages of skip").
 					Contains(" --workers 1 --timeout 0s ./...\n", "the arguments in the module without a package of skip")
 			})
+
+			t.Run("runs no mutant of a module whose packages mutate.skip names", func(t *testing.T) {
+				t.Parallel()
+				o, _ := baseline.Producer{}.Options().(*baseline.Options)
+				o.Mutate.Skip = []string{"example.com/b/..."}
+				dir := files.Workspace(t, files.Tree{
+					"Makefile": files.Text(rendered(t, o, "Makefile")),
+					"go.work":  files.Text("go 1.27\n\nuse (\n\t./a\n\t./b\n)\n"),
+					"a/go.mod": files.Text("module example.com/a\n\ngo 1.27\n"),
+					"a/a.go":   files.Text("package a\n"),
+					"b/go.mod": files.Text("module example.com/b\n\ngo 1.27\n"),
+					"b/b.go":   files.Text("package b\n"),
+				})
+				// echo writes the arguments of dokimi-mutate-go in place of a run.
+				out, err := makeTarget(t, dir, "mutate-go", "DOKIMI_MUTATE_GO=echo")
+				assert.NoError(t, err, "make mutate-go:\n"+out)
+				expect.That(t, out).
+					Contains("a --workers 1 --timeout 0s ./...\n", "the arguments in the module without a package of skip").
+					Contains("no package to mutate in ", "the line of the module whose packages skip names").
+					NotContains("b --workers", "the run of the module whose packages skip names")
+			})
 		})
 
 		t.Run("Options", func(t *testing.T) {

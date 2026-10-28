@@ -22,7 +22,8 @@
 // order, go generate at the baseline, and verify-generate-go fails when they change a file of the
 // repository. bench-go and mutate-go leave out the packages of the patterns of the keys bench.skip
 // and mutate.skip. go list resolves the patterns in each module, and a pattern that matches no
-// package of a module is no error. A line ##@ Go starts the group of Go in make help.
+// package of a module is no error. Both skip a module in which the key lists every package. A line
+// ##@ Go starts the group of Go in make help.
 //
 // # Binaries
 //
