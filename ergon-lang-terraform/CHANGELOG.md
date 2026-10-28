@@ -1,5 +1,19 @@
 # go.dokimi.dev/ergon/lang/terraform
 
+## 0.6.0
+
+### Minor Changes
+
+- f11aab5: Add the release binary of terraform-docs and the key `terraform.generate.docs`, which runs it in the step generate.
+- f11aab5: Add the release binaries of tflint-ruleset-aws, tflint-ruleset-azurerm and tflint-ruleset-google, and the key `terraform.lint.rulesets` of the rulesets that `lint-terraform` loads.
+- f11aab5: Add the variable `TERRAFORM` of the Makefile, the command that the Terraform targets run.
+- d6d400b: **Breaking:** Release a repository whose lock lists Terraform as one package, named after the repository and tagged `v<version>`.
+- f11aab5: Fix `test-terraform` to run `terraform test` in each directory with test files and `terraform validate` in each other directory with a configuration.
+
+### Patch Changes
+
+- f11aab5: Fix `lint-terraform` to run `tflint --init` for the plugins of the local `.tflint.hcl`.
+
 ## 0.5.1
 
 ### Patch Changes

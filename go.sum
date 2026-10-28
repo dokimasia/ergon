@@ -89,8 +89,8 @@ go.dokimi.dev/ergon/lang/bash v0.5.1 h1:cAQiCEw93nvQPfRhsv9y7SXozlAzOsPYV83lOj1x
 go.dokimi.dev/ergon/lang/bash v0.5.1/go.mod h1:xA/M7whYxGirJJF9T0sVW0S+S+XJTR0g+TD6qmWen2o=
 go.dokimi.dev/ergon/lang/csharp v0.4.1 h1:ak48POKubcmVMQb2zmPZT5a04GeCNfNG6TfgKJ3sW7I=
 go.dokimi.dev/ergon/lang/csharp v0.4.1/go.mod h1:h7OBUvgGuebYM21xK0vCHM5t/N8Jgk/j5JgAWH3cfLA=
-go.dokimi.dev/ergon/lang/go v0.11.0 h1:0ZGnoSJuPFHodcPrfgnbXOHOgQRmERDVqtso0I1zrDc=
-go.dokimi.dev/ergon/lang/go v0.11.0/go.mod h1:AAtwobIIj5nNyKBa+3zx5QvQxryGaKh/QJcSsdCh95o=
+go.dokimi.dev/ergon/lang/go v0.11.1 h1:Z/ArK1oDRi5tDiuu2k/5RGgfpGqvb49ECeB+q/c06aM=
+go.dokimi.dev/ergon/lang/go v0.11.1/go.mod h1:AAtwobIIj5nNyKBa+3zx5QvQxryGaKh/QJcSsdCh95o=
 go.dokimi.dev/ergon/lang/java v0.6.1 h1:QtvaKjPyN6+i3GLp6IXANxzZ+NBXrWU7XzBlqbYuhFo=
 go.dokimi.dev/ergon/lang/java v0.6.1/go.mod h1:PzTSxDJwOafTUj9DnLLGjdE2bDzszXlVUJyLQazz1S4=
 go.dokimi.dev/ergon/lang/javascript v0.7.2 h1:0cX+L559xaLzx6RRBQmwkIt/40CTSLrTUOhCd1JOKW8=
@@ -103,8 +103,8 @@ go.dokimi.dev/ergon/lang/python v0.7.1 h1:+K4Er5H2y56C9sTwaG56/Tqp/aRVO9DSHR6c4B
 go.dokimi.dev/ergon/lang/python v0.7.1/go.mod h1:ybAsbwOHo+UpeL6bdXKvb1Lb3ZZhBqnHQlVzklEjYuw=
 go.dokimi.dev/ergon/lang/rust v0.7.2 h1:RUBYnhN958yGhLZEmIOq7cpxA4PseVqO/7vteZYFhJs=
 go.dokimi.dev/ergon/lang/rust v0.7.2/go.mod h1:hqZHJ/DR1KO5aDQagYCrAa2JSQSeiyPIvOJkJqqUVmE=
-go.dokimi.dev/ergon/lang/terraform v0.5.1 h1:Ka+Uq7hC6G3Uiil2A+vCpv982Cix0MzWOuHezwzC0bY=
-go.dokimi.dev/ergon/lang/terraform v0.5.1/go.mod h1:BB0Hdz1t3UAM4gXVWtzwddKRpoCapyTjCYZW6BQ7coA=
+go.dokimi.dev/ergon/lang/terraform v0.6.0 h1:N4PzL2iTt3A2N0XsXoGjKtTeriLjS0W0gwIFQRLyNCo=
+go.dokimi.dev/ergon/lang/terraform v0.6.0/go.mod h1:BB0Hdz1t3UAM4gXVWtzwddKRpoCapyTjCYZW6BQ7coA=
 go.dokimi.dev/ergon/lang/typescript v0.4.2 h1:x32K4onE18eHUv6Xcxv0gdM4FqpxTphd0Gkuw4wCtJY=
 go.dokimi.dev/ergon/lang/typescript v0.4.2/go.mod h1:L2vgaNAR99rT+e5n3pJPOEFMRaiWJ9yQ2ZtPKqpAuco=
 go.dokimi.dev/ergon/service v0.22.0 h1:WAHvG0Jrke7vZ+mqOUJXWSbnTVEtFrB6HYr7sdWTgSw=

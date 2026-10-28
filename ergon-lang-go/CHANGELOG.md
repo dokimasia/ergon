@@ -1,5 +1,11 @@
 # go.dokimi.dev/ergon/lang/go
 
+## 0.11.1
+
+### Patch Changes
+
+- 8a40fcb: Fix `mutate-go` to leave out each module in which `go.mutate.skip` lists every package.
+
 ## 0.11.0
 
 ### Minor Changes
