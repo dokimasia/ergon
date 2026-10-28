@@ -1,5 +1,17 @@
 # go.dokimi.dev/ergon
 
+## 0.16.0
+
+### Minor Changes
+
+- d6d400b: Release a repository of Terraform with `ergon release`, from the tags and the lock of the repository.
+
+### Patch Changes
+
+- Updated dependencies [f11aab5, 8a40fcb, d6d400b]
+  - go.dokimi.dev/ergon/lang/terraform@0.6.0
+  - go.dokimi.dev/ergon/lang/go@0.11.1
+
 ## 0.15.0
 
 ### Minor Changes
