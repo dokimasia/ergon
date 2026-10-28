@@ -70,7 +70,11 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 | [0059](0059-spec-proposals-in-nightly.md) | A job of nightly.yml proposes the updates of the copies of spec with the GitHub App of ergon | Accepted |
 | [0060](0060-biome-test-files-without-magic-numbers-and-lengths.md) | The managed biome.json turns off noMagicNumbers and the two length rules in test files | Accepted |
 | [0061](0061-merge-of-a-local-json-file.md) | A local JSON file is a JSON document that merges into its managed file | Accepted |
-| [0062](0062-generate-step-runs-a-list-of-commands.md) | The step generate runs a list of command lines | Accepted |
+| [0062](0062-generate-step-runs-a-list-of-commands.md) | The step generate runs a list of command lines | Accepted, superseded in part by ADR-0068 |
 | [0063](0063-app-token-commits-workflows.md) | The scheduled proposals commit with a token of the GitHub App that may change workflows | Accepted |
 | [0064](0064-skip-lists-of-mutate-and-bench.md) | The Go steps mutate and bench leave out the packages of the key skip | Accepted |
 | [0065](0065-history-of-nightly-mutation.md) | The nightly mutation reuses the verdicts of its earlier runs | Accepted |
+| [0066](0066-terraform-tests-of-each-module.md) | test-terraform tests each module and validates every other configuration | Accepted |
+| [0067](0067-pinned-rulesets-of-tflint.md) | lint-terraform loads the rulesets of lint.rulesets from releases that the section pins | Accepted |
+| [0068](0068-terraform-docs-in-the-step-generate.md) | The step generate of Terraform writes the tables of the modules with terraform-docs | Accepted |
+| [0069](0069-terraform-repository-as-one-package.md) | ergon release releases a repository of Terraform as one package | Accepted |

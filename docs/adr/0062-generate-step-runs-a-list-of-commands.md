@@ -4,7 +4,7 @@ title: The step generate runs a list of command lines
 status: Accepted
 date: 2026-10-23
 supersedes: ADR-0017, in part
-superseded-by: none
+superseded-by: ADR-0068, in part
 rfc: RFC-0004
 ---
 
