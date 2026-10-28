@@ -17,7 +17,8 @@ What we are building, in what order, and what has to be true first. Milestone nu
 | 6 | 0001 TypeScript and JavaScript releases, checked against changesets 3.0.3 on the same repositories | Built | 0003 |
 | 7 | 0004 Rust releases | Built | 0003 |
 | 8 | 0005 Python releases | Built | 0003 |
-| 9 | 0006 Java and Kotlin releases through Gradle | Planned | 0003 |
+| 9 | 0009 Terraform releases: a repository of Terraform as one package, by its tags and its `CHANGELOG.md` | Built | 0003 |
+| 10 | 0006 Java and Kotlin releases through Gradle | Planned | 0003 |
 
 The module layout, `go.work` and the depguard rules are built and proven on `ergon init`.
 

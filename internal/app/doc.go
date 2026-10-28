@@ -12,7 +12,8 @@
 //
 // # Dependency position
 //
-// Imports [go.dokimi.dev/ergon/core/language], the eleven language modules, and
-// [go.dokimi.dev/ergon/service/vcs], whose git the toolchain of Go reads the repository through.
-// cmd/ergon imports it.
+// Imports [go.dokimi.dev/ergon/core/language], the eleven language modules,
+// [go.dokimi.dev/ergon/service/vcs], whose git the toolchains of Go and of Terraform read the
+// repository through, and [go.dokimi.dev/ergon/service/baseline/lock], whose lock of ergon init the
+// toolchain of Terraform reads the answers of the repository from. cmd/ergon imports it.
 package app

@@ -4,6 +4,7 @@
 package baseline_test
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path"
@@ -28,6 +29,12 @@ import (
 
 // name pins the name of the producer of Terraform, which is the name of its section.
 const name = "terraform"
+
+// repository is the access to a repository that the catalog of the cases does not read.
+var repository = terraform.Repository{
+	Tags:    func(context.Context, string) (map[string]string, error) { return map[string]string{}, nil },
+	Answers: func(context.Context, string) (language.Answers, error) { return language.Answers{}, nil },
+}
 
 // workflows are the files of the GitHub files that the contribution of Terraform changes.
 var workflows = []string{
@@ -258,7 +265,7 @@ func TestBaseline(t *testing.T) {
 func catalog(t *testing.T) *language.Catalog {
 	t.Helper()
 	c := new(language.Catalog)
-	assert.NoError(t, terraform.Register(c), "Register of Terraform")
+	assert.NoError(t, terraform.Register(c, repository), "Register of Terraform")
 	return c
 }
 

@@ -5,10 +5,13 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -28,12 +31,17 @@ import (
 	"go.dokimi.dev/ergon/lang/rust"
 	"go.dokimi.dev/ergon/lang/terraform"
 	"go.dokimi.dev/ergon/lang/typescript"
+	"go.dokimi.dev/ergon/service/baseline/lock"
 	"go.dokimi.dev/ergon/service/vcs"
 )
 
 // git is the access to the repository that the toolchain of Go reads tags and snapshots through,
 // and creates the tag of a module with commands through.
 var git = golang.Git{Tags: vcs.Tags, Snapshot: vcs.Snapshot, Head: vcs.Head, LightTag: vcs.LightTag}
+
+// repository is the access to the repository that the toolchain of Terraform reads the tags and the
+// answers of the lock of ergon init through.
+var repository = terraform.Repository{Tags: vcs.Tags, Answers: answers}
 
 // registryTimeout is the limit of a request of a toolchain to its registry, such as the check of
 // PyPI, of the npm registry or of the index of crates.io for a release.
@@ -62,7 +70,7 @@ func registrations(client *http.Client) []func(*language.Catalog) error {
 		func(c *language.Catalog) error {
 			return rust.Register(c, rust.Tools{Command: command, Getenv: os.Getenv}, client)
 		},
-		terraform.Register,
+		func(c *language.Catalog) error { return terraform.Register(c, repository) },
 		bash.Register,
 	}
 }
@@ -120,6 +128,24 @@ func command(ctx context.Context, dir, name string, args, env []string) error {
 		return fmt.Errorf("app: %s: %w", name, err)
 	}
 	return nil
+}
+
+// answers returns the answers of the lock of ergon init of the repository at dir, and the zero
+// Answers for a repository without a lock. It returns the error of reading the lock, and the error
+// of lock.Decode, which wraps lock.ErrInvalid.
+func answers(_ context.Context, dir string) (language.Answers, error) {
+	data, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(lock.Path)))
+	if errors.Is(err, fs.ErrNotExist) {
+		return language.Answers{}, nil
+	}
+	if err != nil {
+		return language.Answers{}, fmt.Errorf("app: read %s: %w", lock.Path, err)
+	}
+	l, err := lock.Decode(data)
+	if err != nil {
+		return language.Answers{}, err
+	}
+	return l.Answers, nil
 }
 
 // programs returns a function that installs the tool of the section of .ergon.yaml for dir through

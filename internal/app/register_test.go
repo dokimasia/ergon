@@ -32,6 +32,7 @@ import (
 	"go.dokimi.dev/ergon/lang/terraform"
 	"go.dokimi.dev/ergon/lang/typescript"
 	"go.dokimi.dev/ergon/service/baseline/baselinetest"
+	"go.dokimi.dev/ergon/service/baseline/lock"
 	"go.dokimi.dev/ergon/service/vcs/vcstest"
 )
 
@@ -58,6 +59,10 @@ const (
 
 // zigProgram is the program of zig that the test binary writes as ergon tool path.
 const zigProgram = "/cache/zig/zig"
+
+// terraformLock is a lock of ergon init of a repository of Terraform named demo.
+const terraformLock = `{"ergon": "1.0.0", "files": [], "settings": {}, "answers": ` +
+	`{"name": "demo", "languages": ["terraform"]}}` + "\n"
 
 // registry is a transport that records the address of each request and answers it with 404, as
 // PyPI and the npm registry answer for a release that they do not have.
@@ -191,6 +196,48 @@ func TestRegister(t *testing.T) {
 				assert.Equal(t, f.urls, []string{tt.wantURL}, "the requests")
 			})
 		}
+
+		t.Run("adds a discovery of Terraform that reads the name of the repository from its lock", func(t *testing.T) {
+			t.Parallel()
+			root := vcstest.Repository(t, files.Tree{
+				".ergon/init.lock": files.Text(terraformLock),
+				"CHANGELOG.md":     files.Text("# demo\n\n## 1.2.0\n"),
+			})
+			vcstest.Commit(t, root, "first")
+			vcstest.Git(t, root, "tag", "v1.3.0")
+			var c language.Catalog
+			assert.NoError(t, app.Register(&c, &registry{}), "Register of every language module")
+			toolchain, ok := c.Toolchain(terraform.Toolchain)
+			assert.True(t, ok, "the toolchain of Terraform")
+			pkgs, err := toolchain.Discover(t.Context(), root)
+			assert.NoError(t, err, "Discover")
+			assert.Equal(t, pkgs, []workspace.Package{{
+				Name: "demo", Toolchain: terraform.Toolchain, Dir: ".", Version: version.Version{Major: 1, Minor: 3},
+			}}, "the packages")
+		})
+
+		t.Run("adds a discovery of Terraform that finds no package without a lock", func(t *testing.T) {
+			t.Parallel()
+			var c language.Catalog
+			assert.NoError(t, app.Register(&c, &registry{}), "Register of every language module")
+			toolchain, ok := c.Toolchain(terraform.Toolchain)
+			assert.True(t, ok, "the toolchain of Terraform")
+			pkgs, err := toolchain.Discover(t.Context(), t.TempDir())
+			assert.NoError(t, err, "Discover")
+			assert.Empty(t, pkgs, "the packages")
+		})
+
+		t.Run("adds a discovery of Terraform that returns ErrInvalid for a lock that does not decode",
+			func(t *testing.T) {
+				t.Parallel()
+				root := files.Workspace(t, files.Tree{".ergon/init.lock": files.Text("not a lock\n")})
+				var c language.Catalog
+				assert.NoError(t, app.Register(&c, &registry{}), "Register of every language module")
+				toolchain, ok := c.Toolchain(terraform.Toolchain)
+				assert.True(t, ok, "the toolchain of Terraform")
+				_, err := toolchain.Discover(t.Context(), root)
+				assert.ErrorIs(t, err, lock.ErrInvalid, "Discover")
+			})
 
 		t.Run("returns ErrRegistered for a catalog that has a language of ergon", func(t *testing.T) {
 			t.Parallel()
