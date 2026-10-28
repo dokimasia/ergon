@@ -14,17 +14,17 @@
     {
       "path": ".gitignore",
       "producer": "terraform",
-      "sha256": "4f6c2a6f84dd2d3688edb527196a7f4efde871dd5b069ba390d743d9e527bf36"
+      "sha256": "b0d66db29e36522d5b18ee2680e3381aeb43e3054cd2e066b039dcdd4106fb43"
     },
     {
       "path": ".tflint.hcl",
       "producer": "terraform",
-      "sha256": "8bb7b4f0e904eaafe3711fb264624b29245b08dc0597a7915a61666fa3abbbce"
+      "sha256": "0a78e0046948be9815f9b328a2511f70176c52331649389b092308be61adcc20"
     },
     {
       "path": "Makefile",
       "producer": "terraform",
-      "sha256": "f3788ff76f19a7e12ada328e88ce11deb402a958e33a5d711f1db2dff4094cda"
+      "sha256": "8dfce65d209fc1ca31d1ca09483f65c4ac20efeb26ccd98abf2ddbecef84eb1a"
     }
   ],
   "settings": {
@@ -42,11 +42,37 @@
     "terraform.ci.timeout": 30,
     "terraform.ci.versions": [],
     "terraform.generate.commands": [],
+    "terraform.generate.docs": false,
+    "terraform.lint.rulesets": [],
     "terraform.paths": [
       "."
     ],
     "terraform.test.args": [],
     "terraform.tools.checkov": "checkov@3.3.23",
+    "terraform.tools.terraform-docs.sha256": {
+      "darwin/arm64": "f6b114f4b032f3f9202ab6c23bfd28c3c8e68aeeb8a8f12fc118bf2073081d71",
+      "linux/amd64": "9005daf969de0b50134493a2c00078b49f5f5b39d021cda7c89bf4d4f3d776d3",
+      "windows/amd64": "afc02cbdf63726d3e5fb26a077ca1f24acd4820d7e44c21b03a3e030f9266490"
+    },
+    "terraform.tools.terraform-docs.version": "0.24.0",
+    "terraform.tools.tflint-ruleset-aws.sha256": {
+      "darwin/arm64": "246818b24c65a60d2b95d7c88921480d72bdca89cfbb936f23bb583b8c631f87",
+      "linux/amd64": "98a530130d33efd49408f3d0ab9198072192ede413cc2a2ce38295d0922eb1c6",
+      "windows/amd64": "ef295f1f773a6ed63be377c192f903e8eb7f811ef603beb2eb21c681bd38c06d"
+    },
+    "terraform.tools.tflint-ruleset-aws.version": "0.49.0",
+    "terraform.tools.tflint-ruleset-azurerm.sha256": {
+      "darwin/arm64": "f0140f15332e15e710f149d53cf9cbc2d48da051fadd6eec84f52db6094dc43f",
+      "linux/amd64": "f1150b2dea7aef001ad07002671c75b5495f4521ddf3538ededf00896f7b0aaa",
+      "windows/amd64": "98025d2ae156aef33272a8520d7425da5f4a70f5e04aac8a7ba999766f0be3d1"
+    },
+    "terraform.tools.tflint-ruleset-azurerm.version": "0.32.0",
+    "terraform.tools.tflint-ruleset-google.sha256": {
+      "darwin/arm64": "93e1a6f2c196e9ba5fa6359cd8d2116d18c1770bddb09bf333e0617e216a5e22",
+      "linux/amd64": "a5c02b3de937456de2521155831eaf1cc876014a21445bf7dd1621654511fe28",
+      "windows/amd64": "cb01c16dbc21c306d3f529cd9352ef006e81c5d42d85eacb581e508eb764df3b"
+    },
+    "terraform.tools.tflint-ruleset-google.version": "0.40.0",
     "terraform.tools.tflint.sha256": {
       "darwin/arm64": "2496e9cb3d24992d553b45e7c87a0fdc9449ca975233876247a9bfeda857e6c0",
       "linux/amd64": "cca9d13e2e1d7a2c627af60ff899a3c9b74212899416aeb96ec764d2ef954537",

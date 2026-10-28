@@ -1,6 +1,6 @@
 terraform:
-  # The tools of the targets of Terraform: the release binaries of tflint and uv, and checkov, a
-  # package of PyPI that ergon tool run runs through uv.
+  # The tools of the targets of Terraform: the release binaries of tflint, of its rulesets, of
+  # terraform-docs and of uv, and checkov, a package of PyPI that ergon tool run runs through uv.
   tools:
     # The release of tflint, the linter of lint-terraform, with the rules of .tflint.hcl.
     tflint:
@@ -9,6 +9,36 @@ terraform:
         linux/amd64: cca9d13e2e1d7a2c627af60ff899a3c9b74212899416aeb96ec764d2ef954537
         windows/amd64: fb42fb859d844b156a8ea9d3363078c4d8b85ca78782e60876b08c9b8e59f303
       version: 0.64.0
+    # The release of tflint-ruleset-aws, which lint-terraform loads when lint.rulesets lists aws.
+    tflint-ruleset-aws:
+      sha256:
+        darwin/arm64: 246818b24c65a60d2b95d7c88921480d72bdca89cfbb936f23bb583b8c631f87
+        linux/amd64: 98a530130d33efd49408f3d0ab9198072192ede413cc2a2ce38295d0922eb1c6
+        windows/amd64: ef295f1f773a6ed63be377c192f903e8eb7f811ef603beb2eb21c681bd38c06d
+      version: 0.49.0
+    # The release of tflint-ruleset-azurerm, which lint-terraform loads when lint.rulesets lists
+    # azurerm.
+    tflint-ruleset-azurerm:
+      sha256:
+        darwin/arm64: f0140f15332e15e710f149d53cf9cbc2d48da051fadd6eec84f52db6094dc43f
+        linux/amd64: f1150b2dea7aef001ad07002671c75b5495f4521ddf3538ededf00896f7b0aaa
+        windows/amd64: 98025d2ae156aef33272a8520d7425da5f4a70f5e04aac8a7ba999766f0be3d1
+      version: 0.32.0
+    # The release of tflint-ruleset-google, which lint-terraform loads when lint.rulesets lists
+    # google.
+    tflint-ruleset-google:
+      sha256:
+        darwin/arm64: 93e1a6f2c196e9ba5fa6359cd8d2116d18c1770bddb09bf333e0617e216a5e22
+        linux/amd64: a5c02b3de937456de2521155831eaf1cc876014a21445bf7dd1621654511fe28
+        windows/amd64: cb01c16dbc21c306d3f529cd9352ef006e81c5d42d85eacb581e508eb764df3b
+      version: 0.40.0
+    # The release of terraform-docs, which generate-terraform runs when generate.docs is true.
+    terraform-docs:
+      sha256:
+        darwin/arm64: f6b114f4b032f3f9202ab6c23bfd28c3c8e68aeeb8a8f12fc118bf2073081d71
+        linux/amd64: 9005daf969de0b50134493a2c00078b49f5f5b39d021cda7c89bf4d4f3d776d3
+        windows/amd64: afc02cbdf63726d3e5fb26a077ca1f24acd4820d7e44c21b03a3e030f9266490
+      version: 0.24.0
     # The release of uv, which runs checkov on Python 3.13.
     uv:
       sha256:
@@ -18,19 +48,34 @@ terraform:
       version: 0.12.23
     # The scan of audit-terraform, over the configuration.
     checkov: checkov@3.3.23
-  # The directories that the targets format, lint and scan, each with its subdirectories.
+  # The directories that the targets format, lint, test and scan, each with its subdirectories.
   paths: [.]
   # The steps that check-terraform runs, in order: lint, test, generate or audit.
   check: [lint, test, audit]
-  # test-terraform runs terraform test with args.
+  # lint-terraform loads the rulesets of the key rulesets beside the terraform ruleset, which tflint
+  # bundles.
+  lint:
+    # The rulesets of tflint that lint-terraform loads, from aws, azurerm and google. ergon tool run
+    # installs each from the release of its tool, such as tflint-ruleset-aws, and lint-terraform
+    # links its program into .tflint.d/plugins. tflint --init installs the plugin of each block of
+    # the local .tflint.hcl with a source and a version.
+    rulesets: []
+  # test-terraform runs terraform test with args in each directory that has test files in it or in
+  # its tests directory, and terraform validate in each other directory with a configuration. git
+  # ls-files lists the files of the paths, so the run skips each path that git ignores, such as
+  # .terraform.
   test:
     args: []
-  # generate-terraform runs each command line of commands in order at the root of the repository,
-  # such as terraform-docs. verify-generate-terraform, the step generate of check, runs the same and
-  # fails when the run changes a file of the repository. Without a command line Terraform has
-  # neither target.
+  # generate-terraform runs terraform-docs when docs is true, and then each command line of commands
+  # in order at the root of the repository. verify-generate-terraform runs the same in the step
+  # generate of check, and fails when the run changes a file of the repository. Terraform renders
+  # both targets only for docs or a command line.
   generate:
     commands: []
+    # When true, generate-terraform runs the terraform-docs of the section on each path before the
+    # command lines. terraform-docs reads the .terraform-docs.yml of the root of the repository, and
+    # fails without it.
+    docs: false
   # audit-terraform scans the configuration with checkov, and accepts each check of ignore, by its
   # identifier, such as CKV_AWS_20.
   audit:

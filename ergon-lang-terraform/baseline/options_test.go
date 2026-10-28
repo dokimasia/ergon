@@ -13,11 +13,13 @@ import (
 	"go.dokimi.dev/ergon/lang/terraform/baseline"
 )
 
-// version is the version of the release binary of the cases.
-const version = "1.2.3"
-
-// release is the address of the assets of tflint at the version of the cases.
-const release = "https://github.com/terraform-linters/tflint/releases/download/v1.2.3/"
+// The spellings of the rulesets that the section pins. A repository writes them in lint.rulesets,
+// so the test pins them.
+const (
+	pinnedAWS     baseline.Ruleset = "aws"
+	pinnedAzureRM baseline.Ruleset = "azurerm"
+	pinnedGoogle  baseline.Ruleset = "google"
+)
 
 // setupTerraform is the pin of setup-terraform at the baseline.
 var setupTerraform = terraformOptions().CI.Actions.SetupTerraform
@@ -51,7 +53,15 @@ func TestOptions(t *testing.T) {
 			assert.NoError(t, o.Validate(), "Validate")
 		})
 
-		t.Run("returns ErrInvalid for the step generate without a command line", func(t *testing.T) {
+		t.Run("returns nil for the step generate with docs", func(t *testing.T) {
+			t.Parallel()
+			o := terraformOptions()
+			o.Check = option.Check{option.StepGenerate}
+			o.Generate.Docs = true
+			assert.NoError(t, o.Validate(), "Validate")
+		})
+
+		t.Run("returns ErrInvalid for the step generate without a generator", func(t *testing.T) {
 			t.Parallel()
 			o := terraformOptions()
 			o.Check = option.Check{option.StepGenerate}
@@ -124,55 +134,78 @@ func TestOptions(t *testing.T) {
 		})
 	})
 
-	t.Run("TFLint", func(t *testing.T) {
+	t.Run("Ruleset", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("Asset", func(t *testing.T) {
+		t.Run("Validate", func(t *testing.T) {
 			t.Parallel()
 
-			tests := []struct {
-				name string
-				give option.Platform
-				want option.Asset
-			}{
-				{
-					name: "returns the .zip of Linux on x86-64",
-					give: option.LinuxAMD64,
-					want: option.Asset{URL: release + "tflint_linux_amd64.zip", Program: "tflint"},
-				},
-				{
-					name: "returns the .zip of macOS on Apple silicon",
-					give: option.DarwinARM64,
-					want: option.Asset{URL: release + "tflint_darwin_arm64.zip", Program: "tflint"},
-				},
-				{
-					name: "returns the .zip of Windows with the program of the suffix exe",
-					give: option.WindowsAMD64,
-					want: option.Asset{URL: release + "tflint_windows_amd64.zip", Program: "tflint.exe"},
-				},
-			}
-			for _, tt := range tests {
-				t.Run(tt.name, func(t *testing.T) {
-					t.Parallel()
-					got, err := baseline.TFLint{Version: version}.Asset(tt.give)
-					assert.NoError(t, err, "Asset")
-					assert.Equal(t, got, tt.want, "the asset")
-				})
-			}
-
-			t.Run("returns ErrNoAsset for an invalid platform", func(t *testing.T) {
+			t.Run("returns nil for each ruleset that the section pins", func(t *testing.T) {
 				t.Parallel()
-				_, err := baseline.TFLint{Version: version}.Asset("plan9/amd64")
-				assert.ErrorIs(t, err, option.ErrNoAsset, "Asset")
+				assert.Total(t, func(r baseline.Ruleset) error { return r.Validate() },
+					[]baseline.Ruleset{pinnedAWS, pinnedAzureRM, pinnedGoogle}, "Validate of each ruleset")
+			})
+
+			t.Run("returns ErrInvalid for a ruleset that the section does not pin", func(t *testing.T) {
+				t.Parallel()
+				assert.ErrorIs(t, baseline.Ruleset("opa").Validate(), option.ErrInvalid, "Validate")
 			})
 		})
+	})
 
-		t.Run("Repository", func(t *testing.T) {
+	t.Run("Lint", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Validate", func(t *testing.T) {
 			t.Parallel()
 
-			t.Run("returns the repository of the releases of tflint", func(t *testing.T) {
+			t.Run("returns nil for the rulesets that the section pins", func(t *testing.T) {
 				t.Parallel()
-				assert.Equal(t, terraformOptions().Tools.TFLint.Repository(), "terraform-linters/tflint", "Repository")
+				l := baseline.Lint{Rulesets: []baseline.Ruleset{pinnedGoogle, pinnedAWS}}
+				assert.NoError(t, l.Validate(), "Validate")
+			})
+
+			t.Run("returns ErrInvalid for a ruleset that the section does not pin", func(t *testing.T) {
+				t.Parallel()
+				l := baseline.Lint{Rulesets: []baseline.Ruleset{pinnedAWS, "opa"}}
+				assert.ErrorIs(t, l.Validate(), option.ErrInvalid, "Validate")
+			})
+
+			t.Run("returns ErrInvalid for a ruleset that rulesets lists twice", func(t *testing.T) {
+				t.Parallel()
+				l := baseline.Lint{Rulesets: []baseline.Ruleset{pinnedAWS, pinnedAzureRM, pinnedAWS}}
+				assert.ErrorIs(t, l.Validate(), option.ErrInvalid, "Validate")
+			})
+		})
+	})
+
+	t.Run("Generate", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("CheckStep", func(t *testing.T) {
+			t.Parallel()
+
+			check := option.Check{option.StepLint, option.StepGenerate}
+
+			t.Run("returns nil for docs without a command line", func(t *testing.T) {
+				t.Parallel()
+				assert.NoError(t, baseline.Generate{Docs: true}.CheckStep(check), "CheckStep")
+			})
+
+			t.Run("returns nil for a command line without docs", func(t *testing.T) {
+				t.Parallel()
+				g := baseline.Generate{Commands: [][]string{{"terraform-docs", "."}}}
+				assert.NoError(t, g.CheckStep(check), "CheckStep")
+			})
+
+			t.Run("returns ErrInvalid for the step generate without a generator", func(t *testing.T) {
+				t.Parallel()
+				assert.ErrorIs(t, baseline.Generate{}.CheckStep(check), option.ErrInvalid, "CheckStep")
+			})
+
+			t.Run("returns nil for a check without the step generate", func(t *testing.T) {
+				t.Parallel()
+				assert.NoError(t, baseline.Generate{}.CheckStep(option.Check{option.StepLint}), "CheckStep")
 			})
 		})
 	})

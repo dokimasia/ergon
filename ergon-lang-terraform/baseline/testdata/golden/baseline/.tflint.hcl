@@ -1,9 +1,11 @@
 # Managed by ergon init. Add repository settings to .ergon/local/.tflint.hcl and run ergon init sync.
 #
 # The configuration of tflint for every module of the repository: every rule of the terraform
-# ruleset, which tflint bundles. lint-terraform runs the release of tflint of the section terraform
-# of .ergon.yaml. A repository adds the ruleset of its provider, such as tflint-ruleset-aws, in its
-# local file.
+# ruleset, which tflint bundles, and each ruleset of the key lint.rulesets of the section terraform
+# of .ergon.yaml. lint-terraform runs the release of tflint of the section, and loads the release of
+# each of those rulesets from .tflint.d/plugins. tflint --init installs the plugin of each block of
+# the local file with a source and a version into the same directory. Such a block replaces the
+# block of the same name in this file.
 
 plugin "terraform" {
   enabled = true
