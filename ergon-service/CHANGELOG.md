@@ -1,5 +1,16 @@
 # go.dokimi.dev/ergon/service
 
+## 0.24.0
+
+### Minor Changes
+
+- 679728c: Attest the binary of each command beside the assets in the job pack of the managed `release.yml`.
+
+### Patch Changes
+
+- Updated dependencies [199d84c]
+  - go.dokimi.dev/ergon/core@0.19.0
+
 ## 0.23.0
 
 ### Minor Changes

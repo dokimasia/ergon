@@ -1,5 +1,13 @@
 # go.dokimi.dev/ergon/lang/csharp
 
+## 0.4.3
+
+### Patch Changes
+
+- Updated dependencies [199d84c, 679728c]
+  - go.dokimi.dev/ergon/core@0.19.0
+  - go.dokimi.dev/ergon/service@0.24.0
+
 ## 0.4.2
 
 ### Patch Changes

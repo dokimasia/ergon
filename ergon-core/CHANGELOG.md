@@ -1,5 +1,11 @@
 # go.dokimi.dev/ergon/core
 
+## 0.19.0
+
+### Minor Changes
+
+- 199d84c: Add `language.BinariesDir` for the binaries of the commands of a pack.
+
 ## 0.18.0
 
 ### Minor Changes
