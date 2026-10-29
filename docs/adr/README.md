@@ -80,3 +80,4 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 | [0069](0069-terraform-repository-as-one-package.md) | ergon release releases a repository of Terraform as one package | Accepted |
 | [0070](0070-providers-signed-on-a-workstation.md) | A release of a Terraform provider remains a draft until a maintainer signs it on a workstation | Accepted |
 | [0071](0071-latest-release-of-the-root-package.md) | A publish marks the release of the root package as the latest release of GitHub | Accepted |
+| [0072](0072-attest-the-binaries-of-a-release.md) | The job pack attests the binary of each command beside the assets of a release | Accepted |

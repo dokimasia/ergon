@@ -15,7 +15,7 @@ Proposals, and the argument that produced them. An RFC is written to be argued w
 | [0004](0004-repository-initialization.md) | Repository initialization | Accepted, superseded in part by RFC-0005, RFC-0006, RFC-0007, ADR-0016, ADR-0017, ADR-0018, ADR-0029, ADR-0031, ADR-0033, ADR-0034, ADR-0035, ADR-0039, ADR-0042, ADR-0043, ADR-0044, ADR-0046, ADR-0052, ADR-0060 and ADR-0061 |
 | [0005](0005-baseline-updates.md) | Baseline updates | Accepted, superseded in part by RFC-0011 and ADR-0071 |
 | [0006](0006-configurable-hooks.md) | Configurable hooks | Accepted |
-| [0007](0007-binary-releases.md) | Binary releases | Accepted, superseded in part by ADR-0022, ADR-0023, RFC-0009, RFC-0012 and ADR-0070 |
+| [0007](0007-binary-releases.md) | Binary releases | Accepted, superseded in part by ADR-0022, ADR-0023, RFC-0009, RFC-0012, ADR-0070 and ADR-0072 |
 | [0008](0008-module-and-package-structure.md) | Module and package structure | Draft |
 | [0009](0009-binaries-with-cgo.md) | Binaries of commands with cgo | Accepted |
 | [0010](0010-conformance-definitions-with-spec.md) | Conformance definitions with spec | Accepted, superseded in part by ADR-0059 |
