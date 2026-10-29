@@ -52,8 +52,8 @@ const manifest = `{"version":1,"metadata":{"protocol_versions":["6.0"]}}`
 // zigProgram is the program of zig that the packer of the cases installs.
 const zigProgram = "/cache/zig/zig"
 
-// artifacts is the artifacts.json that the fake GoReleaser of the cases writes: an archive, its
-// SBOM, the checksums, their signature, a package, the source archive, a cask, and a binary and the
+// artifacts is the artifacts.json that the fake GoReleaser of the cases writes: a binary, an
+// archive, its SBOM, the checksums, their signature, a package, the source archive, a cask, and the
 // metadata, which a release does not attach.
 const artifacts = `[
 	{"name":"assertlint","path":"dist/goreleaser/demo-lint/assertlint_linux_amd64_v1/assertlint","type":"Binary"},
@@ -161,7 +161,7 @@ func TestPacker(t *testing.T) {
 	t.Run("Pack", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("builds the assets and the casks of a module with a configuration of GoReleaser", func(t *testing.T) {
+		t.Run("builds the pack directory of a module with a configuration of GoReleaser", func(t *testing.T) {
 			t.Parallel()
 			root := lintRepository(t)
 			dir := filepath.Join(t.TempDir(), "pack")
@@ -181,6 +181,7 @@ func TestPacker(t *testing.T) {
 				"assets/lint/v0.2.0/demo-lint_0.2.0_source.tar.gz":                 files.Text("source"),
 				"assets/lint/v0.2.0/checksums.txt":                                 files.Text("sums"),
 				"assets/lint/v0.2.0/checksums.txt.sigstore.json":                   files.Text("bundle"),
+				"binaries/lint/v0.2.0/assertlint_linux_amd64_v1/assertlint":        files.Text("binary"),
 				"casks/lint/v0.2.0/assertlint.rb":                                  files.Text("cask"),
 			}, "the pack directory")
 			files.Absent(t, filepath.Join(root, filepath.FromSlash(lintDist)), "the dist directory of GoReleaser")

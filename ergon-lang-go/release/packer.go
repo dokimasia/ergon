@@ -81,6 +81,10 @@ var assetTypes = []string{"Archive", "Linux Package", "Source", "Checksum", "Sig
 // caskType is the type of an artifact of GoReleaser that is a cask of Homebrew.
 const caskType = "Homebrew Cask"
 
+// binaryType is the type of an artifact of GoReleaser that is the binary of a command for one
+// platform.
+const binaryType = "Binary"
+
 // artifact is an artifact of a run of GoReleaser, as its artifacts.json records it.
 type artifact struct {
 	// Name is the name of the artifact, such as ergon_0.6.0_linux_amd64.tar.gz.
@@ -223,6 +227,9 @@ var _ language.Packer = Packer{}
 //   - It copies the archives, the packages, the source archive, the checksums, their signature and
 //     the SBOMs into dir/assets/<tag>/, and the casks into dir/casks/<tag>/, as artifacts.json in
 //     the dist directory of the configuration records them, and then removes that dist directory.
+//   - It copies each binary into dir/binaries/<tag>/<target>/, where <target> is the directory of
+//     its build in the dist directory, such as ergon-upx_linux_amd64_v1. The hooks of the build,
+//     such as UPX, have run on it, so its bytes are the bytes of the binary in the archive.
 //   - It copies each extra file of the checksums of the configuration into dir/assets/<tag>/ under
 //     its name template, with the Version as .Version, because GoReleaser lists such a file in the
 //     checksums alone. It writes the empty file dir/drafts/<tag> for a configuration whose release
@@ -387,9 +394,10 @@ func buildEnv(ctx context.Context, r *run, pkgs []workspace.Package, modcache st
 	return append(env, modulesVariable+"="+strings.Join(paths, ",")), nil
 }
 
-// collect copies the assets and the casks that artifacts.json of the dist directory dist records,
-// with paths relative to root, into dir/assets/<tag>/ and dir/casks/<tag>/, and then removes dist.
-// It returns the error of reading artifacts.json and of copying an artifact.
+// collect copies the assets, the binaries and the casks that artifacts.json of the dist directory
+// dist records, with paths relative to root, into dir/assets/<tag>/, dir/binaries/<tag>/<target>/
+// and dir/casks/<tag>/, and then removes dist. The target of a binary is the directory of its
+// build. It returns the error of reading artifacts.json and of copying an artifact.
 func collect(root, dist, dir, tag string) error {
 	data, err := os.ReadFile(filepath.Join(dist, artifactsFile))
 	if err != nil {
@@ -400,15 +408,17 @@ func collect(root, dist, dir, tag string) error {
 		return fmt.Errorf("decode the artifacts of GoReleaser: %w", err)
 	}
 	for _, a := range artifacts {
-		target := language.AssetsDir
+		into := filepath.Join(dir, language.AssetsDir, filepath.FromSlash(tag), a.Name)
 		switch {
 		case slices.Contains(assetTypes, a.Type):
+		case a.Type == binaryType:
+			build := path.Base(path.Dir(a.Path))
+			into = filepath.Join(dir, language.BinariesDir, filepath.FromSlash(tag), build, a.Name)
 		case a.Type == caskType:
-			target = language.CasksDir
+			into = filepath.Join(dir, language.CasksDir, filepath.FromSlash(tag), a.Name)
 		default:
 			continue
 		}
-		into := filepath.Join(dir, target, filepath.FromSlash(tag), a.Name)
 		if err := copyFile(filepath.Join(root, filepath.FromSlash(a.Path)), into); err != nil {
 			return err
 		}
