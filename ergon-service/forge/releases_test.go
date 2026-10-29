@@ -4,7 +4,9 @@
 package forge_test
 
 import (
+	"io"
 	"io/fs"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -30,6 +32,9 @@ const (
 	firstPage  = "GET /repos/" + repo + "/releases?per_page=30&page=1"
 	secondPage = "GET /repos/" + repo + "/releases?per_page=30&page=2"
 )
+
+// assetRoute is the route of the asset 9 of the repository of the cases.
+const assetRoute = "GET /repos/" + repo + "/releases/assets/9"
 
 // The asset of the release of the cases, with the digest that GitHub states for it.
 const (
@@ -68,6 +73,79 @@ func TestReleases(t *testing.T) {
 			c, _ := serve(t, map[string][]response{releaseRoute: {exists}})
 			_, err := c.CreateDraft(t.Context(), repo, "v1.0.0", "", false)
 			assert.ErrorIs(t, err, forge.ErrGitHub, "CreateDraft")
+		})
+	})
+
+	t.Run("Drafts", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("returns the drafts alone", func(t *testing.T) {
+			t.Parallel()
+			body := `[{"id":8,"tag_name":"v2.0.0","draft":true,"published_at":null,"assets":[]},` +
+				`{"id":7,"tag_name":"v1.0.0","draft":false,"published_at":"` + published + `","assets":[]}]`
+			c, _ := serve(t, map[string][]response{firstPage: {{body: body}}})
+			got, err := c.Drafts(t.Context(), repo)
+			assert.NoError(t, err, "Drafts")
+			want := []forge.Release{{ID: 8, Tag: "v2.0.0", Draft: true, Assets: []forge.Asset{}}}
+			assert.Equal(t, got, want, "the drafts")
+		})
+
+		t.Run("returns ErrGitHub for a repository that does not exist", func(t *testing.T) {
+			t.Parallel()
+			c, _ := serve(t, map[string][]response{})
+			_, err := c.Drafts(t.Context(), repo)
+			assert.ErrorIs(t, err, forge.ErrGitHub, "Drafts")
+		})
+	})
+
+	t.Run("DownloadAsset", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("returns the content of the asset", func(t *testing.T) {
+			t.Parallel()
+			c, fake := serve(t, map[string][]response{assetRoute: {{body: "sums\n"}}})
+			got, err := c.DownloadAsset(t.Context(), repo, 9)
+			assert.NoError(t, err, "DownloadAsset")
+			expect.Equal(t, string(got), "sums\n", "the content")
+			expect.Equal(t, fake.recorded()[0].header.Get("Accept"), "application/octet-stream", "the media type")
+		})
+
+		t.Run("follows a redirect to another domain without the token", func(t *testing.T) {
+			t.Parallel()
+			authorization := make(chan string, 1)
+			storage := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				authorization <- r.Header.Get("Authorization")
+				_, _ = io.WriteString(w, "sums\n")
+			}))
+			t.Cleanup(storage.Close)
+			_, port, err := net.SplitHostPort(storage.Listener.Addr().String())
+			assert.NoError(t, err, "the port of the storage")
+			// The storage is localhost and the API 127.0.0.1, so the redirect leaves the domain of the
+			// API, as the storage of GitHub does.
+			api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				http.Redirect(w, r, "http://localhost:"+port+"/asset", http.StatusFound)
+			}))
+			t.Cleanup(api.Close)
+			c, err := forge.New(api.Client(), forge.Config{Token: token, API: api.URL})
+			assert.NoError(t, err, "New")
+			got, err := c.DownloadAsset(t.Context(), repo, 9)
+			assert.NoError(t, err, "DownloadAsset")
+			expect.Equal(t, string(got), "sums\n", "the content")
+			// The storage sends the header before it responds, so the channel has it once the
+			// download returns.
+			select {
+			case sent := <-authorization:
+				expect.Empty(t, sent, "the token that the storage received")
+			default:
+				t.Fatal("the storage received no request")
+			}
+		})
+
+		t.Run("returns ErrGitHub for an asset that does not exist", func(t *testing.T) {
+			t.Parallel()
+			c, _ := serve(t, map[string][]response{})
+			_, err := c.DownloadAsset(t.Context(), repo, 9)
+			assert.ErrorIs(t, err, forge.ErrGitHub, "DownloadAsset")
 		})
 	})
 
@@ -168,8 +246,8 @@ func TestReleases(t *testing.T) {
 		t.Run("returns the tag, the time and the assets of each release", func(t *testing.T) {
 			t.Parallel()
 			body := `[{"tag_name":"0.12.23","published_at":"` + published + `","draft":false,"assets":[` +
-				`{"name":"` + assetName + `","browser_download_url":"` + assetURL + `","digest":"sha256:` + assetDigest +
-				`"}]}]`
+				`{"id":9,"name":"` + assetName + `","browser_download_url":"` + assetURL + `","digest":"sha256:` +
+				assetDigest + `"}]}]`
 			c, _ := serve(t, map[string][]response{firstPage: {{body: body}}})
 			got, err := c.Releases(t.Context(), repo)
 			assert.NoError(t, err, "Releases")
@@ -177,7 +255,7 @@ func TestReleases(t *testing.T) {
 			assert.Equal(t, got, []forge.Release{{
 				Published: when,
 				Tag:       "0.12.23",
-				Assets:    []forge.Asset{{Name: assetName, URL: assetURL, Digest: assetDigest}},
+				Assets:    []forge.Asset{{Name: assetName, URL: assetURL, Digest: assetDigest, ID: 9}},
 			}}, "the releases")
 		})
 

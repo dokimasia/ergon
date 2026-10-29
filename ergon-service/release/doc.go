@@ -71,6 +71,20 @@
 // with [ErrAssets]. [Homebrew] then commits the casks of the releases to a tap through a
 // [TapForge].
 //
+// A packer that writes drafts/<tag> into the pack directory leaves the release of the tag as a
+// draft, such as the release of a provider of the Terraform Registry. [Publish] then calls the Draft
+// of the Releaser: ForgeReleaser takes every step but the publish, and GitReleaser refuses it with
+// [ErrDraft].
+//
+// # Signing
+//
+// [Sign] completes the drafts of the providers of the Terraform Registry on the workstation of a
+// maintainer, through a [SignForge]. It verifies the cosign bundle of the checksums of each draft
+// with a [Witness], such as [Cosign], and checks the digests of its assets against the checksums.
+// It then signs the checksums with a [Signer], such as [GPG], uploads the signature and publishes
+// the draft. It returns an error that wraps [ErrVerify] for a draft that fails a check, and an
+// error that wraps [ErrNoDraft] for a tag without a draft that waits for a signature.
+//
 // # Lockfiles
 //
 // A change to a package of a publish plan after its version commit changes the content that the tag
@@ -95,13 +109,14 @@
 // # Errors
 //
 // Each error of the package wraps one of [ErrPackages], [ErrConfig], [ErrChangeset],
-// [ErrChangelog], [ErrPublishPlan], [ErrTag], [ErrAssets], [ErrStale], [ErrMoved] and [ErrGate],
-// and names the package, the key, the file, the tag, the branch or the commit that caused it, or is
-// [ErrNoChangesets]. [MarkVersion] returns an error that names the branch of a version pull request
-// that does not exist. The package also returns the error of git, which wraps
-// [go.dokimi.dev/ergon/service/vcs.ErrGit], the error of the file system with its path, and the
-// error of a toolchain role, of a [Forge], a [Proposer], a [Releaser], a [TagForge], a [TapForge],
-// a [GateForge], a [SkipForge], a [Marker] or of [go.dokimi.dev/ergon/core/version].
+// [ErrChangelog], [ErrPublishPlan], [ErrTag], [ErrAssets], [ErrDraft], [ErrStale], [ErrMoved],
+// [ErrGate], [ErrVerify] and [ErrNoDraft], and names the package, the key, the file, the tag, the
+// branch or the commit that caused it, or is [ErrNoChangesets]. [MarkVersion] returns an error that
+// names the branch of a version pull request that does not exist. The package also returns the
+// error of git, which wraps [go.dokimi.dev/ergon/service/vcs.ErrGit], the error of the file system
+// with its path, the error of gpg, and the error of a toolchain role, of a [Forge], a [Proposer], a
+// [Releaser], a [TagForge], a [TapForge], a [GateForge], a [SkipForge], a [Marker], a [SignForge],
+// a [Witness], a [Signer] or of [go.dokimi.dev/ergon/core/version].
 //
 // # Concurrency
 //

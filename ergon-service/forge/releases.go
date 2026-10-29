@@ -24,12 +24,8 @@ const releasesPage = 30
 // digestPrefix starts the digest of an asset that GitHub states as a SHA-256, as sha256:<hex>.
 const digestPrefix = "sha256:"
 
-// The upload of an asset: the media type of its body, and the parameters that end the upload URL
-// of a release, as {?name,label}.
-const (
-	assetType     = "application/octet-stream"
-	uploadOptions = "{"
-)
+// uploadOptions starts the parameters that end the upload URL of a release, as {?name,label}.
+const uploadOptions = "{"
 
 // newRelease is the body of a request that creates a GitHub Release.
 type newRelease struct {
@@ -61,6 +57,9 @@ type Asset struct {
 	// Digest is the SHA-256 of the file in lowercase hexadecimal, and empty for a file without a
 	// digest of that algorithm on GitHub.
 	Digest string `json:"digest"`
+
+	// ID is the identifier of the asset in the API, which [Client.DownloadAsset] takes.
+	ID int64 `json:"id"`
 }
 
 // Release is a release of a repository on GitHub.
@@ -115,6 +114,23 @@ func (c *Client) Releases(ctx context.Context, repo string) ([]Release, error) {
 	return published, nil
 }
 
+// Drafts returns the draft releases of repo, as owner/name, in the order of the API. The API lists
+// the newest release first. A token sees the drafts of a repository only with write access to its
+// contents. It returns the errors of [Client.Releases].
+func (c *Client) Drafts(ctx context.Context, repo string) ([]Release, error) {
+	all, err := c.releases(ctx, repo)
+	if err != nil {
+		return nil, err
+	}
+	drafts := make([]Release, 0, len(all))
+	for _, r := range all {
+		if r.Draft {
+			drafts = append(drafts, r)
+		}
+	}
+	return drafts, nil
+}
+
 // ReleaseOf returns the release of the tag of repo, a draft included, and reports whether repo has
 // one. A token sees the drafts of a repository only with write access to its contents. It returns
 // the errors of [Client.Releases].
@@ -141,8 +157,23 @@ func (c *Client) UploadAsset(ctx context.Context, r *Release, path string) error
 	}
 	address, _, _ := strings.Cut(r.UploadURL, uploadOptions)
 	address += "?name=" + url.QueryEscape(filepath.Base(path))
-	_, err = c.send(ctx, http.MethodPost, address, bytes.NewReader(data), assetType, nil, nil)
+	_, err = c.send(ctx, http.MethodPost, address, bytes.NewReader(data), binaryType, nil, nil)
 	return err
+}
+
+// DownloadAsset returns the content of the asset id of repo. The asset may belong to a draft. It
+// requests the asset from the API with the media type application/octet-stream. GitHub responds
+// with the content or with a redirect to its storage. The client of Go does not send the token on
+// a redirect to a domain other than the domain of the API. It returns an error that wraps
+// [ErrGitHub] for a request that fails, such as for an asset that does not exist, and for content
+// of more than 10 MiB.
+func (c *Client) DownloadAsset(ctx context.Context, repo string, id int64) ([]byte, error) {
+	var data []byte
+	path := "/repos/" + repo + "/releases/assets/" + strconv.FormatInt(id, 10)
+	if _, err := c.rest(ctx, http.MethodGet, path, nil, &data); err != nil {
+		return nil, err
+	}
+	return data, nil
 }
 
 // Publish publishes the draft release id of repo. It returns an error that wraps [ErrGitHub] for a

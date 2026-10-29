@@ -6,9 +6,11 @@ package release_test
 import (
 	"cmp"
 	"context"
+	"encoding/json"
 	"errors"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -59,10 +61,13 @@ type released struct {
 
 	// prerelease reports that the release is a pre-release.
 	prerelease bool
+
+	// draft reports that the release remains a draft.
+	draft bool
 }
 
-// releaser is a [release.Releaser] that has the tags of tags, and records each release and each
-// Finish. Tag returns failTag, and Release failRelease.
+// releaser is a [release.Releaser] that has the tags of tags, and records each release, each draft
+// and each Finish. Tag returns failTag, and Release and Draft return failRelease.
 type releaser struct {
 	// failTag is the error of Tag, or nil.
 	failTag error
@@ -90,16 +95,24 @@ func (r *releaser) Tag(_ context.Context, name string) (string, bool, error) {
 
 // Release records the release of the tag name, with the base names of its assets.
 func (r *releaser) Release(_ context.Context, name, commit, notes string, prerelease bool, assets []string) error {
+	return r.record(released{name: name, commit: commit, notes: notes, prerelease: prerelease}, assets)
+}
+
+// Draft records the release of the tag name as a draft, with the base names of its assets.
+func (r *releaser) Draft(_ context.Context, name, commit, notes string, prerelease bool, assets []string) error {
+	return r.record(released{name: name, commit: commit, notes: notes, prerelease: prerelease, draft: true}, assets)
+}
+
+// record appends rel with the base names of assets to the releases of r, and returns failRelease
+// in place of the record.
+func (r *releaser) record(rel released, assets []string) error {
 	if r.failRelease != nil {
 		return r.failRelease
 	}
-	var names []string
 	for _, a := range assets {
-		names = append(names, filepath.Base(a))
+		rel.assets = append(rel.assets, filepath.Base(a))
 	}
-	r.releases = append(r.releases, released{
-		name: name, commit: commit, notes: notes, assets: names, prerelease: prerelease,
-	})
+	r.releases = append(r.releases, rel)
 	return nil
 }
 
@@ -198,6 +211,17 @@ func (f *tagForge) Publish(_ context.Context, repo string, id int64) error {
 func TestPublish(t *testing.T) {
 	t.Parallel()
 
+	t.Run("Published", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("encodes the name and the version of a draft alone", func(t *testing.T) {
+			t.Parallel()
+			got, err := json.Marshal(release.Published{Name: "pkg-a", Version: "1.0.0", Draft: true})
+			assert.NoError(t, err, "Marshal")
+			assert.Equal(t, string(got), `{"name":"pkg-a","version":"1.0.0"}`, "the JSON")
+		})
+	})
+
 	t.Run("Publish", func(t *testing.T) {
 		t.Parallel()
 
@@ -265,6 +289,38 @@ func TestPublish(t *testing.T) {
 			assert.NoError(t, err, "Publish")
 			want := []released{{name: "pkg-a@1.0.0", commit: commitA, assets: []string{"checksums.txt"}}}
 			assert.Equal(t, r.releases, want, "the releases")
+		})
+
+		t.Run("leaves the release of a tag with a file of drafts as a draft", func(t *testing.T) {
+			t.Parallel()
+			s, plan := publishable(t)
+			dir := files.Workspace(t, files.Tree{
+				path.Join(language.AssetsDir, "pkg-a@1.0.0", "pkg-a_1.0.0_SHA256SUMS"): files.Text("sums\n"),
+				path.Join(language.DraftsDir, "pkg-a@1.0.0"):                           files.Text(""),
+			})
+			r := &releaser{}
+			got, err := release.Publish(t.Context(), t.TempDir(), s.graph(t), plan, commitA, dir, r)
+			assert.NoError(t, err, "Publish")
+			assert.Equal(t, got, []release.Published{
+				{Name: "pkg-a", Version: "1.0.0", Draft: true},
+				{Name: "pkg-b", Version: "2.0.0-rc.1"},
+			}, "the released packages")
+			assert.Equal(t, r.releases, []released{
+				{name: "pkg-a@1.0.0", commit: commitA, assets: []string{"pkg-a_1.0.0_SHA256SUMS"}, draft: true},
+				{name: "pkg-b@2.0.0-rc.1", commit: commitA, prerelease: true},
+			}, "the releases")
+		})
+
+		t.Run("returns the error of a draft that it cannot read", func(t *testing.T) {
+			t.Parallel()
+			if runtime.GOOS == "windows" {
+				t.Skip("Windows does not deny the read of a directory by its mode")
+			}
+			s, plan := publishable(t)
+			dir := files.Workspace(t, files.Tree{language.DraftsDir: files.Dir().WithMode(0o000)})
+			_, err := release.Publish(t.Context(), t.TempDir(), s.graph(t), plan, commitA, dir, &releaser{})
+			assert.HasError(t, err, "Publish")
+			assert.Contains(t, err.Error(), "read the draft of pkg-a@1.0.0", "the error")
 		})
 
 		t.Run("returns the error of assets that it cannot read", func(t *testing.T) {
@@ -458,6 +514,17 @@ func TestPublish(t *testing.T) {
 			assert.NoError(t, r.Finish(t.Context()), "Finish")
 		})
 
+		t.Run("returns ErrDraft for a draft and creates no tag", func(t *testing.T) {
+			t.Parallel()
+			root, _ := remoteRepository(t)
+			head := strings.TrimSpace(vcstest.Git(t, root, "rev-parse", "HEAD"))
+			r := &release.GitReleaser{Root: root, Remote: "origin"}
+			err := r.Draft(t.Context(), "v1.0.0", head, "notes", false, []string{"SHA256SUMS"})
+			assert.ErrorIs(t, err, release.ErrDraft, "Draft")
+			assert.NoError(t, r.Finish(t.Context()), "Finish")
+			assert.Empty(t, vcstest.Git(t, root, "tag", "--list"), "the tags of the repository")
+		})
+
 		t.Run("returns the commit of a tag of the repository", func(t *testing.T) {
 			t.Parallel()
 			root, _ := remoteRepository(t)
@@ -537,6 +604,29 @@ func TestPublish(t *testing.T) {
 					"publish o/r 7",
 				}, "the calls")
 			})
+
+		t.Run("creates the tag, then the draft, then its assets, and publishes nothing for a draft",
+			func(t *testing.T) {
+				t.Parallel()
+				f := &tagForge{}
+				r := release.ForgeReleaser{Forge: f, Repo: "o/r"}
+				assets := []string{"demo_1.0.0_SHA256SUMS", "demo_1.0.0_linux_amd64.zip"}
+				assert.NoError(t, r.Draft(t.Context(), "v1.0.0", commitA, "notes", false, assets), "Draft")
+				assert.Equal(t, f.calls, []string{
+					"tag o/r v1.0.0 " + commitA,
+					"draft o/r v1.0.0 notes",
+					"upload v1.0.0 demo_1.0.0_SHA256SUMS",
+					"upload v1.0.0 demo_1.0.0_linux_amd64.zip",
+				}, "the calls")
+			})
+
+		t.Run("returns the error of an upload of a draft", func(t *testing.T) {
+			t.Parallel()
+			f := &tagForge{failUpload: errRelease}
+			r := release.ForgeReleaser{Forge: f, Repo: "o/r"}
+			err := r.Draft(t.Context(), "v1.0.0", commitA, "notes", false, []string{"demo_1.0.0_SHA256SUMS"})
+			assert.ErrorIs(t, err, errRelease, "Draft")
+		})
 
 		t.Run("completes the draft of an earlier publish with the assets that it lacks", func(t *testing.T) {
 			t.Parallel()

@@ -38,6 +38,10 @@ const (
 	// jsonType is the media type of the body of a request of the API.
 	jsonType = "application/json"
 
+	// binaryType is the media type of a response that a request reads as its bytes, such as the
+	// content of a release asset.
+	binaryType = "application/octet-stream"
+
 	// userAgent names ergon in each request, which GitHub requires.
 	userAgent = "ergon"
 )
@@ -115,10 +119,11 @@ func (c *Client) Server() string {
 }
 
 // rest sends a request of method to path of the REST API, with in as its JSON body when in is not
-// nil, and decodes the JSON of a response into out when out is not nil. It returns the status of
-// the response. It returns an error that wraps [ErrGitHub] for a status outside 2xx, except for
-// the statuses of allowed, with the message of GitHub, and for a response of more than 10 MiB. It
-// also returns the error of the request and of the decode.
+// nil. It decodes the JSON of a response into out when out is not nil, and copies the body of a
+// response into an out of the type *[]byte, for which the request accepts application/octet-stream.
+// It returns the status of the response. It returns an error that wraps [ErrGitHub] for a status
+// outside 2xx, except for the statuses of allowed, with the message of GitHub, and for a response
+// of more than 10 MiB. It also returns the error of the request and of the decode.
 func (c *Client) rest(ctx context.Context, method, path string, in, out any, allowed ...int) (int, error) {
 	if in == nil {
 		return c.send(ctx, method, c.config.API+path, nil, "", out, allowed)
@@ -164,7 +169,7 @@ func (c *Client) graphql(ctx context.Context, query string, variables map[string
 }
 
 // send sends a request of method to address with body of the media type contentType, and decodes
-// the JSON of a response into out when out is not nil, as rest states. A body is nil or a
+// the JSON of a response into out or copies its body into out, as rest states. A body is nil or a
 // *bytes.Reader, whose length the request states.
 func (c *Client) send(
 	ctx context.Context, method, address string, body io.Reader, contentType string, out any, allowed []int,
@@ -173,7 +178,12 @@ func (c *Client) send(
 	if err != nil {
 		return 0, fmt.Errorf("forge: %s %s: %w", method, address, err)
 	}
-	req.Header.Set("Accept", mediaType)
+	raw, binary := out.(*[]byte)
+	if binary {
+		req.Header.Set("Accept", binaryType)
+	} else {
+		req.Header.Set("Accept", mediaType)
+	}
 	req.Header.Set("Authorization", "Bearer "+c.config.Token)
 	req.Header.Set("X-GitHub-Api-Version", apiVersion)
 	req.Header.Set("User-Agent", userAgent)
@@ -211,6 +221,10 @@ func (c *Client) send(
 			resp.Status,
 			refusal.Message,
 		)
+	}
+	if binary {
+		*raw = data
+		return resp.StatusCode, nil
 	}
 	if out != nil && len(data) > 0 {
 		if err := json.Unmarshal(data, out); err != nil {

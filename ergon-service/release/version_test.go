@@ -6,6 +6,7 @@ package release_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io/fs"
 	"maps"
 	"os"
@@ -104,11 +105,22 @@ func (unrewritable) Rewrite(string, version.Version) (string, error) {
 	return "", errRewrite
 }
 
-// TestMain runs the tests without the variables and the configuration of git of the environment,
-// so that git reads the repositories of the tests alone.
+// TestMain acts as the fake gpg of gpgMain when the name of the test binary is gpg. Otherwise it runs
+// the tests without the variables and the configuration of git of the environment, so that git
+// reads the repositories of the tests alone, and with the fake gpg first on the PATH.
 func TestMain(m *testing.M) {
+	if status, faked := gpgMain(os.Args); faked {
+		os.Exit(status)
+	}
 	vcstest.Isolate()
-	os.Exit(m.Run())
+	dir, err := installGPG()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "release_test: the fake gpg does not install:", err)
+		os.Exit(2)
+	}
+	status := m.Run()
+	_ = os.RemoveAll(dir)
+	os.Exit(status)
 }
 
 func TestVersion(t *testing.T) {
