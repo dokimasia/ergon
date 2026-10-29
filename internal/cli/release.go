@@ -151,11 +151,13 @@ changelog as the notes. On a workstation it creates annotated tags and pushes
 them to origin in one push. In GitHub Actions it creates the tags and the
 GitHub Releases through the API of GitHub: each release as a draft, then its
 assets from assets/<tag>/ of --from-pack-dir, and then the publish of the
-draft. A run after a failed upload completes the draft. A release with the file
-drafts/<tag> in --from-pack-dir remains a draft, which ergon release sign signs
-and publishes. It refuses a plan whose lockfiles record other content of its
-packages than the working tree, and on a workstation a release with assets.
---no-git-tag creates no tag.`
+draft. In a repository with a package at its root, only the release of that
+package becomes the latest release, and a prerelease never does. A run after a
+failed upload completes the draft. A release with the file drafts/<tag> in
+--from-pack-dir remains a draft, which ergon release sign signs and publishes.
+It refuses a plan whose lockfiles record other content of its packages than
+the working tree, and on a workstation a release with assets. --no-git-tag
+creates no tag.`
 
 	signHelp = `Sign and publish the drafts of the providers of the Terraform Registry.
 
@@ -168,7 +170,9 @@ checksums against the release workflow of the base branch at the commit of the
 tag, and ergon release sign checks the digest of each asset of the draft
 against the checksums. The gpg of the PATH then signs the checksums with the key
 of the fingerprint --key, and the agent of gpg asks for the PIN of the key.
-ergon release sign checks the signature, uploads it and publishes the draft.
+ergon release sign checks the signature, uploads it and publishes the draft as
+the latest release, unless it is a prerelease. It completes the drafts in
+ascending order of their versions, so the newest becomes the latest release.
 GITHUB_TOKEN needs write access to the contents of the repository, and the
 Terraform Registry accepts a key of the type RSA or DSA.
 
@@ -334,7 +338,7 @@ func (untagged) Tag(context.Context, string) (string, bool, error) {
 }
 
 // Release creates nothing, and attaches no asset.
-func (untagged) Release(context.Context, string, string, string, bool, []string) error {
+func (untagged) Release(context.Context, string, string, string, bool, []string, forge.Latest) error {
 	return nil
 }
 
