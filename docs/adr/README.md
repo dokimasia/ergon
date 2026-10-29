@@ -79,3 +79,4 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 | [0068](0068-terraform-docs-in-the-step-generate.md) | The step generate of Terraform writes the tables of the modules with terraform-docs | Accepted |
 | [0069](0069-terraform-repository-as-one-package.md) | ergon release releases a repository of Terraform as one package | Accepted |
 | [0070](0070-providers-signed-on-a-workstation.md) | A release of a Terraform provider remains a draft until a maintainer signs it on a workstation | Accepted |
+| [0071](0071-latest-release-of-the-root-package.md) | A publish marks the release of the root package as the latest release of GitHub | Accepted |
