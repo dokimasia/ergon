@@ -1,5 +1,17 @@
 # go.dokimi.dev/ergon/lang/go
 
+## 0.13.0
+
+### Minor Changes
+
+- 88e6aa2: Copy the binary of each command and platform into `binaries/<tag>/` of the pack in `release.Packer.Pack`.
+
+### Patch Changes
+
+- Updated dependencies [199d84c, 679728c]
+  - go.dokimi.dev/ergon/core@0.19.0
+  - go.dokimi.dev/ergon/service@0.24.0
+
 ## 0.12.0
 
 ### Minor Changes

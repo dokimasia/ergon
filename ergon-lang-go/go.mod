@@ -7,8 +7,8 @@ go 1.27.3
 
 require (
 	go.dokimi.dev/assert v0.3.0
-	go.dokimi.dev/ergon/core v0.18.0
-	go.dokimi.dev/ergon/service v0.23.0
+	go.dokimi.dev/ergon/core v0.19.0
+	go.dokimi.dev/ergon/service v0.24.0
 	go.yaml.in/yaml/v3 v3.0.5
 	golang.org/x/mod v0.41.0
 )
