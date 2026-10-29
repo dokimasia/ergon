@@ -94,6 +94,10 @@ const (
 	// CasksDir has the Homebrew casks of the release of each tag, as casks/<tag>/<name>.rb, which a
 	// release commits to its tap after the publish.
 	CasksDir = "casks"
+
+	// DraftsDir has an empty file for each tag whose release remains a draft after the publish, as
+	// drafts/<tag>, until a person publishes it, such as with ergon release sign.
+	DraftsDir = "drafts"
 )
 
 // Packer is the release role of a toolchain whose packages a registry receives as artifacts, such

@@ -137,6 +137,24 @@ func TestRelease(t *testing.T) {
 		})
 	})
 
+	// The directories of a pack directory pass from the job pack to the job publish of a release
+	// workflow as an artifact, so their names are pinned.
+	tests := []struct{ name, give, want string }{
+		{name: "AssetsDir", give: language.AssetsDir, want: "assets"},
+		{name: "CasksDir", give: language.CasksDir, want: "casks"},
+		{name: "DraftsDir", give: language.DraftsDir, want: "drafts"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			t.Run("is "+tt.want, func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, tt.give, tt.want, "the name of the directory")
+			})
+		})
+	}
+
 	t.Run("Packer", func(t *testing.T) {
 		t.Parallel()
 
