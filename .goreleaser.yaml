@@ -153,9 +153,9 @@ homebrew_casks:
       fish: completions/ergon.fish
     hooks:
       post:
-        install: |
-          if OS.mac?
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/ergon"]
+        install_steps: |
+          on_macos do
+            run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{ .StagedPath }}/ergon"], must_succeed: false
           end
     repository:
       owner: dokimasia
