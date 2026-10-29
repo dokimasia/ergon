@@ -68,6 +68,18 @@ const remote = "origin"
 // outputPerm is the mode of a file that a release command writes, before the umask.
 const outputPerm fs.FileMode = 0o644
 
+// signaturesPerm is the mode of the directory of the signatures of ergon release sign, before the
+// umask.
+const signaturesPerm fs.FileMode = 0o755
+
+// The fingerprint of a GPG key has 40 hexadecimal digits for a key of version 4 and 64 for a key of
+// version 6. Its letters may be uppercase or lowercase.
+const (
+	v4Fingerprint     = 40
+	v6Fingerprint     = 64
+	fingerprintDigits = "0123456789abcdefABCDEF"
+)
+
 // uncoveredHint follows the packages that ergon release status reports as changed without a
 // changeset.
 const uncoveredHint = "add a changeset with ergon release add, or with --empty for a change that releases nothing"
@@ -139,9 +151,30 @@ changelog as the notes. On a workstation it creates annotated tags and pushes
 them to origin in one push. In GitHub Actions it creates the tags and the
 GitHub Releases through the API of GitHub: each release as a draft, then its
 assets from assets/<tag>/ of --from-pack-dir, and then the publish of the
-draft. A run after a failed upload completes the draft. It refuses a plan whose
-lockfiles record other content of its packages than the working tree, and on a
-workstation a release with assets. --no-git-tag creates no tag.`
+draft. A run after a failed upload completes the draft. A release with the file
+drafts/<tag> in --from-pack-dir remains a draft, which ergon release sign signs
+and publishes. It refuses a plan whose lockfiles record other content of its
+packages than the working tree, and on a workstation a release with assets.
+--no-git-tag creates no tag.`
+
+	signHelp = `Sign and publish the drafts of the providers of the Terraform Registry.
+
+ergon release sign completes each draft release of the repository of
+GITHUB_REPOSITORY that waits for a signature, or each draft of --tag. A draft
+waits for a signature when its tag is v<version> and it has the checksums
+<name>_<version>_SHA256SUMS, which ergon release publish leaves for a provider
+of the Terraform Registry. The cosign of the section go checks the bundle of the
+checksums against the release workflow of the base branch at the commit of the
+tag, and ergon release sign checks the digest of each asset of the draft
+against the checksums. The gpg of the PATH then signs the checksums with the key
+of the fingerprint --key, and the agent of gpg asks for the PIN of the key.
+ergon release sign checks the signature, uploads it and publishes the draft.
+GITHUB_TOKEN needs write access to the contents of the repository, and the
+Terraform Registry accepts a key of the type RSA or DSA.
+
+Example:
+  GITHUB_REPOSITORY=example/terraform-provider-demo GITHUB_TOKEN="$(gh auth token)" \
+    ergon release sign --key 0123456789ABCDEF0123456789ABCDEF01234567`
 
 	gitTagHelp = `Tag the packages whose tags are missing.
 
@@ -249,6 +282,12 @@ type publishOptions struct {
 	NoGitTag        bool   `help:"Do not create a tag."`
 }
 
+// signOptions are the options of ergon release sign.
+type signOptions struct {
+	Key  string   `help:"Fingerprint of the GPG key that signs the checksums." required:""`
+	Tags []string `help:"Tag of a draft to sign, once for each draft." name:"tag"`
+}
+
 // ciVersionOptions are the options of ergon release ci version.
 type ciVersionOptions struct {
 	// Title is the title of the version pull request and the message of its commits. The default is
@@ -299,6 +338,11 @@ func (untagged) Release(context.Context, string, string, string, bool, []string)
 	return nil
 }
 
+// Draft does not create a release or attach an asset.
+func (untagged) Draft(context.Context, string, string, string, bool, []string) error {
+	return nil
+}
+
 // Finish does nothing.
 func (untagged) Finish(context.Context) error {
 	return nil
@@ -314,6 +358,7 @@ func (s *session) releaseCommands(app *gocli.App[noOptions]) {
 	parent.Command("publish-plan", publishPlanHelp, s.releasePublishPlan)
 	parent.Command("pack", packHelp, s.releasePack)
 	parent.Command("publish", publishHelp, s.releasePublish)
+	parent.Command("sign", signHelp, s.releaseSign)
 	parent.Command("git-tag", gitTagHelp, s.releaseGitTag)
 	ci := parent.Command[noOptions]("ci", ciHelp, nil)
 	ci.Command("select-mode", selectModeHelp, s.releaseSelectMode)
@@ -450,6 +495,65 @@ func (s *session) releasePublish(ctx context.Context, run *gocli.Run[noOptions, 
 		return err
 	}
 	return s.publish(ctx, r, &plan, s.path(o.FromPackDir), o.Output, releaser)
+}
+
+// releaseSign completes the drafts of the repository of GITHUB_REPOSITORY that wait for a signature,
+// or the drafts of --tag, with [release.Sign]. The cosign of the section go checks the checksums of
+// each draft, and the gpg of the PATH signs them with the key of --key on the terminal of s. The
+// base branch is the one of .changeset/config.json. The downloads and the signatures are in a
+// directory under ergon/signatures in the cache directory of the user, which releaseSign removes
+// afterwards. It writes a line of each release that it published, and a line when no draft waits
+// for a signature. It returns a [usageError] for a --key that is not the fingerprint of a GPG key,
+// and the errors of the client, of the configuration, of the directory and of Sign.
+func (s *session) releaseSign(ctx context.Context, run *gocli.Run[noOptions, signOptions]) error {
+	o := run.Config()
+	if n := len(o.Key); (n != v4Fingerprint && n != v6Fingerprint) || strings.Trim(o.Key, fingerprintDigits) != "" {
+		return usageError{err: fmt.Errorf("cli: --key %q, which is not the fingerprint of a GPG key", o.Key)}
+	}
+	client, repo, err := s.forge()
+	if err != nil {
+		return err
+	}
+	data, err := os.ReadFile(filepath.Join(s.root(), filepath.FromSlash(release.ConfigPath)))
+	if err != nil {
+		return fmt.Errorf("cli: read %s, which ergon init seeds: %w", release.ConfigPath, err)
+	}
+	branch, err := release.ParseBaseBranch(data)
+	if err != nil {
+		return err
+	}
+	cache, err := s.cacheDir()
+	if err != nil {
+		return fmt.Errorf("cli: find the cache directory: %w", err)
+	}
+	signatures := filepath.Join(cache, program, "signatures")
+	var dir string
+	err = os.MkdirAll(signatures, signaturesPerm)
+	if err == nil {
+		dir, err = os.MkdirTemp(signatures, "sign-")
+	}
+	if err != nil {
+		return fmt.Errorf("cli: create the directory of the signatures: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(dir) }()
+	published, err := release.Sign(ctx, &release.Signing{
+		Forge:   client,
+		Witness: release.Cosign{Run: s.cosign},
+		Signer:  release.GPG{Terminal: vcs.Terminal{Stdin: s.stdin, Stderr: s.stderr}},
+		Repo:    repo,
+		Server:  client.Server(),
+		Branch:  branch,
+		Key:     o.Key,
+		Dir:     dir,
+		Tags:    o.Tags,
+	})
+	for _, tag := range published {
+		fmt.Fprintf(s.stdout, "published %s\n", tag)
+	}
+	if err == nil && len(published) == 0 {
+		fmt.Fprintln(s.stdout, "no draft waits for a signature")
+	}
+	return err
 }
 
 // releaseGitTag tags each package of the publish plan of the repository with the git of the
@@ -792,8 +896,9 @@ func (s *session) version(ctx context.Context, r *releaseRepository, plan *relea
 }
 
 // publish publishes plan from the repository r at HEAD with releaser and the artifacts of packDir.
-// It writes a line of each released package, the outputs published and published-packages, and the
-// JSON of the released packages into output when it is not empty.
+// It writes a line of each released package, with a note on ergon release sign for a release that
+// remains a draft. It also writes the outputs published and published-packages, and the JSON of the
+// released packages into output when output is not empty.
 func (s *session) publish(
 	ctx context.Context, r *releaseRepository, plan *release.PublishPlan, packDir, output string,
 	releaser release.Releaser,
@@ -804,6 +909,10 @@ func (s *session) publish(
 	}
 	released, err := release.Publish(ctx, r.root, r.graph, plan, head, packDir, releaser)
 	for _, p := range released {
+		if p.Draft {
+			fmt.Fprintf(s.stdout, "released %s@%s as a draft for ergon release sign\n", p.Name, p.Version)
+			continue
+		}
 		fmt.Fprintf(s.stdout, "released %s@%s\n", p.Name, p.Version)
 	}
 	// A list of packages encodes, and a list of none encodes as [], as changesets/action writes it.

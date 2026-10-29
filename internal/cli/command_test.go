@@ -79,12 +79,15 @@ func (f fixed) Templates() fs.FS {
 	return fstest.MapFS(f)
 }
 
-// TestMain acts as a fake program when fakeEnv is set, as [fake] states. Otherwise it isolates git
-// from the configuration of the user, puts the fake npx and pnpm first on the PATH of the process,
-// from which exec resolves a program, and runs the tests.
+// TestMain runs [fake] when fakeEnv is set, and [fakeGPG] when the base name of its path is gpgFake.
+// Otherwise it isolates git from the configuration of the user, puts the fake npx, pnpm and gpg
+// first on the PATH of the process, from which exec resolves a program, and runs the tests.
 func TestMain(m *testing.M) {
 	if os.Getenv(fakeEnv) != "" {
 		os.Exit(fake(os.Args, os.Stdin, os.Stdout))
+	}
+	if strings.TrimSuffix(filepath.Base(os.Args[0]), ".exe") == gpgFake {
+		os.Exit(fakeGPG(os.Args[1:], os.Stdout))
 	}
 	vcstest.Isolate()
 	self, err := os.Executable()
@@ -94,7 +97,7 @@ func TestMain(m *testing.M) {
 	}
 	dir, err2 := os.MkdirTemp("", "ergon-cli-fakes-")
 	var err3 error
-	for _, name := range []string{"npx", "pnpm"} {
+	for _, name := range []string{"npx", "pnpm", gpgFake} {
 		binary := filepath.Join(dir, name)
 		if runtime.GOOS == "windows" {
 			binary += ".exe"
@@ -102,7 +105,7 @@ func TestMain(m *testing.M) {
 		err3 = errors.Join(err3, os.WriteFile(binary, content, 0o755))
 	}
 	if joined := errors.Join(err, err2, err3); joined != nil {
-		fmt.Fprintln(os.Stderr, "cli_test: the fakes of npx and pnpm do not install:", joined)
+		fmt.Fprintln(os.Stderr, "cli_test: the fakes of npx, pnpm and gpg do not install:", joined)
 		os.Exit(2)
 	}
 	_ = os.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))

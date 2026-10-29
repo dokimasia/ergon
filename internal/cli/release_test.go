@@ -4,15 +4,20 @@
 package cli_test
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"maps"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -22,6 +27,7 @@ import (
 	"go.dokimi.dev/assert/expect"
 	"go.dokimi.dev/assert/files"
 	"go.dokimi.dev/assert/golden"
+	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/internal/app"
 	"go.dokimi.dev/ergon/service/release"
 	"go.dokimi.dev/ergon/service/vcs/vcstest"
@@ -119,6 +125,7 @@ var releaseRuns = []clitest.Input{
 	{Args: []string{"release", "publish-plan", "--help"}},
 	{Args: []string{"release", "pack", "--help"}},
 	{Args: []string{"release", "publish", "--help"}},
+	{Args: []string{"release", "sign", "--help"}},
 	{Args: []string{"release", "git-tag", "--help"}},
 	{Args: []string{"release", "ci", "select-mode", "--help"}},
 	{Args: []string{"release", "ci", "skip", "--help"}},
@@ -129,10 +136,64 @@ var releaseRuns = []clitest.Input{
 	{Args: []string{"release", "add", "--bump", modulePath, "-m", "x"}},
 	{Args: []string{"release", "add", "--bump", modulePath + "=huge", "-m", "x"}},
 	{Args: []string{"release", "ci", "homebrew"}},
+	{Args: []string{"release", "sign"}},
+	{Args: []string{"release", "sign", "--key", "ABC123"}},
+	{Args: []string{"release", "sign", "--key", strings.Repeat("G", 40)}},
 }
 
 // tapRepo is the Homebrew tap of the release cases.
 const tapRepo = "o/homebrew-tap"
+
+// The names of the assets of the provider of the cases of ergon release sign at 1.2.0, and the
+// fingerprint of the key that signs them.
+const (
+	providerZip      = "terraform-provider-demo_1.2.0_linux_amd64.zip"
+	providerManifest = "terraform-provider-demo_1.2.0_manifest.json"
+	providerSums     = "terraform-provider-demo_1.2.0_SHA256SUMS"
+	providerKey      = "0123456789ABCDEF0123456789ABCDEF01234567"
+)
+
+// The identifiers of the assets of the draft of the provider.
+const (
+	zipAsset int64 = iota + 1
+	manifestAsset
+	sumsAsset
+	bundleAsset
+)
+
+// cosignIdentity are the flags of cosign verify-blob for the identity of the bundle of the provider.
+// The identity is the release workflow of hubRepo on GitHub on a push to main, with the issuer of
+// GitHub Actions, the repository and the commit hubCommit of the tag.
+const cosignIdentity = " --certificate-identity https://github.com/" + hubRepo +
+	"/.github/workflows/release.yml@refs/heads/main" +
+	" --certificate-oidc-issuer https://token.actions.githubusercontent.com" +
+	" --certificate-github-workflow-repository " + hubRepo + " --certificate-github-workflow-sha " + hubCommit + " "
+
+// gpgFake is the name of the fake gpg that TestMain puts first on the PATH.
+const gpgFake = "gpg"
+
+// The flags of gpg that the fake gpg reads, for the signature to verify, the file of a new signature
+// and the key that makes it.
+const (
+	verifyFlag = "--verify"
+	outputFlag = "--output"
+	userFlag   = "--local-user"
+)
+
+// gpgError is the exit status of gpg for an error.
+const gpgError = 2
+
+// signRequests are the requests of ergon release sign for the draft of the provider, in their order.
+// They read the drafts, the tag, the checksums and their bundle, and then they upload the signature
+// and publish the draft.
+var signRequests = []string{
+	"GET /repos/" + hubRepo + "/releases?per_page=30&page=1",
+	"GET /repos/" + hubRepo + "/git/ref/tags/v1.2.0",
+	"GET /repos/" + hubRepo + "/releases/assets/3",
+	"GET /repos/" + hubRepo + "/releases/assets/4",
+	"POST /uploads/7?name=" + providerSums + ".sig",
+	"PATCH /repos/" + hubRepo + "/releases/7",
+}
 
 // releaseVariables are the variables of GitHub Actions and of the editors that the release
 // commands read, which every release case sets to an empty value before its own.
@@ -330,6 +391,89 @@ func (h *hub) marks() []string {
 	return slices.Clone(h.statuses)
 }
 
+// signHub is a fake API of GitHub for the cases of ergon release sign. It has the repository
+// hubRepo with the draft 7 of the tag v1.2.0 of a provider at the commit hubCommit, whose assets are
+// a zip, the manifest, their checksums and the cosign bundle of the checksums. It serves the content of each
+// asset, takes the upload of the signature of the checksums and the publish of the draft, and records
+// each request and each upload. It is safe for concurrent use, as the goroutines of a server use it.
+type signHub struct {
+	// server is the address of the fake, which the upload URL of the draft names.
+	server string
+
+	// requests are the method and the path with the query of each request, in their order.
+	requests []string
+
+	// uploads are the bodies of the uploads, in their order.
+	uploads []string
+
+	// mu guards server, requests and uploads.
+	mu sync.Mutex
+}
+
+// ServeHTTP records the request and responds to it, with 404 for a request of no other route.
+func (h *signHub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	body, _ := io.ReadAll(r.Body)
+	call := r.Method + " " + r.URL.RequestURI()
+	h.mu.Lock()
+	h.requests = append(h.requests, call)
+	if call == signRequests[4] {
+		h.uploads = append(h.uploads, string(body))
+	}
+	server := h.server
+	h.mu.Unlock()
+	contents := providerContents()
+	asset, isAsset := strings.CutPrefix(r.URL.Path, "/repos/"+hubRepo+"/releases/assets/")
+	w.Header().Set("Content-Type", "application/json")
+	switch {
+	case call == signRequests[0]:
+		_, _ = io.WriteString(w, `[{"id":7,"tag_name":"v1.2.0","draft":true,"upload_url":"`+server+
+			`/uploads/7{?name,label}","assets":[`+
+			assetJSON(zipAsset, providerZip, contents)+","+
+			assetJSON(manifestAsset, providerManifest, contents)+","+
+			assetJSON(sumsAsset, providerSums, contents)+","+
+			assetJSON(bundleAsset, providerSums+".sigstore.json", contents)+"]}]")
+	case call == signRequests[1]:
+		_, _ = io.WriteString(w, `{"object":{"type":"commit","sha":"`+hubCommit+`"}}`)
+	case r.Method == http.MethodGet && isAsset:
+		id, _ := strconv.ParseInt(asset, 10, 64)
+		_, _ = io.WriteString(w, contents[id])
+	case call == signRequests[4]:
+		w.WriteHeader(http.StatusCreated)
+		_, _ = io.WriteString(w, "{}")
+	case call == signRequests[5]:
+		_, _ = io.WriteString(w, "{}")
+	default:
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = io.WriteString(w, `{"message":"Not Found"}`)
+	}
+}
+
+// start serves h for the test t, and returns the variables of GitHub Actions that point ergon
+// release sign at it, with a token and the repository hubRepo.
+func (h *signHub) start(t *testing.T) map[string]string {
+	t.Helper()
+	server := httptest.NewServer(h)
+	t.Cleanup(server.Close)
+	h.mu.Lock()
+	h.server = server.URL
+	h.mu.Unlock()
+	return map[string]string{"GITHUB_TOKEN": "token", "GITHUB_REPOSITORY": hubRepo, "GITHUB_API_URL": server.URL}
+}
+
+// calls returns the requests that h received, in their order.
+func (h *signHub) calls() []string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return slices.Clone(h.requests)
+}
+
+// uploaded returns the bodies of the uploads that h received, in their order.
+func (h *signHub) uploaded() []string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return slices.Clone(h.uploads)
+}
+
 func TestRelease(t *testing.T) {
 	t.Parallel()
 
@@ -471,6 +615,11 @@ func TestRelease(t *testing.T) {
 			{
 				name: "publish returns 1 for a repository without .changeset/config.json",
 				args: []string{"release", "publish"},
+			},
+			{
+				name: "sign returns 1 for a repository without .changeset/config.json",
+				args: []string{"release", "sign", "--key", providerKey},
+				env:  map[string]string{"GITHUB_REPOSITORY": hubRepo, "GITHUB_TOKEN": "token"},
 			},
 			{
 				name: "git-tag returns 1 for a repository without .changeset/config.json",
@@ -854,6 +1003,16 @@ func TestRelease(t *testing.T) {
 			assert.Empty(t, vcstest.Git(t, dir, "tag", "--list"), "the tags")
 		})
 
+		t.Run("publish writes a release with a file of drafts as a draft", func(t *testing.T) {
+			t.Parallel()
+			pack := files.Workspace(t, files.Tree{path.Join(language.DraftsDir, "v1.0.0"): files.Text("")})
+			status, stdout, stderr := runRelease(t, goModule(t, gitConfig, nil), nil, "release", "publish",
+				"--no-git-tag", "--from-pack-dir", pack)
+			assert.Equal(t, status, statusOK, "the exit status: "+stderr)
+			assert.Equal(t, stdout, "released "+modulePath+"@1.0.0 as a draft for ergon release sign\n",
+				"the standard output")
+		})
+
 		t.Run("publish writes the outputs published and published-packages", func(t *testing.T) {
 			t.Parallel()
 			output := filepath.Join(t.TempDir(), "output")
@@ -1005,6 +1164,107 @@ func TestRelease(t *testing.T) {
 			assert.Equal(t, status, statusFailure, "the exit status")
 			assert.Equal(t, stdout, "released "+modulePath+"@1.0.0\n", "the standard output")
 			assert.HasPrefix(t, stderr, "ergon: cli: write the output published: ", "the standard error")
+		})
+
+		t.Run("sign publishes the drafts that wait for a signature", func(t *testing.T) {
+			t.Parallel()
+			cache := t.TempDir()
+			h := &signHub{}
+			status, stdout, stderr := runSign(t, goRepository(t, cache), cache, h.start(t))
+			assert.Equal(t, status, statusOK, "the exit status: "+stderr)
+			signatures := filepath.Join(cache, "ergon", "signatures")
+			bundle := "cosign-" + native.OS() + "-" + native.Arch() + " verify-blob --bundle " +
+				filepath.Join(signatures, "sign-")
+			expect.That(t, stdout).
+				HasPrefix(bundle, "the bundle that cosign verifies in the directory of the signatures").
+				Contains(cosignIdentity, "the identity of the release workflow at the commit of the tag").
+				HasSuffix(providerSums+"\npublished v1.2.0\n", "the checksums that cosign verifies, and the release")
+			assert.Equal(t, h.calls(), signRequests, "the requests to GitHub")
+			assert.Equal(t, h.uploaded(), []string{providerKey}, "the signature, which the fake gpg made of the key")
+			files.Equal(t, os.DirFS(signatures), files.Tree{}, "the directory of the signatures after the run")
+		})
+
+		t.Run("sign returns 1 for a bundle that cosign rejects", func(t *testing.T) {
+			t.Parallel()
+			cache := t.TempDir()
+			h := &signHub{}
+			env := h.start(t)
+			env[fakeExitEnv] = "1"
+			status, _, stderr := runSign(t, goRepository(t, cache), cache, env)
+			assert.Equal(t, status, statusFailure, "the exit status")
+			assert.Equal(t, stderr, "ergon: release: verification failed: cosign verify-blob of "+providerSums+
+				" exited with 1\n", "the standard error")
+			assert.Equal(t, h.calls(), signRequests[:4], "the requests to GitHub, which upload and publish nothing")
+		})
+
+		t.Run("sign writes that no draft waits for a signature", func(t *testing.T) {
+			t.Parallel()
+			h := &hub{}
+			status, stdout, stderr := runSign(t, goModule(t, gitConfig, nil), t.TempDir(), h.start(t))
+			assert.Equal(t, status, statusOK, "the exit status: "+stderr)
+			assert.Equal(t, stdout, "no draft waits for a signature\n", "the standard output")
+			assert.Equal(t, h.calls(), signRequests[:1], "the requests to GitHub")
+		})
+
+		t.Run("sign returns 1 for a --tag without a draft that waits for a signature", func(t *testing.T) {
+			t.Parallel()
+			h := &signHub{}
+			status, stdout, stderr := runSign(t, goModule(t, gitConfig, nil), t.TempDir(), h.start(t),
+				"--tag", "v1.0.0")
+			assert.Equal(t, status, statusFailure, "the exit status")
+			assert.Empty(t, stdout, "the standard output")
+			assert.Equal(t, stderr, "ergon: release: no draft waits for a signature: v1.0.0\n", "the standard error")
+			assert.Equal(t, h.calls(), signRequests[:1], "the requests to GitHub, which read the drafts alone")
+		})
+
+		t.Run("sign returns 1 for a repository without the section go", func(t *testing.T) {
+			t.Parallel()
+			h := &signHub{}
+			status, _, stderr := runSign(t, javascriptRepository(t), t.TempDir(), h.start(t))
+			assert.Equal(t, status, statusFailure, "the exit status")
+			assert.Equal(t, stderr, `ergon: baseline: no producer of the repository has the section: "go"`+"\n",
+				"the standard error")
+			assert.Equal(t, h.calls(), signRequests[:4], "the requests to GitHub, which upload and publish nothing")
+		})
+
+		t.Run("sign returns 1 without GITHUB_REPOSITORY", func(t *testing.T) {
+			t.Parallel()
+			dir := goModule(t, gitConfig, nil)
+			status, _, stderr := runRelease(t, dir, nil, "release", "sign", "--key", providerKey)
+			assert.Equal(t, status, statusFailure, "the exit status")
+			assert.Equal(t, stderr, "ergon: cli: set GITHUB_REPOSITORY to the repository on GitHub, as owner/name\n",
+				"the standard error")
+		})
+
+		t.Run("sign returns 1 for a .changeset/config.json that is not JSON", func(t *testing.T) {
+			t.Parallel()
+			env := map[string]string{"GITHUB_REPOSITORY": hubRepo, "GITHUB_TOKEN": "token"}
+			status, _, stderr := runRelease(t, goModule(t, "{\n", nil), env, "release", "sign", "--key", providerKey)
+			assert.Equal(t, status, statusFailure, "the exit status")
+			assert.HasPrefix(t, stderr, "ergon: release: invalid .changeset/config.json: ", "the standard error")
+		})
+
+		t.Run("sign returns 1 for a cache directory that cannot be found", func(t *testing.T) {
+			t.Parallel()
+			p := program(goModule(t, gitConfig, nil), app.Register)
+			cache := t.TempDir()
+			p.CacheDir = func() (string, error) { return cache, errCache }
+			res := clitest.Main(t.Context(), p.Main, &clitest.Input{
+				Args: []string{"release", "sign", "--key", providerKey},
+				Vars: releaseVars(map[string]string{"GITHUB_REPOSITORY": hubRepo, "GITHUB_TOKEN": "token"}),
+			})
+			assert.Equal(t, res.Status, statusFailure, "the exit status")
+			assert.Equal(t, res.Stderr, "ergon: cli: find the cache directory: "+errCache.Error()+"\n",
+				"the standard error")
+		})
+
+		t.Run("sign returns 1 for a directory of the signatures that it cannot create", func(t *testing.T) {
+			t.Parallel()
+			cache := files.Workspace(t, files.Tree{"ergon": files.Text("")})
+			env := map[string]string{"GITHUB_REPOSITORY": hubRepo, "GITHUB_TOKEN": "token"}
+			status, _, stderr := runSign(t, goModule(t, gitConfig, nil), cache, env)
+			assert.Equal(t, status, statusFailure, "the exit status")
+			assert.HasPrefix(t, stderr, "ergon: cli: create the directory of the signatures: ", "the standard error")
 		})
 
 		t.Run("git-tag tags the packages whose tags are missing and pushes the tags", func(t *testing.T) {
@@ -1600,4 +1860,94 @@ func releaseVars(env map[string]string) map[string]string {
 	}
 	maps.Copy(vars, env)
 	return vars
+}
+
+// runSign runs ergon release sign --key providerKey with the arguments args, the registration of
+// ergon and the cache directory cache in the working directory dir, with the variables of env. It
+// returns the exit status, the standard output and the standard error.
+func runSign(
+	t *testing.T, dir, cache string, env map[string]string, args ...string,
+) (status int, stdout, stderr string) {
+	t.Helper()
+	p := program(dir, app.Register)
+	p.CacheDir = func() (string, error) { return cache, nil }
+	res := clitest.Main(t.Context(), p.Main, &clitest.Input{
+		Args: slices.Concat([]string{"release", "sign", "--key", providerKey}, args),
+		Vars: releaseVars(env),
+	})
+	return res.Status, res.Stdout, res.Stderr
+}
+
+// goRepository returns a new repository after init new with Go and the answers of the cases. Its
+// .ergon.yaml gives cosign a digest for the platform of the test alone, and the tool directory of
+// the cache directory cache has a copy of the test binary as the program of that cosign, which acts
+// as the fake program.
+func goRepository(t *testing.T, cache string) string {
+	t.Helper()
+	dir := t.TempDir()
+	args := slices.Concat([]string{"init", "new", "--language", "go"}, required)
+	status, _, stderr := runWith(t, app.Register, dir, args...)
+	assert.Equal(t, status, statusOK, "the exit status of init new: "+stderr)
+	const digests = "    cosign:\n      sha256:\n"
+	before, after, found := strings.Cut(read(t, dir, ".ergon.yaml"), digests)
+	assert.True(t, found, "the digests of cosign in .ergon.yaml")
+	_, rest, found := strings.Cut(after, "      version: ")
+	assert.True(t, found, "the version of cosign in .ergon.yaml")
+	digest := strings.Repeat("ab", 32)
+	write(t, dir, ".ergon.yaml", before+digests+"        "+string(native)+": "+digest+"\n      version: "+rest)
+	pinned, _, _ := strings.Cut(rest, "\n")
+	name := "cosign-" + native.OS() + "-" + native.Arch()
+	if native.OS() == "windows" {
+		name += ".exe"
+	}
+	self, err := os.Executable()
+	assert.NoError(t, err, "the path of the test binary")
+	files.Write(t, cache, files.Tree{
+		path.Join("ergon", "tools", "release", "cosign", pinned, strings.ReplaceAll(string(native), "/", "-"),
+			digest, name): files.Executable(files.Read(t, self)),
+	})
+	return dir
+}
+
+// providerContents returns the content of each asset of the draft of the provider by its
+// identifier. The checksums list the zip and the manifest with their SHA-256.
+func providerContents() map[int64]string {
+	contents := map[int64]string{zipAsset: "the zip", manifestAsset: `{"version":1}`, bundleAsset: "the bundle"}
+	contents[sumsAsset] = sha256Of(contents[zipAsset]) + "  " + providerZip + "\n" +
+		sha256Of(contents[manifestAsset]) + "  " + providerManifest + "\n"
+	return contents
+}
+
+// assetJSON returns the JSON of the asset id named name of the draft, with the SHA-256 of its
+// content in contents.
+func assetJSON(id int64, name string, contents map[int64]string) string {
+	return `{"id":` + strconv.FormatInt(id, 10) + `,"name":"` + name + `","digest":"sha256:` +
+		sha256Of(contents[id]) + `"}`
+}
+
+// sha256Of returns the SHA-256 of content in lowercase hexadecimal.
+func sha256Of(content string) string {
+	sum := sha256.Sum256([]byte(content))
+	return hex.EncodeToString(sum[:])
+}
+
+// fakeGPG acts as gpg with the arguments args, as [release.GPG] passes them, and returns the exit
+// status of gpg. With --verify it writes the status line VALIDSIG of an RSA key to stdout, whose
+// fingerprint is the content of the signature. Otherwise it writes the key of --local-user as the
+// signature into the file of --output. It returns gpgError for a signature that it cannot read or
+// write.
+func fakeGPG(args []string, stdout io.Writer) int {
+	if i := slices.Index(args, verifyFlag); i >= 0 {
+		key, err := os.ReadFile(args[i+1])
+		if err != nil {
+			return gpgError
+		}
+		fmt.Fprintf(stdout, "[GNUPG:] VALIDSIG %s 2026-10-29 1793283600 0 4 0 1 10 00 %s\n", key, key)
+		return 0
+	}
+	output, user := slices.Index(args, outputFlag), slices.Index(args, userFlag)
+	if err := os.WriteFile(args[output+1], []byte(args[user+1]), 0o600); err != nil {
+		return gpgError
+	}
+	return 0
 }

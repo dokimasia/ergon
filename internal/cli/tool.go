@@ -24,6 +24,9 @@ import (
 // binary or of a jar, which a slow connection reaches for an asset of tens of megabytes.
 const downloadTimeout = 10 * time.Minute
 
+// cosignTool is the tool of the section go that checks the cosign bundles of ergon release sign.
+const cosignTool = "go.cosign"
+
 // The help texts of the tool commands. The first line of each is its summary in the list of the
 // commands of its parent.
 const (
@@ -138,6 +141,26 @@ func (s *session) toolPath(ctx context.Context, run *gocli.Run[noOptions, pathOp
 			return err
 		},
 	)
+}
+
+// cosign runs the cosign of the section go with args in the repository of the working directory of
+// s, as ergon tool run go.cosign does, and returns its exit status. It returns the errors of
+// [session.toolSection] without their [usageError]. A repository without the section go is no error
+// of the command line, so ergon release sign exits with the status of a failure for it.
+func (s *session) cosign(ctx context.Context, args []string) (int, error) {
+	var status int
+	err := s.toolSection(
+		cosignTool,
+		func(runner *tool.Runner, section string, options language.Options, name string) error {
+			var err error
+			status, err = runner.Run(ctx, section, options, name, args)
+			return err
+		},
+	)
+	if u, ok := errors.AsType[usageError](err); ok {
+		err = u.err
+	}
+	return status, err
 }
 
 // toolSection calls fn with the runner of s, and with the section, the options and the name of the

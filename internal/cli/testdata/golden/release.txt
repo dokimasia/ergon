@@ -17,6 +17,7 @@ Commands:
   publish-plan  Write the packages that a publish uploads or tags.
   pack          Build the artifacts of the packages of a publish plan.
   publish       Publish and tag the packages of a publish plan.
+  sign          Sign and publish the drafts of the providers of the Terraform Registry.
   git-tag       Tag the packages whose tags are missing.
   ci            Run the jobs of the release workflow.
 
@@ -45,6 +46,7 @@ Commands:
   publish-plan  Write the packages that a publish uploads or tags.
   pack          Build the artifacts of the packages of a publish plan.
   publish       Publish and tag the packages of a publish plan.
+  sign          Sign and publish the drafts of the providers of the Terraform Registry.
   git-tag       Tag the packages whose tags are missing.
   ci            Run the jobs of the release workflow.
 
@@ -222,15 +224,49 @@ changelog as the notes. On a workstation it creates annotated tags and pushes
 them to origin in one push. In GitHub Actions it creates the tags and the
 GitHub Releases through the API of GitHub: each release as a draft, then its
 assets from assets/<tag>/ of --from-pack-dir, and then the publish of the
-draft. A run after a failed upload completes the draft. It refuses a plan whose
-lockfiles record other content of its packages than the working tree, and on a
-workstation a release with assets. --no-git-tag creates no tag.
+draft. A run after a failed upload completes the draft. A release with the file
+drafts/<tag> in --from-pack-dir remains a draft, which ergon release sign signs
+and publishes. It refuses a plan whose lockfiles record other content of its
+packages than the working tree, and on a workstation a release with assets.
+--no-git-tag creates no tag.
 
 Options:
       --from-pack-dir string      Directory of the artifacts to upload.              default "dist", env ERGON_RELEASE_PUBLISH_FROM_PACK_DIR
       --from-publish-plan string  File that contains the publish plan.               env ERGON_RELEASE_PUBLISH_FROM_PUBLISH_PLAN
       --no-git-tag                Do not create a tag.                               env ERGON_RELEASE_PUBLISH_NO_GIT_TAG
       --output string             File that receives the released packages as JSON.  env ERGON_RELEASE_PUBLISH_OUTPUT
+
+Global options:
+      --flag-debug  Print the value and the source of each option before the command runs.  env ERGON_FLAG_DEBUG
+  -h, --help        Show the help.
+      --version     Show the version.
+[exit 0]
+
+$ ergon release sign --help
+Usage: ergon release sign [options]
+
+Sign and publish the drafts of the providers of the Terraform Registry.
+
+ergon release sign completes each draft release of the repository of
+GITHUB_REPOSITORY that waits for a signature, or each draft of --tag. A draft
+waits for a signature when its tag is v<version> and it has the checksums
+<name>_<version>_SHA256SUMS, which ergon release publish leaves for a provider
+of the Terraform Registry. The cosign of the section go checks the bundle of the
+checksums against the release workflow of the base branch at the commit of the
+tag, and ergon release sign checks the digest of each asset of the draft
+against the checksums. The gpg of the PATH then signs the checksums with the key
+of the fingerprint --key, and the agent of gpg asks for the PIN of the key.
+ergon release sign checks the signature, uploads it and publishes the draft.
+GITHUB_TOKEN needs write access to the contents of the repository, and the
+Terraform Registry accepts a key of the type RSA or DSA.
+
+Example:
+  GITHUB_REPOSITORY=example/terraform-provider-demo GITHUB_TOKEN="$(gh auth token)" \
+    ergon release sign --key 0123456789ABCDEF0123456789ABCDEF01234567
+
+Options:
+      --key string      Fingerprint of the GPG key that signs the checksums.  required, env ERGON_RELEASE_SIGN_KEY
+      --tag string,...  Tag of a draft to sign, once for each draft.          env ERGON_RELEASE_SIGN_TAG
 
 Global options:
       --flag-debug  Print the value and the source of each option before the command runs.  env ERGON_FLAG_DEBUG
@@ -384,4 +420,16 @@ ergon: cli: --bump "example.com/demo=huge", which is not <name>=<major|minor|pat
 
 $ ergon release ci homebrew
 ergon: release ci homebrew: missing --tap
+[exit 2]
+
+$ ergon release sign
+ergon: release sign: missing --key
+[exit 2]
+
+$ ergon release sign --key ABC123
+ergon: cli: --key "ABC123", which is not the fingerprint of a GPG key
+[exit 2]
+
+$ ergon release sign --key GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG
+ergon: cli: --key "GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG", which is not the fingerprint of a GPG key
 [exit 2]

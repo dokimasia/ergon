@@ -100,6 +100,15 @@ ergon release publishes these packages:
 
 The job publish of `release.yml` uploads through trusted publishing. Each project on pypi.org, each package on npmjs.com and each crate on crates.io needs a trusted publisher for the repository, the workflow `release.yml` and the environment `release`. npm and crates.io configure a trusted publisher only for a package that they already have, so publish the first version of a package by hand. Then rerun the failed job publish of that release. It skips the upload of a version that the registry has, and writes the tag and the release of the version. A trusted publisher of npm also has to allow `npm publish`. Cargo packages and publishes crates that require each other in one run from version 1.90, so such a workspace pins Cargo 1.90 or later in `rust-toolchain.toml`. [The roadmap](docs/roadmap/README.md) lists the releases of the other toolchains.
 
+A command of `go.binaries` in `.ergon.yaml` with `registry: terraform` is a provider of the Terraform Registry. Its release remains a draft after the publish. The draft has the zips of the provider, its manifest and the checksums `<name>_<version>_SHA256SUMS`, which cosign signs in the job pack. The Terraform Registry requires a GPG signature of the checksums, so you complete the draft on a workstation with your key:
+
+```sh
+GITHUB_REPOSITORY=example/terraform-provider-demo GITHUB_TOKEN="$(gh auth token)" \
+  ergon release sign --key 0123456789ABCDEF0123456789ABCDEF01234567
+```
+
+`ergon release sign` checks the cosign bundle of the checksums against the release workflow at the commit of the tag. It also checks the digest of each asset of the draft against the checksums. It then signs the checksums with gpg, uploads the signature and publishes the release, and the webhook of the Terraform Registry ingests the version. The Terraform Registry accepts a key of the type RSA or DSA.
+
 ## Documentation
 
 | Directory | Contents |
