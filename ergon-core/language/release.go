@@ -91,6 +91,11 @@ const (
 	// attaches to the release of the tag.
 	AssetsDir = "assets"
 
+	// BinariesDir has the binaries of the commands of the release of each tag, as
+	// binaries/<tag>/<target>/<binary>, which a release attests beside the assets. A publish does
+	// not attach them.
+	BinariesDir = "binaries"
+
 	// CasksDir has the Homebrew casks of the release of each tag, as casks/<tag>/<name>.rb, which a
 	// release commits to its tap after the publish.
 	CasksDir = "casks"

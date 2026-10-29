@@ -141,6 +141,7 @@ func TestRelease(t *testing.T) {
 	// workflow as an artifact, so their names are pinned.
 	tests := []struct{ name, give, want string }{
 		{name: "AssetsDir", give: language.AssetsDir, want: "assets"},
+		{name: "BinariesDir", give: language.BinariesDir, want: "binaries"},
 		{name: "CasksDir", give: language.CasksDir, want: "casks"},
 		{name: "DraftsDir", give: language.DraftsDir, want: "drafts"},
 	}
