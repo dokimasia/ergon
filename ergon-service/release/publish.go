@@ -21,6 +21,9 @@ import (
 	"go.dokimi.dev/ergon/service/vcs"
 )
 
+// rootDir is the [workspace.Package.Dir] of a package at the root of the repository.
+const rootDir = "."
+
 // ErrTag is the error for a tag of a release that the repository has at another commit.
 var ErrTag = errors.New("release: tag at another commit")
 
@@ -45,10 +48,13 @@ type Releaser interface {
 
 	// Release creates the tag name at commit, with notes, the section of the changelog of the
 	// release, as its annotation or as the notes of a release of the host, marked as a pre-release
-	// for prerelease, and with the files of assets as the assets of the release. It completes a
-	// release that an earlier publish left: it creates what the host lacks of the tag, the release
-	// and the assets, and publishes a draft.
-	Release(ctx context.Context, name, commit, notes string, prerelease bool, assets []string) error
+	// for prerelease, and with the files of assets as the assets of the release. The publish of the
+	// release on a host sets latest as the mark of the latest release. It completes a release that
+	// an earlier publish left: it creates what the host lacks of the tag, the release and the
+	// assets, and publishes a draft.
+	Release(
+		ctx context.Context, name, commit, notes string, prerelease bool, assets []string, latest forge.Latest,
+	) error
 
 	// Draft creates the tag name at commit and its release with notes and the files of assets, as
 	// Release does, and leaves the release as a draft. It completes a draft that an earlier publish
@@ -87,6 +93,10 @@ type Published struct {
 //     dir, so that a publish that runs again completes a release that an earlier one left.
 //   - It calls r.Draft in place of r.Release for an entry with the file drafts/<tag> in dir, whose
 //     release remains a draft, and marks the package as a Draft.
+//   - It passes [forge.LatestTrue] to r.Release for a release of the root package that is not a
+//     prerelease. The root package is the package whose directory is the root of the repository.
+//     It passes [forge.LatestFalse] for every other release of a repository with a root package,
+//     and [forge.LatestDefault] in a repository without one.
 //
 // A chunk starts after the tags of the chunk before it. Publish calls r.Finish once, after the last
 // tag or after an error. Each publisher receives root and dir, which is an absolute path.
@@ -151,11 +161,13 @@ func publish(
 				if err != nil {
 					return err
 				}
-				create := r.Release
+				prerelease := e.Version.Pre != ""
 				if drafted {
-					create = r.Draft
+					err = r.Draft(ctx, e.Tag, head, notes, prerelease, assets)
+				} else {
+					err = r.Release(ctx, e.Tag, head, notes, prerelease, assets, latestOf(g, p, e))
 				}
-				if err := create(ctx, e.Tag, head, notes, e.Version.Pre != "", assets); err != nil {
+				if err != nil {
 					return err
 				}
 			}
@@ -254,6 +266,18 @@ func draftOf(dir, tag string) (bool, error) {
 	return true, nil
 }
 
+// latestOf returns the mark of the latest release that [Publish] passes for the entry e. p is the
+// package of e, and g is the graph of p.
+func latestOf(g *Graph, p *workspace.Package, e *PublishEntry) forge.Latest {
+	switch {
+	case p.Dir == rootDir && e.Version.Pre == "":
+		return forge.LatestTrue
+	case slices.ContainsFunc(g.pkgs, func(q workspace.Package) bool { return q.Dir == rootDir }):
+		return forge.LatestFalse
+	}
+	return forge.LatestDefault
+}
+
 // GitReleaser releases through the git of a repository: annotated tags with the notes as their
 // annotation, which git signs when the configuration sets tag.gpgSign, pushed in one atomic push.
 // A tag of git has no assets, so a GitReleaser refuses a release with assets.
@@ -294,9 +318,12 @@ func (r *GitReleaser) Tag(ctx context.Context, name string) (string, bool, error
 }
 
 // Release creates the annotated tag name at commit, with notes as its annotation, or the name for
-// empty notes, with the terminal of r. It returns an error that wraps [ErrAssets] for a release
-// with assets, before it creates the tag, and the error of git, which wraps [vcs.ErrGit].
-func (r *GitReleaser) Release(ctx context.Context, name, commit, notes string, _ bool, assets []string) error {
+// empty notes, with the terminal of r. A tag of git has no mark of the latest release, so Release
+// does not read the last parameter. It returns an error that wraps [ErrAssets] for a release with
+// assets, before it creates the tag, and the error of git, which wraps [vcs.ErrGit].
+func (r *GitReleaser) Release(
+	ctx context.Context, name, commit, notes string, _ bool, assets []string, _ forge.Latest,
+) error {
 	if len(assets) > 0 {
 		return fmt.Errorf("%w: the release %s has %d assets, which a publish through release.yml attaches",
 			ErrAssets, name, len(assets))
@@ -344,8 +371,9 @@ type TagForge interface {
 	// UploadAsset uploads the file at path as an asset of the release r.
 	UploadAsset(ctx context.Context, r *forge.Release, path string) error
 
-	// Publish publishes the draft release id of repo.
-	Publish(ctx context.Context, repo string, id int64) error
+	// Publish publishes the draft release id of repo and sets latest as its mark of the latest
+	// release.
+	Publish(ctx context.Context, repo string, id int64, latest forge.Latest) error
 }
 
 // ForgeReleaser releases through the host of a repository, as changesets/action releases a package:
@@ -366,16 +394,17 @@ func (r ForgeReleaser) Tag(ctx context.Context, name string) (string, bool, erro
 	return r.Forge.Tag(ctx, r.Repo, name)
 }
 
-// Release releases the tag name at commit on the host as Draft does, and then publishes the draft.
-// It leaves a published release as it is. It returns the error of the host.
+// Release releases the tag name at commit on the host as Draft does, and then publishes the draft
+// with latest as the mark of the latest release. It leaves a published release as it is. It returns
+// the error of the host.
 func (r ForgeReleaser) Release(
-	ctx context.Context, name, commit, notes string, prerelease bool, assets []string,
+	ctx context.Context, name, commit, notes string, prerelease bool, assets []string, latest forge.Latest,
 ) error {
 	rel, err := r.draft(ctx, name, commit, notes, prerelease, assets)
 	if err != nil || !rel.Draft {
 		return err
 	}
-	return r.Forge.Publish(ctx, r.Repo, rel.ID)
+	return r.Forge.Publish(ctx, r.Repo, rel.ID, latest)
 }
 
 // Draft releases the tag name at commit on the host as a draft. It creates the tag and the draft

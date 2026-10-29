@@ -69,8 +69,9 @@ type SignForge interface {
 	// UploadAsset uploads the file at path as an asset of the release r.
 	UploadAsset(ctx context.Context, r *forge.Release, path string) error
 
-	// Publish publishes the draft release id of repo.
-	Publish(ctx context.Context, repo string, id int64) error
+	// Publish publishes the draft release id of repo and sets latest as its mark of the latest
+	// release.
+	Publish(ctx context.Context, repo string, id int64, latest forge.Latest) error
 }
 
 // Workflow is the run of a workflow that signed a cosign bundle. It has the repository on a server,
@@ -156,10 +157,42 @@ type Signing struct {
 	Tags []string
 }
 
+// waitingDraft is a draft that waits for a signature.
+type waitingDraft struct {
+	// draft is the draft release.
+	draft *forge.Release
+
+	// sums is the asset of the checksums of the draft.
+	sums *forge.Asset
+
+	// version is the version of the tag of the draft.
+	version version.Version
+}
+
+// waitingOf returns the draft d with its checksums <name>_<version>_SHA256SUMS and the version of
+// its tag. It reports false for a draft whose tag is not v<version> or that has no such asset.
+func waitingOf(d *forge.Release) (waitingDraft, bool) {
+	text, ok := strings.CutPrefix(d.Tag, versionPrefix)
+	if !ok {
+		return waitingDraft{}, false
+	}
+	v, err := version.Parse(text)
+	if err != nil {
+		return waitingDraft{}, false
+	}
+	for k := range d.Assets {
+		if strings.HasSuffix(d.Assets[k].Name, "_"+text+sumsSuffix) {
+			return waitingDraft{draft: d, sums: &d.Assets[k], version: v}, true
+		}
+	}
+	return waitingDraft{}, false
+}
+
 // Sign completes the drafts of the repository of s that wait for a signature, or the drafts of
-// s.Tags, in the order of the host, and returns the tags of the releases that it published. A draft
-// waits for a signature when its tag is v<version> and its assets include <name>_<version>_SHA256SUMS,
-// the checksums of a provider of the Terraform Registry. For each such draft, Sign:
+// s.Tags, in ascending order of their versions, and returns the tags of the releases that it
+// published. A draft waits for a signature when its tag is v<version> and its assets include
+// <name>_<version>_SHA256SUMS, the checksums of a provider of the Terraform Registry. For each such
+// draft, Sign:
 //
 //   - downloads the checksums and their cosign bundle <checksums>.sigstore.json into s.Dir
 //   - verifies the bundle with s.Witness against the run of .github/workflows/release.yml on a push
@@ -173,6 +206,11 @@ type Signing struct {
 //     whose algorithm is RSA or DSA
 //   - uploads the signature, unless the draft has it, and publishes the draft
 //
+// A provider is the root package of its repository, so Sign publishes each draft as the latest
+// release of the repository. It publishes a prerelease without that mark. The newest release of a
+// run becomes the latest release. A run that publishes a lower version than the latest release of
+// the repository marks that version as the latest release.
+//
 // It returns an error that wraps [ErrNoDraft] for a tag of s.Tags without a draft that waits for a
 // signature, before it signs anything. It returns an error that wraps [ErrVerify] for a draft that
 // fails a check, before it uploads or publishes anything of that draft. It returns the errors of
@@ -183,57 +221,39 @@ func Sign(ctx context.Context, s *Signing) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	var waiting []*forge.Release
-	var checksums []*forge.Asset
+	var waiting []waitingDraft
 	for k := range drafts {
 		d := &drafts[k]
 		if len(s.Tags) > 0 && !slices.Contains(s.Tags, d.Tag) {
 			continue
 		}
-		if sums := checksumsOf(d); sums != nil {
-			waiting = append(waiting, d)
-			checksums = append(checksums, sums)
+		if w, ok := waitingOf(d); ok {
+			waiting = append(waiting, w)
 		}
 	}
 	var missing []string
 	for _, tag := range s.Tags {
-		if !slices.ContainsFunc(waiting, func(d *forge.Release) bool { return d.Tag == tag }) {
+		if !slices.ContainsFunc(waiting, func(w waitingDraft) bool { return w.draft.Tag == tag }) {
 			missing = append(missing, tag)
 		}
 	}
 	if len(missing) > 0 {
 		return nil, fmt.Errorf("%w: %s", ErrNoDraft, strings.Join(missing, ", "))
 	}
+	slices.SortStableFunc(waiting, func(a, b waitingDraft) int { return a.version.Compare(b.version) })
 	published := make([]string, 0, len(waiting))
-	for k, d := range waiting {
-		if err := s.complete(ctx, d, checksums[k]); err != nil {
+	for k := range waiting {
+		if err := s.complete(ctx, &waiting[k]); err != nil {
 			return published, err
 		}
-		published = append(published, d.Tag)
+		published = append(published, waiting[k].draft.Tag)
 	}
 	return published, nil
 }
 
-// checksumsOf returns the checksums <name>_<version>_SHA256SUMS of the draft d, and nil for a draft
-// whose tag is not v<version> or that has no such asset.
-func checksumsOf(d *forge.Release) *forge.Asset {
-	v, ok := strings.CutPrefix(d.Tag, versionPrefix)
-	if !ok {
-		return nil
-	}
-	if _, err := version.Parse(v); err != nil {
-		return nil
-	}
-	for k := range d.Assets {
-		if strings.HasSuffix(d.Assets[k].Name, "_"+v+sumsSuffix) {
-			return &d.Assets[k]
-		}
-	}
-	return nil
-}
-
-// complete completes the draft d with its checksums sums by the steps of [Sign].
-func (s *Signing) complete(ctx context.Context, d *forge.Release, sums *forge.Asset) error {
+// complete completes the draft w by the steps of [Sign].
+func (s *Signing) complete(ctx context.Context, w *waitingDraft) error {
+	d, sums := w.draft, w.sums
 	commit, found, err := s.Forge.Tag(ctx, s.Repo, d.Tag)
 	if err != nil {
 		return err
@@ -253,8 +273,8 @@ func (s *Signing) complete(ctx context.Context, d *forge.Release, sums *forge.As
 	if err != nil {
 		return err
 	}
-	w := Workflow{Server: s.Server, Repo: s.Repo, File: releaseWorkflow, Branch: s.Branch, Commit: commit}
-	err = s.Witness.Verify(ctx, sumsPath, bundlePath, &w)
+	run := Workflow{Server: s.Server, Repo: s.Repo, File: releaseWorkflow, Branch: s.Branch, Commit: commit}
+	err = s.Witness.Verify(ctx, sumsPath, bundlePath, &run)
 	if err != nil {
 		return err
 	}
@@ -288,7 +308,11 @@ func (s *Signing) complete(ctx context.Context, d *forge.Release, sums *forge.As
 			return err
 		}
 	}
-	return s.Forge.Publish(ctx, s.Repo, d.ID)
+	latest := forge.LatestTrue
+	if w.version.Pre != "" {
+		latest = forge.LatestFalse
+	}
+	return s.Forge.Publish(ctx, s.Repo, d.ID, latest)
 }
 
 // download writes the content of the asset a into s.Dir under its name, and returns the path of

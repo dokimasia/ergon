@@ -106,12 +106,12 @@ func (f *signForge) UploadAsset(_ context.Context, r *forge.Release, path string
 	return nil
 }
 
-// Publish records the publish of the release id.
-func (f *signForge) Publish(_ context.Context, _ string, id int64) error {
+// Publish records the publish of the release id with its mark of the latest release.
+func (f *signForge) Publish(_ context.Context, _ string, id int64, latest forge.Latest) error {
 	if f.failPublish != nil {
 		return f.failPublish
 	}
-	f.calls = append(f.calls, "publish "+strconv.FormatInt(id, 10))
+	f.calls = append(f.calls, "publish "+strconv.FormatInt(id, 10)+" make_latest="+string(latest))
 	return nil
 }
 
@@ -246,7 +246,36 @@ func TestSign(t *testing.T) {
 			expect.Equal(t, s.signed, []string{signingKey + " " + providerSums}, "the signatures")
 			expect.Equal(t, f.calls, []string{
 				"upload v1.2.0 " + providerSums + ".sig signature of " + providerSums,
-				"publish 7",
+				"publish 7 make_latest=true",
+			}, "the calls of the host")
+		})
+
+		t.Run("completes the drafts in ascending order of their versions", func(t *testing.T) {
+			t.Parallel()
+			f := providerHost("1.2.0", "1.1.0")
+			s := &signer{key: release.Signature{Fingerprint: signingKey, Algorithm: 1}}
+			got, err := release.Sign(t.Context(), signingOf(t, f, &witness{}, s))
+			assert.NoError(t, err, "Sign")
+			expect.Equal(t, got, []string{"v1.1.0", "v1.2.0"}, "the published tags")
+			sums := "terraform-provider-demo_1.1.0_SHA256SUMS"
+			expect.Equal(t, f.calls, []string{
+				"upload v1.1.0 " + sums + ".sig signature of " + sums,
+				"publish 6 make_latest=true",
+				"upload v1.2.0 " + providerSums + ".sig signature of " + providerSums,
+				"publish 7 make_latest=true",
+			}, "the calls of the host")
+		})
+
+		t.Run("does not mark a prerelease as the latest release", func(t *testing.T) {
+			t.Parallel()
+			f := providerHost("1.3.0-rc.1")
+			s := &signer{key: release.Signature{Fingerprint: signingKey, Algorithm: 1}}
+			_, err := release.Sign(t.Context(), signingOf(t, f, &witness{}, s))
+			assert.NoError(t, err, "Sign")
+			sums := "terraform-provider-demo_1.3.0-rc.1_SHA256SUMS"
+			assert.Equal(t, f.calls, []string{
+				"upload v1.3.0-rc.1 " + sums + ".sig signature of " + sums,
+				"publish 7 make_latest=false",
 			}, "the calls of the host")
 		})
 
@@ -257,7 +286,7 @@ func TestSign(t *testing.T) {
 			s := &signer{key: key}
 			_, err := release.Sign(t.Context(), signingOf(t, f, &witness{}, s))
 			assert.NoError(t, err, "Sign")
-			assert.Equal(t, f.calls[len(f.calls)-1], "publish 7", "the last call of the host")
+			assert.Equal(t, f.calls[len(f.calls)-1], "publish 7 make_latest=true", "the last call of the host")
 		})
 
 		t.Run("publishes a draft that has its signature after it verifies the signature", func(t *testing.T) {
@@ -271,7 +300,7 @@ func TestSign(t *testing.T) {
 			assert.NoError(t, err, "Sign")
 			expect.Equal(t, got, []string{"v1.2.0"}, "the published tags")
 			expect.Empty(t, s.signed, "the signatures")
-			expect.Equal(t, f.calls, []string{"publish 7"}, "the calls of the host")
+			expect.Equal(t, f.calls, []string{"publish 7 make_latest=true"}, "the calls of the host")
 		})
 
 		t.Run("leaves a draft without the checksums of the version of its tag", func(t *testing.T) {
@@ -297,7 +326,7 @@ func TestSign(t *testing.T) {
 			got, err := release.Sign(t.Context(), run)
 			assert.NoError(t, err, "Sign")
 			expect.Equal(t, got, []string{"v1.1.0"}, "the published tags")
-			expect.Equal(t, f.calls[len(f.calls)-1], "publish 6", "the last call of the host")
+			expect.Equal(t, f.calls[len(f.calls)-1], "publish 6 make_latest=true", "the last call of the host")
 			expect.Length(t, f.calls, 2, "the calls of the host")
 		})
 
@@ -500,11 +529,11 @@ func TestSign(t *testing.T) {
 		t.Run("returns the tags that it published before an error", func(t *testing.T) {
 			t.Parallel()
 			f := providerHost("1.2.0", "1.1.0")
-			delete(f.tags, "v1.1.0")
+			delete(f.tags, "v1.2.0")
 			s := &signer{key: release.Signature{Fingerprint: signingKey, Algorithm: 1}}
 			got, err := release.Sign(t.Context(), signingOf(t, f, &witness{}, s))
 			assert.ErrorIs(t, err, release.ErrVerify, "Sign")
-			assert.Equal(t, got, []string{"v1.2.0"}, "the published tags")
+			assert.Equal(t, got, []string{"v1.1.0"}, "the published tags")
 		})
 	})
 }

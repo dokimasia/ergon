@@ -22,6 +22,7 @@
 // A publish creates a release with [Client.CreateDraft], uploads its assets with
 // [Client.UploadAsset], and then publishes it with [Client.Publish], in the order that GitHub
 // requires for immutable releases. [Client.ReleaseOf] finds the draft that an earlier publish left.
+// Client.Publish also sets the mark of the latest release of the repository from its [Latest].
 //
 // # Signed commits
 //

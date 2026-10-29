@@ -226,17 +226,40 @@ func TestReleases(t *testing.T) {
 	t.Run("Publish", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("publishes the draft", func(t *testing.T) {
-			t.Parallel()
-			c, fake := serve(t, map[string][]response{"PATCH /repos/" + repo + "/releases/7": {{}}})
-			assert.NoError(t, c.Publish(t.Context(), repo, 7), "Publish")
-			assert.Equal(t, fake.recorded()[0].body, `{"draft":false}`, "the change of the release")
-		})
+		tests := []struct {
+			name       string
+			giveLatest forge.Latest
+			wantBody   string
+		}{
+			{
+				name:       "publishes the draft without make_latest for LatestDefault",
+				giveLatest: forge.LatestDefault,
+				wantBody:   `{"draft":false}`,
+			},
+			{
+				name:       "publishes the draft as the latest release for LatestTrue",
+				giveLatest: forge.LatestTrue,
+				wantBody:   `{"make_latest":"true","draft":false}`,
+			},
+			{
+				name:       "publishes the draft without the mark of the latest release for LatestFalse",
+				giveLatest: forge.LatestFalse,
+				wantBody:   `{"make_latest":"false","draft":false}`,
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+				c, fake := serve(t, map[string][]response{"PATCH /repos/" + repo + "/releases/7": {{}}})
+				assert.NoError(t, c.Publish(t.Context(), repo, 7, tt.giveLatest), "Publish")
+				assert.Equal(t, fake.recorded()[0].body, tt.wantBody, "the change of the release")
+			})
+		}
 
 		t.Run("returns ErrGitHub for a release that does not exist", func(t *testing.T) {
 			t.Parallel()
 			c, _ := serve(t, map[string][]response{})
-			assert.ErrorIs(t, c.Publish(t.Context(), repo, 7), forge.ErrGitHub, "Publish")
+			assert.ErrorIs(t, c.Publish(t.Context(), repo, 7, forge.LatestTrue), forge.ErrGitHub, "Publish")
 		})
 	})
 

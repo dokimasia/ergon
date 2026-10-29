@@ -84,6 +84,24 @@ type Release struct {
 	Draft bool `json:"draft"`
 }
 
+// Latest is the mark of the latest release of a repository that the publish of a release sets. Its
+// values are the values of the field make_latest of the API of GitHub. GitHub does not mark a draft
+// or a prerelease as the latest release.
+type Latest string
+
+// The marks of the latest release.
+const (
+	// LatestDefault does not send the field make_latest. GitHub then marks each release that it
+	// publishes as the latest release, unless it is a prerelease.
+	LatestDefault Latest = ""
+
+	// LatestTrue marks the release as the latest release of its repository.
+	LatestTrue Latest = "true"
+
+	// LatestFalse leaves the mark on the earlier latest release.
+	LatestFalse Latest = "false"
+)
+
 // CreateDraft creates the release of the tag of repo as a draft, titled after the tag, with the
 // Markdown body, and marked as a pre-release for prerelease, and returns it. It returns an error
 // that wraps [ErrGitHub] for a request that fails, such as for a tag that has a release.
@@ -176,12 +194,14 @@ func (c *Client) DownloadAsset(ctx context.Context, repo string, id int64) ([]by
 	return data, nil
 }
 
-// Publish publishes the draft release id of repo. It returns an error that wraps [ErrGitHub] for a
-// request that fails.
-func (c *Client) Publish(ctx context.Context, repo string, id int64) error {
+// Publish publishes the draft release id of repo. It sends latest as the field make_latest, and it
+// leaves the field out for [LatestDefault]. It returns an error that wraps [ErrGitHub] for a request
+// that fails.
+func (c *Client) Publish(ctx context.Context, repo string, id int64, latest Latest) error {
 	in := struct {
-		Draft bool `json:"draft"`
-	}{Draft: false}
+		Latest Latest `json:"make_latest,omitempty"`
+		Draft  bool   `json:"draft"`
+	}{Latest: latest, Draft: false}
 	_, err := c.rest(ctx, http.MethodPatch, "/repos/"+repo+"/releases/"+strconv.FormatInt(id, 10), in, nil)
 	return err
 }

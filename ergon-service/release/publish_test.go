@@ -30,6 +30,9 @@ const (
 	commitB = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 )
 
+// rootDir is the directory of a package at the root of the repository.
+const rootDir = "."
+
 // The output of git that a terminal of a [release.GitReleaser] receives.
 const (
 	// tagExists is the error of git tag for a tag that the repository has.
@@ -55,6 +58,9 @@ type released struct {
 
 	// notes are the notes of the release.
 	notes string
+
+	// latest is the mark of the latest release that the publish of the release sets.
+	latest forge.Latest
 
 	// assets are the base names of the files of the assets of the release.
 	assets []string
@@ -93,9 +99,12 @@ func (r *releaser) Tag(_ context.Context, name string) (string, bool, error) {
 	return commit, ok, r.failTag
 }
 
-// Release records the release of the tag name, with the base names of its assets.
-func (r *releaser) Release(_ context.Context, name, commit, notes string, prerelease bool, assets []string) error {
-	return r.record(released{name: name, commit: commit, notes: notes, prerelease: prerelease}, assets)
+// Release records the release of the tag name, with the base names of its assets and its mark of
+// the latest release.
+func (r *releaser) Release(
+	_ context.Context, name, commit, notes string, prerelease bool, assets []string, latest forge.Latest,
+) error {
+	return r.record(released{name: name, commit: commit, notes: notes, latest: latest, prerelease: prerelease}, assets)
 }
 
 // Draft records the release of the tag name as a draft, with the base names of its assets.
@@ -202,9 +211,9 @@ func (f *tagForge) UploadAsset(_ context.Context, r *forge.Release, path string)
 	return nil
 }
 
-// Publish records the publish of the release id of repo.
-func (f *tagForge) Publish(_ context.Context, repo string, id int64) error {
-	f.calls = append(f.calls, "publish "+repo+" "+strconv.FormatInt(id, 10))
+// Publish records the publish of the release id of repo with its mark of the latest release.
+func (f *tagForge) Publish(_ context.Context, repo string, id int64, latest forge.Latest) error {
+	f.calls = append(f.calls, "publish "+repo+" "+strconv.FormatInt(id, 10)+" make_latest="+string(latest))
 	return nil
 }
 
@@ -245,6 +254,37 @@ func TestPublish(t *testing.T) {
 				{name: "pkg-b@2.0.0-rc.1", commit: commitA, prerelease: true},
 			}, "the releases")
 			assert.Equal(t, r.finished, 1, "the calls of Finish")
+		})
+
+		t.Run("marks the release of the root package alone as the latest release", func(t *testing.T) {
+			t.Parallel()
+			s := newState(t)
+			s.add("pkg-b", "1.1.0")
+			s.pkgs[s.at("pkg-a")].Dir = rootDir
+			plan := &release.PublishPlan{Version: 1, Plan: [][]release.PublishEntry{
+				{tagOnly(t, "pkg-a", "v1.0.0", "1.0.0")},
+				{tagOnly(t, "pkg-b", "pkg-b@1.1.0", "1.1.0")},
+			}}
+			r := &releaser{}
+			_, err := release.Publish(t.Context(), t.TempDir(), s.graph(t), plan, commitA, "", r)
+			assert.NoError(t, err, "Publish")
+			assert.Equal(t, r.releases, []released{
+				{name: "v1.0.0", commit: commitA, latest: forge.LatestTrue},
+				{name: "pkg-b@1.1.0", commit: commitA, latest: forge.LatestFalse},
+			}, "the releases")
+		})
+
+		t.Run("does not mark a prerelease of the root package as the latest release", func(t *testing.T) {
+			t.Parallel()
+			s, plan := publishable(t)
+			s.pkgs[s.at("pkg-b")].Dir = rootDir
+			r := &releaser{}
+			_, err := release.Publish(t.Context(), t.TempDir(), s.graph(t), plan, commitA, "", r)
+			assert.NoError(t, err, "Publish")
+			assert.Equal(t, r.releases, []released{
+				{name: "pkg-a@1.0.0", commit: commitA, latest: forge.LatestFalse},
+				{name: "pkg-b@2.0.0-rc.1", commit: commitA, latest: forge.LatestFalse, prerelease: true},
+			}, "the releases")
 		})
 
 		t.Run("lists a package whose tag the repository has at the commit without a new release", func(t *testing.T) {
@@ -481,7 +521,8 @@ func TestPublish(t *testing.T) {
 			root, remote := remoteRepository(t)
 			head := strings.TrimSpace(vcstest.Git(t, root, "rev-parse", "HEAD"))
 			r := &release.GitReleaser{Root: root, Remote: "origin"}
-			assert.NoError(t, r.Release(t.Context(), "v1.0.0", head, "### Minor Changes", false, nil), "Release")
+			err := r.Release(t.Context(), "v1.0.0", head, "### Minor Changes", false, nil, forge.LatestDefault)
+			assert.NoError(t, err, "Release")
 			assert.NoError(t, r.Finish(t.Context()), "Finish")
 			assert.Equal(t, vcstest.Git(t, root, "tag", "--list", "--format=%(contents)", "v1.0.0"),
 				"### Minor Changes\n\n", "the annotation with its newline, and the newline of git tag --list")
@@ -493,7 +534,7 @@ func TestPublish(t *testing.T) {
 			root, _ := remoteRepository(t)
 			head := strings.TrimSpace(vcstest.Git(t, root, "rev-parse", "HEAD"))
 			r := &release.GitReleaser{Root: root, Remote: "origin"}
-			assert.NoError(t, r.Release(t.Context(), "v1.0.0", head, "", false, nil), "Release")
+			assert.NoError(t, r.Release(t.Context(), "v1.0.0", head, "", false, nil, forge.LatestDefault), "Release")
 			assert.Equal(t, vcstest.Git(t, root, "tag", "--list", "--format=%(contents)", "v1.0.0"), "v1.0.0\n\n",
 				"the annotation with its newline, and the newline of git tag --list")
 		})
@@ -503,7 +544,8 @@ func TestPublish(t *testing.T) {
 			root, _ := remoteRepository(t)
 			head := strings.TrimSpace(vcstest.Git(t, root, "rev-parse", "HEAD"))
 			r := &release.GitReleaser{Root: root, Remote: "origin"}
-			err := r.Release(t.Context(), "v1.0.0", head, "notes", false, []string{"checksums.txt"})
+			assets := []string{"checksums.txt"}
+			err := r.Release(t.Context(), "v1.0.0", head, "notes", false, assets, forge.LatestDefault)
 			assert.ErrorIs(t, err, release.ErrAssets, "Release")
 			assert.Empty(t, vcstest.Git(t, root, "tag", "--list"), "the tags of the repository")
 		})
@@ -550,7 +592,8 @@ func TestPublish(t *testing.T) {
 			head := strings.TrimSpace(vcstest.Git(t, root, "rev-parse", "HEAD"))
 			vcstest.Git(t, root, "tag", "v1.0.0", head)
 			r := &release.GitReleaser{Root: root, Remote: "origin"}
-			assert.ErrorIs(t, r.Release(t.Context(), "v1.0.0", head, "notes", false, nil), vcs.ErrGit, "Release")
+			err := r.Release(t.Context(), "v1.0.0", head, "notes", false, nil, forge.LatestDefault)
+			assert.ErrorIs(t, err, vcs.ErrGit, "Release")
 		})
 
 		t.Run("runs git tag with its terminal", func(t *testing.T) {
@@ -560,7 +603,8 @@ func TestPublish(t *testing.T) {
 			vcstest.Git(t, root, "tag", "v1.0.0", head)
 			var stderr strings.Builder
 			r := &release.GitReleaser{Terminal: vcs.Terminal{Stderr: &stderr}, Root: root, Remote: "origin"}
-			assert.ErrorIs(t, r.Release(t.Context(), "v1.0.0", head, "notes", false, nil), vcs.ErrGit, "Release")
+			err := r.Release(t.Context(), "v1.0.0", head, "notes", false, nil, forge.LatestDefault)
+			assert.ErrorIs(t, err, vcs.ErrGit, "Release")
 			assert.Contains(t, stderr.String(), tagExists, "the standard error of git tag")
 		})
 
@@ -570,7 +614,8 @@ func TestPublish(t *testing.T) {
 			head := strings.TrimSpace(vcstest.Git(t, root, "rev-parse", "HEAD"))
 			var stderr strings.Builder
 			r := &release.GitReleaser{Terminal: vcs.Terminal{Stderr: &stderr}, Root: root, Remote: "origin"}
-			assert.NoError(t, r.Release(t.Context(), "v1.0.0", head, "notes", false, nil), "Release")
+			err := r.Release(t.Context(), "v1.0.0", head, "notes", false, nil, forge.LatestDefault)
+			assert.NoError(t, err, "Release")
 			assert.NoError(t, r.Finish(t.Context()), "Finish")
 			assert.Contains(t, stderr.String(), newTag, "the standard error of git push")
 		})
@@ -594,14 +639,15 @@ func TestPublish(t *testing.T) {
 				f := &tagForge{}
 				r := release.ForgeReleaser{Forge: f, Repo: "o/r"}
 				assets := []string{filepath.Join("dist", "assets", "checksums.txt"), "ergon_1.0.0_linux_amd64.tar.gz"}
-				assert.NoError(t, r.Release(t.Context(), "v1.0.0-rc.1", commitA, "notes", true, assets), "Release")
+				err := r.Release(t.Context(), "v1.0.0-rc.1", commitA, "notes", true, assets, forge.LatestFalse)
+				assert.NoError(t, err, "Release")
 				assert.NoError(t, r.Finish(t.Context()), "Finish")
 				assert.Equal(t, f.calls, []string{
 					"tag o/r v1.0.0-rc.1 " + commitA,
 					"prerelease draft o/r v1.0.0-rc.1 notes",
 					"upload v1.0.0-rc.1 checksums.txt",
 					"upload v1.0.0-rc.1 ergon_1.0.0_linux_amd64.tar.gz",
-					"publish o/r 7",
+					"publish o/r 7 make_latest=false",
 				}, "the calls")
 			})
 
@@ -637,9 +683,11 @@ func TestPublish(t *testing.T) {
 				}},
 			}
 			r := release.ForgeReleaser{Forge: f, Repo: "o/r"}
-			err := r.Release(t.Context(), "v1.0.0", commitA, "notes", false, []string{"checksums.txt", "ergon.tar.gz"})
+			assets := []string{"checksums.txt", "ergon.tar.gz"}
+			err := r.Release(t.Context(), "v1.0.0", commitA, "notes", false, assets, forge.LatestTrue)
 			assert.NoError(t, err, "Release")
-			assert.Equal(t, f.calls, []string{"upload v1.0.0 ergon.tar.gz", "publish o/r 9"}, "the calls")
+			want := []string{"upload v1.0.0 ergon.tar.gz", "publish o/r 9 make_latest=true"}
+			assert.Equal(t, f.calls, want, "the calls")
 		})
 
 		t.Run("changes nothing of a published release with every asset", func(t *testing.T) {
@@ -651,8 +699,9 @@ func TestPublish(t *testing.T) {
 				}},
 			}
 			r := release.ForgeReleaser{Forge: f, Repo: "o/r"}
-			assert.NoError(t, r.Release(t.Context(), "v1.0.0", commitA, "notes", false, []string{"checksums.txt"}),
-				"Release")
+			assets := []string{"checksums.txt"}
+			err := r.Release(t.Context(), "v1.0.0", commitA, "notes", false, assets, forge.LatestTrue)
+			assert.NoError(t, err, "Release")
 			assert.Empty(t, f.calls, "the calls")
 		})
 
@@ -660,7 +709,8 @@ func TestPublish(t *testing.T) {
 			t.Parallel()
 			f := &tagForge{failCreate: errTag}
 			r := release.ForgeReleaser{Forge: f, Repo: "o/r"}
-			assert.ErrorIs(t, r.Release(t.Context(), "v1.0.0", commitA, "notes", false, nil), errTag, "Release")
+			err := r.Release(t.Context(), "v1.0.0", commitA, "notes", false, nil, forge.LatestTrue)
+			assert.ErrorIs(t, err, errTag, "Release")
 			assert.Empty(t, f.calls, "the calls")
 		})
 
@@ -668,7 +718,8 @@ func TestPublish(t *testing.T) {
 			t.Parallel()
 			f := &tagForge{failTag: errTag}
 			r := release.ForgeReleaser{Forge: f, Repo: "o/r"}
-			assert.ErrorIs(t, r.Release(t.Context(), "v1.0.0", commitA, "notes", false, nil), errTag, "Release")
+			err := r.Release(t.Context(), "v1.0.0", commitA, "notes", false, nil, forge.LatestTrue)
+			assert.ErrorIs(t, err, errTag, "Release")
 			assert.Empty(t, f.calls, "the calls")
 		})
 
@@ -676,7 +727,8 @@ func TestPublish(t *testing.T) {
 			t.Parallel()
 			f := &tagForge{failReleaseOf: errRelease}
 			r := release.ForgeReleaser{Forge: f, Repo: "o/r"}
-			assert.ErrorIs(t, r.Release(t.Context(), "v1.0.0", commitA, "notes", false, nil), errRelease, "Release")
+			err := r.Release(t.Context(), "v1.0.0", commitA, "notes", false, nil, forge.LatestTrue)
+			assert.ErrorIs(t, err, errRelease, "Release")
 			assert.Equal(t, f.calls, []string{"tag o/r v1.0.0 " + commitA}, "the calls")
 		})
 
@@ -684,7 +736,8 @@ func TestPublish(t *testing.T) {
 			t.Parallel()
 			f := &tagForge{failDraft: errRelease}
 			r := release.ForgeReleaser{Forge: f, Repo: "o/r"}
-			assert.ErrorIs(t, r.Release(t.Context(), "v1.0.0", commitA, "notes", false, nil), errRelease, "Release")
+			err := r.Release(t.Context(), "v1.0.0", commitA, "notes", false, nil, forge.LatestTrue)
+			assert.ErrorIs(t, err, errRelease, "Release")
 			assert.Equal(t, f.calls, []string{"tag o/r v1.0.0 " + commitA}, "the calls")
 		})
 
@@ -692,7 +745,8 @@ func TestPublish(t *testing.T) {
 			t.Parallel()
 			f := &tagForge{failUpload: errRelease}
 			r := release.ForgeReleaser{Forge: f, Repo: "o/r"}
-			err := r.Release(t.Context(), "v1.0.0", commitA, "notes", false, []string{"checksums.txt"})
+			assets := []string{"checksums.txt"}
+			err := r.Release(t.Context(), "v1.0.0", commitA, "notes", false, assets, forge.LatestTrue)
 			assert.ErrorIs(t, err, errRelease, "Release")
 			assert.Equal(t, f.calls, []string{"tag o/r v1.0.0 " + commitA, "draft o/r v1.0.0 notes"}, "the calls")
 		})

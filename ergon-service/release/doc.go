@@ -71,6 +71,12 @@
 // with [ErrAssets]. [Homebrew] then commits the casks of the releases to a tap through a
 // [TapForge].
 //
+// The root package of a repository is the package whose directory is the root of the repository.
+// [Publish] passes the mark of the latest release to the Releaser. The release of the root package
+// becomes the latest release of the host, unless it is a prerelease. Every other release of such a
+// repository leaves the mark on the earlier latest release. ForgeReleaser sends the mark with the
+// publish of the draft, and GitReleaser has no mark to set.
+//
 // A packer that writes drafts/<tag> into the pack directory leaves the release of the tag as a
 // draft, such as the release of a provider of the Terraform Registry. [Publish] then calls the Draft
 // of the Releaser: ForgeReleaser takes every step but the publish, and GitReleaser refuses it with
@@ -82,8 +88,10 @@
 // maintainer, through a [SignForge]. It verifies the cosign bundle of the checksums of each draft
 // with a [Witness], such as [Cosign], and checks the digests of its assets against the checksums.
 // It then signs the checksums with a [Signer], such as [GPG], uploads the signature and publishes
-// the draft. It returns an error that wraps [ErrVerify] for a draft that fails a check, and an
-// error that wraps [ErrNoDraft] for a tag without a draft that waits for a signature.
+// the draft as the latest release, unless it is a prerelease. It completes the drafts in ascending
+// order of their versions, so the newest release of a run becomes the latest release. It returns an
+// error that wraps [ErrVerify] for a draft that fails a check, and an error that wraps [ErrNoDraft]
+// for a tag without a draft that waits for a signature.
 //
 // # Lockfiles
 //
