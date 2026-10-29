@@ -11,8 +11,9 @@
 {{%- end %}}
 {{%- if .Data.Assets %}}
 #
-# The job pack also builds, signs and attests the assets of the releases, such as the binaries of
-# the commands of a Go module, and the job publish attaches them to each release before its publish.
+# The job pack also builds, signs and attests the assets of the releases, such as the archives of
+# the commands of a Go module, and attests the binary of each command. The job publish attaches the
+# assets to each release before its publish.
 {{%- end %}}
 {{%- if .Data.TapName %}}
 # The job homebrew then commits the casks of the releases to the tap.
@@ -90,8 +91,8 @@ jobs:
     permissions:
       contents: read
 {{%- if .Data.Assets %}}
-      # cosign signs the checksums of the assets, and actions/attest attests the assets, each with the
-      # OIDC identity of the workflow.
+      # cosign signs the checksums of the assets, and actions/attest attests the assets and the
+      # binaries, each with the OIDC identity of the workflow.
       id-token: write
       attestations: write
 {{%- end %}}
@@ -109,11 +110,15 @@ jobs:
         run: |
           ergon release pack --from-publish-plan publish-plan.json --out-dir dist
 {{%- if .Data.Assets %}}
-      - name: Attest the assets
+      # The attestation of a binary lets gh attestation verify check a command that a cask or a
+      # package installed. A release attaches no binary, so the artifact leaves them out.
+      - name: Attest the assets and the binaries
         if: hashFiles('dist/assets/**') != ''
         uses: {{% .Options.CI.Actions.Attest %}}
         with:
-          subject-path: dist/assets/**/*
+          subject-path: |
+            dist/assets/**/*
+            dist/binaries/**/*
 {{%- end %}}
       - uses: {{% .Options.CI.Actions.UploadArtifact %}}
         with:
@@ -121,6 +126,9 @@ jobs:
           path: |
             publish-plan.json
             dist
+{{%- if .Data.Assets %}}
+            !dist/binaries
+{{%- end %}}
           if-no-files-found: error
 
   publish:
