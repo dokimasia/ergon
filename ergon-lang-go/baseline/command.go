@@ -63,11 +63,23 @@ const (
 	caskMAC = "MAC"
 )
 
-// root is the directory of the root module.
+// root is the directory of the root module, and the root package of a module.
 const root = "."
 
 // mainPrefix starts the package of a command, which is relative to its module.
 const mainPrefix = "./"
+
+// providerPrefix starts the name of a provider of the Terraform Registry, which the Registry
+// requires of the name of its repository.
+const providerPrefix = "terraform-provider-"
+
+// Registry is a registry that publishes the releases of a command from the GitHub Releases of its
+// repository.
+type Registry string
+
+// RegistryTerraform is the Terraform Registry, which publishes a provider of Terraform from the
+// zips, the manifest and the signed SHA256SUMS of each release.
+const RegistryTerraform Registry = "terraform"
 
 // Package is a Linux package format of a command.
 type Package string
@@ -97,7 +109,8 @@ type Command struct {
 	// root module.
 	Module string `yaml:"module"`
 
-	// Main is the package of the command, relative to the module, such as ./cmd/ergon.
+	// Main is the package of the command, relative to the module, such as ./cmd/ergon, or . for
+	// the root package of the module.
 	Main string `yaml:"main"`
 
 	// Description is one line that the packages and the cask state. A command with a cask has a
@@ -106,6 +119,9 @@ type Command struct {
 
 	// License is the SPDX identifier of the command, or empty for the license of the repository.
 	License spdx.ID `yaml:"license"`
+
+	// Registry is the registry that publishes the releases of the command, or empty for none.
+	Registry Registry `yaml:"registry"`
 
 	// Platforms are the platforms of the builds, and every platform of a release binary when
 	// empty.
@@ -132,13 +148,18 @@ type Command struct {
 //   - a Name outside lowercase letters, digits and '-'
 //   - a Module that is not relative, clean and slash-separated, or has a character other than a
 //     letter, a digit, '.', '_', '-' and '/'
-//   - a Main that does not start with ./, is not clean, or has such a character
+//   - a Main other than . that does not start with ./, is not clean, or has such a character
 //   - a Description that is empty or spans lines
 //   - with Homebrew, a Description that brew audit refuses in a cask, as caskDescriptionProblem
 //     states the rules
 //   - a License that is not an identifier of --license
 //   - a platform or a package that is not valid or is named twice
 //   - a package without a Linux platform, and Homebrew without a darwin or Linux platform
+//   - a Registry other than terraform
+//   - with the Registry terraform, a Name without the prefix terraform-provider-, a Module other
+//     than the root module, because the Registry reads the tags v<version> of the root module, and
+//     packages, a cask or completions, because Terraform installs a provider from the Registry, and
+//     a person does not run a provider as a command
 func (c *Command) Validate() error {
 	if !commandName.MatchString(c.Name) {
 		return fmt.Errorf("%w: the command %q, whose name is not lowercase letters, digits and -", option.ErrInvalid,
@@ -151,8 +172,8 @@ func (c *Command) Validate() error {
 			option.ErrInvalid, c.Name, c.Module)
 	}
 	rest, ok := strings.CutPrefix(c.Main, mainPrefix)
-	cleanMain := ok && rest != "" && path.Clean(rest) == rest && !strings.HasPrefix(rest, "..") &&
-		commandPath.MatchString(rest)
+	cleanMain := c.Main == root || (ok && rest != "" && path.Clean(rest) == rest && !strings.HasPrefix(rest, "..") &&
+		commandPath.MatchString(rest))
 	if !cleanMain {
 		return fmt.Errorf("%w: the command %s has the package %q, which is no clean package under ./",
 			option.ErrInvalid, c.Name, c.Main)
@@ -190,6 +211,32 @@ func (c *Command) Validate() error {
 	}
 	if c.Homebrew && !c.builds(darwin) && !c.builds(linux) {
 		return fmt.Errorf("%w: the command %s has a cask and no darwin or Linux platform", option.ErrInvalid, c.Name)
+	}
+	return c.validateRegistry()
+}
+
+// validateRegistry returns an error that wraps [option.ErrInvalid] for a Registry of c other than
+// terraform, and for a provider of the Terraform Registry that the Registry cannot publish, as
+// [Command.Validate] states.
+func (c *Command) validateRegistry() error {
+	switch c.Registry {
+	case "":
+		return nil
+	case RegistryTerraform:
+	default:
+		return fmt.Errorf("%w: the command %s has the registry %q, which is not terraform", option.ErrInvalid, c.Name,
+			c.Registry)
+	}
+	if !strings.HasPrefix(c.Name, providerPrefix) {
+		return fmt.Errorf("%w: the provider %s has a name without the prefix %s", option.ErrInvalid, c.Name,
+			providerPrefix)
+	}
+	if c.Module != root {
+		return fmt.Errorf("%w: the provider %s has the module %q, which is not the root module", option.ErrInvalid,
+			c.Name, c.Module)
+	}
+	if len(c.Packages) > 0 || c.Homebrew || c.Completions {
+		return fmt.Errorf("%w: the provider %s has packages, a cask or completions", option.ErrInvalid, c.Name)
 	}
 	return nil
 }

@@ -4,7 +4,11 @@
 # ergon release pack builds, packs and signs them for each release of the module in the job pack of
 # release.yml: it tags the commit with the tag of the module, and runs GoReleaser in snapshot mode
 # with the version of the release in ERGON_VERSION. ergon release publish attaches the assets to the
+{{%- if .Provider %}}
+# release of the tag, and leaves the release of the provider as a draft for ergon release sign.
+{{%- else %}}
 # release of the tag before it publishes the release.
+{{%- end %}}
 
 version: 2
 
@@ -38,12 +42,16 @@ before:
 # macOS targets of the command. It links against the text stubs of the libraries of macOS that the
 # Go toolchain imports, which ergon release pack writes into ERGON_DARWIN_STUBS.
 {{%- end %}}
+{{%- if .Provider %}}
+#
+# The binary of a provider of the Terraform Registry is <name>_v<version>, as the Registry requires.
+{{%- end %}}
 builds:
 {{%- range .Builds %}}
   - id: {{% .ID %}}
     dir: {{% $.Module %}}
     main: {{% .Main %}}
-    binary: {{% .Name %}}
+    binary: {{% if $.Provider %}}"{{% .Name %}}_v{{ .Version }}"{{% else %}}{{% .Name %}}{{% end %}}
 {{%- if .Triple %}}
     env:
       - CGO_ENABLED=1
@@ -74,7 +82,7 @@ archives:
 {{%- range .Commands %}}
   - id: {{% .Name %}}
     ids: [{{% join .IDs ", " %}}]
-    formats: [tar.gz]
+    formats: [{{% if $.Provider %}}zip{{% else %}}tar.gz{{% end %}}]
     name_template: "{{% .Name %}}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     builds_info: {owner: root, group: root, mtime: "{{ .CommitDate }}"}
     files:
@@ -136,6 +144,22 @@ nfpms:
         - changelog-file-missing-in-native-package
 {{%- end %}}{{% end %}}
 {{%- end %}}
+{{%- if .Provider %}}
+
+# A provider of the Terraform Registry has no source archive, because GoReleaser lists a source
+# archive in the checksums whatever their ids. SHA256SUMS lists the zips of the provider and its
+# manifest terraform-registry-manifest.json, which ergon release pack attaches to the release.
+source:
+  enabled: false
+
+checksum:
+  name_template: "{{% .Provider %}}_{{ .Version }}_SHA256SUMS"
+  algorithm: sha256
+  ids: [{{% .Provider %}}]
+  extra_files:
+    - glob: terraform-registry-manifest.json
+      name_template: "{{% .Provider %}}_{{ .Version }}_manifest.json"
+{{%- else %}}
 
 source:
   enabled: true
@@ -144,15 +168,16 @@ source:
 checksum:
   name_template: checksums.txt
   algorithm: sha256
+{{%- end %}}
 
-# cosign signs checksums.txt with the OIDC identity of the workflow, without a key.
+# cosign signs {{% if .Provider %}}SHA256SUMS{{% else %}}checksums.txt{{% end %}} with the OIDC identity of the workflow, without a key.
 signs:
   - cmd: ergon
     signature: "${artifact}.sigstore.json"
     args: [tool, run, go.cosign, --, sign-blob, "--bundle=${signature}", "${artifact}", --yes]
     artifacts: checksum
 
-# syft writes an SPDX SBOM of each archive{{% if .Packages %}} and each package{{% end %}}, which checksums.txt lists.
+# syft writes an SPDX SBOM of each archive{{% if .Packages %}} and each package{{% end %}}, which {{% if .Provider %}}the attestation of the job pack covers{{% else %}}checksums.txt lists{{% end %}}.
 # It reads the license of each Go module of a binary from the module proxy. GOPRIVATE names the
 # modules of the release, which ergon release pack passes in ERGON_MODULES, so syft does not ask
 # the proxy for a version before the publish creates its tag.
@@ -208,6 +233,11 @@ changelog:
 
 release:
   disable: true
+{{%- if .Provider %}}
+  # ergon release publish leaves the release as a draft, which ergon release sign signs and
+  # publishes.
+  draft: true
+{{%- end %}}
 
 metadata:
   mod_timestamp: "{{ .CommitTimestamp }}"

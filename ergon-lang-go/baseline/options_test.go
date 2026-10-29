@@ -176,6 +176,13 @@ func TestOptions(t *testing.T) {
 			assert.NoError(t, o.Validate(), "Validate")
 		})
 
+		t.Run("returns nil for a provider beside a command of another module", func(t *testing.T) {
+			t.Parallel()
+			o := goOptions()
+			o.Binaries = []baseline.Command{commands()[1], providerCommand()}
+			assert.NoError(t, o.Validate(), "Validate")
+		})
+
 		t.Run("returns nil for a command named after the macOS build of a command without cgo", func(t *testing.T) {
 			t.Parallel()
 			o := goOptions()
@@ -217,6 +224,11 @@ func TestOptions(t *testing.T) {
 					o.Binaries[1].Name = "ergon-darwin"
 				},
 				want: "the command ergon-darwin has the name of the macOS build of the command ergon",
+			},
+			{
+				name: "returns ErrInvalid for a provider beside another command of its module",
+				give: func(o *baseline.Options) { o.Binaries = append(o.Binaries, providerCommand()) },
+				want: "the provider terraform-provider-demo has another command in its module",
 			},
 		}
 		for _, tt := range binaries {

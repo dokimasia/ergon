@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -38,6 +39,15 @@ const (
 // cgo and a build with cgo.
 const cgoConfig = lintConfig + "builds:\n  - id: assertlint\n    env: [CGO_ENABLED=0]\n" +
 	"  - id: assertlint-darwin\n    env:\n      - CGO_ENABLED=1\n"
+
+// draftConfig is the configuration of GoReleaser of the module lint of the cases with the manifest
+// of a provider of the Terraform Registry as an extra file of its checksums, of the name template
+// %s, and a release that remains a draft.
+const draftConfig = lintConfig + "checksum:\n  extra_files:\n    - glob: lint/terraform-registry-manifest.json\n" +
+	"      name_template: %q\nrelease:\n  disable: true\n  draft: true\n"
+
+// manifest is the manifest of the Terraform Registry of the cases.
+const manifest = `{"version":1,"metadata":{"protocol_versions":["6.0"]}}`
 
 // zigProgram is the program of zig that the packer of the cases installs.
 const zigProgram = "/cache/zig/zig"
@@ -174,6 +184,88 @@ func TestPacker(t *testing.T) {
 				"casks/lint/v0.2.0/assertlint.rb":                                  files.Text("cask"),
 			}, "the pack directory")
 			files.Absent(t, filepath.Join(root, filepath.FromSlash(lintDist)), "the dist directory of GoReleaser")
+		})
+
+		t.Run("attaches the extra files of the checksums under their names and writes the draft", func(t *testing.T) {
+			t.Parallel()
+			root := lintRepository(t)
+			config := fmt.Sprintf(draftConfig, "demo_{{ .Version }}_manifest.json")
+			files.Write(t, root, files.Tree{
+				"lint/.goreleaser.yaml":                 files.Text(config),
+				"lint/terraform-registry-manifest.json": files.Text(manifest),
+			})
+			dir := filepath.Join(t.TempDir(), "pack")
+			pkgs := []workspace.Package{{Name: pathA, Dir: "lint", Version: parse(t, "0.2.0")}}
+			assert.NoError(t, (&checkout{}).packer().Pack(t.Context(), root, pkgs, dir), "Pack")
+			files.Contains(t, os.DirFS(dir), files.Tree{
+				"assets/lint/v0.2.0/demo_0.2.0_manifest.json":    files.Text(manifest),
+				"assets/lint/v0.2.0/checksums.txt.sigstore.json": files.Text("bundle"),
+				"drafts/lint/v0.2.0":                             files.Text(""),
+			}, "the pack directory")
+		})
+
+		t.Run("names an extra file without a name template after its base name", func(t *testing.T) {
+			t.Parallel()
+			root := lintRepository(t)
+			files.Write(t, root, files.Tree{
+				"lint/.goreleaser.yaml":                 files.Text(fmt.Sprintf(draftConfig, "")),
+				"lint/terraform-registry-manifest.json": files.Text(manifest),
+			})
+			dir := filepath.Join(t.TempDir(), "pack")
+			pkgs := []workspace.Package{{Name: pathA, Dir: "lint", Version: parse(t, "0.2.0")}}
+			assert.NoError(t, (&checkout{}).packer().Pack(t.Context(), root, pkgs, dir), "Pack")
+			files.HasContent(t, filepath.Join(dir, "assets", "lint", "v0.2.0", "terraform-registry-manifest.json"),
+				manifest, "the extra file")
+		})
+
+		templates := []struct {
+			name string
+			give string
+		}{
+			{
+				name: "returns an error for a name template of a field other than the version",
+				give: "{{ .ProjectName }}.json",
+			},
+			{name: "returns an error for a name template that does not parse", give: "{{ .Version"},
+		}
+		for _, tt := range templates {
+			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+				root := lintRepository(t)
+				files.Write(t, root, files.Tree{"lint/.goreleaser.yaml": files.Text(fmt.Sprintf(draftConfig, tt.give))})
+				r := &checkout{}
+				pkgs := []workspace.Package{{Name: pathA, Dir: "lint", Version: parse(t, "0.2.0")}}
+				err := r.packer().Pack(t.Context(), root, pkgs, t.TempDir())
+				assert.HasError(t, err, "Pack")
+				assert.Contains(t, err.Error(), "the name of the extra file lint/terraform-registry-manifest.json",
+					"the error")
+				assert.Empty(t, r.runs, "the runs")
+			})
+		}
+
+		t.Run("returns the error of an extra file that the repository lacks", func(t *testing.T) {
+			t.Parallel()
+			root := lintRepository(t)
+			config := fmt.Sprintf(draftConfig, "demo_{{ .Version }}_manifest.json")
+			files.Write(t, root, files.Tree{"lint/.goreleaser.yaml": files.Text(config)})
+			pkgs := []workspace.Package{{Name: pathA, Dir: "lint", Version: parse(t, "0.2.0")}}
+			err := (&checkout{}).packer().Pack(t.Context(), root, pkgs, t.TempDir())
+			assert.ErrorIs(t, err, fs.ErrNotExist, "Pack")
+			assert.Contains(t, err.Error(), "the assets of "+pathA, "the error")
+		})
+
+		t.Run("returns the error of a draft that it cannot write", func(t *testing.T) {
+			t.Parallel()
+			root := lintRepository(t)
+			files.Write(t, root, files.Tree{
+				"lint/.goreleaser.yaml":                 files.Text(fmt.Sprintf(draftConfig, "")),
+				"lint/terraform-registry-manifest.json": files.Text(manifest),
+			})
+			dir := files.Workspace(t, files.Tree{"drafts": files.Text("a file\n")})
+			pkgs := []workspace.Package{{Name: pathA, Dir: "lint", Version: parse(t, "0.2.0")}}
+			err := (&checkout{}).packer().Pack(t.Context(), root, pkgs, dir)
+			assert.HasError(t, err, "Pack")
+			assert.Contains(t, err.Error(), "write the draft of lint/v0.2.0", "the error")
 		})
 
 		t.Run("runs GoReleaser outside the workspace with the version and the modules of the release",

@@ -17,6 +17,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"text/template"
 
 	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/core/workspace"
@@ -93,7 +94,8 @@ type artifact struct {
 }
 
 // configuration has the keys of a configuration of GoReleaser that [Packer.Pack] reads: the dist
-// directory, and the environment of each build.
+// directory, the environment of each build, the extra files of the checksums, and the draft of the
+// release.
 type configuration struct {
 	// Dist is the directory of the artifacts of GoReleaser, relative to root.
 	Dist string `yaml:"dist"`
@@ -103,6 +105,35 @@ type configuration struct {
 		// Env are the variables of the environment of the build, such as CGO_ENABLED=0.
 		Env []string `yaml:"env"`
 	} `yaml:"builds"`
+
+	// Checksum has the extra files of the checksums.
+	Checksum struct {
+		// ExtraFiles are the files of the repository that the checksums list beside the artifacts.
+		ExtraFiles []struct {
+			// Glob is the path of the file, relative to root.
+			Glob string `yaml:"glob"`
+
+			// NameTemplate is the name of the file in the checksums, a template of the version, such
+			// as demo_{{ .Version }}_manifest.json, or empty for the base name of the file.
+			NameTemplate string `yaml:"name_template"`
+		} `yaml:"extra_files"`
+	} `yaml:"checksum"`
+
+	// Release has the draft of the release.
+	Release struct {
+		// Draft reports that the release of the tag remains a draft after the publish.
+		Draft bool `yaml:"draft"`
+	} `yaml:"release"`
+}
+
+// extraFile is an extra file of the checksums of a configuration, which the release of its tag
+// attaches.
+type extraFile struct {
+	// path is the path of the file, relative to the root of the repository and slash-separated.
+	path string
+
+	// name is the name of the file in the checksums and in the release.
+	name string
 }
 
 // build is a module of a release whose directory has .goreleaser.yaml.
@@ -124,8 +155,14 @@ type build struct {
 	// and nil for a configuration without such a build.
 	env []string
 
+	// extras are the extra files of the checksums of the configuration.
+	extras []extraFile
+
 	// cgo reports that a build of the configuration sets CGO_ENABLED=1.
 	cgo bool
+
+	// draft reports that the release of the tag remains a draft after the publish.
+	draft bool
 }
 
 // Packer builds the assets of the commands of Go modules with GoReleaser. A module has commands when
@@ -183,14 +220,19 @@ var _ language.Packer = Packer{}
 //     versions into the binaries. ERGON_VERSION is the Version, which the template of the version
 //     of the configuration reads. ERGON_MODULES are the paths of the modules of pkgs in order,
 //     separated by commas, which the managed configuration passes to syft as GOPRIVATE.
-//   - It copies the archives, the packages, the source archive, checksums.txt, its signature and the
-//     SBOMs into dir/assets/<tag>/, and the casks into dir/casks/<tag>/, as artifacts.json in the
-//     dist directory of the configuration records them, and then removes that dist directory.
+//   - It copies the archives, the packages, the source archive, the checksums, their signature and
+//     the SBOMs into dir/assets/<tag>/, and the casks into dir/casks/<tag>/, as artifacts.json in
+//     the dist directory of the configuration records them, and then removes that dist directory.
+//   - It copies each extra file of the checksums of the configuration into dir/assets/<tag>/ under
+//     its name template, with the Version as .Version, because GoReleaser lists such a file in the
+//     checksums alone. It writes the empty file dir/drafts/<tag> for a configuration whose release
+//     is a draft, whose release the publish then leaves as a draft.
 //
 // It returns an error that wraps [ErrTag] for a tag at another commit than HEAD, an error for a
 // module of pkgs that the repository does not have, and the error of a function of p, of the
-// proxy, of go env, of the stubs, of reading the configuration or artifacts.json, and of copying an
-// artifact, each with the module or the file.
+// proxy, of go env, of the stubs, of reading the configuration or artifacts.json, of a name
+// template with a field other than .Version, of copying an artifact or an extra file, and of
+// writing the draft, each with the module or the file.
 func (p Packer) Pack(ctx context.Context, root string, pkgs []workspace.Package, dir string) error {
 	var builds []build
 	for i := range pkgs {
@@ -204,21 +246,29 @@ func (p Packer) Pack(ctx context.Context, root string, pkgs []workspace.Package,
 			return fmt.Errorf("release: read %s: %w", config, err)
 		}
 		var c configuration
-		if err := yaml.Unmarshal(data, &c); err != nil {
+		err = yaml.Unmarshal(data, &c)
+		if err != nil {
 			return fmt.Errorf("release: read %s: %w", config, err)
 		}
 		if c.Dist == "" {
 			return fmt.Errorf("release: %s states no dist directory", config)
 		}
 		tag := Tagger{}.Tag(pkg, pkg.Version)
-		if err := p.tagHead(ctx, root, tag); err != nil {
+		err = p.tagHead(ctx, root, tag)
+		if err != nil {
 			return err
 		}
 		cgo := false
 		for _, b := range c.Builds {
 			cgo = cgo || slices.Contains(b.Env, cgoEnabled)
 		}
-		builds = append(builds, build{pkg: pkg, config: config, dist: c.Dist, tag: tag, cgo: cgo})
+		extras, err := extraFilesOf(&c, pkg.Version.String())
+		if err != nil {
+			return fmt.Errorf("release: read %s: %w", config, err)
+		}
+		builds = append(builds, build{
+			pkg: pkg, config: config, dist: c.Dist, tag: tag, extras: extras, cgo: cgo, draft: c.Release.Draft,
+		})
 	}
 	if len(builds) == 0 {
 		return nil
@@ -251,6 +301,9 @@ func (p Packer) Pack(ctx context.Context, root string, pkgs []workspace.Package,
 			return fmt.Errorf("release: GoReleaser of %s: %w", b.pkg.Name, err)
 		}
 		if err := collect(root, filepath.Join(root, filepath.FromSlash(b.dist)), dir, b.tag); err != nil {
+			return fmt.Errorf("release: the assets of %s: %w", b.pkg.Name, err)
+		}
+		if err := attach(root, dir, &b); err != nil {
 			return fmt.Errorf("release: the assets of %s: %w", b.pkg.Name, err)
 		}
 	}
@@ -362,6 +415,55 @@ func collect(root, dist, dir, tag string) error {
 	}
 	if err := os.RemoveAll(dist); err != nil {
 		return fmt.Errorf("remove the dist directory of GoReleaser: %w", err)
+	}
+	return nil
+}
+
+// extraFilesOf returns the extra files of the checksums of c, each named after its name template
+// with version as .Version, as GoReleaser names it in snapshot mode, or after the base name of its
+// path for an empty template. It returns the error of a name template that does not parse or that
+// names a field other than .Version, with the path of the file.
+func extraFilesOf(c *configuration, version string) ([]extraFile, error) {
+	extras := make([]extraFile, 0, len(c.Checksum.ExtraFiles))
+	for _, f := range c.Checksum.ExtraFiles {
+		name := path.Base(f.Glob)
+		if f.NameTemplate != "" {
+			var b strings.Builder
+			t, err := template.New(f.Glob).Option("missingkey=error").Parse(f.NameTemplate)
+			if err == nil {
+				err = t.Execute(&b, map[string]string{"Version": version})
+			}
+			if err != nil {
+				return nil, fmt.Errorf("the name of the extra file %s: %w", f.Glob, err)
+			}
+			name = b.String()
+		}
+		extras = append(extras, extraFile{path: f.Glob, name: name})
+	}
+	return extras, nil
+}
+
+// attach copies the extra files of the checksums of b from the repository at root into
+// dir/assets/<tag>/ under their names, and writes the empty file dir/drafts/<tag> for a
+// configuration whose release is a draft. It returns the error of copying a file and of writing the
+// draft.
+func attach(root, dir string, b *build) error {
+	for _, f := range b.extras {
+		into := filepath.Join(dir, language.AssetsDir, filepath.FromSlash(b.tag), f.name)
+		if err := copyFile(filepath.Join(root, filepath.FromSlash(f.path)), into); err != nil {
+			return err
+		}
+	}
+	if !b.draft {
+		return nil
+	}
+	draft := filepath.Join(dir, language.DraftsDir, filepath.FromSlash(b.tag))
+	err := os.MkdirAll(filepath.Dir(draft), dirPerm)
+	if err == nil {
+		err = os.WriteFile(draft, nil, filePerm)
+	}
+	if err != nil {
+		return fmt.Errorf("write the draft of %s: %w", b.tag, err)
 	}
 	return nil
 }

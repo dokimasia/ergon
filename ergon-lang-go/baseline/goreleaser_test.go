@@ -74,6 +74,31 @@ func TestGoReleaser(t *testing.T) {
 				golden.Match(t, path.Join("goreleaser", "cgo", files[0].Path), files[0].Content, golden.ShouldUpdate())
 			})
 
+			t.Run("renders the release of a provider of the Terraform Registry", func(t *testing.T) {
+				t.Parallel()
+				o := goOptions()
+				o.Binaries = []baseline.Command{providerCommand()}
+				a := baselinetest.Answers(golang.Language)
+				a.Repository = "example/terraform-provider-demo"
+				files, err := baseline.Producer{}.Files(a, o, &workflow.Contribution{})
+				assert.NoError(t, err, "Files")
+				assert.Length(t, files, 1, "the configurations")
+				golden.Match(t, path.Join("goreleaser", "provider", files[0].Path), files[0].Content,
+					golden.ShouldUpdate())
+			})
+
+			t.Run("returns ErrInvalid for a provider whose name is not the name of the repository", func(t *testing.T) {
+				t.Parallel()
+				o := goOptions()
+				o.Binaries = []baseline.Command{providerCommand()}
+				a := baselinetest.Answers(golang.Language)
+				a.Repository = "example/terraform-provider-other"
+				_, err := baseline.Producer{}.Files(a, o, &workflow.Contribution{})
+				assert.ErrorIs(t, err, option.ErrInvalid, "Files")
+				assert.Contains(t, err.Error(), "the provider terraform-provider-demo has another name than the "+
+					"repository example/terraform-provider-other", "the error")
+			})
+
 			t.Run("builds the macOS targets of a command with cgo for the oldest macOS of the Go toolchain",
 				func(t *testing.T) {
 					t.Parallel()

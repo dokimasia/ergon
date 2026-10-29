@@ -14,6 +14,7 @@ import (
 	"text/template"
 
 	"go.dokimi.dev/ergon/core/language"
+	"go.dokimi.dev/ergon/core/option"
 	"go.dokimi.dev/ergon/core/spdx"
 	"go.dokimi.dev/ergon/core/workflow"
 )
@@ -88,6 +89,10 @@ type release struct {
 
 	// TapOwner and TapName are the owner and the name of the tap of the casks.
 	TapOwner, TapName string
+
+	// Provider is the name of the provider of the Terraform Registry of the module, the only command
+	// of the module, and empty for a module without a provider.
+	Provider string
 
 	// Builds are the builds of the commands of the module, in the order of binaries.
 	Builds []build
@@ -173,8 +178,11 @@ type command struct {
 // baseline, which list no command, when o is not the section go. Each configuration builds,
 // archives, packs and signs the commands of its module, as the package documentation states, with
 // the owner, the security contact, the license and the repository of a. The archives and the
-// packages of a repository under Apache-2.0 include its NOTICE. Files returns an error for a
-// template that does not execute, which is a defect of the producer.
+// packages of a repository under Apache-2.0 include its NOTICE. The configuration of a module with
+// a provider of the Terraform Registry writes the release that the Registry reads, as a draft.
+// Files returns an error that wraps [option.ErrInvalid] for a provider whose name is not the name of
+// the repository, because the Registry finds a provider by the name of its repository. It returns
+// an error for a template that does not execute, which is a defect of the producer.
 func (Producer) Files(a *language.Answers, o language.Options, _ *workflow.Contribution) ([]language.File, error) {
 	opts, ok := o.(*Options)
 	if !ok {
@@ -207,6 +215,13 @@ func (Producer) Files(a *language.Answers, o language.Options, _ *workflow.Contr
 			k = len(releases) - 1
 		}
 		r := releases[k]
+		if c.Registry == RegistryTerraform {
+			if _, repository, _ := strings.Cut(string(a.Repository), "/"); c.Name != repository {
+				return nil, fmt.Errorf("%w: the provider %s has another name than the repository %s", option.ErrInvalid,
+					c.Name, a.Repository)
+			}
+			r.Provider = c.Name
+		}
 		license := string(a.License)
 		if c.License != "" {
 			license = string(c.License)

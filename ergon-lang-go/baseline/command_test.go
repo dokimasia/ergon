@@ -57,6 +57,12 @@ func TestCommand(t *testing.T) {
 			{name: "returns nil for a cask whose description has 80 characters", give: func(c *baseline.Command) {
 				c.Description = "Sets up " + strings.Repeat("x", 72)
 			}},
+			{name: "returns nil for the root package of the module", give: func(c *baseline.Command) {
+				c.Main = "."
+			}},
+			{name: "returns nil for a provider of the Terraform Registry", give: func(c *baseline.Command) {
+				*c = providerCommand()
+			}},
 		}
 		for _, tt := range valid {
 			t.Run(tt.name, func(t *testing.T) {
@@ -224,6 +230,51 @@ func TestCommand(t *testing.T) {
 				},
 				want: "the command ergon has a cask and no darwin or Linux platform",
 			},
+			{
+				name: "returns ErrInvalid for a registry other than terraform",
+				give: func(c *baseline.Command) { c.Registry = "pypi" },
+				want: `the command ergon has the registry "pypi", which is not terraform`,
+			},
+			{
+				name: "returns ErrInvalid for a provider without the prefix terraform-provider-",
+				give: func(c *baseline.Command) {
+					*c = providerCommand()
+					c.Name = "demo"
+				},
+				want: "the provider demo has a name without the prefix terraform-provider-",
+			},
+			{
+				name: "returns ErrInvalid for a provider of a module in a directory",
+				give: func(c *baseline.Command) {
+					*c = providerCommand()
+					c.Module = "provider"
+				},
+				want: `the provider terraform-provider-demo has the module "provider", which is not the root module`,
+			},
+			{
+				name: "returns ErrInvalid for a provider with packages",
+				give: func(c *baseline.Command) {
+					*c = providerCommand()
+					c.Packages = []baseline.Package{baseline.PackageDeb}
+				},
+				want: "the provider terraform-provider-demo has packages, a cask or completions",
+			},
+			{
+				name: "returns ErrInvalid for a provider with a cask",
+				give: func(c *baseline.Command) {
+					*c = providerCommand()
+					c.Homebrew = true
+				},
+				want: "the provider terraform-provider-demo has packages, a cask or completions",
+			},
+			{
+				name: "returns ErrInvalid for a provider with completions",
+				give: func(c *baseline.Command) {
+					*c = providerCommand()
+					c.Completions = true
+				},
+				want: "the provider terraform-provider-demo has packages, a cask or completions",
+			},
 		}
 		for _, tt := range invalid {
 			t.Run(tt.name, func(t *testing.T) {
@@ -249,5 +300,17 @@ func ergonCommand() baseline.Command {
 		Completions: true,
 		Packages:    []baseline.Package{baseline.PackageDeb, baseline.PackageRPM, baseline.PackageAPK},
 		Homebrew:    true,
+	}
+}
+
+// providerCommand returns a new valid provider of the Terraform Registry of the cases. Its package
+// is the root package of the root module, and it builds for every platform.
+func providerCommand() baseline.Command {
+	return baseline.Command{
+		Name:        "terraform-provider-demo",
+		Module:      ".",
+		Main:        ".",
+		Description: "Manages the resources of the demo API",
+		Registry:    baseline.RegistryTerraform,
 	}
 }

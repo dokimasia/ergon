@@ -108,7 +108,7 @@ type Options struct {
 	Audit option.Run `yaml:"audit" doc:"audit-go runs govulncheck with args in every module."`
 
 	// Binaries are the commands whose binaries each release of their module attaches.
-	Binaries []Command `yaml:"binaries" doc:"The commands whose binaries each release of their module attaches, which the job pack of release.yml builds, signs and attests with GoReleaser: name, the binary and its archives, packages and cask; module, the directory of the module in go.work, . for the root; main, the package of the command in the module; description, one line, and for a cask one that brew audit accepts, such as one without a full stop at its end; platforms, every platform when empty; completions, true for a command whose command completion writes the scripts of bash, zsh and fish, as in a program of cobra or of go.stealthscale.io/cli; packages, from deb, rpm and apk; homebrew, true for a cask in homebrew.tap; license, the license of the repository when empty; cgo, true for a command that builds with cgo, whose C code the zig of tools compiles for every platform."`
+	Binaries []Command `yaml:"binaries" doc:"The commands whose binaries each release of their module attaches, which the job pack of release.yml builds, signs and attests with GoReleaser: name, the binary and its archives, packages and cask; module, the directory of the module in go.work, . for the root; main, the package of the command in the module, . for its root package; description, one line, and for a cask one that brew audit accepts, such as one without a full stop at its end; platforms, every platform when empty; completions, true for a command whose command completion writes the scripts of bash, zsh and fish, as in a program of cobra or of go.stealthscale.io/cli; packages, from deb, rpm and apk; homebrew, true for a cask in homebrew.tap; license, the license of the repository when empty; cgo, true for a command that builds with cgo, whose C code the zig of tools compiles for every platform; registry, terraform for a provider of the Terraform Registry, whose release remains a draft until ergon release sign signs its SHA256SUMS with GPG and publishes it."`
 
 	// Homebrew are the options of the casks of the commands.
 	Homebrew Homebrew `yaml:"homebrew" doc:"The options of the casks of the commands under binaries whose homebrew is true."`
@@ -200,9 +200,10 @@ type Actions struct {
 // have, for the step generate without a command, for a step of nightly other than fuzz, bench and
 // mutate, for a command that is not valid, as [Command.Validate] states, for two commands of one
 // name, for a command named after the UPX build of another, <name>-upx, for a command named after
-// the macOS build of a command with cgo, <name>-darwin, and for a command with a cask while
-// homebrew.tap is empty. The command checks each option by the Validate method of its type before
-// it calls Validate.
+// the macOS build of a command with cgo, <name>-darwin, for a command with a cask while
+// homebrew.tap is empty, and for a provider of the Terraform Registry beside another command of its
+// module, whose GoReleaser configuration writes the checksums and the draft of the provider. The
+// command checks each option by the Validate method of its type before it calls Validate.
 func (o *Options) Validate() error {
 	if err := o.Check.Only(steps...); err != nil {
 		return err
@@ -233,6 +234,10 @@ func (o *Options) Validate() error {
 		}
 		if c.Homebrew && o.Homebrew.Tap == "" {
 			return fmt.Errorf("%w: the command %s has a cask, and homebrew.tap is empty", option.ErrInvalid, c.Name)
+		}
+		beside := func(d Command) bool { return d.Name != c.Name && d.Module == c.Module }
+		if c.Registry != "" && slices.ContainsFunc(o.Binaries, beside) {
+			return fmt.Errorf("%w: the provider %s has another command in its module", option.ErrInvalid, c.Name)
 		}
 	}
 	return nil
