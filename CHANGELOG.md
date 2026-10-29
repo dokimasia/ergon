@@ -1,5 +1,30 @@
 # go.dokimi.dev/ergon
 
+## 0.17.0
+
+### Minor Changes
+
+- baa3818: Add `ergon release sign` to sign and publish the drafts of providers of the Terraform Registry on a workstation.
+
+### Patch Changes
+
+- 1f06a9e: Fix `ergon release publish` to mark the release of the root package as the latest release of GitHub.
+- 1f06a9e: Fix `ergon release sign` to publish the drafts in ascending order of their versions.
+- Updated dependencies [e64915e, aca8fdb, 13aeaa7, d60c2e1, 66acd85, 4c222f4, 79166c5]
+  - go.dokimi.dev/ergon/core@0.18.0
+  - go.dokimi.dev/ergon/service@0.23.0
+  - go.dokimi.dev/ergon/lang/go@0.12.0
+  - go.dokimi.dev/ergon/lang/java@0.6.2
+  - go.dokimi.dev/ergon/lang/php@0.5.2
+  - go.dokimi.dev/ergon/lang/javascript@0.7.3
+  - go.dokimi.dev/ergon/lang/python@0.7.2
+  - go.dokimi.dev/ergon/lang/terraform@0.6.1
+  - go.dokimi.dev/ergon/lang/csharp@0.4.2
+  - go.dokimi.dev/ergon/lang/kotlin@0.4.2
+  - go.dokimi.dev/ergon/lang/rust@0.7.3
+  - go.dokimi.dev/ergon/lang/typescript@0.4.3
+  - go.dokimi.dev/ergon/lang/bash@0.5.2
+
 ## 0.16.0
 
 ### Minor Changes
