@@ -4,7 +4,7 @@ title: Each release of a Go module attaches the signed binaries of its commands
 status: Accepted
 date: 2026-10-09
 supersedes: none
-superseded-by: ADR-0023, in part
+superseded-by: ADR-0023 and ADR-0070, in part
 rfc: RFC-0007
 ---
 

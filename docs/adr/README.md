@@ -29,7 +29,7 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 | [0018](0018-ci-skips-tested-content.md) | ci.yml skips its jobs on content that already passed | Accepted |
 | [0019](0019-no-lock-of-a-development-build.md) | A build of ergon without a release does not write a lock of a release | Accepted |
 | [0020](0020-nightly-workflow.md) | nightly.yml runs the long steps of a language on a schedule | Accepted, superseded in part by ADR-0065 |
-| [0021](0021-binary-releases.md) | Each release of a Go module attaches the signed binaries of its commands | Accepted, superseded in part by ADR-0023 |
+| [0021](0021-binary-releases.md) | Each release of a Go module attaches the signed binaries of its commands | Accepted, superseded in part by ADR-0023 and ADR-0070 |
 | [0022](0022-upx-for-go-binaries.md) | The release of a Go module packs the Linux binaries of its commands with UPX | Accepted |
 | [0023](0023-buildinfo-in-the-root-module.md) | ergon reads the version of its binary in a package of the root module | Accepted |
 | [0024](0024-one-module-for-the-cli.md) | ergon has one module for its CLI and one for ergon-go-vet | Proposed |
@@ -78,3 +78,4 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 | [0067](0067-pinned-rulesets-of-tflint.md) | lint-terraform loads the rulesets of lint.rulesets from releases that the section pins | Accepted |
 | [0068](0068-terraform-docs-in-the-step-generate.md) | The step generate of Terraform writes the tables of the modules with terraform-docs | Accepted |
 | [0069](0069-terraform-repository-as-one-package.md) | ergon release releases a repository of Terraform as one package | Accepted |
+| [0070](0070-providers-signed-on-a-workstation.md) | A release of a Terraform provider remains a draft until a maintainer signs it on a workstation | Accepted |
