@@ -45,19 +45,19 @@
     },
     "java.tools.google-java-format.version": "1.37.0",
     "java.tools.pmd": "net.sourceforge.pmd:pmd-java@7.28.0",
-    "jvm.ci.actions.setup-java.commit": "de7274f081f381c8f8158605e0321c36c376e2e6",
-    "jvm.ci.actions.setup-java.release": "v6.0.1",
+    "jvm.ci.actions.setup-java.commit": "b843ebf9b913146b38da2eaa7aeddf76074ae1ad",
+    "jvm.ci.actions.setup-java.release": "v6.1.0",
     "jvm.ci.actions.setup-java.uses": "actions/setup-java",
     "jvm.ci.runners": [],
     "jvm.ci.steps": [],
     "jvm.ci.timeout": 30,
     "jvm.ci.versions": [],
     "jvm.tools.osv-scanner.sha256": {
-      "darwin/arm64": "98c460dcd37de25819babd757d04542045b6243113e209edcd4d89fedb0256b4",
-      "linux/amd64": "ca69b3d3cd08f889a49dc0a383122f71cc528b83803671df5fd874d97485b108",
-      "windows/amd64": "e0ed7644118b717b028c249ee9d3515024e55e8510747ca08906eb96765354d6"
+      "darwin/arm64": "d4926ef8da134332543be276dff157e4c170f99ad91fc48e89448a8816bdf70b",
+      "linux/amd64": "160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b",
+      "windows/amd64": "9964ed64ec9a387391eb4cc006ad5c531154821aef29b793e02c448de4686438"
     },
-    "jvm.tools.osv-scanner.version": "2.6.0"
+    "jvm.tools.osv-scanner.version": "2.7.0"
   },
   "answers": {
     "name": "demo",

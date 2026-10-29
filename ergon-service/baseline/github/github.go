@@ -120,8 +120,8 @@ func (Producer) Options() language.Options {
 				},
 				CodeQL: workflow.Action{
 					Uses:    "github/codeql-action",
-					Commit:  "2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2",
-					Release: "v4.38.2",
+					Commit:  "9b3254085494b55a0f7c4c2b3d2d52cc712ce370",
+					Release: "v4.39.1",
 				},
 				DependencyReview: workflow.Action{
 					Uses:    "actions/dependency-review-action",
@@ -130,8 +130,8 @@ func (Producer) Options() language.Options {
 				},
 				Scorecard: workflow.Action{
 					Uses:    "ossf/scorecard-action",
-					Commit:  "2d1146689b8cda280b9bc96326124645441f03bc",
-					Release: "v2.4.4",
+					Commit:  "fa7117db83c52d787ae5a89f350999701505d78e",
+					Release: "v2.5.0",
 				},
 				UploadArtifact: workflow.Action{
 					Uses:    "actions/upload-artifact",
@@ -150,8 +150,8 @@ func (Producer) Options() language.Options {
 				},
 				CreateGitHubAppToken: workflow.Action{
 					Uses:    "actions/create-github-app-token",
-					Commit:  "bcd2ba49218906704ab6c1aa796996da409d3eb1",
-					Release: "v3.2.0",
+					Commit:  "64ab729a6294000f5aa4a4bc0b73d1f32bc45510",
+					Release: "v3.3.0",
 				},
 				Attest: workflow.Action{
 					Uses:    "actions/attest",

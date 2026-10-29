@@ -36,8 +36,8 @@ github:
       # upload-sarif uploads the results of the Scorecard.
       codeql:
         uses: github/codeql-action
-        commit: 2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2
-        release: v4.38.2
+        commit: 9b3254085494b55a0f7c4c2b3d2d52cc712ce370
+        release: v4.39.1
       # The action that reviews the dependencies that a pull request changes, in the job
       # dependency-review of security.yml.
       dependency-review:
@@ -47,8 +47,8 @@ github:
       # The action of the OpenSSF Scorecard, in the weekly job scorecard of security.yml.
       scorecard:
         uses: ossf/scorecard-action
-        commit: 2d1146689b8cda280b9bc96326124645441f03bc
-        release: v2.4.4
+        commit: fa7117db83c52d787ae5a89f350999701505d78e
+        release: v2.5.0
       # The action that uploads the publish plan of the job select-mode and the artifacts of the job
       # pack of release.yml.
       upload-artifact:
@@ -75,8 +75,8 @@ github:
       # of nightly.yml such as propose-spec writes its pull requests with the token.
       create-github-app-token:
         uses: actions/create-github-app-token
-        commit: bcd2ba49218906704ab6c1aa796996da409d3eb1
-        release: v3.2.0
+        commit: 64ab729a6294000f5aa4a4bc0b73d1f32bc45510
+        release: v3.3.0
       # The action that attests the assets of a release with SLSA build provenance in the job pack
       # of release.yml, which GitHub stores in its attestation API.
       attest:

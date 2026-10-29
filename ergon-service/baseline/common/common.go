@@ -61,11 +61,11 @@ func (Producer) Options() language.Options {
 			}},
 			Rumdl: Rumdl{Binary: option.Binary{
 				SHA256: map[option.Platform]string{
-					option.LinuxAMD64:   "a85ae77c6880616118e10dda1e36292df59815bcfbf767201736ff6971213cf3",
-					option.DarwinARM64:  "8c0ecf93a61bf612df5f6c6f22813d066a6f51a5680f3c12da49b93ed892aebb",
-					option.WindowsAMD64: "07d12118c143976fadaaf7d053ac6be328798ce3b59b3f774572ac946b123672",
+					option.LinuxAMD64:   "6c90c398f04c11a09dcbd2da08bdaa6d53d9b14393e3cd32dbdf4da5620eec5c",
+					option.DarwinARM64:  "bc62f4176dd9257547c939fa152b535b6f393365acd352fcfd94e5e19a792bb4",
+					option.WindowsAMD64: "72ed0bd3912560758cfc66cb439a2804755a858573e605cd3d1e65e8aa79d2a1",
 				},
-				Version: "0.2.79",
+				Version: "0.3.0",
 			}},
 		},
 		PreCommitHooks: "v6.0.0",

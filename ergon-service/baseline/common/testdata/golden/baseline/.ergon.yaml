@@ -17,10 +17,10 @@ common:
     # .markdownlint.yml. It skips the files of .markdownlintignore.
     rumdl:
       sha256:
-        darwin/arm64: 8c0ecf93a61bf612df5f6c6f22813d066a6f51a5680f3c12da49b93ed892aebb
-        linux/amd64: a85ae77c6880616118e10dda1e36292df59815bcfbf767201736ff6971213cf3
-        windows/amd64: 07d12118c143976fadaaf7d053ac6be328798ce3b59b3f774572ac946b123672
-      version: 0.2.79
+        darwin/arm64: bc62f4176dd9257547c939fa152b535b6f393365acd352fcfd94e5e19a792bb4
+        linux/amd64: 6c90c398f04c11a09dcbd2da08bdaa6d53d9b14393e3cd32dbdf4da5620eec5c
+        windows/amd64: 72ed0bd3912560758cfc66cb439a2804755a858573e605cd3d1e65e8aa79d2a1
+      version: 0.3.0
   # The release of github.com/pre-commit/pre-commit-hooks, whose hooks check the hygiene of the
   # files before each commit.
   pre-commit-hooks: v6.0.0

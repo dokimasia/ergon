@@ -26,7 +26,7 @@ var templates embed.FS
 // phpstan-strict-rules and of the extension installer, and a release of PHP-CS-Fixer from its
 // package without dependencies. [Tools.Validate] requires the package of each.
 var tools = Tools{
-	PHPStan:            "phpstan/phpstan@2.2.17",
+	PHPStan:            "phpstan/phpstan@2.3.1",
 	StrictRules:        "phpstan/phpstan-strict-rules@2.1.0",
 	ExtensionInstaller: "phpstan/extension-installer@1.4.3",
 	PHPCSFixer:         "php-cs-fixer/shim@3.95.27",
@@ -65,8 +65,8 @@ func (Producer) Options() language.Options {
 		CI: option.MatrixCI[Actions]{
 			Actions: Actions{SetupPHP: workflow.Action{
 				Uses:    "shivammathur/setup-php",
-				Commit:  "f3e473d116dcccaddc5834248c87452386958240",
-				Release: "2.37.2",
+				Commit:  "eb7c497e18156a6bbabfef1d3a82760b9eda3962",
+				Release: "2.40.0",
 			}},
 			Runners:  option.Runners{},
 			Versions: []string{},

@@ -4,7 +4,7 @@ php:
   # its package and no other package.
   tools:
     # The static analyzer of lint-php, at its strictest level, with the rules of phpstan.dist.neon.
-    phpstan: phpstan/phpstan@2.2.17
+    phpstan: phpstan/phpstan@2.3.1
     # The strict rules of PHPStan, which the extension installer loads.
     phpstan-strict-rules: phpstan/phpstan-strict-rules@2.1.0
     # The plugin of Composer that loads the extensions of PHPStan, such as phpstan-strict-rules.
@@ -31,8 +31,8 @@ php:
       # The action that installs Composer and the PHP of .php-version or of the matrix.
       setup-php:
         uses: shivammathur/setup-php
-        commit: f3e473d116dcccaddc5834248c87452386958240
-        release: 2.37.2
+        commit: eb7c497e18156a6bbabfef1d3a82760b9eda3962
+        release: 2.40.0
     runners: []
     versions: []
     # The steps that each job of the toolchain runs after the setup of the toolchain and before

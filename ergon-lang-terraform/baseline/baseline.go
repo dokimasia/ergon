@@ -91,13 +91,13 @@ func (Producer) Options() language.Options {
 			}},
 			UV: option.UV{Binary: option.Binary{
 				SHA256: map[option.Platform]string{
-					option.LinuxAMD64:   "9167d72b3319674b6303c4cbe071854bba13ebdf3d76b1a7cbdc175471fb66d6",
-					option.DarwinARM64:  "50487ae565ccd96e499056b4674d438f4c53170202617b4c759defe0c6a1b544",
-					option.WindowsAMD64: "75d05de6762778c31ee183398de7dd15093fad0ed90b1f236d8205ea5ec00c90",
+					option.LinuxAMD64:   "f68d291c75783122dad58ab77def0e13f3233f358731db5d6d7e8715603b928f",
+					option.DarwinARM64:  "743f85035a1996ecb350659e01cd9faea9709829be09b1b4b03c73eaf3c9cd73",
+					option.WindowsAMD64: "a38b8d1902b7cfbc76b423ba1bb456f623f42064cdc72628b6075b89afd1019a",
 				},
-				Version: "0.12.23",
+				Version: "0.13.5",
 			}},
-			Checkov: "checkov@3.3.23",
+			Checkov: "checkov@3.3.30",
 		},
 		Paths:    option.Paths{"."},
 		Check:    option.Check{option.StepLint, option.StepTest, option.StepAudit},
