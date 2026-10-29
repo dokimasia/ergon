@@ -1,5 +1,14 @@
 # go.dokimi.dev/ergon/lang/kotlin
 
+## 0.4.2
+
+### Patch Changes
+
+- Updated dependencies [e64915e, aca8fdb, d60c2e1, 66acd85]
+  - go.dokimi.dev/ergon/core@0.18.0
+  - go.dokimi.dev/ergon/service@0.23.0
+  - go.dokimi.dev/ergon/lang/java@0.6.2
+
 ## 0.4.1
 
 ### Patch Changes

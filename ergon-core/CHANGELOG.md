@@ -1,5 +1,11 @@
 # go.dokimi.dev/ergon/core
 
+## 0.18.0
+
+### Minor Changes
+
+- e64915e: Add `language.DraftsDir` for the releases of a pack that remain drafts.
+
 ## 0.17.0
 
 ### Minor Changes
