@@ -23,6 +23,7 @@ import (
 	"go.dokimi.dev/assert/golden"
 	"go.dokimi.dev/ergon/core/option"
 	"go.dokimi.dev/ergon/internal/app"
+	"go.dokimi.dev/ergon/lang/javascript/baseline"
 	"go.stealthscale.io/cli/clitest"
 )
 
@@ -49,9 +50,11 @@ const (
 	stdinFlag = "--stdin"
 )
 
-// biome is the line that the fake npx writes for the Biome of the section js at the baseline,
-// before the arguments of the tool.
-const biome = "npx --yes --package=@biomejs/biome@2.5.15 -- biome"
+// biomePackage is the npm package of Biome of the section js at the baseline, as name@version.
+var biomePackage = string(jsOptions().Tools.Biome)
+
+// biome is the line that the fake npx writes for biomePackage, before the arguments of the tool.
+var biome = "npx --yes --package=" + biomePackage + " -- biome"
 
 // toolRuns are the command lines of the transcript of ergon tool, which run in a repository after
 // init new with JavaScript.
@@ -184,7 +187,7 @@ func TestTool(t *testing.T) {
 				"\n  package-manager: pnpm\n", 1))
 			status, stdout, stderr := runWith(t, app.Register, dir, "tool", "run", "js.biome", "--", "check")
 			assert.Equal(t, status, statusOK, "the exit status: "+stderr)
-			assert.Equal(t, stdout, "pnpm --package=@biomejs/biome@2.5.15 dlx biome check\n", "the output of the tool")
+			assert.Equal(t, stdout, "pnpm --package="+biomePackage+" dlx biome check\n", "the output of the tool")
 		})
 
 		t.Run("returns the exit status of the tool without an error", func(t *testing.T) {
@@ -357,6 +360,12 @@ func javascriptRepository(t *testing.T) string {
 	status, _, stderr := runWith(t, app.Register, dir, args...)
 	assert.Equal(t, status, statusOK, "the exit status of init new: "+stderr)
 	return dir
+}
+
+// jsOptions returns the options of the section js at the baseline.
+func jsOptions() *baseline.ToolchainOptions {
+	o, _ := baseline.Toolchain{}.Options().(*baseline.ToolchainOptions)
+	return o
 }
 
 // pinCommitlint gives commitlint in the .ergon.yaml of the repository dir the digest of platform
