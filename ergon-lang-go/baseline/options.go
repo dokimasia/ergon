@@ -40,14 +40,16 @@ const ownName = "Leave the modules of go.work out of the license check"
 
 // ownRun is the command of the step of [ownName]. It reads the replaces of the go.mod of each module
 // of go.work with go mod edit -json. A replace counts when its target is a directory and the module
-// that it replaces is a module of go.work. The command does not write to GITHUB_ENV when no replace
-// counts.
+// that it replaces is a module of go.work. The dependency graph writes the package URL of a replace
+// of ../ as pkg:golang/.., so the URL of each replace contains its path without the trailing
+// slashes. The dependency review rejects pkg:golang/../, whose name is empty. The command does not
+// write to GITHUB_ENV when no replace counts.
 var ownRun = []string{
 	`own="$(go list -m -f '{{.Path}}' | jq -Rn '[inputs]')"`,
 	`purls="$(go list -m -f '{{.GoMod}}' |`,
 	`  while IFS= read -r file; do go mod edit -json "$file"; done |`,
 	`  jq -r --argjson own "$own" '.Replace[]? | select(.New.Version == null)`,
-	`    | select(.Old.Path | IN($own[])) | "pkg:golang/" + .New.Path' |`,
+	`    | select(.Old.Path | IN($own[])) | "pkg:golang/" + (.New.Path | sub("/+$"; ""))' |`,
 	`  sort -u | paste -sd , -)"`,
 	`if [ -n "$purls" ]; then`,
 	`  echo "` + workflow.OwnPackages + `=${` + workflow.OwnPackages + `:+$` + workflow.OwnPackages +

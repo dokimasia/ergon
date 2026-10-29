@@ -4,12 +4,18 @@
 package baseline_test
 
 import (
+	"os"
+	"os/exec"
+	"path/filepath"
 	"reflect"
+	"runtime"
 	"slices"
+	"strings"
 	"testing"
 
 	"go.dokimi.dev/assert"
 	"go.dokimi.dev/assert/expect"
+	"go.dokimi.dev/assert/files"
 	"go.dokimi.dev/ergon/core/option"
 	"go.dokimi.dev/ergon/core/workflow"
 	"go.dokimi.dev/ergon/lang/go/baseline"
@@ -42,7 +48,7 @@ var ownPackages = workflow.Step{
 		`purls="$(go list -m -f '{{.GoMod}}' |`,
 		`  while IFS= read -r file; do go mod edit -json "$file"; done |`,
 		`  jq -r --argjson own "$own" '.Replace[]? | select(.New.Version == null)`,
-		`    | select(.Old.Path | IN($own[])) | "pkg:golang/" + .New.Path' |`,
+		`    | select(.Old.Path | IN($own[])) | "pkg:golang/" + (.New.Path | sub("/+$"; ""))' |`,
 		`  sort -u | paste -sd , -)"`,
 		`if [ -n "$purls" ]; then`,
 		`  echo "ERGON_OWN_PACKAGES=${ERGON_OWN_PACKAGES:+$ERGON_OWN_PACKAGES,}$purls" >> "$GITHUB_ENV"`,
@@ -383,6 +389,30 @@ func TestOptions(t *testing.T) {
 					"cache-dependency-path": "**/go.sum",
 				}, "the inputs of setup-go")
 			})
+
+		t.Run("returns a review step that writes pkg:golang/.. for a replace of ../", func(t *testing.T) {
+			t.Parallel()
+			if runtime.GOOS == "windows" {
+				t.Skip("the step runs in the job dependency-review of security.yml on the Linux runner")
+			}
+			review := goOptions().Contribution().Review
+			assert.Length(t, review, 2, "the steps before the dependency review")
+			dir := files.Workspace(t, files.Tree{
+				"go.work": files.Text("go 1.27\n\nuse (\n\t.\n\t./examples\n)\n"),
+				"go.mod":  files.Text("module example.com/root\n\ngo 1.27\n"),
+				"examples/go.mod": files.Text("module example.com/examples\n\ngo 1.27\n\n" +
+					"require example.com/root v0.0.0\n\nreplace example.com/root => ../\n"),
+				"env": files.Text(""),
+			})
+			env := filepath.Join(dir, "env")
+			// bash -e is the shell of a step of GitHub Actions without a shell on Linux.
+			cmd := exec.CommandContext(t.Context(), "bash", "-e", "-c", strings.Join(review[1].Run, "\n"))
+			cmd.Dir = dir
+			cmd.Env = append(os.Environ(), "GOWORK=auto", "GITHUB_ENV="+env)
+			out, err := cmd.CombinedOutput()
+			assert.NoError(t, err, "the step:\n"+string(out))
+			files.HasContent(t, env, workflow.OwnPackages+"=pkg:golang/..\n", "the file of GITHUB_ENV")
+		})
 
 		t.Run("sets up the version of go.work before the dependency review for versions of the options",
 			func(t *testing.T) {

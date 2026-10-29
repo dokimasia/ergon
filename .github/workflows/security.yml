@@ -48,7 +48,7 @@ jobs:
           purls="$(go list -m -f '{{.GoMod}}' |
             while IFS= read -r file; do go mod edit -json "$file"; done |
             jq -r --argjson own "$own" '.Replace[]? | select(.New.Version == null)
-              | select(.Old.Path | IN($own[])) | "pkg:golang/" + .New.Path' |
+              | select(.Old.Path | IN($own[])) | "pkg:golang/" + (.New.Path | sub("/+$"; ""))' |
             sort -u | paste -sd , -)"
           if [ -n "$purls" ]; then
             echo "ERGON_OWN_PACKAGES=${ERGON_OWN_PACKAGES:+$ERGON_OWN_PACKAGES,}$purls" >> "$GITHUB_ENV"
