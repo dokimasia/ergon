@@ -194,6 +194,18 @@ func TestToolchain(t *testing.T) {
 					"          \"expand\": \"always\"\n", "biome.json")
 			})
 
+			t.Run("turns off the formatter of Markdown in biome.json", func(t *testing.T) {
+				t.Parallel()
+				assert.Contains(t, rendered(t, "biome.json", jsOptions()),
+					"\n  \"markdown\": {\n    \"formatter\": {\n      \"enabled\": false\n    }\n  },\n", "biome.json")
+			})
+
+			t.Run("turns off the formatter of YAML in biome.json", func(t *testing.T) {
+				t.Parallel()
+				assert.Contains(t, rendered(t, "biome.json", jsOptions()),
+					"\n  \"yaml\": {\n    \"formatter\": {\n      \"enabled\": false\n    }\n  },\n", "biome.json")
+			})
+
 			t.Run("renders biome.json in the layout of the merge of a local file", func(t *testing.T) {
 				t.Parallel()
 				o := jsOptions()
