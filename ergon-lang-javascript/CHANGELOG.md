@@ -1,5 +1,11 @@
 # go.dokimi.dev/ergon/lang/javascript
 
+## 0.7.5
+
+### Patch Changes
+
+- e00aa80: Fix the managed `biome.json` to leave Markdown and YAML unformatted.
+
 ## 0.7.4
 
 ### Patch Changes
