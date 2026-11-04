@@ -6,7 +6,7 @@ module go.dokimi.dev/ergon
 go 1.27.3
 
 require (
-	go.dokimi.dev/assert v0.3.0
+	go.dokimi.dev/assert v0.14.1
 	go.dokimi.dev/ergon/core v0.19.0
 	go.dokimi.dev/ergon/lang/bash v0.5.3
 	go.dokimi.dev/ergon/lang/csharp v0.4.3
@@ -20,9 +20,9 @@ require (
 	go.dokimi.dev/ergon/lang/terraform v0.6.2
 	go.dokimi.dev/ergon/lang/typescript v0.4.4
 	go.dokimi.dev/ergon/service v0.24.0
-	go.stealthscale.io/cli v0.7.0
-	go.yaml.in/yaml/v3 v3.0.5
-	golang.org/x/mod v0.41.0
+	go.stealthscale.io/cli v0.8.0
+	go.yaml.in/yaml/v3 v3.0.6
+	golang.org/x/mod v0.42.0
 )
 
 require (
@@ -31,7 +31,7 @@ require (
 	github.com/ProtonMail/go-crypto v1.5.2 // indirect
 	github.com/apache/skywalking-eyes v0.9.0 // indirect
 	github.com/bmatcuk/doublestar/v2 v2.0.4 // indirect
-	github.com/bmatcuk/doublestar/v4 v4.10.2 // indirect
+	github.com/bmatcuk/doublestar/v4 v4.10.4 // indirect
 	github.com/cloudflare/circl v1.6.5 // indirect
 	github.com/creachadair/tomledit v0.0.29 // indirect
 	github.com/cyphar/filepath-securejoin v0.7.0 // indirect
