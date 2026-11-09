@@ -4,7 +4,7 @@ title: The nightly mutation reuses the verdicts of its earlier runs
 status: Accepted
 date: 2026-10-26
 supersedes: ADR-0020, in part
-superseded-by: none
+superseded-by: ADR-0074, in part
 rfc: RFC-0011
 ---
 

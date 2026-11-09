@@ -73,7 +73,7 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 | [0062](0062-generate-step-runs-a-list-of-commands.md) | The step generate runs a list of command lines | Accepted, superseded in part by ADR-0068 |
 | [0063](0063-app-token-commits-workflows.md) | The scheduled proposals commit with a token of the GitHub App that may change workflows | Accepted |
 | [0064](0064-skip-lists-of-mutate-and-bench.md) | The Go steps mutate and bench leave out the packages of the key skip | Accepted |
-| [0065](0065-history-of-nightly-mutation.md) | The nightly mutation reuses the verdicts of its earlier runs | Accepted |
+| [0065](0065-history-of-nightly-mutation.md) | The nightly mutation reuses the verdicts of its earlier runs | Accepted, superseded in part by ADR-0074 |
 | [0066](0066-terraform-tests-of-each-module.md) | test-terraform tests each module and validates every other configuration | Accepted |
 | [0067](0067-pinned-rulesets-of-tflint.md) | lint-terraform loads the rulesets of lint.rulesets from releases that the section pins | Accepted |
 | [0068](0068-terraform-docs-in-the-step-generate.md) | The step generate of Terraform writes the tables of the modules with terraform-docs | Accepted |
@@ -81,3 +81,7 @@ Each ADR records one decision and what it cost. Once an ADR is accepted, do not 
 | [0070](0070-providers-signed-on-a-workstation.md) | A release of a Terraform provider remains a draft until a maintainer signs it on a workstation | Accepted |
 | [0071](0071-latest-release-of-the-root-package.md) | A publish marks the release of the root package as the latest release of GitHub | Accepted |
 | [0072](0072-attest-the-binaries-of-a-release.md) | The job pack attests the binary of each command beside the assets of a release | Accepted |
+| [0073](0073-caches-of-a-job.md) | A job keeps the directories of its caches in the cache of GitHub Actions | Accepted |
+| [0074](0074-history-of-mutate-go-in-its-job.md) | The job mutate-go keeps the history of dokimi-mutate-go and sets the limit of its run through GO_MUTATE_TIMEOUT | Accepted |
+| [0075](0075-cache-of-golangci-lint-in-check-go.md) | The job check-go keeps the cache of golangci-lint | Accepted |
+| [0076](0076-long-tests-of-go.md) | The step longtest runs the Go tests that the gate skips in short mode | Accepted |
