@@ -1,5 +1,16 @@
 # go.dokimi.dev/ergon/core
 
+## 0.20.0
+
+### Minor Changes
+
+- 1217c99: Add the step `longtest` to `option.Step` for the tests that the gate skips in short mode.
+- 1217c99: Add `workflow.Cache` and `Job.Caches` to keep a directory of a job in the cache of GitHub Actions.
+
+### Patch Changes
+
+- b3199f6: Update every Go requirement to its newest release.
+
 ## 0.19.0
 
 ### Minor Changes

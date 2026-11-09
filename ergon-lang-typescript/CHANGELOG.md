@@ -1,5 +1,15 @@
 # go.dokimi.dev/ergon/lang/typescript
 
+## 0.4.5
+
+### Patch Changes
+
+- b3199f6: Update every Go requirement to its newest release.
+- Updated dependencies [1217c99, e00aa80, 09c49eb, b3199f6]
+  - go.dokimi.dev/ergon/core@0.20.0
+  - go.dokimi.dev/ergon/lang/javascript@0.7.5
+  - go.dokimi.dev/ergon/service@0.25.0
+
 ## 0.4.4
 
 ### Patch Changes
