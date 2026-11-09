@@ -8,17 +8,20 @@ import (
 	"maps"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 
+	"go.dokimi.dev/ergon/core/language"
 	"go.dokimi.dev/ergon/core/option"
 	"go.dokimi.dev/ergon/core/workflow"
 )
 
 // The files that the job of Go reads: the workspace of the repository, which pins the version of
-// Go, and the modules.
+// Go, the modules, and the checksums of their dependencies.
 const (
 	workspace = "go.work"
 	modules   = "**/go.mod"
+	sums      = "**/go.sum"
 )
 
 // setupName is the name of the step that installs Go in each job of Go.
@@ -59,12 +62,56 @@ var ownRun = []string{
 
 // steps are the steps of the gate of Go, which the key check of the section names.
 var steps = []option.Step{
-	option.StepLint, option.StepTest, option.StepRace, option.StepFuzz, option.StepBench, option.StepMutate,
-	option.StepGenerate, option.StepAudit,
+	option.StepLint, option.StepTest, option.StepRace, option.StepLongTest, option.StepFuzz, option.StepBench,
+	option.StepMutate, option.StepGenerate, option.StepAudit,
 }
 
 // nightly are the steps of Go that are too long for each push, which the key nightly names.
-var nightly = []option.Step{option.StepFuzz, option.StepBench, option.StepMutate}
+var nightly = []option.Step{option.StepLongTest, option.StepFuzz, option.StepBench, option.StepMutate}
+
+// margin is the number of minutes of the limit of a nightly job of a step of timeouts that the job
+// keeps for its setup and its cache. The run of make in the job ends that long before the limit.
+const margin = 10
+
+// timeouts are the variables of the Makefile through which the nightly job of a step sets the limit
+// of its run to the limit of the job minus margin: the limit of the run of dokimi-mutate-go, and
+// the limit of each test binary of the long tests.
+var timeouts = map[option.Step]string{
+	option.StepMutate:   "GO_MUTATE_TIMEOUT",
+	option.StepLongTest: "GO_LONGTEST_TIMEOUT",
+}
+
+// The cache of golangci-lint in the job check-go: its ID, its name in the names of its steps, and
+// the directory golangci-lint in the cache directory of the user on each system, as
+// os.UserCacheDir returns it and golangci-lint reads it without GOLANGCI_LINT_CACHE.
+const (
+	lintCacheID   = "golangci-lint"
+	lintCacheName = "the cache of golangci-lint"
+	lintCachePath = "${{ runner.os == 'Windows' && '~/AppData/Local/golangci-lint' || runner.os == 'macOS' && '~/Library/Caches/golangci-lint' || '~/.cache/golangci-lint' }}"
+)
+
+// The configuration of golangci-lint and the lock of ergon init, which records the version of
+// golangci-lint at the baseline.
+const (
+	lintConfig = ".golangci.yml"
+	initLock   = ".ergon/init.lock"
+)
+
+// lintCacheFiles are the files of the key of the cache of golangci-lint: the dependencies of every
+// module, the version of Go, the rules of golangci-lint, and the files that state its version. A
+// change of any of them changes the results of most packages.
+var lintCacheFiles = []string{sums, workspace, lintConfig, language.Config, initLock}
+
+// The history of dokimi-mutate-go in the job mutate-go: its ID, its name in the names of its steps,
+// the directory in the temporary directory of the runner, the input of workflow_dispatch that turns
+// its restore off, and the variable from which dokimi-mutate-go reads the directory.
+const (
+	historyID       = "dokimi-mutate-go-history"
+	historyName     = "the history of dokimi-mutate-go"
+	historyPath     = "${{ runner.temp }}/dokimi-mutate-go-history"
+	historyInput    = "history"
+	historyVariable = "DOKIMI_MUTATE_GO_HISTORY"
+)
 
 // tapRepository matches a repository on GitHub as owner/name.
 var tapRepository = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9._-]+$`)
@@ -78,10 +125,10 @@ type Options struct {
 	Paths option.Paths `yaml:"paths" doc:"The package patterns that each target of Go passes in every module of go.work."`
 
 	// Check are the steps of check-go.
-	Check option.Check `yaml:"check" doc:"The steps that check-go runs, in order: lint, test, race, fuzz, bench, mutate, generate or audit."`
+	Check option.Check `yaml:"check" doc:"The steps that check-go runs, in order: lint, test, race, longtest, fuzz, bench, mutate, generate or audit."`
 
 	// Nightly are the steps that nightly.yml runs, with the limit of each.
-	Nightly option.Nightly `yaml:"nightly" doc:"The steps that nightly.yml runs on its schedule, fuzz, bench or mutate, each in a job of its own on Linux, mapped to the limit of that job in minutes."`
+	Nightly option.Nightly `yaml:"nightly" doc:"The steps that nightly.yml runs on its schedule, longtest, fuzz, bench or mutate, each in a job of its own on Linux, mapped to the limit of that job in minutes. The job of longtest or mutate ends its run 10 minutes before its limit, through GO_LONGTEST_TIMEOUT or GO_MUTATE_TIMEOUT, so its limit is more than 10 minutes."`
 
 	// Lint are the options of lint-go.
 	Lint Lint `yaml:"lint" doc:"The options of lint-go, which runs golangci-lint in every module with the rules of .golangci.yml, the analyzers of the key analyzers and the module plugins of the key plugins."`
@@ -91,6 +138,9 @@ type Options struct {
 
 	// Race are the options of race-go.
 	Race option.Run `yaml:"race" doc:"race-go runs go test -race with args. -p=1 tests one package at a time, because the race detector multiplies the memory of a test."`
+
+	// LongTest are the options of longtest-go.
+	LongTest option.Run `yaml:"longtest" prefix:"longtest" doc:"longtest-go runs go test with args in every module, for the long tests that test-go and race-go skip when their args include -short. Each test binary panics after GO_LONGTEST_TIMEOUT, 0 for no limit. The job longtest-go of nightly.yml sets it to the limit of the job minus 10 minutes."`
 
 	// Fuzz are the options of fuzz-go.
 	Fuzz option.Fuzz `yaml:"fuzz" doc:"fuzz-go fuzzes each fuzz target whose name matches the regular expression match, for time each, with args. -fuzzminimizetime bounds the minimization of a new input, which go test runs for 60s by default."`
@@ -156,6 +206,19 @@ type Lint struct {
 	// Analyzers is the package that registers the analyzers errorprefix and skipexpiry as module
 	// plugins of golangci-lint.
 	Analyzers option.Module `yaml:"analyzers" doc:"The package that registers the analyzers errorprefix and skipexpiry as module plugins of golangci-lint, as <package>@<version>. errorprefix reports a text of errors.New that does not start with the name of its package, and skipexpiry reports a skipped test whose expiry has passed. ergon tool run builds them into golangci-lint with the plugins, and .golangci.yml enables both."`
+
+	// CacheInvalidationInterval is the number of days after which the job check-go starts a new
+	// cache of golangci-lint, or 0 for no cache.
+	CacheInvalidationInterval int `yaml:"cache-invalidation-interval" doc:"The days after which the job check-go of ci.yml starts a new cache of golangci-lint, as the input of the same name of golangci-lint-action. The job keeps the cache while check names lint, under a key of the go.sum of each module, go.work, .golangci.yml, .ergon.yaml and the lock. 0 turns the cache off."`
+}
+
+// Validate returns an error that wraps [option.ErrInvalid] for a CacheInvalidationInterval below 0.
+func (l Lint) Validate() error {
+	if l.CacheInvalidationInterval < 0 {
+		return fmt.Errorf("%w: lint.cache-invalidation-interval %d, which is less than 0", option.ErrInvalid,
+			l.CacheInvalidationInterval)
+	}
+	return nil
 }
 
 // The linters that the package of [Lint.Analyzers] registers.
@@ -197,19 +260,26 @@ type Actions struct {
 }
 
 // Validate returns an error that wraps [option.ErrInvalid] for a step of check that Go does not
-// have, for the step generate without a command, for a step of nightly other than fuzz, bench and
-// mutate, for a command that is not valid, as [Command.Validate] states, for two commands of one
-// name, for a command named after the UPX build of another, <name>-upx, for a command named after
-// the macOS build of a command with cgo, <name>-darwin, for a command with a cask while
-// homebrew.tap is empty, and for a provider of the Terraform Registry beside another command of its
-// module, whose GoReleaser configuration writes the checksums and the draft of the provider. The
-// command checks each option by the Validate method of its type before it calls Validate.
+// have, for the step generate without a command, for a step of nightly other than longtest, fuzz,
+// bench and mutate, for a limit of 10 minutes or less for longtest or mutate under nightly, for a
+// command that is not valid, as [Command.Validate] states, for two commands of one name, for a
+// command named after the UPX build of another, <name>-upx, for a command named after the macOS
+// build of a command with cgo, <name>-darwin, for a command with a cask while homebrew.tap is empty,
+// and for a provider of the Terraform Registry beside another command of its module, whose
+// GoReleaser configuration writes the checksums and the draft of the provider. The command checks
+// each option by the Validate method of its type before it calls Validate.
 func (o *Options) Validate() error {
 	if err := o.Check.Only(steps...); err != nil {
 		return err
 	}
 	if err := o.Nightly.Only(nightly...); err != nil {
 		return err
+	}
+	for _, s := range o.Nightly.Steps() {
+		if _, timed := timeouts[s]; timed && o.Nightly[s] <= margin {
+			return fmt.Errorf("%w: nightly gives %s %d minutes, and its job keeps %d minutes for its setup and its "+
+				"cache", option.ErrInvalid, s, o.Nightly[s], margin)
+		}
 	}
 	if err := o.Generate.CheckStep(o.Check); err != nil {
 		return err
@@ -253,11 +323,16 @@ func (o *Options) Validate() error {
 //     modules by every go.sum. The job keeps the tools of the section, which ergon tool run
 //     installs, in the cache of GitHub Actions, under a key that covers go.work, because ergon
 //     tool run builds each Go module with the version of the go command. The steps of ci.steps run
-//     after setup-go.
+//     after setup-go. While check names lint and lint.cache-invalidation-interval is above 0, the
+//     job keeps the cache of golangci-lint with that interval, under a key of the go.sum of every
+//     module, go.work, .golangci.yml, .ergon.yaml and the lock of ergon init.
 //   - The job <step>-go of nightly.yml runs make <step>-go for each step of nightly, in the order of
 //     the targets, on the Linux runner of the section github and the version of go.work, with the
 //     limit that nightly states for the step. It sets up Go as check-go does, with the steps of
-//     ci.steps after setup-go.
+//     ci.steps after setup-go. The jobs of longtest and mutate pass GO_LONGTEST_TIMEOUT and
+//     GO_MUTATE_TIMEOUT to make, the limit of the job minus 10 minutes. The job of mutate keeps the
+//     history of dokimi-mutate-go in a cache without files, which the input history of
+//     workflow_dispatch turns off, and names its directory in DOKIMI_MUTATE_GO_HISTORY.
 //   - The release steps install the version of go.work with setup-go in the jobs version and pack of
 //     release.yml, once the repository has go.work, for the go mod tidy of a release and the builds
 //     of its commands.
@@ -274,10 +349,10 @@ func (o *Options) Validate() error {
 //   - Dependabot updates the modules of every directory.
 func (o *Options) Contribution() workflow.Contribution {
 	present := "hashFiles('" + workspace + "') != ''"
-	pinned := map[string]string{"go-version-file": workspace, "cache-dependency-path": "**/go.sum"}
+	pinned := map[string]string{"go-version-file": workspace, "cache-dependency-path": sums}
 	with := pinned
 	if len(o.CI.Versions) > 0 {
-		with = map[string]string{"go-version": "${{ matrix.version }}", "cache-dependency-path": "**/go.sum"}
+		with = map[string]string{"go-version": "${{ matrix.version }}", "cache-dependency-path": sums}
 	}
 	require := workflow.Step{
 		Name: "Require go.work",
@@ -297,6 +372,16 @@ func (o *Options) Contribution() workflow.Contribution {
 	for _, s := range nightly {
 		target := s.Target(Name)
 		name := strings.ToUpper(string(s[:1])) + string(s[1:]) + " Go"
+		run := "make " + target
+		if variable, timed := timeouts[s]; timed {
+			run += " " + variable + "=" + strconv.Itoa(o.Nightly[s]-margin) + "m"
+		}
+		step := workflow.Step{Name: name, Run: []string{run}}
+		var caches []workflow.Cache
+		if s == option.StepMutate {
+			step.Env = map[string]string{historyVariable: historyPath}
+			caches = []workflow.Cache{{ID: historyID, Name: historyName, Path: historyPath, Input: historyInput}}
+		}
 		scheduled = append(scheduled, workflow.Job{
 			ID:          target,
 			Name:        name,
@@ -307,9 +392,20 @@ func (o *Options) Contribution() workflow.Contribution {
 				Steps:        nightlySetup,
 				Timeout:      o.Nightly[s],
 			},
-			Tools: true,
-			Steps: []workflow.Step{{Name: name, Run: []string{"make " + target}}},
+			Tools:  true,
+			Caches: caches,
+			Steps:  []workflow.Step{step},
 		})
+	}
+	var lintCaches []workflow.Cache
+	if o.Lint.CacheInvalidationInterval > 0 && slices.Contains(o.Check, option.StepLint) {
+		lintCaches = []workflow.Cache{{
+			ID:    lintCacheID,
+			Name:  lintCacheName,
+			Path:  lintCachePath,
+			Files: slices.Clone(lintCacheFiles),
+			Days:  o.Lint.CacheInvalidationInterval,
+		}}
 	}
 	var assets *workflow.Assets
 	if len(o.Binaries) > 0 {
@@ -332,8 +428,9 @@ func (o *Options) Contribution() workflow.Contribution {
 				Steps:        checkSetup,
 				Timeout:      o.CI.Timeout,
 			},
-			Tools: true,
-			Steps: []workflow.Step{{Name: "Check Go", Run: []string{"make --keep-going check-go"}}},
+			Tools:  true,
+			Caches: lintCaches,
+			Steps:  []workflow.Step{{Name: "Check Go", Run: []string{"make --keep-going check-go"}}},
 		}},
 		Nightly: scheduled,
 		Release: []workflow.Step{{Name: setupName, If: present, Uses: o.CI.Actions.SetupGo, With: pinned}},

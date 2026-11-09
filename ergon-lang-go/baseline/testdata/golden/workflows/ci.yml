@@ -144,6 +144,19 @@ jobs:
           key: "ergon-tools-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ hashFiles('.ergon.yaml', '.ergon/init.lock', 'go.work') }}"
           path: "${{ runner.os == 'Windows' && '~/AppData/Local/ergon/tools' || runner.os == 'macOS' && '~/Library/Caches/ergon/tools' || '~/.cache/ergon/tools' }}"
           restore-keys: "ergon-tools-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-"
+      - name: Count the intervals of the cache of golangci-lint
+        id: golangci-lint-interval
+        if: "hashFiles('**/go.mod') != ''"
+        run: |
+          echo "interval=$(( $(date -u +%s) / 604800 ))" >> "$GITHUB_OUTPUT"
+      - name: Keep the cache of golangci-lint
+        id: golangci-lint
+        if: "hashFiles('**/go.mod') != ''"
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          key: "golangci-lint-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ steps.golangci-lint-interval.outputs.interval }}-${{ hashFiles('**/go.sum', 'go.work', '.golangci.yml', '.ergon.yaml', '.ergon/init.lock') }}"
+          path: "${{ runner.os == 'Windows' && '~/AppData/Local/golangci-lint' || runner.os == 'macOS' && '~/Library/Caches/golangci-lint' || '~/.cache/golangci-lint' }}"
+          restore-keys: "golangci-lint-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ steps.golangci-lint-interval.outputs.interval }}-"
       - name: Check Go
         if: "hashFiles('**/go.mod') != ''"
         run: |

@@ -199,6 +199,27 @@ func TestBaseline(t *testing.T) {
 				assert.Contains(t, string(out), "ok  \t"+passing, "the output of make test-go")
 			})
 
+			t.Run("passes GO_LONGTEST_TIMEOUT to the test binaries of every module", func(t *testing.T) {
+				t.Parallel()
+				// The test of the first module sleeps past the limit, so go test ends its binary with a panic.
+				slow := "package a\n\nimport (\n\t\"testing\"\n\t\"time\"\n)\n\n" +
+					"func TestA(t *testing.T) { time.Sleep(time.Minute) }\n"
+				dir := files.Workspace(t, files.Tree{
+					"Makefile":    files.Text(rendered(t, baseline.Producer{}.Options(), "Makefile")),
+					"go.work":     files.Text("go 1.27\n\nuse (\n\t./a\n\t./b\n)\n"),
+					"a/go.mod":    files.Text("module example.com/a\n\ngo 1.27\n"),
+					"a/a_test.go": files.Text(slow),
+					"b/go.mod":    files.Text("module " + passing + "\n\ngo 1.27\n"),
+					"b/b_test.go": files.Text("package b\n\nimport \"testing\"\n\nfunc TestB(t *testing.T) {}\n"),
+				})
+				out, err := makeTarget(t, dir, "longtest-go", "GO_LONGTEST_TIMEOUT=100ms")
+				exit := assert.ErrorAs[*exec.ExitError](t, err, "the error of make longtest-go, whose module a fails")
+				expect.Equal(t, exit.ExitCode(), 2, "the exit status of make after a target fails")
+				expect.That(t, out).
+					Contains("panic: test timed out after 100ms", "the output of the module whose test runs too long").
+					Contains("ok  \t"+passing, "the output of the module after it")
+			})
+
 			t.Run("runs the benchmarks of every package that bench.skip does not name", func(t *testing.T) {
 				t.Parallel()
 				o, _ := baseline.Producer{}.Options().(*baseline.Options)

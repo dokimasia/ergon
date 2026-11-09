@@ -18,6 +18,11 @@ on:
   schedule:
     - cron: "0 3 * * *"
   workflow_dispatch:
+    inputs:
+      history:
+        description: "When false, the job mutate-go starts without the history of dokimi-mutate-go."
+        type: boolean
+        default: true
 
 permissions: {}
 
@@ -148,10 +153,26 @@ jobs:
           key: "ergon-tools-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ hashFiles('.ergon.yaml', '.ergon/init.lock', 'go.work') }}"
           path: "${{ runner.os == 'Windows' && '~/AppData/Local/ergon/tools' || runner.os == 'macOS' && '~/Library/Caches/ergon/tools' || '~/.cache/ergon/tools' }}"
           restore-keys: "ergon-tools-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-"
+      - name: Restore the history of dokimi-mutate-go
+        id: dokimi-mutate-go-history
+        if: "hashFiles('**/go.mod') != '' && (github.event_name != 'workflow_dispatch' || inputs.history)"
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          key: "dokimi-mutate-go-history-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ github.run_id }}-${{ github.run_attempt }}"
+          path: "${{ runner.temp }}/dokimi-mutate-go-history"
+          restore-keys: "dokimi-mutate-go-history-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-"
       - name: Mutate Go
         if: "hashFiles('**/go.mod') != ''"
+        env:
+          DOKIMI_MUTATE_GO_HISTORY: "${{ runner.temp }}/dokimi-mutate-go-history"
         run: |
-          make mutate-go
+          make mutate-go GO_MUTATE_TIMEOUT=50m
+      - name: Save the history of dokimi-mutate-go
+        if: "hashFiles('**/go.mod') != '' && (always())"
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          key: "dokimi-mutate-go-history-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ github.run_id }}-${{ github.run_attempt }}"
+          path: "${{ runner.temp }}/dokimi-mutate-go-history"
       - name: Prune the tools of ergon
         if: "hashFiles('**/go.mod') != '' && (steps.ergon-tools.outputs.cache-hit != 'true')"
         run: |

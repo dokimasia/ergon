@@ -16,6 +16,10 @@ import (
 // the name of the language.
 const Name = "go"
 
+// uncached is the flag of go test that runs each test once and reads no result from the cache of go
+// test, which the steps test, race and longtest pass at the baseline.
+const uncached = "-count=1"
+
 // templates are the templates of Go: the configuration of golangci-lint under managed/, and the
 // fragments of the shared files under shared/.
 //
@@ -46,16 +50,16 @@ func (Producer) Templates() fs.FS {
 // benchstat, dokimi-mutate-go, GoReleaser, cosign, syft, UPX and zig, every package of each module, the
 // gate of lint, test, race and audit, the nightly jobs of fuzz for 120 minutes, bench for 45 and
 // mutate for 60, the options of each step with the analyzers of go.dokimi.dev/lint, no other module
-// plugin of golangci-lint and go generate as the generators, no command and no tap, the release of
-// setup-go, and a limit of 30 minutes for the job check-go on every runner and the version of
-// go.work.
+// plugin of golangci-lint, a new cache of golangci-lint every 7 days and go generate as the
+// generators, no command and no tap, the release of setup-go, and a limit of 30 minutes for the job
+// check-go on every runner and the version of go.work.
 func (Producer) Options() language.Options {
 	return &Options{
 		Tools: Tools{
 			GolangCILint:   "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0",
 			Govulncheck:    "golang.org/x/vuln/cmd/govulncheck@v1.9.0",
 			Benchstat:      "golang.org/x/perf/cmd/benchstat@v0.0.0-20261009192801-be2c69fb417e",
-			DokimiMutateGo: "go.dokimi.dev/mutate/cmd/dokimi-mutate-go@v0.1.0",
+			DokimiMutateGo: "go.dokimi.dev/mutate/cmd/dokimi-mutate-go@v0.3.0",
 			GoReleaser: GoReleaser{Binary: option.Binary{
 				Version: "2.19.0",
 				SHA256: map[option.Platform]string{
@@ -108,12 +112,17 @@ func (Producer) Options() language.Options {
 				},
 			},
 		},
-		Paths:    option.Paths{"./..."},
-		Check:    option.Check{option.StepLint, option.StepTest, option.StepRace, option.StepAudit},
-		Nightly:  option.Nightly{option.StepFuzz: 120, option.StepBench: 45, option.StepMutate: 60},
-		Lint:     Lint{Analyzers: "go.dokimi.dev/lint/golangci@v0.2.0", Plugins: option.Plugins{}},
-		Test:     option.Run{Args: []string{"-count=1"}},
-		Race:     option.Run{Args: []string{"-count=1", "-p=1"}},
+		Paths:   option.Paths{"./..."},
+		Check:   option.Check{option.StepLint, option.StepTest, option.StepRace, option.StepAudit},
+		Nightly: option.Nightly{option.StepFuzz: 120, option.StepBench: 45, option.StepMutate: 60},
+		Lint: Lint{
+			Analyzers:                 "go.dokimi.dev/lint/golangci@v0.2.0",
+			Plugins:                   option.Plugins{},
+			CacheInvalidationInterval: 7,
+		},
+		Test:     option.Run{Args: []string{uncached}},
+		Race:     option.Run{Args: []string{uncached, "-p=1"}},
+		LongTest: option.Run{Args: []string{uncached}},
 		Fuzz:     option.Fuzz{Match: ".", Time: "30s", Args: []string{"-fuzzminimizetime=5s"}},
 		Bench:    option.Bench{Match: ".", Time: "1s", Args: []string{"-benchmem"}, Skip: []string{}, Count: 6},
 		Mutate:   option.Mutate{Timeout: "0s", Args: []string{}, Skip: []string{}, Workers: 1},

@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -24,6 +25,27 @@ import (
 
 // setupGo is the pin of setup-go at the baseline.
 var setupGo = goOptions().CI.Actions.SetupGo
+
+// margin is the number of minutes of a nightly job of mutate or longtest that the run of make does
+// not get, which the job keeps for its setup and its cache.
+const margin = 10
+
+// lintCache is the cache of golangci-lint of the job check-go at the baseline.
+var lintCache = workflow.Cache{
+	ID:    "golangci-lint",
+	Name:  "the cache of golangci-lint",
+	Path:  "${{ runner.os == 'Windows' && '~/AppData/Local/golangci-lint' || runner.os == 'macOS' && '~/Library/Caches/golangci-lint' || '~/.cache/golangci-lint' }}",
+	Files: []string{"**/go.sum", "go.work", ".golangci.yml", ".ergon.yaml", ".ergon/init.lock"},
+	Days:  7,
+}
+
+// historyCache is the cache of the history of dokimi-mutate-go of the job mutate-go.
+var historyCache = workflow.Cache{
+	ID:    "dokimi-mutate-go-history",
+	Name:  "the history of dokimi-mutate-go",
+	Path:  "${{ runner.temp }}/dokimi-mutate-go-history",
+	Input: "history",
+}
 
 // installTypeScript is a step of ci.steps, which installs a compiler that the tests run.
 var installTypeScript = workflow.Step{Name: "Install TypeScript", Run: []string{"npm install --global typescript"}}
@@ -124,6 +146,28 @@ func TestOptions(t *testing.T) {
 				}, "the plugins")
 			})
 		})
+
+		t.Run("Validate", func(t *testing.T) {
+			t.Parallel()
+
+			for _, give := range []int{0, 7} {
+				t.Run(
+					"returns nil for a cache invalidation interval of "+strconv.Itoa(give)+" days",
+					func(t *testing.T) {
+						t.Parallel()
+						assert.NoError(t, baseline.Lint{CacheInvalidationInterval: give}.Validate(), "Validate")
+					},
+				)
+			}
+
+			t.Run("returns ErrInvalid for a cache invalidation interval below 0", func(t *testing.T) {
+				t.Parallel()
+				err := baseline.Lint{CacheInvalidationInterval: -1}.Validate()
+				assert.ErrorIs(t, err, option.ErrInvalid, "Validate")
+				want := "option: invalid value: lint.cache-invalidation-interval -1, which is less than 0"
+				assert.Equal(t, err.Error(), want, "the error")
+			})
+		})
 	})
 
 	t.Run("Validate", func(t *testing.T) {
@@ -138,11 +182,33 @@ func TestOptions(t *testing.T) {
 			t.Parallel()
 			o := goOptions()
 			o.Check = option.Check{
-				option.StepLint, option.StepTest, option.StepRace, option.StepFuzz, option.StepBench,
-				option.StepMutate, option.StepGenerate, option.StepAudit,
+				option.StepLint, option.StepTest, option.StepRace, option.StepLongTest, option.StepFuzz,
+				option.StepBench, option.StepMutate, option.StepGenerate, option.StepAudit,
 			}
 			assert.NoError(t, o.Validate(), "Validate")
 		})
+
+		t.Run("returns nil for every nightly step of Go", func(t *testing.T) {
+			t.Parallel()
+			o := goOptions()
+			o.Nightly = option.Nightly{
+				option.StepLongTest: margin + 1, option.StepFuzz: 1, option.StepBench: 1, option.StepMutate: margin + 1,
+			}
+			assert.NoError(t, o.Validate(), "Validate")
+		})
+
+		for _, step := range []option.Step{option.StepMutate, option.StepLongTest} {
+			t.Run("returns ErrInvalid for a nightly limit of "+strconv.Itoa(margin)+" minutes for "+string(step),
+				func(t *testing.T) {
+					t.Parallel()
+					o := goOptions()
+					o.Nightly = option.Nightly{step: margin}
+					err := o.Validate()
+					assert.ErrorIs(t, err, option.ErrInvalid, "Validate")
+					assert.Contains(t, err.Error(), "nightly gives "+string(step)+" "+strconv.Itoa(margin)+" minutes",
+						"the error")
+				})
+		}
 
 		t.Run("returns ErrInvalid for the step fmt, which formats the sources", func(t *testing.T) {
 			t.Parallel()
@@ -159,7 +225,7 @@ func TestOptions(t *testing.T) {
 			assert.ErrorIs(t, o.Validate(), option.ErrInvalid, "Validate")
 		})
 
-		t.Run("returns ErrInvalid for a nightly step other than fuzz, bench and mutate", func(t *testing.T) {
+		t.Run("returns ErrInvalid for a nightly step other than longtest, fuzz, bench and mutate", func(t *testing.T) {
 			t.Parallel()
 			o := goOptions()
 			o.Nightly = option.Nightly{option.StepFuzz: 120, option.StepRace: 30}
@@ -298,13 +364,14 @@ func TestOptions(t *testing.T) {
 							},
 							Timeout: 30,
 						},
-						Tools: true,
-						Steps: []workflow.Step{{Name: "Check Go", Run: []string{"make --keep-going check-go"}}},
+						Tools:  true,
+						Caches: []workflow.Cache{lintCache},
+						Steps:  []workflow.Step{{Name: "Check Go", Run: []string{"make --keep-going check-go"}}},
 					}},
 					Nightly: []workflow.Job{
 						nightlyJob("fuzz-go", "Fuzz Go", 120),
 						nightlyJob("bench-go", "Bench Go", 45),
-						nightlyJob("mutate-go", "Mutate Go", 60),
+						mutateJob(60),
 					},
 					Release: []workflow.Step{{
 						Name: "Set up Go",
@@ -445,8 +512,45 @@ func TestOptions(t *testing.T) {
 			got := o.Contribution().Nightly
 			assert.Length(t, got, 3, "the nightly jobs")
 			for _, j := range got {
-				expect.Equal(t, j, nightlyJob(j.ID, j.Name, j.Setup.Timeout), "the nightly job "+j.ID)
+				expect.Equal(t, j.Setup, nightlyJob(j.ID, j.Name, j.Setup.Timeout).Setup, "the setup of "+j.ID)
 			}
+		})
+
+		t.Run("sets GO_MUTATE_TIMEOUT of the job mutate-go to its limit minus the margin", func(t *testing.T) {
+			t.Parallel()
+			o := goOptions()
+			o.Nightly = option.Nightly{option.StepMutate: 120}
+			assert.Equal(t, o.Contribution().Nightly, []workflow.Job{mutateJob(120)}, "the nightly jobs")
+		})
+
+		t.Run("runs make longtest-go with GO_LONGTEST_TIMEOUT of its limit minus the margin", func(t *testing.T) {
+			t.Parallel()
+			o := goOptions()
+			o.Nightly = option.Nightly{option.StepLongTest: 60}
+			want := nightlyJob("longtest-go", "Longtest Go", 60)
+			want.Steps = []workflow.Step{{
+				Name: "Longtest Go",
+				Run:  []string{"make longtest-go GO_LONGTEST_TIMEOUT=" + strconv.Itoa(60-margin) + "m"},
+			}}
+			assert.Equal(t, o.Contribution().Nightly, []workflow.Job{want}, "the nightly jobs")
+		})
+
+		t.Run("keeps no cache of golangci-lint for a cache invalidation interval of 0", func(t *testing.T) {
+			t.Parallel()
+			o := goOptions()
+			o.Lint.CacheInvalidationInterval = 0
+			got := o.Contribution().Jobs
+			assert.Length(t, got, 1, "the jobs")
+			assert.Empty(t, got[0].Caches, "the caches of check-go")
+		})
+
+		t.Run("keeps no cache of golangci-lint for a check without lint", func(t *testing.T) {
+			t.Parallel()
+			o := goOptions()
+			o.Check = option.Check{option.StepTest}
+			got := o.Contribution().Jobs
+			assert.Length(t, got, 1, "the jobs")
+			assert.Empty(t, got[0].Caches, "the caches of check-go")
 		})
 
 		t.Run("returns the assets of the commands with the tap of a command with a cask", func(t *testing.T) {
@@ -509,6 +613,19 @@ func nightlyJob(id, name string, minutes int) workflow.Job {
 		Tools: true,
 		Steps: []workflow.Step{{Name: name, Run: []string{"make " + id}}},
 	}
+}
+
+// mutateJob returns the nightly job mutate-go with a limit of minutes, which keeps the history of
+// dokimi-mutate-go and ends the run of make the margin before its limit.
+func mutateJob(minutes int) workflow.Job {
+	j := nightlyJob("mutate-go", "Mutate Go", minutes)
+	j.Caches = []workflow.Cache{historyCache}
+	j.Steps = []workflow.Step{{
+		Name: "Mutate Go",
+		Env:  map[string]string{"DOKIMI_MUTATE_GO_HISTORY": historyCache.Path},
+		Run:  []string{"make mutate-go GO_MUTATE_TIMEOUT=" + strconv.Itoa(minutes-margin) + "m"},
+	}}
+	return j
 }
 
 // goOptions returns new options of the section go at the baseline.

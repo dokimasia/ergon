@@ -14,9 +14,10 @@
 // # Makefile
 //
 // The fragment of the Makefile runs each target in every module of go.work: fmt-go, lint-go,
-// test-go, race-go, fuzz-go, bench-go, benchstat-go, mutate-go, generate-go, verify-generate-go and
-// audit-go, and check-go, which requires the targets of the steps that the key check of the section
-// names. Every tool runs through ergon tool run, which installs the version that the section names.
+// test-go, race-go, longtest-go, fuzz-go, bench-go, benchstat-go, mutate-go, generate-go,
+// verify-generate-go and audit-go, and check-go, which requires the targets of the steps that the key
+// check of the section names. longtest-go runs the tests that test-go and race-go skip when their
+// args include -short, and each of its test binaries panics after GO_LONGTEST_TIMEOUT. Every tool runs through ergon tool run, which installs the version that the section names.
 // The fragment states each option of a step as a variable, such as GO_FUZZ_TIME, which one run of
 // make overrides on its command line. generate-go runs the command lines of the generators in
 // order, go generate at the baseline, and verify-generate-go fails when they change a file of the
@@ -60,11 +61,12 @@
 //
 // [Options] is the section go: the tools, the package patterns, the steps of the gate, the steps of
 // nightly.yml with the limit of each, the options of each step, the commands and the tap of their
-// casks, and the key ci of the job check-go. [Options.Contribution] returns the job check-go, a job
-// of nightly.yml for each step of the key nightly, the setup of Go in the jobs of release.yml, the
-// assets of the releases of the commands, the CodeQL analysis of go, the steps that leave the
-// modules of go.work out of the license check of the dependency review, and the updates of the
-// modules.
+// casks, and the key ci of the job check-go. [Options.Contribution] returns the job check-go with the
+// cache of golangci-lint, a job of nightly.yml for each step of the key nightly, the setup of Go in
+// the jobs of release.yml, the assets of the releases of the commands, the CodeQL analysis of go,
+// the steps that leave the modules of go.work out of the license check of the dependency review, and
+// the updates of the modules. The job mutate-go keeps the history of dokimi-mutate-go, so each
+// night tests the mutants that changed and the mutants with the oldest verdicts.
 //
 // # Dependency position
 //
