@@ -162,6 +162,13 @@ func TestJob(t *testing.T) {
 				name: "returns nil for a check of text that runs ergon and its tools",
 				give: func(j *workflow.Job) { j.Setup, j.Text, j.Timeout, j.Ergon, j.Tools = nil, true, 10, true, true },
 			},
+			{
+				name: "returns nil for a job with two caches",
+				give: func(j *workflow.Job) {
+					history := workflow.Cache{ID: "history", Name: "the history", Path: "${{ runner.temp }}/history"}
+					j.Caches = []workflow.Cache{*lintCache(), history}
+				},
+			},
 		}
 		for _, tt := range valid {
 			t.Run(tt.name, func(t *testing.T) {
@@ -228,6 +235,14 @@ func TestJob(t *testing.T) {
 			{
 				name: "returns ErrInvalidJob for an access other than read, write and none",
 				give: func(j *workflow.Job) { j.Permissions = map[string]string{"contents": "admin"} },
+			},
+			{
+				name: "returns ErrInvalidJob for a cache that is not valid",
+				give: func(j *workflow.Job) { j.Caches = []workflow.Cache{{ID: "golangci-lint"}} },
+			},
+			{
+				name: "returns ErrInvalidJob for a cache id named twice",
+				give: func(j *workflow.Job) { j.Caches = []workflow.Cache{*lintCache(), *lintCache()} },
 			},
 			{name: "returns ErrInvalidJob for no step", give: func(j *workflow.Job) { j.Steps = nil }},
 			{

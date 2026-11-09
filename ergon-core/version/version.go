@@ -27,14 +27,16 @@ var ErrOverflow = errors.New("version: component past its bound")
 // package that has never been released.
 type Version struct {
 	// Pre is the pre-release without its hyphen, such as rc.1, or empty for a release.
-	Pre string
+	Pre string `json:"pre"`
 
 	// Build is the build metadata without its plus sign, such as 20261007, or empty. It plays no
 	// part in the order of versions.
-	Build string
+	Build string `json:"build"`
 
 	// Major, Minor and Patch are the numeric components, each at most [MaxComponent].
-	Major, Minor, Patch uint64
+	Major uint64 `json:"major"`
+	Minor uint64 `json:"minor"`
+	Patch uint64 `json:"patch"`
 }
 
 // Parse returns the version that s states, such as 1.4.0, 2.0.0-rc.1 or 1.0.0+20261007. s has no

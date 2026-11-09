@@ -19,7 +19,7 @@ func TestStep(t *testing.T) {
 		t.Run("returns nil for every step", func(t *testing.T) {
 			t.Parallel()
 			assert.Total(t, option.Step.Validate, []option.Step{
-				"fmt", "lint", "test", "msrv", "race", "fuzz", "bench", "mutate", "generate", "audit",
+				"fmt", "lint", "test", "msrv", "race", "longtest", "fuzz", "bench", "mutate", "generate", "audit",
 			}, "Validate of the spelling of each step")
 		})
 
@@ -56,6 +56,11 @@ func TestStep(t *testing.T) {
 				name: "returns the check of the generated files for the step generate",
 				give: option.StepGenerate,
 				want: "verify-generate-python",
+			},
+			{
+				name: "returns the target of the long tests for the step longtest",
+				give: option.StepLongTest,
+				want: "longtest-python",
 			},
 		}
 		for _, tt := range tests {

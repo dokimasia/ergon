@@ -110,7 +110,9 @@ func assetsOf(all, part *workflow.Assets, name string) (*workflow.Assets, error)
 // toolchain with the setup of that toolchain from setups. It returns an error that wraps
 // [ErrInvalidContribution] for a toolchain without a setup, and for a job whose ID all has.
 func jobsOf(all, jobs []workflow.Job, setups map[string]*workflow.Setup, name string) ([]workflow.Job, error) {
-	for _, j := range jobs {
+	for i := range jobs {
+		// The copy takes the setup of its toolchain, and the job of the contribution keeps none.
+		j := jobs[i]
 		if j.Toolchain != "" {
 			setup, ok := setups[j.Toolchain]
 			if !ok {

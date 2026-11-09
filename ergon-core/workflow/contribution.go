@@ -63,10 +63,10 @@ type Contribution struct {
 
 // Validate returns the first error of the parts of c, in the order of its fields: the error of
 // [Setup.Validate], [Job.Validate] of a job of ci.yml or of nightly.yml, an error that wraps
-// [ErrInvalidJob] for a job of ci.yml with App, [Step.Validate] with the position of the release
-// step, [Assets.Validate], [CodeQL.Validate], [Step.Validate] with the position of the review step,
-// or [Update.Validate], which wraps the sentinel of the part. It returns nil for a contribution
-// whose every part is valid, and for the zero value.
+// [ErrInvalidJob] for a job of ci.yml with App or with a cache that has an input, [Step.Validate]
+// with the position of the release step, [Assets.Validate], [CodeQL.Validate], [Step.Validate] with
+// the position of the review step, or [Update.Validate], which wraps the sentinel of the part. It
+// returns nil for a contribution whose every part is valid, and for the zero value.
 func (c *Contribution) Validate() error {
 	if c.Setup != nil {
 		if err := c.Setup.Validate(); err != nil {
@@ -81,9 +81,16 @@ func (c *Contribution) Validate() error {
 		}
 	}
 	for i := range c.Jobs {
-		if c.Jobs[i].App {
+		j := &c.Jobs[i]
+		if j.App {
 			return fmt.Errorf("%w: %s of ci.yml creates the token of the GitHub App, which only a job of "+
-				"nightly.yml does", ErrInvalidJob, c.Jobs[i].ID)
+				"nightly.yml does", ErrInvalidJob, j.ID)
+		}
+		for k := range j.Caches {
+			if j.Caches[k].Input != "" {
+				return fmt.Errorf("%w: %s of ci.yml has the cache %s with an input of workflow_dispatch, which only "+
+					"a job of nightly.yml has", ErrInvalidJob, j.ID, j.Caches[k].ID)
+			}
 		}
 	}
 	for i := range c.Release {

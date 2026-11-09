@@ -93,6 +93,11 @@ func TestNightly(t *testing.T) {
 				want: []option.Step{option.StepFuzz, option.StepBench, option.StepMutate},
 			},
 			{
+				name: "returns longtest after race and before fuzz",
+				give: option.Nightly{option.StepFuzz: 120, option.StepLongTest: 60, option.StepRace: 30},
+				want: []option.Step{option.StepRace, option.StepLongTest, option.StepFuzz},
+			},
+			{
 				name: "returns the steps that ergon does not have last, in the order of their names",
 				give: option.Nightly{"soak": 1, option.StepFuzz: 120, "deploy": 1},
 				want: []option.Step{option.StepFuzz, "deploy", "soak"},

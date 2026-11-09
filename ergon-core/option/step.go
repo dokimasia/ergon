@@ -36,6 +36,10 @@ const (
 	// StepRace runs the tests under a race detector.
 	StepRace Step = "race"
 
+	// StepLongTest runs the long tests: the tests that the steps test and race skip when their
+	// arguments set the short mode of the test runner, such as go test -short.
+	StepLongTest Step = "longtest"
+
 	// StepFuzz fuzzes each fuzz target for a time.
 	StepFuzz Step = "fuzz"
 
@@ -55,14 +59,15 @@ const (
 
 // steps are the steps, in the order of their targets.
 var steps = []Step{
-	StepFmt, StepLint, StepTest, StepMSRV, StepRace, StepFuzz, StepBench, StepMutate, StepGenerate, StepAudit,
+	StepFmt, StepLint, StepTest, StepMSRV, StepRace, StepLongTest, StepFuzz, StepBench, StepMutate, StepGenerate,
+	StepAudit,
 }
 
 // Validate returns an error that wraps [ErrInvalid] for an s that is none of the steps.
 func (s Step) Validate() error {
 	if !slices.Contains(steps, s) {
-		return fmt.Errorf("%w: step %q, which is none of fmt, lint, test, msrv, race, fuzz, bench, mutate, "+
-			"generate and audit", ErrInvalid, s)
+		return fmt.Errorf("%w: step %q, which is none of fmt, lint, test, msrv, race, longtest, fuzz, bench, "+
+			"mutate, generate and audit", ErrInvalid, s)
 	}
 	return nil
 }

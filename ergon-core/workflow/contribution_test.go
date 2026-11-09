@@ -44,6 +44,15 @@ func TestContribution(t *testing.T) {
 			assert.NoError(t, c.Validate(), "Validate")
 		})
 
+		t.Run("returns nil for a nightly job with a cache that has an input", func(t *testing.T) {
+			t.Parallel()
+			c := goContribution()
+			cache := lintCache()
+			cache.Input = "history"
+			c.Nightly[0].Caches = []workflow.Cache{*cache}
+			assert.NoError(t, c.Validate(), "Validate")
+		})
+
 		invalid := []struct {
 			name string
 			give func(*workflow.Contribution)
@@ -67,6 +76,15 @@ func TestContribution(t *testing.T) {
 			{
 				name: "returns ErrInvalidJob for a job of ci.yml with the token of the App",
 				give: func(c *workflow.Contribution) { c.Jobs[0].App = true },
+				want: workflow.ErrInvalidJob,
+			},
+			{
+				name: "returns ErrInvalidJob for a job of ci.yml with a cache that has an input",
+				give: func(c *workflow.Contribution) {
+					cache := lintCache()
+					cache.Input = "history"
+					c.Jobs[0].Caches = []workflow.Cache{*cache}
+				},
 				want: workflow.ErrInvalidJob,
 			},
 			{

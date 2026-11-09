@@ -121,9 +121,9 @@ func (s *Setup) Validate() error {
 // Job is a job of ci.yml or of nightly.yml. The producer of the GitHub files renders every job from
 // one skeleton: the checkout, then the installation of GNU make for a job with a setup, the step
 // that creates the token of the GitHub App for a job with App, the setup steps, the installation of
-// ergon for a job that runs it, the cache of the tools of ergon for a job with Tools, the steps of
-// the job, and for a job with Tools the step that removes the tools that the options do not name
-// before the cache saves them.
+// ergon for a job that runs it, the cache of the tools of ergon for a job with Tools, the restore of
+// each of its Caches, the steps of the job, the save of each cache without files, and for a job with
+// Tools the step that removes the tools that the options do not name before the cache saves them.
 //
 // A job runs in one of three ways:
 //
@@ -154,6 +154,10 @@ type Job struct {
 
 	// Steps are the steps of the job after its setup.
 	Steps []Step
+
+	// Caches are the directories that the job keeps in the cache of GitHub Actions between its runs,
+	// besides the tools of ergon, as [Cache] states.
+	Caches []Cache
 
 	// Timeout is the limit in minutes of a job without a setup, and 0 for a job with one, which the
 	// timeout of its setup limits.
@@ -194,6 +198,7 @@ type Job struct {
 //   - a Timeout other than 0 for a job with a setup, and below 1 for any other job
 //   - Tools for a job that runs no ergon: a job without a setup whose Ergon is false
 //   - a setup that is not valid, as [Setup.Validate] states
+//   - a cache that is not valid, as [Cache.Validate] states, and a second cache of one ID
 //   - a scope of the permissions that is not lowercase letters and '-', or an access other than
 //     read, write and none
 //   - no step, or a step that is not valid, as [Step.Validate] states
@@ -224,6 +229,17 @@ func (j *Job) Validate() error {
 	if j.Setup != nil {
 		if err := j.Setup.Validate(); err != nil {
 			return fmt.Errorf("%w: %s: %w", ErrInvalidJob, j.ID, err)
+		}
+	}
+	for i := range j.Caches {
+		c := &j.Caches[i]
+		if err := c.Validate(); err != nil {
+			return fmt.Errorf("%w: %s: %w", ErrInvalidJob, j.ID, err)
+		}
+		for k := range i {
+			if j.Caches[k].ID == c.ID {
+				return fmt.Errorf("%w: %s names the cache %s twice", ErrInvalidJob, j.ID, c.ID)
+			}
 		}
 	}
 	for _, name := range slices.Sorted(maps.Keys(j.Permissions)) {

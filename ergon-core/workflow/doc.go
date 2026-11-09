@@ -15,6 +15,8 @@
 //     before its own steps.
 //   - A [Setup] states how a job sets up a toolchain: the files whose presence runs the job, the
 //     runners and the runtime versions of its matrix, its timeout, and its setup steps.
+//   - A [Cache] is a directory that a job keeps in the cache of GitHub Actions between its runs,
+//     such as the cache of a linter.
 //   - A [Step] runs an [Action] at the commit of a release, or a command of bash.
 //   - A [CodeQL] analysis states one language, and the steps that run before its analysis, such as
 //     the setup of its toolchain. An [Update] of Dependabot states one package manager.
