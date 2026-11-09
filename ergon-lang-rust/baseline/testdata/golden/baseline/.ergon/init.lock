@@ -48,7 +48,7 @@
       "--all-targets"
     ],
     "rust.tools.cargo-audit": "cargo-audit@0.22.2",
-    "rust.tools.cargo-hack": "cargo-hack@0.6.45",
+    "rust.tools.cargo-hack": "cargo-hack@0.6.46",
     "rust.tools.cargo-llvm-cov": "cargo-llvm-cov@0.9.1"
   },
   "answers": {

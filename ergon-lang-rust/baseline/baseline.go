@@ -55,7 +55,7 @@ func (Producer) Options() language.Options {
 		Tools: Tools{
 			CargoAudit:   "cargo-audit@0.22.2",
 			CargoLLVMCov: "cargo-llvm-cov@0.9.1",
-			CargoHack:    "cargo-hack@0.6.45",
+			CargoHack:    "cargo-hack@0.6.46",
 		},
 		Check:    option.Check{option.StepLint, option.StepTest, option.StepMSRV, option.StepAudit},
 		Test:     option.Run{Args: []string{"--workspace", "--all-targets"}},

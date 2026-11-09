@@ -13,7 +13,7 @@ js:
   tools:
     # The linter and the formatter of lint-js and fmt-js, with the rules of biome.json, for the
     # toolkit biome.
-    biome: '@biomejs/biome@2.6.2'
+    biome: '@biomejs/biome@2.6.4'
     # The npm that uploads the tarballs of a release to the npm registry in the job publish of
     # release.yml. The trusted publishing of npm needs npm 11.5.1 or later.
     npm: npm@12.2.1
@@ -45,8 +45,8 @@ js:
       # matrix, and the packages of pnpm-lock.yaml, for the package manager pnpm.
       setup-pnpm:
         uses: pnpm/setup
-        commit: a0881977cd8ea73b1ed212236c99ca10dcc80cf4
-        release: v3.1.1
+        commit: fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e
+        release: v3.1.2
     runners: []
     versions: []
     # The steps that each job of the toolchain runs after the setup of the toolchain and before

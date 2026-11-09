@@ -22,7 +22,7 @@ allprojects {
         apply(plugin = "pmd")
         val rules = listOf("rulesets/java/quickstart.xml")
         extensions.configure<PmdExtension> {
-            toolVersion = "7.28.0"
+            toolVersion = "7.29.0"
             isConsoleOutput = true
             ruleSets = rules.filterNot { rootDir.resolve(it).isFile }
             ruleSetFiles = files(rules.filter { rootDir.resolve(it).isFile }.map { rootDir.resolve(it) })
