@@ -17,10 +17,11 @@
 //   - ci.yml is the gate on every pull request, on the merge queue and on main. It renders each
 //     job of the contributions from one skeleton: the checkout, the installation of GNU make, the
 //     setup steps, the installation of ergon, the cache of the tools of ergon for a job that runs
-//     tools, and the steps of the job, as [Options.Jobs] states.
+//     tools, the caches of the job, and the steps of the job, as [Options.Jobs] states.
 //   - nightly.yml runs the nightly jobs of the contributions on the schedule of the section github
 //     and on demand, each from the same skeleton, on the Linux runner unless its setup lists
-//     runners, as [Options.NightlyJobs] states. A job with App creates the token of the GitHub App
+//     runners, as [Options.NightlyJobs] states. Its workflow_dispatch has a boolean [Input] for each
+//     input that a cache of a nightly job names. A job with App creates the token of the GitHub App
 //     of ERGON_APP_CLIENT_ID and ERGON_APP_PRIVATE_KEY before its setup steps. It creates the token
 //     only when the repository has the variable. When a job keeps the tools of ergon in the cache,
 //     the job prune-tools deletes each cache of the tools that a newer cache of the same job
@@ -68,7 +69,8 @@
 // and the digest of .ergon.yaml, the lock and the version files of its setup. [ToolsCache] starts
 // the key. When the key misses, the job restores the newest cache of the same system, architecture,
 // job and runtime version, and its last step runs ergon tool prune, so the cache saves only the
-// tools that the options name.
+// tools that the options name. Each [workflow.Cache] of a job follows the cache of the tools, with
+// the same parts at the start of its key.
 //
 // Every workflow grants no permission at its top level, and each job grants only the scopes that
 // it needs. Every action is pinned to the commit of a release, with the release in a comment.

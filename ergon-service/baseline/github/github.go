@@ -7,6 +7,7 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
+	"slices"
 	"strings"
 
 	"go.dokimi.dev/ergon/core/language"
@@ -54,6 +55,10 @@ type Workflows struct {
 	// no nightly.yml without one.
 	Nightly []Job
 
+	// Inputs are the inputs of workflow_dispatch of nightly.yml: one for each input that a cache of
+	// a nightly job names, in the order of the jobs and their caches.
+	Inputs []Input
+
 	// CodeQL are the steps that codeql.yml runs before an analysis: the steps of each CodeQL
 	// analysis of the contributions, in their order. Each step runs only when the run analyzes the
 	// language of its analysis and the repository has a file of the files of its analysis.
@@ -67,6 +72,17 @@ type Workflows struct {
 	// release.yml. The job then runs in the environment release with the release steps of the
 	// contributions, and requests the OIDC token of GitHub Actions.
 	Registry bool
+}
+
+// Input is a boolean input of workflow_dispatch of nightly.yml, which is true by default. A run with
+// the input false skips the restore of each cache that names the input.
+type Input struct {
+	// Name is the name of the input, which the expression inputs.<name> reads.
+	Name string
+
+	// Description states the cache that the input turns off, in the form of a run of
+	// workflow_dispatch.
+	Description string
 }
 
 // Producer renders the GitHub files of a repository: the workflows, the actions that install ergon
@@ -168,10 +184,12 @@ func (Producer) Options() language.Options {
 
 // Data returns the [Workflows] of c for o, and for the options at the baseline when o is not the
 // options of the GitHub files: the jobs of c, as [Options.Jobs] returns them, its nightly jobs, as
-// [Options.NightlyJobs] returns them, the steps of its CodeQL analyses, its assets with the owner
-// and the name of their tap, and its uploads to a registry. Each step of an analysis is a copy, with
-// the condition of its language and its files before its own condition. Data returns the error of
-// Jobs or NightlyJobs for a job whose runners the section does not list.
+// [Options.NightlyJobs] returns them, the inputs of the caches of its nightly jobs, the steps of its
+// CodeQL analyses, its assets with the owner and the name of their tap, and its uploads to a
+// registry. An input that two caches name appears once, with the description of the first cache.
+// Each step of an analysis is a copy, with the condition of its language and its files before its
+// own condition. Data returns the error of Jobs or NightlyJobs for a job whose runners the section
+// does not list.
 func (Producer) Data(_ *language.Answers, o language.Options, c *workflow.Contribution) (any, error) {
 	jobs, err := own(o).Jobs(c)
 	if err != nil {
@@ -182,6 +200,19 @@ func (Producer) Data(_ *language.Answers, o language.Options, c *workflow.Contri
 		return nil, err
 	}
 	w := Workflows{Jobs: jobs, Nightly: nightly, Assets: c.Assets != nil, Registry: c.Registry}
+	for i := range c.Nightly {
+		j := &c.Nightly[i]
+		for k := range j.Caches {
+			cache := &j.Caches[k]
+			named := func(in Input) bool { return in.Name == cache.Input }
+			if cache.Input != "" && !slices.ContainsFunc(w.Inputs, named) {
+				w.Inputs = append(w.Inputs, Input{
+					Name:        cache.Input,
+					Description: "When false, the job " + j.ID + " starts without " + cache.Name + ".",
+				})
+			}
+		}
+	}
 	for i := range c.CodeQL {
 		a := &c.CodeQL[i]
 		w.CodeQL = append(w.CodeQL, guard(a.Steps, codeqlLanguage+a.Language+codeqlFiles)...)

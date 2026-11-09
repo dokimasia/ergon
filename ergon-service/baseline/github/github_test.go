@@ -217,6 +217,27 @@ func TestGithub(t *testing.T) {
 					assert.Equal(t, w.CodeQL, want, "the steps of codeql.yml")
 				})
 
+			t.Run("returns the input of the caches of the nightly jobs once", func(t *testing.T) {
+				t.Parallel()
+				c := languages()
+				gamma := workflow.Cache{ID: "history-gamma", Name: "the history of gamma", Path: "g", Input: "history"}
+				c.Nightly = append(c.Nightly, workflow.Job{
+					ID:     "mutate-gamma",
+					Name:   "Mutate gamma",
+					Setup:  &workflow.Setup{Timeout: 60},
+					Caches: []workflow.Cache{gamma},
+					Steps:  []workflow.Step{{Run: []string{"make mutate-gamma"}}},
+				})
+				got, err := github.Producer{}.Data(baselinetest.Answers(), nil, &c)
+				assert.NoError(t, err, "Data")
+				w, ok := got.(github.Workflows)
+				assert.True(t, ok, "the data is a Workflows")
+				assert.Equal(t, w.Inputs, []github.Input{{
+					Name:        "history",
+					Description: "When false, the job mutate-beta starts without the history of beta.",
+				}}, "the inputs of nightly.yml")
+			})
+
 			t.Run("returns no assets and no tap for contributions without assets", func(t *testing.T) {
 				t.Parallel()
 				got, err := github.Producer{}.Data(baselinetest.Answers(), nil, &workflow.Contribution{})
@@ -468,11 +489,12 @@ func toolchain() workflow.Contribution {
 }
 
 // languages returns the contribution of the language alpha of the cases: a check that runs tools on
-// the setup of the toolchain tool, a check on a setup of its own, a check of text that runs tools,
-// and a job without a setup whose steps have each key of a step. Its nightly jobs fuzz alpha on the
-// setup of the toolchain tool, mutate beta on a setup of their own, and propose the updates of alpha
-// with the token of the App. Its releases have assets with casks for the tap dokimasia/homebrew-tap,
-// and its packages go to a registry.
+// the setup of the toolchain tool, a check on a setup of its own with the cache of its linter, a
+// check of text that runs tools, and a job without a setup whose steps have each key of a step. Its
+// nightly jobs fuzz alpha on the setup of the toolchain tool, mutate beta on a setup of their own
+// with a history that the input history turns off, and propose the updates of alpha with the token
+// of the App. Its releases have assets with casks for the tap dokimasia/homebrew-tap, and its
+// packages go to a registry.
 func languages() workflow.Contribution {
 	return workflow.Contribution{Assets: &workflow.Assets{Tap: "dokimasia/homebrew-tap"}, Nightly: []workflow.Job{
 		{
@@ -488,7 +510,13 @@ func languages() workflow.Contribution {
 			Name:        "Mutate beta",
 			Setup:       &workflow.Setup{Files: "beta.lock", Timeout: 60},
 			Permissions: read,
-			Steps:       []workflow.Step{{Name: "Mutate beta", Run: []string{"make mutate-beta"}}},
+			Caches: []workflow.Cache{{
+				ID:    "history-beta",
+				Name:  "the history of beta",
+				Path:  "${{ runner.temp }}/history-beta",
+				Input: "history",
+			}},
+			Steps: []workflow.Step{{Name: "Mutate beta", Run: []string{"make mutate-beta"}}},
 		},
 		{
 			ID:          "propose-alpha",
@@ -521,7 +549,14 @@ func languages() workflow.Contribution {
 			Name:        "Beta",
 			Setup:       &workflow.Setup{Runners: []string{"ubuntu-26.04", "windows-2025"}, Timeout: 5},
 			Permissions: read,
-			Steps:       []workflow.Step{{Run: []string{"make check-beta"}}},
+			Caches: []workflow.Cache{{
+				ID:    "lint-beta",
+				Name:  "the cache of lint-beta",
+				Path:  "~/.cache/lint-beta",
+				Files: []string{"beta.lock"},
+				Days:  7,
+			}},
+			Steps: []workflow.Step{{Run: []string{"make check-beta"}}},
 		},
 		{
 			ID:      "lint-text",

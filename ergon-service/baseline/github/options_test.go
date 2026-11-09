@@ -39,6 +39,26 @@ const (
 	toolsFilesKey      = toolsPrefix + "${{ hashFiles('.ergon.yaml', '.ergon/init.lock', 'alpha.version') }}"
 )
 
+// The caches of the cases: the cache of a linter with the files of its key, and a history that the
+// job saves in every run.
+var (
+	lintCache = workflow.Cache{
+		ID:    "lint-alpha",
+		Name:  "the cache of lint-alpha",
+		Path:  "~/.cache/lint-alpha",
+		Files: []string{"alpha.lock", "**/alpha.sum"},
+	}
+	historyCache = workflow.Cache{ID: "history-alpha", Name: "the history of alpha", Path: "${{ runner.temp }}/history"}
+)
+
+// The prefixes that a job restores for the caches of the cases, and the key of the history, which
+// each run makes new.
+const (
+	lintPrefix    = "lint-alpha-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-"
+	historyPrefix = "history-alpha-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-"
+	historyKey    = historyPrefix + "${{ github.run_id }}-${{ github.run_attempt }}"
+)
+
 // pruneTools is the last step of a job that runs tools, which removes the tools that the options
 // do not name when the key of the cache missed.
 var pruneTools = workflow.Step{
@@ -517,6 +537,171 @@ func TestOptions(t *testing.T) {
 			with := got[0].Steps[0].With
 			expect.Equal(t, with["key"], toolsVersionKey, "the key of the cache")
 			expect.Equal(t, with["restore-keys"], toolsVersionPrefix, "the prefix that the job restores")
+		})
+
+		t.Run("keeps a cache with files in a step of the action cache before the steps of the job", func(t *testing.T) {
+			t.Parallel()
+			check := workflow.Step{Run: []string{"make check-alpha"}}
+			c := workflow.Contribution{Jobs: []workflow.Job{{
+				ID:     "check-alpha",
+				Name:   "Alpha",
+				Setup:  &workflow.Setup{Timeout: 20},
+				Caches: []workflow.Cache{lintCache},
+				Steps:  []workflow.Step{check},
+			}}}
+			o := baselineOptions()
+			got, err := o.Jobs(&c)
+			assert.NoError(t, err, "Jobs")
+			assert.Length(t, got, 1, "the jobs")
+			assert.Equal(t, got[0].Steps, []workflow.Step{
+				{
+					Name: "Keep the cache of lint-alpha",
+					ID:   "lint-alpha",
+					Uses: o.CI.Actions.Cache,
+					With: map[string]string{
+						"path":         "~/.cache/lint-alpha",
+						"key":          lintPrefix + "${{ hashFiles('alpha.lock', '**/alpha.sum') }}",
+						"restore-keys": lintPrefix,
+					},
+				},
+				check,
+			}, "the steps")
+		})
+
+		t.Run("counts the intervals of a cache with days in a step before the step of the cache", func(t *testing.T) {
+			t.Parallel()
+			cache := lintCache
+			cache.Days = 7
+			c := workflow.Contribution{Jobs: []workflow.Job{{
+				ID:     "check-alpha",
+				Name:   "Alpha",
+				Setup:  &workflow.Setup{Timeout: 20},
+				Caches: []workflow.Cache{cache},
+				Steps:  []workflow.Step{{Run: []string{"make check-alpha"}}},
+			}}}
+			got, err := baselineOptions().Jobs(&c)
+			assert.NoError(t, err, "Jobs")
+			assert.Length(t, got, 1, "the jobs")
+			assert.Length(t, got[0].Steps, 3, "the steps")
+			expect.Equal(t, got[0].Steps[0], workflow.Step{
+				Name: "Count the intervals of the cache of lint-alpha",
+				ID:   "lint-alpha-interval",
+				Run:  []string{`echo "interval=$(( $(date -u +%s) / 604800 ))" >> "$GITHUB_OUTPUT"`},
+			}, "the step of the interval")
+			prefix := lintPrefix + "${{ steps.lint-alpha-interval.outputs.interval }}-"
+			expect.Equal(t, got[0].Steps[1].With["restore-keys"], prefix, "the prefix that the job restores")
+			expect.Equal(t, got[0].Steps[1].With["key"], prefix+"${{ hashFiles('alpha.lock', '**/alpha.sum') }}",
+				"the key of the cache")
+		})
+
+		t.Run("restores a cache without files before the steps of the job and saves it after them in every run",
+			func(t *testing.T) {
+				t.Parallel()
+				check := workflow.Step{Run: []string{"make mutate-alpha"}}
+				c := workflow.Contribution{Jobs: []workflow.Job{{
+					ID:     "mutate-alpha",
+					Name:   "Mutate alpha",
+					Setup:  &workflow.Setup{Timeout: 60},
+					Caches: []workflow.Cache{historyCache},
+					Steps:  []workflow.Step{check},
+				}}}
+				o := baselineOptions()
+				got, err := o.Jobs(&c)
+				assert.NoError(t, err, "Jobs")
+				assert.Length(t, got, 1, "the jobs")
+				with := map[string]string{"path": "${{ runner.temp }}/history", "key": historyKey}
+				save := o.CI.Actions.Cache.Path("save")
+				assert.Equal(t, got[0].Steps, []workflow.Step{
+					{
+						Name: "Restore the history of alpha",
+						ID:   "history-alpha",
+						Uses: o.CI.Actions.Cache.Path("restore"),
+						With: map[string]string{
+							"path":         "${{ runner.temp }}/history",
+							"key":          historyKey,
+							"restore-keys": historyPrefix,
+						},
+					},
+					check,
+					{Name: "Save the history of alpha", If: "always()", Uses: save, With: with},
+				}, "the steps")
+			})
+
+		t.Run("skips the restore of a cache with an input on a run of workflow_dispatch whose input is false",
+			func(t *testing.T) {
+				t.Parallel()
+				cache := historyCache
+				cache.Input = "history"
+				c := workflow.Contribution{Jobs: []workflow.Job{{
+					ID:     "mutate-alpha",
+					Name:   "Mutate alpha",
+					Setup:  &workflow.Setup{Timeout: 60},
+					Caches: []workflow.Cache{cache},
+					Steps:  []workflow.Step{{Run: []string{"make mutate-alpha"}}},
+				}}}
+				got, err := baselineOptions().Jobs(&c)
+				assert.NoError(t, err, "Jobs")
+				assert.Length(t, got, 1, "the jobs")
+				assert.NotEmpty(t, got[0].Steps, "the steps")
+				assert.Equal(t, got[0].Steps[0].If, "github.event_name != 'workflow_dispatch' || inputs.history",
+					"the condition of the restore")
+			})
+
+		t.Run("keys a cache by the runtime version of a matrix", func(t *testing.T) {
+			t.Parallel()
+			c := workflow.Contribution{Jobs: []workflow.Job{{
+				ID:     "check-alpha",
+				Name:   "Alpha",
+				Setup:  &workflow.Setup{Versions: []string{"1.0", "2.0"}, Timeout: 20},
+				Caches: []workflow.Cache{lintCache},
+				Steps:  []workflow.Step{{Run: []string{"make check-alpha"}}},
+			}}}
+			got, err := baselineOptions().Jobs(&c)
+			assert.NoError(t, err, "Jobs")
+			assert.Length(t, got, 1, "the jobs")
+			assert.NotEmpty(t, got[0].Steps, "the steps")
+			prefix := "lint-alpha-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ matrix.version }}-"
+			assert.Equal(t, got[0].Steps[0].With["restore-keys"], prefix, "the prefix that the job restores")
+		})
+
+		t.Run("keeps the caches between the tools of ergon and the prune of the tools", func(t *testing.T) {
+			t.Parallel()
+			check := workflow.Step{Run: []string{"make check-alpha"}}
+			c := workflow.Contribution{Jobs: []workflow.Job{{
+				ID:     "check-alpha",
+				Name:   "Alpha",
+				Setup:  &workflow.Setup{Timeout: 20},
+				Tools:  true,
+				Caches: []workflow.Cache{lintCache, historyCache},
+				Steps:  []workflow.Step{check},
+			}}}
+			got, err := baselineOptions().Jobs(&c)
+			assert.NoError(t, err, "Jobs")
+			assert.Length(t, got, 1, "the jobs")
+			assert.Length(t, got[0].Steps, 6, "the steps")
+			expect.Equal(t, got[0].Steps[0].ID, toolsID, "the first step")
+			expect.Equal(t, got[0].Steps[1].ID, "lint-alpha", "the second step")
+			expect.Equal(t, got[0].Steps[2].ID, "history-alpha", "the third step")
+			expect.Equal(t, got[0].Steps[3], check, "the fourth step")
+			expect.Equal(t, got[0].Steps[4].Name, "Save the history of alpha", "the fifth step")
+			expect.Equal(t, got[0].Steps[5], pruneTools, "the last step")
+		})
+
+		t.Run("guards the save of a cache without files before its condition always()", func(t *testing.T) {
+			t.Parallel()
+			c := workflow.Contribution{Jobs: []workflow.Job{{
+				ID:     "mutate-alpha",
+				Name:   "Mutate alpha",
+				Setup:  &workflow.Setup{Files: "alpha.lock", Timeout: 60},
+				Caches: []workflow.Cache{historyCache},
+				Steps:  []workflow.Step{{Run: []string{"make mutate-alpha"}}},
+			}}}
+			got, err := baselineOptions().Jobs(&c)
+			assert.NoError(t, err, "Jobs")
+			assert.Length(t, got, 1, "the jobs")
+			assert.Length(t, got[0].Steps, 3, "the steps")
+			want := "hashFiles('alpha.lock') != '' && (always())"
+			assert.Equal(t, got[0].Steps[2].If, want, "the condition of the save")
 		})
 
 		t.Run("starts the key of the cache of the tools of ergon with ToolsCache", func(t *testing.T) {

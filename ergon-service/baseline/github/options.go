@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 
 	"go.dokimi.dev/ergon/core/option"
@@ -33,6 +34,13 @@ const (
 // of the key, which contains no dash.
 const ToolsCache = "ergon-tools-"
 
+// The parts of the key of a cache of a job after the start of the key: the system, the
+// architecture and the job, and the runtime version of a matrix, each followed by a dash.
+const (
+	jobKey     = "${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-"
+	versionKey = "${{ matrix.version }}-"
+)
+
 // The step that keeps the tool directory of ergon in the cache of GitHub Actions, in a job that
 // runs tools: its name and its ID, the directory, which is ergon/tools in the cache directory of the
 // user on each system, as os.UserCacheDir returns it, its prefix without and with the runtime
@@ -44,9 +52,44 @@ const (
 	toolsStep          = "Keep the tools of ergon"
 	toolsID            = "ergon-tools"
 	toolsPath          = "${{ runner.os == 'Windows' && '~/AppData/Local/ergon/tools' || runner.os == 'macOS' && '~/Library/Caches/ergon/tools' || '~/.cache/ergon/tools' }}"
-	toolsPrefix        = ToolsCache + "${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-"
-	toolsVersionPrefix = ToolsCache + "${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ matrix.version }}-"
+	toolsPrefix        = ToolsCache + jobKey
+	toolsVersionPrefix = ToolsCache + jobKey + versionKey
 	toolsFiles         = "'.ergon.yaml', '.ergon/init.lock'"
+)
+
+// The steps that keep a [workflow.Cache] of a job: the start of the name of the step of a cache
+// with files, of the restore and of the save of a cache without files, and of the step that counts
+// the intervals of a cache with days. The name of the cache follows each start.
+const (
+	cacheKeepStep     = "Keep "
+	cacheRestoreStep  = "Restore "
+	cacheSaveStep     = "Save "
+	cacheIntervalStep = "Count the intervals of "
+)
+
+// The parts of the key and of the steps of a [workflow.Cache]: the end of the key of a cache
+// without files, which the run and its attempt make new, the suffix of the ID of the step that
+// counts the intervals, the seconds of a day, and the condition of the save of a cache without
+// files, which runs also after a step that failed.
+const (
+	cacheRunKey        = "${{ github.run_id }}-${{ github.run_attempt }}"
+	cacheIntervalID    = "-interval"
+	secondsPerDay      = 24 * 60 * 60
+	cacheSaveCondition = "always()"
+)
+
+// The paths of the actions of restore and save in the repository of the action cache.
+const (
+	cacheRestorePath = "restore"
+	cacheSavePath    = "save"
+)
+
+// The inputs of the action cache and of its actions restore and save: the directory of the cache,
+// its key, and the prefixes of the keys that a restore takes when the key misses.
+const (
+	pathInput        = "path"
+	keyInput         = "key"
+	restoreKeysInput = "restore-keys"
 )
 
 // The last step of a job that runs tools, which removes each tool that the options do not name
@@ -248,8 +291,8 @@ type Actions struct {
 	// DownloadArtifact receives a file of an earlier job of release.yml.
 	DownloadArtifact workflow.Action `yaml:"download-artifact" doc:"The action that downloads the publish plan in the job pack, and the artifacts in the job publish of release.yml."`
 
-	// Cache keeps the tools of ergon of a job between its runs.
-	Cache workflow.Action `yaml:"cache" doc:"The action that restores the tool directory of ergon before the steps of each job of ci.yml that runs tools, and saves it after a run that succeeds."`
+	// Cache keeps the tools of ergon and the caches of a job between its runs.
+	Cache workflow.Action `yaml:"cache" doc:"The action that restores the tool directory of ergon and the caches of a job of ci.yml or nightly.yml before the steps of the job, and saves them after a run that succeeds. Its actions restore and save keep a cache that the job saves after every run, also after a run that fails."`
 
 	// CreateGitHubAppToken creates the token of the GitHub App in version.yml, in baseline.yml, in
 	// the job homebrew of release.yml and in each job of nightly.yml with App.
@@ -288,6 +331,13 @@ func (o *Options) Validate() error {
 //     with versions, and covers the version files of its setup. Its prefix restores the newest
 //     cache of the job when the key misses. After its own steps, a step runs ergon tool prune when
 //     the key missed, so the cache saves only the tools that the options name.
+//   - A job with caches keeps each one after the tools of ergon, as [workflow.Cache] states. A
+//     cache with days starts with a step that counts the whole intervals since the Unix epoch with
+//     date. A cache with files is a step of the action Cache before the steps of the job. A cache
+//     without files is a step of the action restore of Cache before the steps of the job, and a
+//     step of its action save after them, whose condition is always(). The restore of a cache with
+//     an input runs unless a run of workflow_dispatch sets the input to false. The saves come before
+//     the step that prunes the tools.
 //
 // It returns an error that wraps [option.ErrInvalid] for a job that runs on a runner that Runners
 // does not list. Jobs reads c and does not modify it: a guarded step is a copy. A Job shares its
@@ -337,6 +387,7 @@ func (o *Options) Jobs(c *workflow.Contribution) ([]Job, error) {
 			}
 			job.Setup = slices.Concat([]workflow.Step{app}, job.Setup)
 		}
+		before, after := o.cacheSteps(j.Caches, len(job.Versions) > 0)
 		if j.Tools {
 			prefix := toolsPrefix
 			if len(job.Versions) > 0 {
@@ -351,13 +402,17 @@ func (o *Options) Jobs(c *workflow.Contribution) ([]Job, error) {
 				ID:   toolsID,
 				Uses: o.CI.Actions.Cache,
 				With: map[string]string{
-					"path":         toolsPath,
-					"key":          prefix + "${{ hashFiles(" + files + ") }}",
-					"restore-keys": prefix,
+					pathInput:        toolsPath,
+					keyInput:         prefix + "${{ hashFiles(" + files + ") }}",
+					restoreKeysInput: prefix,
 				},
 			}
 			prune := workflow.Step{Name: pruneToolsStep, If: pruneToolsIf, Run: []string{pruneToolsRun}}
-			job.Steps = slices.Concat([]workflow.Step{tools}, j.Steps, []workflow.Step{prune})
+			before = slices.Concat([]workflow.Step{tools}, before)
+			after = append(after, prune)
+		}
+		if len(before) > 0 || len(after) > 0 {
+			job.Steps = slices.Concat(before, j.Steps, after)
 		}
 		for _, r := range job.Runners {
 			if !slices.Contains(o.Runners, r) {
@@ -419,6 +474,59 @@ func (o *Options) NightlyJobs(c *workflow.Contribution) ([]Job, error) {
 		}
 	}
 	return jobs, nil
+}
+
+// cacheSteps returns the steps that keep caches before and after the steps of a job, as
+// [Options.Jobs] states them. versions reports that the job runs on a matrix of runtime versions,
+// whose version the key of each cache names.
+func (o *Options) cacheSteps(caches []workflow.Cache, versions bool) (before, after []workflow.Step) {
+	for i := range caches {
+		c := &caches[i]
+		prefix := c.ID + "-" + jobKey
+		if versions {
+			prefix += versionKey
+		}
+		if c.Days > 0 {
+			id := c.ID + cacheIntervalID
+			seconds := strconv.Itoa(c.Days * secondsPerDay)
+			count := `echo "interval=$(( $(date -u +%s) / ` + seconds + ` ))" >> "$GITHUB_OUTPUT"`
+			before = append(before, workflow.Step{Name: cacheIntervalStep + c.Name, ID: id, Run: []string{count}})
+			prefix += "${{ steps." + id + ".outputs.interval }}-"
+		}
+		restore := ""
+		if c.Input != "" {
+			restore = "github.event_name != 'workflow_dispatch' || inputs." + c.Input
+		}
+		if len(c.Files) > 0 {
+			before = append(before, workflow.Step{
+				Name: cacheKeepStep + c.Name,
+				ID:   c.ID,
+				If:   restore,
+				Uses: o.CI.Actions.Cache,
+				With: map[string]string{
+					pathInput:        c.Path,
+					keyInput:         prefix + "${{ hashFiles('" + strings.Join(c.Files, "', '") + "') }}",
+					restoreKeysInput: prefix,
+				},
+			})
+			continue
+		}
+		key := prefix + cacheRunKey
+		before = append(before, workflow.Step{
+			Name: cacheRestoreStep + c.Name,
+			ID:   c.ID,
+			If:   restore,
+			Uses: o.CI.Actions.Cache.Path(cacheRestorePath),
+			With: map[string]string{pathInput: c.Path, keyInput: key, restoreKeysInput: prefix},
+		})
+		after = append(after, workflow.Step{
+			Name: cacheSaveStep + c.Name,
+			If:   cacheSaveCondition,
+			Uses: o.CI.Actions.Cache.Path(cacheSavePath),
+			With: map[string]string{pathInput: c.Path, keyInput: key},
+		})
+	}
+	return before, after
 }
 
 // guard returns a copy of steps in which condition comes before the condition of each step, so each
