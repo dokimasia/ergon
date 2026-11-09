@@ -7,21 +7,21 @@ go 1.27.3
 
 require (
 	github.com/apache/skywalking-eyes v0.9.0
-	github.com/bmatcuk/doublestar/v4 v4.10.2
+	github.com/bmatcuk/doublestar/v4 v4.10.4
 	github.com/creachadair/tomledit v0.0.29
 	github.com/pelletier/go-toml/v2 v2.4.3
 	github.com/sirupsen/logrus v1.10.2
 	github.com/ulikunitz/xz v0.5.17
-	go.dokimi.dev/assert v0.3.0
+	go.dokimi.dev/assert v0.20.0
 	go.dokimi.dev/ergon/core v0.19.0
-	go.stealthscale.io/cli v0.7.0
-	go.yaml.in/yaml/v3 v3.0.5
-	golang.org/x/mod v0.41.0
+	go.stealthscale.io/cli v0.8.1
+	go.yaml.in/yaml/v3 v3.0.6
+	golang.org/x/mod v0.42.0
 )
 
 require (
 	dario.cat/mergo v1.0.2 // indirect
-	github.com/Microsoft/go-winio v0.6.2 // indirect
+	github.com/Microsoft/go-winio v0.6.4 // indirect
 	github.com/ProtonMail/go-crypto v1.5.2 // indirect
 	github.com/bmatcuk/doublestar/v2 v2.0.4 // indirect
 	github.com/cloudflare/circl v1.6.5 // indirect
@@ -38,10 +38,10 @@ require (
 	github.com/sergi/go-diff v1.4.0 // indirect
 	github.com/skeema/knownhosts v1.3.3 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
-	golang.org/x/crypto v0.57.0 // indirect
-	golang.org/x/net v0.60.0 // indirect
-	golang.org/x/sync v0.23.0 // indirect
-	golang.org/x/sys v0.48.0 // indirect
+	golang.org/x/crypto v0.58.0 // indirect
+	golang.org/x/net v0.62.0 // indirect
+	golang.org/x/sync v0.24.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
