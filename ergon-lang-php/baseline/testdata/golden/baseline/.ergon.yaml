@@ -4,9 +4,9 @@ php:
   # its package and no other package.
   tools:
     # The static analyzer of lint-php, at its strictest level, with the rules of phpstan.dist.neon.
-    phpstan: phpstan/phpstan@2.3.1
+    phpstan: phpstan/phpstan@2.3.4
     # The strict rules of PHPStan, which the extension installer loads.
-    phpstan-strict-rules: phpstan/phpstan-strict-rules@2.1.0
+    phpstan-strict-rules: phpstan/phpstan-strict-rules@2.1.1
     # The plugin of Composer that loads the extensions of PHPStan, such as phpstan-strict-rules.
     phpstan-extension-installer: phpstan/extension-installer@1.4.3
     # The formatter of fmt-php and lint-php, with the PER coding style.

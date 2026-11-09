@@ -24,7 +24,7 @@
     {
       "path": "gradle/ergon-java.init.gradle.kts",
       "producer": "java",
-      "sha256": "bdce456863f14b4dc590d6f1697a319b4e82598ce79be745a493f034276a6831"
+      "sha256": "c1b18a630f7714d4380b3cbb061d48094f25f74fe882c1a31957b7263c6626d0"
     }
   ],
   "settings": {
@@ -44,7 +44,7 @@
       "windows/amd64": "48260bed87f6830bae44a7a27f66ce98f7d9fb245f500021bd7ae16c9e2daa06"
     },
     "java.tools.google-java-format.version": "1.37.0",
-    "java.tools.pmd": "net.sourceforge.pmd:pmd-java@7.28.0",
+    "java.tools.pmd": "net.sourceforge.pmd:pmd-java@7.29.0",
     "jvm.ci.actions.setup-java.commit": "b843ebf9b913146b38da2eaa7aeddf76074ae1ad",
     "jvm.ci.actions.setup-java.release": "v6.1.0",
     "jvm.ci.actions.setup-java.uses": "actions/setup-java",

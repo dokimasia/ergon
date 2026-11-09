@@ -5,33 +5,33 @@ terraform:
     # The release of tflint, the linter of lint-terraform, with the rules of .tflint.hcl.
     tflint:
       sha256:
-        darwin/arm64: 2496e9cb3d24992d553b45e7c87a0fdc9449ca975233876247a9bfeda857e6c0
-        linux/amd64: cca9d13e2e1d7a2c627af60ff899a3c9b74212899416aeb96ec764d2ef954537
-        windows/amd64: fb42fb859d844b156a8ea9d3363078c4d8b85ca78782e60876b08c9b8e59f303
-      version: 0.64.0
+        darwin/arm64: 5a71c63481ba56760864298011fdb7317a9ae80a0bbaeceefa35883c7f62ac71
+        linux/amd64: d4c545ed2e29d6338604b586f34f544f380f70f243aa72f7b484713835eaec61
+        windows/amd64: 292e760adf0e9c7e0f10ddeb0f6add67fd6d2c68b5449fdf766ff6ffddce465c
+      version: 0.65.0
     # The release of tflint-ruleset-aws, which lint-terraform loads when lint.rulesets lists aws.
     tflint-ruleset-aws:
       sha256:
-        darwin/arm64: 246818b24c65a60d2b95d7c88921480d72bdca89cfbb936f23bb583b8c631f87
-        linux/amd64: 98a530130d33efd49408f3d0ab9198072192ede413cc2a2ce38295d0922eb1c6
-        windows/amd64: ef295f1f773a6ed63be377c192f903e8eb7f811ef603beb2eb21c681bd38c06d
-      version: 0.49.0
+        darwin/arm64: 0117f75027cbc1bc452db1defd59d40b4a579ef3e7bb3a8b3079eaf6d372a9a6
+        linux/amd64: cdd433fdbc0929e7b9f9709dd9e72237fdfe1fc235674445c284b1e4b94a5c26
+        windows/amd64: 42cb38eeef91b13b2df1fd3432685fbbff7d0f8850248beab08b0b42567ae933
+      version: 0.50.0
     # The release of tflint-ruleset-azurerm, which lint-terraform loads when lint.rulesets lists
     # azurerm.
     tflint-ruleset-azurerm:
       sha256:
-        darwin/arm64: f0140f15332e15e710f149d53cf9cbc2d48da051fadd6eec84f52db6094dc43f
-        linux/amd64: f1150b2dea7aef001ad07002671c75b5495f4521ddf3538ededf00896f7b0aaa
-        windows/amd64: 98025d2ae156aef33272a8520d7425da5f4a70f5e04aac8a7ba999766f0be3d1
-      version: 0.32.0
+        darwin/arm64: af434684e202bdac741bff19425417b2848f807624be130877a0e3fe7a1ed531
+        linux/amd64: cd372389bd9ef17096ed7a9fbd856c0122521df141301685e974b269322819a8
+        windows/amd64: 367ead184ec4ea6cdf4c401607c03301a3824a514815def94d1b378aae357630
+      version: 0.33.0
     # The release of tflint-ruleset-google, which lint-terraform loads when lint.rulesets lists
     # google.
     tflint-ruleset-google:
       sha256:
-        darwin/arm64: 93e1a6f2c196e9ba5fa6359cd8d2116d18c1770bddb09bf333e0617e216a5e22
-        linux/amd64: a5c02b3de937456de2521155831eaf1cc876014a21445bf7dd1621654511fe28
-        windows/amd64: cb01c16dbc21c306d3f529cd9352ef006e81c5d42d85eacb581e508eb764df3b
-      version: 0.40.0
+        darwin/arm64: bcfaa5613f70632c5a04540775c88552d5ab9ba5c2bbb5e46fc03b4be3ae630a
+        linux/amd64: efb3910bbc9f0b90bebd76d475ca6cd2cf04a032f6cddc8fa7a334e5011da6d6
+        windows/amd64: 7e5e3f8b165bd2b65bf378d70fd4fc15117ca0bc7898ab5953671570798c3620
+      version: 0.41.0
     # The release of terraform-docs, which generate-terraform runs when generate.docs is true.
     terraform-docs:
       sha256:
@@ -42,12 +42,12 @@ terraform:
     # The release of uv, which runs checkov on Python 3.13.
     uv:
       sha256:
-        darwin/arm64: 743f85035a1996ecb350659e01cd9faea9709829be09b1b4b03c73eaf3c9cd73
-        linux/amd64: f68d291c75783122dad58ab77def0e13f3233f358731db5d6d7e8715603b928f
-        windows/amd64: a38b8d1902b7cfbc76b423ba1bb456f623f42064cdc72628b6075b89afd1019a
-      version: 0.13.5
+        darwin/arm64: 60fbd5c8a1ed681845eea28d9d622fcde03c51e91a43465b64a1e17db1ed3472
+        linux/amd64: f29c3e94ffabd7e6f3ba521dba169a9b7ec12100bf3257087f0f24f6123f3645
+        windows/amd64: a2a8820d5eea32f08ef467ef3b7f66883a9b076d5737a2fc2fbb5f458d1bb50f
+      version: 0.13.6
     # The scan of audit-terraform, over the configuration.
-    checkov: checkov@3.3.30
+    checkov: checkov@3.4.2
   # The directories that the targets format, lint, test and scan, each with its subdirectories.
   paths: [.]
   # The steps that check-terraform runs, in order: lint, test, generate or audit.

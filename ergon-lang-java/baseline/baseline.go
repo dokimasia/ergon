@@ -54,7 +54,7 @@ func (Producer) Templates() fs.FS {
 func (Producer) Options() language.Options {
 	return &Options{
 		Tools: Tools{
-			PMD: "net.sourceforge.pmd:pmd-java@7.28.0",
+			PMD: "net.sourceforge.pmd:pmd-java@7.29.0",
 			GoogleJavaFormat: GoogleJavaFormat{Binary: option.Binary{
 				SHA256: map[option.Platform]string{
 					option.LinuxAMD64:   "881821ffd1a52b175886c4ebeeacce2ba5b5d7326b52d32a18d384d8a783bd77",
