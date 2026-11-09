@@ -1,5 +1,17 @@
 # go.dokimi.dev/ergon/service
 
+## 0.25.0
+
+### Minor Changes
+
+- 09c49eb: Render the caches of each job in `ci.yml` and `nightly.yml`, and an input of `workflow_dispatch` for each cache with an input.
+
+### Patch Changes
+
+- b3199f6: Update every Go requirement to its newest release.
+- Updated dependencies [1217c99, b3199f6]
+  - go.dokimi.dev/ergon/core@0.20.0
+
 ## 0.24.0
 
 ### Minor Changes

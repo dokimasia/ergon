@@ -1,5 +1,23 @@
 # go.dokimi.dev/ergon/lang/go
 
+## 0.14.0
+
+### Minor Changes
+
+- 3d40ca9: Add the step `longtest` with the key `go.longtest` and the target `longtest-go`.
+- 3d40ca9: **Breaking:** Pin dokimi-mutate-go v0.3.0, which writes the records of `--record` in version 2.
+- 3d40ca9: **Breaking:** Refuse a limit of 10 minutes or less for `longtest` and `mutate` under `go.nightly`.
+- 3d40ca9: Keep the cache of golangci-lint in the job `check-go`, and start a new one after `go.lint.cache-invalidation-interval` days.
+- 3d40ca9: Keep the history of dokimi-mutate-go in the job `mutate-go` of `nightly.yml`, which the input `history` turns off.
+- 3d40ca9: Set `GO_MUTATE_TIMEOUT` in the job `mutate-go` to its limit minus 10 minutes.
+
+### Patch Changes
+
+- b3199f6: Update every Go requirement to its newest release.
+- Updated dependencies [1217c99, 09c49eb, b3199f6]
+  - go.dokimi.dev/ergon/core@0.20.0
+  - go.dokimi.dev/ergon/service@0.25.0
+
 ## 0.13.0
 
 ### Minor Changes

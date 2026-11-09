@@ -1,5 +1,25 @@
 # go.dokimi.dev/ergon
 
+## 0.17.2
+
+### Patch Changes
+
+- b3199f6: Update every Go requirement to its newest release.
+- Updated dependencies [1217c99, 3d40ca9, e00aa80, 09c49eb, b3199f6]
+  - go.dokimi.dev/ergon/core@0.20.0
+  - go.dokimi.dev/ergon/lang/go@0.14.0
+  - go.dokimi.dev/ergon/lang/javascript@0.7.5
+  - go.dokimi.dev/ergon/service@0.25.0
+  - go.dokimi.dev/ergon/lang/bash@0.5.4
+  - go.dokimi.dev/ergon/lang/csharp@0.4.4
+  - go.dokimi.dev/ergon/lang/java@0.6.4
+  - go.dokimi.dev/ergon/lang/kotlin@0.4.4
+  - go.dokimi.dev/ergon/lang/php@0.5.4
+  - go.dokimi.dev/ergon/lang/python@0.7.4
+  - go.dokimi.dev/ergon/lang/rust@0.7.5
+  - go.dokimi.dev/ergon/lang/terraform@0.6.3
+  - go.dokimi.dev/ergon/lang/typescript@0.4.5
+
 ## 0.17.1
 
 ### Patch Changes

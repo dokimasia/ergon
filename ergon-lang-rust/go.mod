@@ -9,8 +9,8 @@ require (
 	github.com/bmatcuk/doublestar/v4 v4.10.4
 	github.com/pelletier/go-toml/v2 v2.4.3
 	go.dokimi.dev/assert v0.20.0
-	go.dokimi.dev/ergon/core v0.19.0
-	go.dokimi.dev/ergon/service v0.24.0
+	go.dokimi.dev/ergon/core v0.20.0
+	go.dokimi.dev/ergon/service v0.25.0
 )
 
 require (
