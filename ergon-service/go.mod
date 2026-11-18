@@ -12,11 +12,11 @@ require (
 	github.com/pelletier/go-toml/v2 v2.4.3
 	github.com/sirupsen/logrus v1.10.2
 	github.com/ulikunitz/xz v0.5.17
-	go.dokimi.dev/assert v0.20.0
+	go.dokimi.dev/assert v0.23.0
 	go.dokimi.dev/ergon/core v0.20.0
 	go.stealthscale.io/cli v0.8.1
 	go.yaml.in/yaml/v3 v3.0.6
-	golang.org/x/mod v0.42.0
+	golang.org/x/mod v0.43.0
 )
 
 require (

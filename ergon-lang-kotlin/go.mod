@@ -6,7 +6,7 @@ module go.dokimi.dev/ergon/lang/kotlin
 go 1.27.3
 
 require (
-	go.dokimi.dev/assert v0.20.0
+	go.dokimi.dev/assert v0.23.0
 	go.dokimi.dev/ergon/core v0.20.0
 	go.dokimi.dev/ergon/lang/java v0.6.4
 	go.dokimi.dev/ergon/service v0.25.0
@@ -17,7 +17,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.4.3 // indirect
 	go.stealthscale.io/cli v0.8.1 // indirect
 	go.yaml.in/yaml/v3 v3.0.6 // indirect
-	golang.org/x/mod v0.42.0 // indirect
+	golang.org/x/mod v0.43.0 // indirect
 )
 
 replace (
