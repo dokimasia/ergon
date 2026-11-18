@@ -6,7 +6,7 @@ module go.dokimi.dev/ergon
 go 1.27.3
 
 require (
-	go.dokimi.dev/assert v0.20.0
+	go.dokimi.dev/assert v0.23.0
 	go.dokimi.dev/ergon/core v0.20.0
 	go.dokimi.dev/ergon/lang/bash v0.5.4
 	go.dokimi.dev/ergon/lang/csharp v0.4.4
@@ -22,7 +22,7 @@ require (
 	go.dokimi.dev/ergon/service v0.25.0
 	go.stealthscale.io/cli v0.8.1
 	go.yaml.in/yaml/v3 v3.0.6
-	golang.org/x/mod v0.42.0
+	golang.org/x/mod v0.43.0
 )
 
 require (
