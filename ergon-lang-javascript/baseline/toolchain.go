@@ -66,7 +66,7 @@ func (Toolchain) Options() language.Options {
 	return &ToolchainOptions{
 		PackageManager: option.PackageManagerNPM,
 		Toolkit:        ToolkitBiome,
-		Tools:          ToolchainTools{Biome: "@biomejs/biome@2.6.2", NPM: "npm@12.2.1"},
+		Tools:          ToolchainTools{Biome: "@biomejs/biome@2.6.8", NPM: "npm@12.2.2"},
 		Paths:          option.Paths{"."},
 		Exclude:        Exclude{},
 		Audit:          option.Threshold{Severity: option.SeverityLow},
@@ -79,8 +79,8 @@ func (Toolchain) Options() language.Options {
 				},
 				SetupPNPM: workflow.Action{
 					Uses:    "pnpm/setup",
-					Commit:  "a0881977cd8ea73b1ed212236c99ca10dcc80cf4",
-					Release: "v3.1.1",
+					Commit:  "731dfb6463bbd11c11fd0ee11fe00ed0e36d48a1",
+					Release: "v3.2.0",
 				},
 			},
 			Runners:  option.Runners{},

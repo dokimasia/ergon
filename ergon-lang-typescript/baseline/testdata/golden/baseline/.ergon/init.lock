@@ -24,7 +24,7 @@
     {
       "path": "biome.json",
       "producer": "js",
-      "sha256": "eab77afa62deaa042eb44ac776f79380fbefbf332321d2dd80989945c2a5ac2e"
+      "sha256": "3e99c709f2b4ad83084b1381bbb44bd20bc11188af89d3d09e54adf5f27fcd46"
     }
   ],
   "settings": {
@@ -32,8 +32,8 @@
     "js.ci.actions.setup-node.commit": "949feb2413d6458794dcd2491c4babbbce0c15c1",
     "js.ci.actions.setup-node.release": "v7.1.0",
     "js.ci.actions.setup-node.uses": "actions/setup-node",
-    "js.ci.actions.setup-pnpm.commit": "a0881977cd8ea73b1ed212236c99ca10dcc80cf4",
-    "js.ci.actions.setup-pnpm.release": "v3.1.1",
+    "js.ci.actions.setup-pnpm.commit": "731dfb6463bbd11c11fd0ee11fe00ed0e36d48a1",
+    "js.ci.actions.setup-pnpm.release": "v3.2.0",
     "js.ci.actions.setup-pnpm.uses": "pnpm/setup",
     "js.ci.runners": [],
     "js.ci.steps": [],
@@ -45,8 +45,8 @@
       "."
     ],
     "js.toolkit": "biome",
-    "js.tools.biome": "@biomejs/biome@2.6.2",
-    "js.tools.npm": "npm@12.2.1",
+    "js.tools.biome": "@biomejs/biome@2.6.8",
+    "js.tools.npm": "npm@12.2.2",
     "typescript.check": [
       "lint",
       "test",

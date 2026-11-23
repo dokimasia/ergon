@@ -35,8 +35,8 @@
       "msrv",
       "audit"
     ],
-    "rust.ci.actions.setup-rust-toolchain.commit": "ecabd13d1c56bd1345c230e542e9144811ad706f",
-    "rust.ci.actions.setup-rust-toolchain.release": "v2.0.0",
+    "rust.ci.actions.setup-rust-toolchain.commit": "a188e68d0fd2bd36ad51dccb2b07ba6e75105f30",
+    "rust.ci.actions.setup-rust-toolchain.release": "v2.0.1",
     "rust.ci.actions.setup-rust-toolchain.uses": "actions-rust-lang/setup-rust-toolchain",
     "rust.ci.runners": [],
     "rust.ci.steps": [],
@@ -47,8 +47,8 @@
       "--workspace",
       "--all-targets"
     ],
-    "rust.tools.cargo-audit": "cargo-audit@0.22.2",
-    "rust.tools.cargo-hack": "cargo-hack@0.6.45",
+    "rust.tools.cargo-audit": "cargo-audit@0.23.0",
+    "rust.tools.cargo-hack": "cargo-hack@0.6.46",
     "rust.tools.cargo-llvm-cov": "cargo-llvm-cov@0.9.1"
   },
   "answers": {

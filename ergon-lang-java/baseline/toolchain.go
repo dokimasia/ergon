@@ -41,17 +41,17 @@ func (Toolchain) Options() language.Options {
 	return &ToolchainOptions{
 		Tools: ToolchainTools{OSVScanner: OSVScanner{Binary: option.Binary{
 			SHA256: map[option.Platform]string{
-				option.LinuxAMD64:   "160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b",
-				option.DarwinARM64:  "d4926ef8da134332543be276dff157e4c170f99ad91fc48e89448a8816bdf70b",
-				option.WindowsAMD64: "9964ed64ec9a387391eb4cc006ad5c531154821aef29b793e02c448de4686438",
+				option.LinuxAMD64:   "fb7dab19a8bd9bbe5c3189f09d4b7ee1820c9553a23bac202648a56efd2f6ee8",
+				option.DarwinARM64:  "b22c02877a811c8f78956e8643efa554932b7378f590d13f8e97d4e9448a29f3",
+				option.WindowsAMD64: "7121dcf420aefbbf89a7f0050c4d3094e079ff93afd334dfc96f16b02ec85800",
 			},
-			Version: "2.7.0",
+			Version: "2.7.1",
 		}}},
 		CI: option.MatrixCI[ToolchainActions]{
 			Actions: ToolchainActions{SetupJava: workflow.Action{
 				Uses:    "actions/setup-java",
-				Commit:  "b843ebf9b913146b38da2eaa7aeddf76074ae1ad",
-				Release: "v6.1.0",
+				Commit:  "d1374f8ac74474200d16ef8ecee22c7ae7a51880",
+				Release: "v6.3.0",
 			}},
 			Runners:  option.Runners{},
 			Versions: []string{},

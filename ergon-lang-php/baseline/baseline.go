@@ -26,10 +26,10 @@ var templates embed.FS
 // phpstan-strict-rules and of the extension installer, and a release of PHP-CS-Fixer from its
 // package without dependencies. [Tools.Validate] requires the package of each.
 var tools = Tools{
-	PHPStan:            "phpstan/phpstan@2.3.1",
-	StrictRules:        "phpstan/phpstan-strict-rules@2.1.0",
+	PHPStan:            "phpstan/phpstan@2.3.6",
+	StrictRules:        "phpstan/phpstan-strict-rules@2.1.1",
 	ExtensionInstaller: "phpstan/extension-installer@1.4.3",
-	PHPCSFixer:         "php-cs-fixer/shim@3.95.27",
+	PHPCSFixer:         "php-cs-fixer/shim@3.95.30",
 }
 
 // Producer renders the files of PHP: the configuration of PHPStan, and the fragments of

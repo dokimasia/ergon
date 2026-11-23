@@ -53,8 +53,8 @@ func (Producer) Options() language.Options {
 		CI: option.MatrixCI[Actions]{
 			Actions: Actions{SetupDotnet: workflow.Action{
 				Uses:    "actions/setup-dotnet",
-				Commit:  "a98b56852c35b8e3190ac28c8c2271da59106c68",
-				Release: "v6.0.0",
+				Commit:  "0f4a354dd5547a28c70b7853dbd95d5b67886e73",
+				Release: "v6.1.0",
 			}},
 			Runners:  option.Runners{},
 			Versions: []string{},

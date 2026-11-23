@@ -136,8 +136,8 @@ func (Producer) Options() language.Options {
 				},
 				CodeQL: workflow.Action{
 					Uses:    "github/codeql-action",
-					Commit:  "9b3254085494b55a0f7c4c2b3d2d52cc712ce370",
-					Release: "v4.39.1",
+					Commit:  "33d7b85da1a04171e211befe2c739303b9a4c066",
+					Release: "v4.39.3",
 				},
 				DependencyReview: workflow.Action{
 					Uses:    "actions/dependency-review-action",

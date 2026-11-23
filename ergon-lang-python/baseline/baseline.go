@@ -50,15 +50,15 @@ func (Producer) Options() language.Options {
 		Tools: Tools{
 			UV: option.UV{Binary: option.Binary{
 				SHA256: map[option.Platform]string{
-					option.LinuxAMD64:   "f68d291c75783122dad58ab77def0e13f3233f358731db5d6d7e8715603b928f",
-					option.DarwinARM64:  "743f85035a1996ecb350659e01cd9faea9709829be09b1b4b03c73eaf3c9cd73",
-					option.WindowsAMD64: "a38b8d1902b7cfbc76b423ba1bb456f623f42064cdc72628b6075b89afd1019a",
+					option.LinuxAMD64:   "5acfd9177cfecf0bf87578f059728215ccc884388988f55f7a65041b57387d91",
+					option.DarwinARM64:  "6b71028a6b904f2ae3340ef52e595512de807d06c0a20eaef2f692581b246558",
+					option.WindowsAMD64: "529e78a9cec6cd7e3e014f7ecd8bda0c113969d4ed0f2efeedb85c30943325b8",
 				},
-				Version: "0.13.5",
+				Version: "0.13.8",
 			}},
-			Ruff:     "ruff@0.17.1",
-			Mypy:     "mypy@2.4.0",
-			Pytest:   "pytest@9.1.1",
+			Ruff:     "ruff@0.17.5",
+			Mypy:     "mypy@2.4.1",
+			Pytest:   "pytest@9.2.0",
 			PipAudit: "pip-audit@2.10.1",
 		},
 		Paths:    option.Paths{"."},

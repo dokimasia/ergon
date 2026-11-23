@@ -49,7 +49,7 @@
     {
       "path": ".github/workflows/codeql.yml",
       "producer": "github",
-      "sha256": "e67384326c9ba0c296dbda490c4a18ef6cb3fc685490ee155eb8c5950afe685e"
+      "sha256": "27e17cb56f25065b7873f16b6f4b25482a5684cfa1f18219a79432257e96a7d4"
     },
     {
       "path": ".github/workflows/nightly.yml",
@@ -64,7 +64,7 @@
     {
       "path": ".github/workflows/security.yml",
       "producer": "github",
-      "sha256": "58f75b29e599bfa4c18b96f8f44867b8459b1d0849b9e2deecd31fea4fd40db5"
+      "sha256": "f02149157e347ffc309d5779362cb9d5f90b49e646d54b8a2dfe7f70b938524c"
     },
     {
       "path": ".github/workflows/version.yml",
@@ -87,8 +87,8 @@
     "github.ci.actions.checkout.commit": "3d3c42e5aac5ba805825da76410c181273ba90b1",
     "github.ci.actions.checkout.release": "v7.0.1",
     "github.ci.actions.checkout.uses": "actions/checkout",
-    "github.ci.actions.codeql.commit": "9b3254085494b55a0f7c4c2b3d2d52cc712ce370",
-    "github.ci.actions.codeql.release": "v4.39.1",
+    "github.ci.actions.codeql.commit": "33d7b85da1a04171e211befe2c739303b9a4c066",
+    "github.ci.actions.codeql.release": "v4.39.3",
     "github.ci.actions.codeql.uses": "github/codeql-action",
     "github.ci.actions.create-github-app-token.commit": "64ab729a6294000f5aa4a4bc0b73d1f32bc45510",
     "github.ci.actions.create-github-app-token.release": "v3.3.0",

@@ -68,11 +68,11 @@
     },
     "common.tools.commitlint.version": "0.12.0",
     "common.tools.rumdl.sha256": {
-      "darwin/arm64": "bc62f4176dd9257547c939fa152b535b6f393365acd352fcfd94e5e19a792bb4",
-      "linux/amd64": "6c90c398f04c11a09dcbd2da08bdaa6d53d9b14393e3cd32dbdf4da5620eec5c",
-      "windows/amd64": "72ed0bd3912560758cfc66cb439a2804755a858573e605cd3d1e65e8aa79d2a1"
+      "darwin/arm64": "51f7bce0d56ea632ed65e7e42a99effb7ce7a23923fe0738ecda0e1d11bcb788",
+      "linux/amd64": "2e64c7654906f0df82218fcc73cbdded2e41f37961f5be3e876e708bdf42e367",
+      "windows/amd64": "d059ae097c7d23ac627abb92a4496eb25aecc513f901a8e907662de98df0e875"
     },
-    "common.tools.rumdl.version": "0.3.0"
+    "common.tools.rumdl.version": "0.3.4"
   },
   "answers": {
     "name": "demo",

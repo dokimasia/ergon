@@ -36,8 +36,8 @@ github:
       # upload-sarif uploads the results of the Scorecard.
       codeql:
         uses: github/codeql-action
-        commit: 9b3254085494b55a0f7c4c2b3d2d52cc712ce370
-        release: v4.39.1
+        commit: 33d7b85da1a04171e211befe2c739303b9a4c066
+        release: v4.39.3
       # The action that reviews the dependencies that a pull request changes, in the job
       # dependency-review of security.yml.
       dependency-review:

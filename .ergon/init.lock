@@ -70,7 +70,7 @@
     {
       "path": ".github/workflows/codeql.yml",
       "producer": "github",
-      "sha256": "523c9b7e157ccbf3007c8c9aa4ace7f3ded0cd24b990df4e9a4c8651ccdedc89"
+      "sha256": "050530b657310a030d6901439718e4bc421724ec425525376c11dedb23704058"
     },
     {
       "path": ".github/workflows/nightly.yml",
@@ -85,7 +85,7 @@
     {
       "path": ".github/workflows/security.yml",
       "producer": "github",
-      "sha256": "aea518eeab732e7efbc68957cc691bf8b4433ec6b2e690457e65fbc738248d76"
+      "sha256": "9f0070869b9363d23c80bfd17062707a42dae3cb3cc0585406be81fb050ad0e6"
     },
     {
       "path": ".github/workflows/version.yml",
@@ -162,11 +162,11 @@
     },
     "common.tools.commitlint.version": "0.12.0",
     "common.tools.rumdl.sha256": {
-      "darwin/arm64": "bc62f4176dd9257547c939fa152b535b6f393365acd352fcfd94e5e19a792bb4",
-      "linux/amd64": "6c90c398f04c11a09dcbd2da08bdaa6d53d9b14393e3cd32dbdf4da5620eec5c",
-      "windows/amd64": "72ed0bd3912560758cfc66cb439a2804755a858573e605cd3d1e65e8aa79d2a1"
+      "darwin/arm64": "51f7bce0d56ea632ed65e7e42a99effb7ce7a23923fe0738ecda0e1d11bcb788",
+      "linux/amd64": "2e64c7654906f0df82218fcc73cbdded2e41f37961f5be3e876e708bdf42e367",
+      "windows/amd64": "d059ae097c7d23ac627abb92a4496eb25aecc513f901a8e907662de98df0e875"
     },
-    "common.tools.rumdl.version": "0.3.0",
+    "common.tools.rumdl.version": "0.3.4",
     "github.ci.actions.attest.commit": "1e69f48acb82d1966a394da916b4c1698aa569d6",
     "github.ci.actions.attest.release": "v4.2.2",
     "github.ci.actions.attest.uses": "actions/attest",
@@ -176,8 +176,8 @@
     "github.ci.actions.checkout.commit": "3d3c42e5aac5ba805825da76410c181273ba90b1",
     "github.ci.actions.checkout.release": "v7.0.1",
     "github.ci.actions.checkout.uses": "actions/checkout",
-    "github.ci.actions.codeql.commit": "9b3254085494b55a0f7c4c2b3d2d52cc712ce370",
-    "github.ci.actions.codeql.release": "v4.39.1",
+    "github.ci.actions.codeql.commit": "33d7b85da1a04171e211befe2c739303b9a4c066",
+    "github.ci.actions.codeql.release": "v4.39.3",
     "github.ci.actions.codeql.uses": "github/codeql-action",
     "github.ci.actions.create-github-app-token.commit": "64ab729a6294000f5aa4a4bc0b73d1f32bc45510",
     "github.ci.actions.create-github-app-token.release": "v3.3.0",
@@ -244,7 +244,7 @@
       ]
     ],
     "go.homebrew.tap": "",
-    "go.lint.analyzers": "go.dokimi.dev/lint/golangci@v0.2.0",
+    "go.lint.analyzers": "go.dokimi.dev/lint/golangci@v0.3.0",
     "go.lint.cache-invalidation-interval": 7,
     "go.lint.plugins": {},
     "go.longtest.args": [
@@ -281,39 +281,39 @@
     "go.tools.dokimi-mutate-go": "go.dokimi.dev/mutate/cmd/dokimi-mutate-go@v0.3.0",
     "go.tools.golangci-lint": "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0",
     "go.tools.goreleaser.sha256": {
-      "darwin/amd64": "164fce297e601ec00009e40d26858789b637335b5564bff2c99027b10d28bafe",
-      "darwin/arm64": "713192b46698ac10ed9275abf25c922a152ab8280c71ae58dc0ff46a33f60004",
-      "linux/amd64": "ebc3194ad1d1b1787614405285a0039665cd4c5bd3305215a1b201600f90630b",
-      "linux/arm64": "ef33741b684c9f62d6a21e7a3c8b051f139ea7b1d301693b67cc819c46226d53",
-      "windows/amd64": "67807490e909a37f58ef40b67601896d8d4da2411c9839221dae55732c243fe9",
-      "windows/arm64": "ff7a728ebdf86770d45c522f88b901e7fb3c06692b0d0c6a8a3a2c9bcf01b682"
+      "darwin/amd64": "58814536817f6ad787607ed7dfc9e774b3f1334dcffc87002ae2a54fd7b5c5c1",
+      "darwin/arm64": "4e68482f6bbdb2d3ce7f835be50a4eb7287ee999cefc563c49c5f42ad3778c78",
+      "linux/amd64": "f3d24969a7389a46613875711d15a96d8f6ef1553d84c6ace09d69ac1e7d44c0",
+      "linux/arm64": "f0fa989c3531348e8f975aac647eb187a09046f8a34c54e0b79bed66c84b7f96",
+      "windows/amd64": "d230d6def8b6059b277d472a2790501516b429ffe83b91469daad8b7736b8a5d",
+      "windows/arm64": "cf152a7d59e3d7d9cf278c7463e3f2b26cc28555e8fdea95c1dcfa773cb385f1"
     },
-    "go.tools.goreleaser.version": "2.19.0",
+    "go.tools.goreleaser.version": "2.20.2",
     "go.tools.govulncheck": "golang.org/x/vuln/cmd/govulncheck@v1.9.0",
     "go.tools.syft.sha256": {
-      "darwin/amd64": "e2e5831cbabaec9a36fe65c34755c1113982c842a685edce3ce0b54a0ded8003",
-      "darwin/arm64": "1217c258bd5eb91ef3189cf22a82e02f9cac07e4ce934350f428e93aff674625",
-      "linux/amd64": "bb65249542db5fedeeb4d3f9b018b75e7264dbfbbb10486f044581a92f90490d",
-      "linux/arm64": "929bd163db2d7cd2255d3bcb8967208079813d7b46b0c952f7b794d8e2c7d304",
-      "windows/amd64": "ada4c9b93af575f479ce80fce6629897272a2d41f300a14bc49bace020767ca2",
-      "windows/arm64": "f52f7796e41e4d1ae511c228c99239fd09887077336dcb7a8c2aa7046ed7c816"
+      "darwin/amd64": "2355758c1142982a67b309604c5d75effdbe638a57c771979ea8fd1a16656abc",
+      "darwin/arm64": "e0a74a5d2688d1254b4e17b71f068a83215e3625f846265bf6614c7ba06f3a96",
+      "linux/amd64": "bf52519eb57f675d47c07d43213cb6dff6449f3d6d1147ff6701ed91f44eef0c",
+      "linux/arm64": "aa3d3e07344f590bcce8d31043b752daa76c8a56c2aa34ceeee63c6168152582",
+      "windows/amd64": "3a01fe865076bb548352195b77e88fa4649277861ea458efe165c3a810b6dcc7",
+      "windows/arm64": "8cdd580b5f7160d12b66c7c5191100a6cf792e130d8a28deeae5ea45e0030e00"
     },
-    "go.tools.syft.version": "1.55.0",
+    "go.tools.syft.version": "1.57.1",
     "go.tools.upx.sha256": {
-      "linux/amd64": "402162aad30af47e60dbd767fb2e64ca394ace9727ba1f40283641f1d1b91657",
-      "linux/arm64": "a72d112c5970a904a31da0b9c84f919bc16b9a311787c12245508544a78c7d36",
-      "windows/amd64": "eabc6792a347d45e945be7748423e7868fd01b0d2bcaa2f4b1031fd71ff69bda"
+      "linux/amd64": "79cea8a50b6fa102d10c7b79a419cd77dead3cc2d78661de2dc5e5815dc505c1",
+      "linux/arm64": "2a4afa860ac7aa6968f88df7841823746e5d00ba56affdf9342c2f5254fb776f",
+      "windows/amd64": "d127996c76615e431be810e9c8d2910dbe3dd400600c5c0c50276fc5a17a9705"
     },
-    "go.tools.upx.version": "5.2.1",
+    "go.tools.upx.version": "5.3.0",
     "go.tools.zig.sha256": {
-      "darwin/amd64": "4f9a1c5269aa17ebda5e6d3c2b89d6cbf36f7d2b22a0306e9ab98f25f95529c6",
-      "darwin/arm64": "b607e9b9234790a008116ae5bdb71c6243b84b9fb42a53a9e70fde41c06c536a",
-      "linux/amd64": "1cbe9df9f27e6b78d14ccbca43b6703a404ef79ef1c463de901d7f088d4e2026",
-      "linux/arm64": "9e8d11661d4ae3bd57702a3832781e23ad151dde5798e16a5ccd503f65234ff8",
-      "windows/amd64": "b5663f69581dcf391293fbf16c06cb80d81d806545ce618b4d0bab7f0eb8c428",
-      "windows/arm64": "0a59d91fa1cb40cf068e9b0954434ce973500c7a2ea749f1e01af62cdab52d26"
+      "darwin/amd64": "9af07b20319fbd0c92ee46ad23e81d6a782b1aaea2cfb8dcbff35f1d2c7ddbb7",
+      "darwin/arm64": "75f1bc7a1e9852f17ec9a0c1895f767c4ec56d46bc8a834920eece1d0359dd8d",
+      "linux/amd64": "3581863e3cbcfd0fce0efc682ce7e9e93da96668a977791d356a26d2a7e9b17a",
+      "linux/arm64": "a1546d5646eb184437918d6635ca6b762a0e889eac09cef720ee7a1ed3fe7795",
+      "windows/amd64": "b03f477a1943673e02aca0f570e8030dffd536ce1f45cbc4d3326ec31159562e",
+      "windows/arm64": "4789895bdb1e312a2ea73b2a7c0a0cc8d2ab62ba6976e834a7c54cf443377c15"
     },
-    "go.tools.zig.version": "0.17.0",
+    "go.tools.zig.version": "0.17.1",
     "license.ci.timeout": 10,
     "license.directories": [],
     "license.exclude": [],

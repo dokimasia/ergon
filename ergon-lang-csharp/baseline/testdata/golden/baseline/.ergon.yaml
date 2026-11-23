@@ -21,8 +21,8 @@ csharp:
       # The action that installs the .NET SDK of global.json or of the matrix.
       setup-dotnet:
         uses: actions/setup-dotnet
-        commit: a98b56852c35b8e3190ac28c8c2271da59106c68
-        release: v6.0.0
+        commit: 0f4a354dd5547a28c70b7853dbd95d5b67886e73
+        release: v6.1.0
     runners: []
     versions: []
     # The steps that each job of the toolchain runs after the setup of the toolchain and before
