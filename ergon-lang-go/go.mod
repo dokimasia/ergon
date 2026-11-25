@@ -6,16 +6,15 @@ module go.dokimi.dev/ergon/lang/go
 go 1.27.3
 
 require (
-	go.dokimi.dev/assert v0.20.0
+	go.dokimi.dev/assert v0.23.0
 	go.dokimi.dev/ergon/core v0.20.0
 	go.dokimi.dev/ergon/service v0.25.0
 	go.yaml.in/yaml/v3 v3.0.6
-	golang.org/x/mod v0.42.0
+	golang.org/x/mod v0.43.0
 )
 
 require (
 	github.com/creachadair/tomledit v0.0.29 // indirect
 	github.com/pelletier/go-toml/v2 v2.4.3 // indirect
 	go.stealthscale.io/cli v0.8.1 // indirect
-	golang.org/x/tools v0.52.0 // indirect
 )
