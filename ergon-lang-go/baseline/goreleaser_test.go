@@ -252,3 +252,37 @@ func commands() []baseline.Command {
 		},
 	}
 }
+
+func TestLicenseDirectoryArchivesUseModuleLicense(t *testing.T) {
+	t.Parallel()
+	a := baselinetest.Answers(golang.Language)
+	a.License = spdx.BUSL11
+	a.Repository = "example/demo"
+	a.Name = "demo"
+	o := goOptions()
+	o.Binaries = []baseline.Command{{
+		Name:        "hello",
+		Module:      "cmd/hello",
+		Main:        ".",
+		Description: "Prints a greeting",
+		License:     spdx.ID("Apache-2.0"),
+		Packages:    []baseline.Package{baseline.PackageDeb},
+	}}
+	files, err := baseline.Producer{}.Files(a, o, &workflow.Contribution{})
+	assert.NoError(t, err, "Files")
+	assert.Length(t, files, 1, "the configurations")
+	assert.Equal(t, files[0].Path, "cmd/hello/.goreleaser.yaml", "the path")
+	content := string(files[0].Content)
+	if !strings.Contains(content, "src: cmd/hello/LICENSE*") {
+		t.Fatalf("archives should pack cmd/hello/LICENSE*:\n%s", content)
+	}
+	if !strings.Contains(content, "src: cmd/hello/NOTICE") {
+		t.Fatalf("archives and packages should pack cmd/hello/NOTICE:\n%s", content)
+	}
+	if !strings.Contains(content, "src: cmd/hello/LICENSE") {
+		t.Fatalf("packages should pack cmd/hello/LICENSE:\n%s", content)
+	}
+	if strings.Contains(content, "src: LICENSE*") || strings.Contains(content, "src: LICENSE\n") || strings.Contains(content, "src: NOTICE\n") {
+		t.Fatalf("root LICENSE/NOTICE should not be packed for a license-directory command:\n%s", content)
+	}
+}

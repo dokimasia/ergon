@@ -109,8 +109,9 @@ type release struct {
 	// Homebrew reports that a command of the module has a cask.
 	Homebrew bool
 
-	// Notice reports that the repository has a NOTICE, which ergon init writes for Apache-2.0
-	// alone. Each archive and each package of the release includes it.
+	// Notice reports that a command of the module includes a NOTICE, which ergon init writes
+	// for Apache-2.0. Kept for callers that still read the release; archives use the command
+	// field.
 	Notice bool
 
 	// CGO reports that a command of the module builds with cgo.
@@ -159,6 +160,19 @@ type command struct {
 	// License is the SPDX identifier of the command.
 	License string
 
+	// LicenseGlob is the archive src of the license files, LICENSE* at the repository root or
+	// <module>/LICENSE* when the command has a license of its own under that module.
+	LicenseGlob string
+
+	// LicenseFile is the license file packed into Linux packages, LICENSE or <module>/LICENSE.
+	LicenseFile string
+
+	// NoticeFile is the NOTICE packed into archives and packages when Notice is set.
+	NoticeFile string
+
+	// Notice reports that this command's license is Apache-2.0, so its NOTICE is packed.
+	Notice bool
+
 	// IDs are the identifiers of the builds of the command, which its archives and packages take.
 	IDs []string
 
@@ -204,7 +218,6 @@ func (Producer) Files(a *language.Answers, o language.Options, _ *workflow.Contr
 				Maintainer: a.Owner + " <" + a.SecurityContact + ">",
 				TapOwner:   owner,
 				TapName:    name,
-				Notice:     a.License == spdx.Apache20,
 			}
 			if c.Module != root {
 				r.Path = path.Join(c.Module, configFile)
@@ -223,9 +236,20 @@ func (Producer) Files(a *language.Answers, o language.Options, _ *workflow.Contr
 			r.Provider = c.Name
 		}
 		license := string(a.License)
+		licenseDir := ""
 		if c.License != "" {
 			license = string(c.License)
+			if c.Module != root && c.Module != "" {
+				licenseDir = c.Module
+			}
 		}
+		licenseFile, licenseGlob, noticeFile := "LICENSE", "LICENSE*", "NOTICE"
+		if licenseDir != "" {
+			licenseFile = path.Join(licenseDir, "LICENSE")
+			licenseGlob = path.Join(licenseDir, "LICENSE*")
+			noticeFile = path.Join(licenseDir, "NOTICE")
+		}
+		notice := license == string(spdx.Apache20)
 		unpacked := build{ID: c.Name, Name: c.Name, Main: c.Main}
 		apple := build{ID: c.Name + darwinSuffix, Name: c.Name, Main: c.Main, Stubs: true}
 		packed := build{ID: c.Name + packedSuffix, Name: c.Name, Main: c.Main, Pack: true}
@@ -259,11 +283,16 @@ func (Producer) Files(a *language.Answers, o language.Options, _ *workflow.Contr
 			Main:        c.Main,
 			Description: c.Description,
 			License:     license,
+			LicenseGlob: licenseGlob,
+			LicenseFile: licenseFile,
+			NoticeFile:  noticeFile,
+			Notice:      notice,
 			IDs:         ids,
 			Packages:    packages,
 			Completions: c.Completions,
 			Homebrew:    c.Homebrew,
 		})
+		r.Notice = r.Notice || notice
 		r.Completions = r.Completions || c.Completions
 		r.Packages = r.Packages || len(c.Packages) > 0
 		r.Homebrew = r.Homebrew || c.Homebrew

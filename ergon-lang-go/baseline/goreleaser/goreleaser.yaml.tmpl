@@ -86,10 +86,10 @@ archives:
     name_template: "{{% .Name %}}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     builds_info: {owner: root, group: root, mtime: "{{ .CommitDate }}"}
     files:
-      - src: LICENSE*
+      - src: {{% .LicenseGlob %}}
         info: {owner: root, group: root, mode: 0644, mtime: "{{ .CommitDate }}"}
-{{%- if $.Notice %}}
-      - src: NOTICE
+{{%- if .Notice %}}
+      - src: {{% .NoticeFile %}}
         info: {owner: root, group: root, mode: 0644, mtime: "{{ .CommitDate }}"}
 {{%- end %}}
       - src: README.md
@@ -130,11 +130,11 @@ nfpms:
         dst: /usr/share/fish/vendor_completions.d/{{% .Name %}}.fish
         file_info: {mode: 0644, mtime: "{{ .CommitDate }}"}
 {{%- end %}}
-      - src: LICENSE
+      - src: {{% .LicenseFile %}}
         dst: /usr/share/doc/{{% .Name %}}/copyright
         file_info: {mode: 0644, mtime: "{{ .CommitDate }}"}
-{{%- if $.Notice %}}
-      - src: NOTICE
+{{%- if .Notice %}}
+      - src: {{% .NoticeFile %}}
         dst: /usr/share/doc/{{% .Name %}}/NOTICE
         file_info: {mode: 0644, mtime: "{{ .CommitDate }}"}
 {{%- end %}}
